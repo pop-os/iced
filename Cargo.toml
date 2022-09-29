@@ -41,6 +41,8 @@ palette = ["iced_core/palette"]
 system = ["iced_winit/system"]
 # Enables wayland shell
 wayland = ["iced_sctk", "glow", "iced_native/sctk"]
+# COSMIC Theme
+cosmic_theme = ["iced_native/cosmic_theme"]
 
 [badges]
 maintenance = { status = "actively-developed" }
@@ -64,6 +66,7 @@ members = [
     "examples/clock_sctk_window",
     "examples/color_palette",
     "examples/component",
+    "examples/cosmic",
     "examples/counter",
     "examples/custom_widget",
     "examples/download_progress",
