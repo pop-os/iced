@@ -1,12 +1,12 @@
 use iced::widget::{
-    button, checkbox, column, container, horizontal_rule, progress_bar, radio,
+    button, checkbox, column, container, horizontal_rule, horizontal_space, progress_bar, radio,
     row, scrollable, slider, svg, text, text_input, toggler, vertical_rule,
     vertical_space,
 };
 use iced::{theme, Alignment, Element, Length, Sandbox, Settings, Theme};
 
 pub fn main() -> iced::Result {
-    Styling::run(Settings::default())
+    Window::run(Settings::default())
 }
 
 fn icon(name: &str, size: u16) -> svg::Svg {
@@ -27,7 +27,9 @@ fn icon(name: &str, size: u16) -> svg::Svg {
 }
 
 #[derive(Default)]
-struct Styling {
+struct Window {
+    page: u8,
+    debug: bool,
     theme: Theme,
     input_value: String,
     slider_value: f32,
@@ -37,6 +39,8 @@ struct Styling {
 
 #[derive(Debug, Clone)]
 enum Message {
+    Page(u8),
+    Debug(bool),
     ThemeChanged(Theme),
     InputChanged(String),
     ButtonPressed,
@@ -45,19 +49,21 @@ enum Message {
     TogglerToggled(bool),
 }
 
-impl Sandbox for Styling {
+impl Sandbox for Window {
     type Message = Message;
 
     fn new() -> Self {
-        Styling::default()
+        Window::default()
     }
 
     fn title(&self) -> String {
-        String::from("Styling - Iced")
+        String::from("COSMIC Design System - Iced")
     }
 
     fn update(&mut self, message: Message) {
         match message {
+            Message::Page(page) => self.page = page,
+            Message::Debug(debug) => self.debug = debug,
             Message::ThemeChanged(theme) => self.theme = theme,
             Message::InputChanged(value) => self.input_value = value,
             Message::ButtonPressed => {}
@@ -68,6 +74,55 @@ impl Sandbox for Styling {
     }
 
     fn view(&self) -> Element<Message> {
+        let sidebar: Element<_> = column![
+            //TODO: Support symbolic icons
+            button(
+                row![
+                    icon("network-wireless", 16).width(Length::Units(16)),
+                    text("Wi-Fi"),
+                    horizontal_space(Length::Fill),
+                ]
+                .spacing(10)
+            )
+            .on_press(Message::Page(0))
+            .style(if self.page == 0 { theme::Button::Primary } else { theme::Button::Text }),
+
+            button(
+                row![
+                    icon("preferences-desktop", 16).width(Length::Units(16)),
+                    text("Desktop"),
+                    horizontal_space(Length::Fill),
+                ]
+                .spacing(10)
+            )
+            .on_press(Message::Page(1))
+            .style(if self.page == 1 { theme::Button::Primary } else { theme::Button::Text }),
+
+            button(
+                row![
+                    icon("system-software-update", 16).width(Length::Units(16)),
+                    text("OS Upgrade & Recovery"),
+                    horizontal_space(Length::Fill),
+                ]
+                .spacing(10)
+            )
+            .on_press(Message::Page(2))
+            .style(if self.page == 2 { theme::Button::Primary } else { theme::Button::Text }),
+
+            toggler(
+                String::from("Debug layout"),
+                self.debug,
+                Message::Debug,
+            )
+            .width(Length::Shrink)
+            .spacing(10),
+        ]
+        .height(Length::Fill)
+        .spacing(20)
+        .padding(20)
+        .max_width(300)
+        .into();
+
         let choose_theme = [Theme::Light, Theme::Dark].iter().fold(
             row![text("Choose a theme:")].spacing(10),
             |row, theme| {
@@ -121,7 +176,7 @@ impl Sandbox for Styling {
         .width(Length::Shrink)
         .spacing(10);
 
-        let content = column![
+        let content: Element<_> = column![
             icon("pop-os", 64),
             choose_theme,
             horizontal_rule(10),
@@ -155,14 +210,19 @@ impl Sandbox for Styling {
         ]
         .spacing(20)
         .padding(20)
-        .max_width(600);
+        .max_width(600)
+        .into();
 
-        container(content)
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .center_x()
-            .center_y()
-            .into()
+        container(row![
+            if self.debug { sidebar.explain(iced::Color::WHITE) } else { sidebar },
+            horizontal_space(Length::Fill),
+            if self.debug { content.explain(iced::Color::WHITE) } else { content },
+            horizontal_space(Length::Fill),
+        ])
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .center_y()
+        .into()
     }
 
     fn theme(&self) -> Theme {
