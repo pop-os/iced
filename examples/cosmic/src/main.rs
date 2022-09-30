@@ -8,7 +8,7 @@ use iced::{theme, Alignment, Background, Color, Element, Length, Sandbox, Settin
 pub fn main() -> iced::Result {
     let mut settings = Settings::default();
     //TODO: settings.default_font = Some("Fira Sans");
-    settings.default_text_size = 20;
+    settings.default_text_size = 18;
     Window::run(settings)
 }
 
