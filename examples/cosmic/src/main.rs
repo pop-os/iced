@@ -1,19 +1,22 @@
 use iced::widget::{
     button, checkbox, column, container, horizontal_rule, horizontal_space, progress_bar, radio,
-    row, scrollable, slider, svg, text, text_input, toggler, vertical_rule,
+    row, slider, svg, text, toggler,
     vertical_space,
 };
-use iced::{theme, Alignment, Background, Color, Element, Length, Sandbox, Settings, Theme};
+use iced::{theme, Background, Color, Element, Length, Sandbox, Settings, Theme};
 
 pub fn main() -> iced::Result {
     Window::run(Settings::default())
 }
 
-fn sidebar_style(_theme: &Theme) -> container::Appearance {
+fn sidebar_style(theme: &Theme) -> container::Appearance {
     container::Appearance {
         text_color: None,
         background: Some(Background::Color(
-            Color::from_rgba8(0x2E, 0x2E, 0x2E, 0.7)
+            match theme {
+                Theme::Dark => Color::from_rgb8(0x29, 0x29, 0x29),
+                Theme::Light => Color::from_rgb8(0xfd, 0xfd, 0xfd),
+            }
         )),
         border_radius: 8.0,
         border_width: 0.0,
@@ -21,11 +24,14 @@ fn sidebar_style(_theme: &Theme) -> container::Appearance {
     }
 }
 
-fn listview_style(_theme: &Theme) -> container::Appearance {
+fn listview_style(theme: &Theme) -> container::Appearance {
     container::Appearance {
         text_color: None,
         background: Some(Background::Color(
-            Color::from_rgba8(0x35, 0x35, 0x35, 0.4)
+            match theme {
+                Theme::Dark => Color::from_rgb8(0x27, 0x27, 0x27),
+                Theme::Light => Color::from_rgb8(0xf7, 0xf7, 0xf7),
+            }
         )),
         border_radius: 8.0,
         border_width: 0.0,
@@ -55,7 +61,6 @@ struct Window {
     page: u8,
     debug: bool,
     theme: Theme,
-    input_value: String,
     slider_value: f32,
     checkbox_value: bool,
     toggler_value: bool,
@@ -66,7 +71,6 @@ enum Message {
     Page(u8),
     Debug(bool),
     ThemeChanged(Theme),
-    InputChanged(String),
     ButtonPressed,
     SliderChanged(f32),
     CheckboxToggled(bool),
@@ -77,7 +81,9 @@ impl Sandbox for Window {
     type Message = Message;
 
     fn new() -> Self {
-        Window::default()
+        let mut window = Window::default();
+        window.slider_value = 50.0;
+        window
     }
 
     fn title(&self) -> String {
@@ -89,7 +95,6 @@ impl Sandbox for Window {
             Message::Page(page) => self.page = page,
             Message::Debug(debug) => self.debug = debug,
             Message::ThemeChanged(theme) => self.theme = theme,
-            Message::InputChanged(value) => self.input_value = value,
             Message::ButtonPressed => {}
             Message::SliderChanged(value) => self.slider_value = value,
             Message::CheckboxToggled(value) => self.checkbox_value = value,
@@ -107,45 +112,45 @@ impl Sandbox for Window {
                         text("Wi-Fi"),
                         horizontal_space(Length::Fill),
                     ]
-                    .spacing(10)
+                    .spacing(12)
                 )
                 .on_press(Message::Page(0))
-                .style(if self.page == 0 { theme::Button::Primary } else { theme::Button::Text }),
-
+                .style(if self.page == 0 { theme::Button::Primary } else { theme::Button::Text })
+                ,
                 button(
                     row![
                         icon("preferences-desktop", 16).width(Length::Units(16)),
                         text("Desktop"),
                         horizontal_space(Length::Fill),
                     ]
-                    .spacing(10)
+                    .spacing(12)
                 )
                 .on_press(Message::Page(1))
-                .style(if self.page == 1 { theme::Button::Primary } else { theme::Button::Text }),
-
+                .style(if self.page == 1 { theme::Button::Primary } else { theme::Button::Text })
+                ,
                 button(
                     row![
                         icon("system-software-update", 16).width(Length::Units(16)),
                         text("OS Upgrade & Recovery"),
                         horizontal_space(Length::Fill),
                     ]
-                    .spacing(10)
+                    .spacing(12)
                 )
                 .on_press(Message::Page(2))
-                .style(if self.page == 2 { theme::Button::Primary } else { theme::Button::Text }),
-
+                .style(if self.page == 2 { theme::Button::Primary } else { theme::Button::Text })
+                ,
                 toggler(
                     String::from("Debug layout"),
                     self.debug,
                     Message::Debug,
                 )
                 .width(Length::Shrink)
-                .spacing(10),
-
+                .spacing(12)
+                ,
                 vertical_space(Length::Fill),
             ]
-            .spacing(20)
-            .padding(20)
+            .spacing(22)
+            .padding(11)
             .max_width(300)
         )
         .style(theme::Container::Custom(sidebar_style))
@@ -163,51 +168,11 @@ impl Sandbox for Window {
             },
         );
 
-        let text_input = text_input(
-            "Type something...",
-            &self.input_value,
-            Message::InputChanged,
-        )
-        .padding(10)
-        .size(20);
 
-        let btn = button("Submit")
-            .padding(10)
-            .on_press(Message::ButtonPressed);
-
-        let slider =
-            slider(0.0..=100.0, self.slider_value, Message::SliderChanged);
-
-        let progress_bar = progress_bar(0.0..=100.0, self.slider_value);
-
-        let scrollable = scrollable(
-            column![
-                "Scroll me!",
-                vertical_space(Length::Units(800)),
-                "You did it!"
-            ]
-            .width(Length::Fill),
-        )
-        .height(Length::Units(100));
-
-        let checkbox = checkbox(
-            "Check me!",
-            self.checkbox_value,
-            Message::CheckboxToggled,
-        );
-
-        let toggler = toggler(
-            String::from("Toggle me!"),
-            self.toggler_value,
-            Message::TogglerToggled,
-        )
-        .width(Length::Shrink)
-        .spacing(10);
 
         let content: Element<_> = column![
-            icon("pop-os", 64),
             choose_theme,
-            horizontal_rule(10),
+            vertical_space(Length::Units(16)),
             text("Buttons"),
             container(
                 column![
@@ -217,35 +182,61 @@ impl Sandbox for Window {
                         button("Positive").style(theme::Button::Positive).on_press(Message::ButtonPressed),
                         button("Destructive").style(theme::Button::Destructive).on_press(Message::ButtonPressed),
                         button("Text").style(theme::Button::Text).on_press(Message::ButtonPressed),
-                    ].spacing(10),
-                    horizontal_rule(10),
+                    ].spacing(12),
+                    horizontal_rule(12),
                     row![
                         button("Primary").style(theme::Button::Primary),
                         button("Secondary").style(theme::Button::Secondary),
                         button("Positive").style(theme::Button::Positive),
                         button("Destructive").style(theme::Button::Destructive),
                         button("Text").style(theme::Button::Text),
-                    ].spacing(10),
+                    ].spacing(12),
                 ]
-                .padding(8)
-                .spacing(10)
+                .padding([12, 16])
+                .spacing(12)
             )
             .style(theme::Container::Custom(listview_style))
             ,
-            horizontal_rule(10),
-            row![text_input, btn].spacing(10),
-            slider,
-            progress_bar,
-            row![
-                scrollable,
-                vertical_rule(38),
-                column![checkbox, toggler].spacing(20)
-            ]
-            .spacing(10)
-            .height(Length::Units(100))
-            .align_items(Alignment::Center),
+            vertical_space(Length::Units(16)),
+            text("Controls"),
+            container(
+                column![
+                    row![
+                        text("Toggler"),
+                        horizontal_space(Length::Fill),
+                        toggler(None, self.toggler_value, Message::TogglerToggled)
+                        .size(24)
+                        .width(Length::Shrink),
+                    ]
+                    .padding([0, 8])
+                    ,
+                    horizontal_rule(12),
+                    row![
+                        text("Slider"),
+                        horizontal_space(Length::Fill),
+                        slider(0.0..=100.0, self.slider_value, Message::SliderChanged)
+                        .width(Length::Units(250)),
+                    ]
+                    .padding([0, 8])
+                    ,
+                    horizontal_rule(12),
+                    row![
+                        text("Progress"),
+                        horizontal_space(Length::Fill),
+                        progress_bar(0.0..=100.0, self.slider_value)
+                        .width(Length::Units(250)),
+                    ]
+                    .padding([0, 8])
+                    ,
+                    horizontal_rule(12),
+                    checkbox("Checkbox", self.checkbox_value, Message::CheckboxToggled),
+                ]
+                .padding([12, 16])
+                .spacing(12)
+            )
+            .style(theme::Container::Custom(listview_style))
         ]
-        .spacing(16)
+        .spacing(8)
         .padding(24)
         .max_width(600)
         .into();
@@ -256,7 +247,7 @@ impl Sandbox for Window {
             if self.debug { content.explain(Color::WHITE) } else { content },
             horizontal_space(Length::Fill),
         ])
-        .padding(8)
+        .padding([16, 8])
         .width(Length::Fill)
         .height(Length::Fill)
         .into()
