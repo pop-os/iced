@@ -381,8 +381,8 @@ impl pick_list::StyleSheet for Theme {
             text_color: palette.background.weak.text,
             background: palette.background.weak.color.into(),
             placeholder_color: palette.background.strong.color,
-            border_radius: 2.0,
-            border_width: 1.0,
+            border_radius: 24.0,
+            border_width: 0.0,
             border_color: palette.background.strong.color,
             icon_size: 0.7,
         }
@@ -395,8 +395,8 @@ impl pick_list::StyleSheet for Theme {
             text_color: palette.background.weak.text,
             background: palette.background.weak.color.into(),
             placeholder_color: palette.background.strong.color,
-            border_radius: 2.0,
-            border_width: 1.0,
+            border_radius: 24.0,
+            border_width: 0.0,
             border_color: palette.primary.strong.color,
             icon_size: 0.7,
         }
