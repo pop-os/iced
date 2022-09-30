@@ -282,7 +282,7 @@ impl Sandbox for Window {
                     row![
                         text("Progress"),
                         horizontal_space(Length::Fill),
-                        progress_bar(0.0..=100.0, self.slider_value)
+                        progress_bar(0.0..=100.0, self.slider_value).height(Length::Units(4))
                         .width(Length::Units(250)),
                     ]
                     .padding([0, 8])
