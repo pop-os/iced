@@ -3,10 +3,34 @@ use iced::widget::{
     row, scrollable, slider, svg, text, text_input, toggler, vertical_rule,
     vertical_space,
 };
-use iced::{theme, Alignment, Element, Length, Sandbox, Settings, Theme};
+use iced::{theme, Alignment, Background, Color, Element, Length, Sandbox, Settings, Theme};
 
 pub fn main() -> iced::Result {
     Window::run(Settings::default())
+}
+
+fn sidebar_style(_theme: &Theme) -> container::Appearance {
+    container::Appearance {
+        text_color: None,
+        background: Some(Background::Color(
+            Color::from_rgba8(0x2E, 0x2E, 0x2E, 0.7)
+        )),
+        border_radius: 8.0,
+        border_width: 0.0,
+        border_color: Color::TRANSPARENT,
+    }
+}
+
+fn listview_style(_theme: &Theme) -> container::Appearance {
+    container::Appearance {
+        text_color: None,
+        background: Some(Background::Color(
+            Color::from_rgba8(0x35, 0x35, 0x35, 0.4)
+        )),
+        border_radius: 8.0,
+        border_width: 0.0,
+        border_color: Color::TRANSPARENT,
+    }
 }
 
 fn icon(name: &str, size: u16) -> svg::Svg {
@@ -74,53 +98,57 @@ impl Sandbox for Window {
     }
 
     fn view(&self) -> Element<Message> {
-        let sidebar: Element<_> = column![
-            //TODO: Support symbolic icons
-            button(
-                row![
-                    icon("network-wireless", 16).width(Length::Units(16)),
-                    text("Wi-Fi"),
-                    horizontal_space(Length::Fill),
-                ]
-                .spacing(10)
-            )
-            .on_press(Message::Page(0))
-            .style(if self.page == 0 { theme::Button::Primary } else { theme::Button::Text }),
+        let sidebar: Element<_> = container(
+            column![
+                //TODO: Support symbolic icons
+                button(
+                    row![
+                        icon("network-wireless", 16).width(Length::Units(16)),
+                        text("Wi-Fi"),
+                        horizontal_space(Length::Fill),
+                    ]
+                    .spacing(10)
+                )
+                .on_press(Message::Page(0))
+                .style(if self.page == 0 { theme::Button::Primary } else { theme::Button::Text }),
 
-            button(
-                row![
-                    icon("preferences-desktop", 16).width(Length::Units(16)),
-                    text("Desktop"),
-                    horizontal_space(Length::Fill),
-                ]
-                .spacing(10)
-            )
-            .on_press(Message::Page(1))
-            .style(if self.page == 1 { theme::Button::Primary } else { theme::Button::Text }),
+                button(
+                    row![
+                        icon("preferences-desktop", 16).width(Length::Units(16)),
+                        text("Desktop"),
+                        horizontal_space(Length::Fill),
+                    ]
+                    .spacing(10)
+                )
+                .on_press(Message::Page(1))
+                .style(if self.page == 1 { theme::Button::Primary } else { theme::Button::Text }),
 
-            button(
-                row![
-                    icon("system-software-update", 16).width(Length::Units(16)),
-                    text("OS Upgrade & Recovery"),
-                    horizontal_space(Length::Fill),
-                ]
-                .spacing(10)
-            )
-            .on_press(Message::Page(2))
-            .style(if self.page == 2 { theme::Button::Primary } else { theme::Button::Text }),
+                button(
+                    row![
+                        icon("system-software-update", 16).width(Length::Units(16)),
+                        text("OS Upgrade & Recovery"),
+                        horizontal_space(Length::Fill),
+                    ]
+                    .spacing(10)
+                )
+                .on_press(Message::Page(2))
+                .style(if self.page == 2 { theme::Button::Primary } else { theme::Button::Text }),
 
-            toggler(
-                String::from("Debug layout"),
-                self.debug,
-                Message::Debug,
-            )
-            .width(Length::Shrink)
-            .spacing(10),
-        ]
-        .height(Length::Fill)
-        .spacing(20)
-        .padding(20)
-        .max_width(300)
+                toggler(
+                    String::from("Debug layout"),
+                    self.debug,
+                    Message::Debug,
+                )
+                .width(Length::Shrink)
+                .spacing(10),
+
+                vertical_space(Length::Fill),
+            ]
+            .spacing(20)
+            .padding(20)
+            .max_width(300)
+        )
+        .style(theme::Container::Custom(sidebar_style))
         .into();
 
         let choose_theme = [Theme::Light, Theme::Dark].iter().fold(
@@ -181,20 +209,29 @@ impl Sandbox for Window {
             choose_theme,
             horizontal_rule(10),
             text("Buttons"),
-            row![
-                button("Primary").style(theme::Button::Primary).on_press(Message::ButtonPressed),
-                button("Secondary").style(theme::Button::Secondary).on_press(Message::ButtonPressed),
-                button("Positive").style(theme::Button::Positive).on_press(Message::ButtonPressed),
-                button("Destructive").style(theme::Button::Destructive).on_press(Message::ButtonPressed),
-                button("Text").style(theme::Button::Text).on_press(Message::ButtonPressed),
-            ].spacing(10),
-            row![
-                button("Primary").style(theme::Button::Primary),
-                button("Secondary").style(theme::Button::Secondary),
-                button("Positive").style(theme::Button::Positive),
-                button("Destructive").style(theme::Button::Destructive),
-                button("Text").style(theme::Button::Text),
-            ].spacing(10),
+            container(
+                column![
+                    row![
+                        button("Primary").style(theme::Button::Primary).on_press(Message::ButtonPressed),
+                        button("Secondary").style(theme::Button::Secondary).on_press(Message::ButtonPressed),
+                        button("Positive").style(theme::Button::Positive).on_press(Message::ButtonPressed),
+                        button("Destructive").style(theme::Button::Destructive).on_press(Message::ButtonPressed),
+                        button("Text").style(theme::Button::Text).on_press(Message::ButtonPressed),
+                    ].spacing(10),
+                    horizontal_rule(10),
+                    row![
+                        button("Primary").style(theme::Button::Primary),
+                        button("Secondary").style(theme::Button::Secondary),
+                        button("Positive").style(theme::Button::Positive),
+                        button("Destructive").style(theme::Button::Destructive),
+                        button("Text").style(theme::Button::Text),
+                    ].spacing(10),
+                ]
+                .padding(8)
+                .spacing(10)
+            )
+            .style(theme::Container::Custom(listview_style))
+            ,
             horizontal_rule(10),
             row![text_input, btn].spacing(10),
             slider,
@@ -208,20 +245,20 @@ impl Sandbox for Window {
             .height(Length::Units(100))
             .align_items(Alignment::Center),
         ]
-        .spacing(20)
-        .padding(20)
+        .spacing(16)
+        .padding(24)
         .max_width(600)
         .into();
 
         container(row![
-            if self.debug { sidebar.explain(iced::Color::WHITE) } else { sidebar },
+            if self.debug { sidebar.explain(Color::WHITE) } else { sidebar },
             horizontal_space(Length::Fill),
-            if self.debug { content.explain(iced::Color::WHITE) } else { content },
+            if self.debug { content.explain(Color::WHITE) } else { content },
             horizontal_space(Length::Fill),
         ])
+        .padding(8)
         .width(Length::Fill)
         .height(Length::Fill)
-        .center_y()
         .into()
     }
 
