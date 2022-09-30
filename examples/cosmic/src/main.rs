@@ -3,10 +3,13 @@ use iced::widget::{
     row, slider, svg, text, toggler,
     vertical_space,
 };
-use iced::{theme, Background, Color, Element, Length, Sandbox, Settings, Theme};
+use iced::{theme, Alignment, Background, Color, Element, Length, Sandbox, Settings, Theme};
 
 pub fn main() -> iced::Result {
-    Window::run(Settings::default())
+    let mut settings = Settings::default();
+    //TODO: settings.default_font = Some("Fira Sans");
+    settings.default_text_size = 20;
+    Window::run(settings)
 }
 
 fn sidebar_style(theme: &Theme) -> container::Appearance {
@@ -112,7 +115,8 @@ impl Sandbox for Window {
                         text("Wi-Fi"),
                         horizontal_space(Length::Fill),
                     ]
-                    .spacing(12)
+                    .padding([4, 12])
+                    .spacing(8)
                 )
                 .on_press(Message::Page(0))
                 .style(if self.page == 0 { theme::Button::Primary } else { theme::Button::Text })
@@ -123,7 +127,8 @@ impl Sandbox for Window {
                         text("Desktop"),
                         horizontal_space(Length::Fill),
                     ]
-                    .spacing(12)
+                    .padding([4, 12])
+                    .spacing(8)
                 )
                 .on_press(Message::Page(1))
                 .style(if self.page == 1 { theme::Button::Primary } else { theme::Button::Text })
@@ -134,30 +139,23 @@ impl Sandbox for Window {
                         text("OS Upgrade & Recovery"),
                         horizontal_space(Length::Fill),
                     ]
-                    .spacing(12)
+                    .padding([4, 12])
+                    .spacing(8)
                 )
                 .on_press(Message::Page(2))
                 .style(if self.page == 2 { theme::Button::Primary } else { theme::Button::Text })
                 ,
-                toggler(
-                    String::from("Debug layout"),
-                    self.debug,
-                    Message::Debug,
-                )
-                .width(Length::Shrink)
-                .spacing(12)
-                ,
                 vertical_space(Length::Fill),
             ]
-            .spacing(22)
-            .padding(11)
+            .spacing(12)
+            .padding(12)
             .max_width(300)
         )
         .style(theme::Container::Custom(sidebar_style))
         .into();
 
         let choose_theme = [Theme::Light, Theme::Dark].iter().fold(
-            row![text("Choose a theme:")].spacing(10),
+            row![text("Theme:")].spacing(10).align_items(Alignment::Center),
             |row, theme| {
                 row.push(radio(
                     format!("{:?}", theme),
@@ -168,28 +166,71 @@ impl Sandbox for Window {
             },
         );
 
-
-
         let content: Element<_> = column![
             choose_theme,
+            vertical_space(Length::Units(16)),
+            toggler(
+                String::from("Debug layout"),
+                self.debug,
+                Message::Debug,
+            )
+            .width(Length::Shrink)
+            .size(24)
+            .spacing(12)
+            ,
             vertical_space(Length::Units(16)),
             text("Buttons"),
             container(
                 column![
                     row![
-                        button("Primary").style(theme::Button::Primary).on_press(Message::ButtonPressed),
-                        button("Secondary").style(theme::Button::Secondary).on_press(Message::ButtonPressed),
-                        button("Positive").style(theme::Button::Positive).on_press(Message::ButtonPressed),
-                        button("Destructive").style(theme::Button::Destructive).on_press(Message::ButtonPressed),
-                        button("Text").style(theme::Button::Text).on_press(Message::ButtonPressed),
+                        button("Primary")
+                        .style(theme::Button::Primary)
+                        .padding([8, 16])
+                        .on_press(Message::ButtonPressed)
+                        ,
+                        button("Secondary")
+                        .style(theme::Button::Secondary)
+                        .padding([8, 16])
+                        .on_press(Message::ButtonPressed)
+                        ,
+                        button("Positive")
+                        .style(theme::Button::Positive)
+                        .padding([8, 16])
+                        .on_press(Message::ButtonPressed)
+                        ,
+                        button("Destructive")
+                        .style(theme::Button::Destructive)
+                        .padding([8, 16])
+                        .on_press(Message::ButtonPressed)
+                        ,
+                        button("Text")
+                        .style(theme::Button::Text)
+                        .padding([8, 16])
+                        .on_press(Message::ButtonPressed)
+                        ,
                     ].spacing(12),
                     horizontal_rule(12),
                     row![
-                        button("Primary").style(theme::Button::Primary),
-                        button("Secondary").style(theme::Button::Secondary),
-                        button("Positive").style(theme::Button::Positive),
-                        button("Destructive").style(theme::Button::Destructive),
-                        button("Text").style(theme::Button::Text),
+                        button("Primary")
+                        .style(theme::Button::Primary)
+                        .padding([8, 16])
+                        ,
+                        button("Secondary")
+                        .style(theme::Button::Secondary)
+                        .padding([8, 16])
+                        ,
+                        button("Positive")
+                        .style(theme::Button::Positive)
+                        .padding([8, 16])
+                        ,
+                        button("Destructive")
+                        .style(theme::Button::Destructive)
+                        .padding([8, 16])
+                        ,
+                        button("Text")
+                        .style(theme::Button::Text)
+                        .padding([8, 16])
+                        ,
                     ].spacing(12),
                 ]
                 .padding([12, 16])
