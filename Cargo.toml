@@ -43,7 +43,7 @@ palette = ["iced_core/palette"]
 # Enables querying system information
 system = ["iced_winit/system"]
 # COSMIC Theme
-cosmic_theme = ["iced_native/cosmic_theme"]
+cosmic-theme = ["iced_native/cosmic-theme"]
 
 [badges]
 maintenance = { status = "actively-developed" }

@@ -33,9 +33,9 @@ pub mod scrollable;
 pub mod slider;
 pub mod text;
 pub mod text_input;
-#[cfg(not(feature = "cosmic_theme"))]
+#[cfg(not(feature = "cosmic-theme"))]
 pub mod theme;
-#[cfg(feature = "cosmic_theme")]
+#[cfg(feature = "cosmic-theme")]
 #[path = "cosmic/theme.rs"]
 pub mod theme;
 pub mod toggler;
