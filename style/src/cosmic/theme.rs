@@ -20,7 +20,9 @@ use crate::toggler;
 
 use iced_core::{Background, Color};
 
-type CosmicTheme = cosmic_theme::Theme<::palette::rgb::Srgba>;
+type CosmicColor = ::palette::rgb::Srgba;
+type CosmicComponent = cosmic_theme::Component<CosmicColor>;
+type CosmicTheme = cosmic_theme::Theme<CosmicColor>;
 type CosmicThemeCss = cosmic_theme::Theme<cosmic_theme::util::CssColor>;
 
 lazy_static::lazy_static! {
@@ -109,49 +111,49 @@ impl Default for Button {
     }
 }
 
+impl Button {
+    fn cosmic(&self, theme: &Theme) -> &'static CosmicComponent {
+        let cosmic = theme.cosmic();
+        match self {
+            Button::Primary => &cosmic.accent,
+            Button::Secondary => &cosmic.primary.component,
+            Button::Positive => &cosmic.success,
+            Button::Destructive => &cosmic.destructive,
+            Button::Text => &cosmic.primary.component,
+        }
+    }
+}
+
 impl button::StyleSheet for Theme {
     type Style = Button;
 
     fn active(&self, style: Self::Style) -> button::Appearance {
-        let palette = self.extended_palette();
+        let cosmic = style.cosmic(self);
 
-        let appearance = button::Appearance {
+        button::Appearance {
             border_radius: 24.0,
-            ..button::Appearance::default()
-        };
-
-        let from_pair = |pair: palette::Pair| button::Appearance {
-            background: Some(pair.color.into()),
-            text_color: pair.text,
-            ..appearance
-        };
-
-        match style {
-            Button::Primary => from_pair(palette.primary.strong),
-            Button::Secondary => from_pair(palette.secondary.base),
-            Button::Positive => from_pair(palette.success.base),
-            Button::Destructive => from_pair(palette.danger.base),
-            Button::Text => button::Appearance {
-                text_color: palette.background.base.text,
-                ..appearance
+            background: match style {
+                Button::Text => None,
+                _ => Some(Background::from(
+                    Color::from(cosmic.base)
+                )),
             },
+            text_color: cosmic.on.into(),
+            ..button::Appearance::default()
         }
     }
 
     fn hovered(&self, style: Self::Style) -> button::Appearance {
         let active = self.active(style);
-        let palette = self.extended_palette();
-
-        let background = match style {
-            Button::Primary => Some(palette.primary.base.color),
-            Button::Secondary => Some(palette.background.strong.color),
-            Button::Positive => Some(palette.success.strong.color),
-            Button::Destructive => Some(palette.danger.strong.color),
-            Button::Text => None,
-        };
+        let cosmic = style.cosmic(self);
 
         button::Appearance {
-            background: background.map(Background::from),
+            background: match style {
+                Button::Text => None,
+                _ => Some(Background::from(
+                    Color::from(cosmic.hover)
+                ))
+            },
             ..active
         }
     }
