@@ -119,7 +119,7 @@ impl Button {
             Button::Secondary => &cosmic.primary.component,
             Button::Positive => &cosmic.success,
             Button::Destructive => &cosmic.destructive,
-            Button::Text => &cosmic.primary.component,
+            Button::Text => &cosmic.secondary.component,
         }
     }
 }
@@ -148,12 +148,9 @@ impl button::StyleSheet for Theme {
         let cosmic = style.cosmic(self);
 
         button::Appearance {
-            background: match style {
-                Button::Text => None,
-                _ => Some(Background::from(
-                    Color::from(cosmic.hover)
-                ))
-            },
+            background: Some(Background::from(
+                Color::from(cosmic.hover)
+            )),
             ..active
         }
     }
