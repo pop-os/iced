@@ -600,12 +600,12 @@ impl scrollable::StyleSheet for Theme {
 
         scrollable::Scrollbar {
             background: palette.background.weak.color.into(),
-            border_radius: 2.0,
+            border_radius: 4.0,
             border_width: 0.0,
             border_color: Color::TRANSPARENT,
             scroller: scrollable::Scroller {
                 color: palette.background.strong.color,
-                border_radius: 2.0,
+                border_radius: 4.0,
                 border_width: 0.0,
                 border_color: Color::TRANSPARENT,
             },
@@ -617,12 +617,12 @@ impl scrollable::StyleSheet for Theme {
 
         scrollable::Scrollbar {
             background: palette.background.weak.color.into(),
-            border_radius: 2.0,
+            border_radius: 4.0,
             border_width: 0.0,
             border_color: Color::TRANSPARENT,
             scroller: scrollable::Scroller {
                 color: palette.primary.strong.color,
-                border_radius: 2.0,
+                border_radius: 4.0,
                 border_width: 0.0,
                 border_color: Color::TRANSPARENT,
             },
