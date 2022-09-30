@@ -25,7 +25,7 @@ version = "0.6"
 version = "1.4"
 
 [dependencies.cosmic-theme]
-git = "https://github.com/pop-os/cosmic-theme/commits/master"
+git = "https://github.com/pop-os/cosmic-theme.git"
 branch = "master"
 #path = "../../cosmic-theme"
 optional = true
