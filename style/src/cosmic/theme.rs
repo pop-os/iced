@@ -20,6 +20,14 @@ use crate::toggler;
 
 use iced_core::{Background, Color};
 
+type CosmicTheme = cosmic_theme::Theme<::palette::rgb::Srgba>;
+type CosmicThemeCss = cosmic_theme::Theme<cosmic_theme::util::CssColor>;
+
+lazy_static::lazy_static! {
+    pub static ref COSMIC_DARK: CosmicTheme = CosmicThemeCss::dark_default().into_srgba();
+    pub static ref COSMIC_LIGHT: CosmicTheme = CosmicThemeCss::light_default().into_srgba();
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Theme {
     Light,
@@ -27,17 +35,24 @@ pub enum Theme {
 }
 
 impl Theme {
+    pub fn cosmic(self) -> &'static CosmicTheme {
+        match self {
+            Self::Dark => &COSMIC_DARK,
+            Self::Light => &COSMIC_LIGHT,
+        }
+    }
+
     pub fn palette(self) -> Palette {
         match self {
-            Self::Light => Palette::LIGHT,
             Self::Dark => Palette::DARK,
+            Self::Light => Palette::LIGHT,
         }
     }
 
     pub fn extended_palette(&self) -> &palette::Extended {
         match self {
-            Self::Light => &palette::EXTENDED_LIGHT,
             Self::Dark => &palette::EXTENDED_DARK,
+            Self::Light => &palette::EXTENDED_LIGHT,
         }
     }
 }
@@ -64,12 +79,12 @@ impl application::StyleSheet for Theme {
     type Style = Application;
 
     fn appearance(&self, style: Self::Style) -> application::Appearance {
-        let palette = self.extended_palette();
+        let cosmic = self.cosmic();
 
         match style {
             Application::Default => application::Appearance {
-                background_color: palette.background.base.color,
-                text_color: palette.background.base.text,
+                background_color: cosmic.bg_color().into(),
+                text_color: cosmic.on_bg_color().into(),
             },
             Application::Custom(f) => f(*self),
         }

@@ -12,7 +12,6 @@ categories = ["gui"]
 
 [features]
 default = []
-cosmic-theme = []
 
 [dependencies.iced_core]
 version = "0.5"
@@ -24,3 +23,9 @@ version = "0.6"
 
 [dependencies.lazy_static]
 version = "1.4"
+
+[dependencies.cosmic-theme]
+git = "https://github.com/pop-os/cosmic-theme/commits/master"
+branch = "master"
+#path = "../../cosmic-theme"
+optional = true
