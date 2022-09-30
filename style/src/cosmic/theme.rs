@@ -379,7 +379,7 @@ impl pick_list::StyleSheet for Theme {
 
         pick_list::Appearance {
             text_color: palette.background.weak.text,
-            background: palette.background.weak.color.into(),
+            background: Color::TRANSPARENT.into(),
             placeholder_color: palette.background.strong.color,
             border_radius: 24.0,
             border_width: 0.0,
