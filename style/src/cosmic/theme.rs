@@ -358,12 +358,12 @@ impl menu::StyleSheet for Theme {
 
         menu::Appearance {
             text_color: palette.background.weak.text,
-            background: palette.background.weak.color.into(),
-            border_width: 1.0,
-            border_radius: 0.0,
+            background: palette.background.base.color.into(),
+            border_width: 0.0,
+            border_radius: 16.0,
             border_color: palette.background.strong.color,
-            selected_text_color: palette.primary.strong.text,
-            selected_background: palette.primary.strong.color.into(),
+            selected_text_color: palette.background.weak.text,
+            selected_background: palette.background.weak.color.into(),
         }
     }
 }
