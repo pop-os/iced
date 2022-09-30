@@ -44,9 +44,9 @@ impl Palette {
 
     pub const DARK: Self = Self {
         background: Color::from_rgb(
-            0x29 as f32 / 255.0,
-            0x29 as f32 / 255.0,
-            0x29 as f32 / 255.0
+            0x1e as f32 / 255.0,
+            0x1e as f32 / 255.0,
+            0x1e as f32 / 255.0
         ),
         text: Color::from_rgb(
             0xe4 as f32 / 255.0,
