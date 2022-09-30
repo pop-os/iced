@@ -3,13 +3,48 @@ use iced::widget::{
     row, slider, svg, text, toggler,
     vertical_space,
 };
-use iced::{theme, Alignment, Background, Color, Element, Length, Sandbox, Settings, Theme};
+use iced::{theme, Alignment, Background, Color, Element, Font, Length, Sandbox, Settings, Theme};
+
+const FONT: Font = Font::External {
+    name: "Fira Sans Regular",
+    bytes: include_bytes!("../res/Fira/Sans/Regular.otf"),
+};
+
+const FONT_LIGHT: Font = Font::External {
+    name: "Fira Sans Light",
+    bytes: include_bytes!("../res/Fira/Sans/Light.otf"),
+};
+
+const FONT_SEMIBOLD: Font = Font::External {
+    name: "Fira Sans SemiBold",
+    bytes: include_bytes!("../res/Fira/Sans/SemiBold.otf"),
+};
 
 pub fn main() -> iced::Result {
     let mut settings = Settings::default();
-    //TODO: settings.default_font = Some("Fira Sans");
+    settings.default_font = match FONT {
+        Font::Default => None,
+        Font::External { bytes, .. } => Some(bytes),
+    };
     settings.default_text_size = 18;
     Window::run(settings)
+}
+
+fn icon(name: &str, size: u16) -> svg::Svg {
+    let handle = match freedesktop_icons::lookup(name)
+        .with_size(size)
+        .with_theme("Pop")
+        .with_cache()
+        .force_svg()
+        .find()
+    {
+        Some(path) => svg::Handle::from_path(path),
+        None => {
+            eprintln!("icon '{}' size {} not found", name, size);
+            svg::Handle::from_memory(Vec::new())
+        },
+    };
+    svg::Svg::new(handle)
 }
 
 fn sidebar_style(theme: &Theme) -> container::Appearance {
@@ -40,23 +75,6 @@ fn listview_style(theme: &Theme) -> container::Appearance {
         border_width: 0.0,
         border_color: Color::TRANSPARENT,
     }
-}
-
-fn icon(name: &str, size: u16) -> svg::Svg {
-    let handle = match freedesktop_icons::lookup(name)
-        .with_size(size)
-        .with_theme("Pop")
-        .with_cache()
-        .force_svg()
-        .find()
-    {
-        Some(path) => svg::Handle::from_path(path),
-        None => {
-            eprintln!("icon '{}' size {} not found", name, size);
-            svg::Handle::from_memory(Vec::new())
-        },
-    };
-    svg::Svg::new(handle)
 }
 
 #[derive(Default)]
@@ -179,7 +197,7 @@ impl Sandbox for Window {
             .spacing(12)
             ,
             vertical_space(Length::Units(16)),
-            text("Buttons"),
+            text("Buttons").font(FONT_SEMIBOLD),
             container(
                 column![
                     row![
@@ -239,7 +257,7 @@ impl Sandbox for Window {
             .style(theme::Container::Custom(listview_style))
             ,
             vertical_space(Length::Units(16)),
-            text("Controls"),
+            text("Controls").font(FONT_SEMIBOLD),
             container(
                 column![
                     row![
