@@ -12,7 +12,7 @@ categories = ["gui"]
 
 [features]
 default = []
-cosmic_theme = []
+cosmic-theme = []
 
 [dependencies.iced_core]
 version = "0.6"

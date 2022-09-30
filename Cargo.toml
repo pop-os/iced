@@ -42,7 +42,7 @@ system = ["iced_winit/system"]
 # Enables wayland shell
 wayland = ["iced_sctk", "glow", "iced_native/sctk"]
 # COSMIC Theme
-cosmic_theme = ["iced_native/cosmic_theme"]
+cosmic-theme = ["iced_native/cosmic-theme"]
 
 [badges]
 maintenance = { status = "actively-developed" }
