@@ -134,9 +134,7 @@ impl button::StyleSheet for Theme {
             border_radius: 24.0,
             background: match style {
                 Button::Text => None,
-                _ => Some(Background::from(
-                    Color::from(cosmic.base)
-                )),
+                _ => Some(Background::Color(cosmic.base.into())),
             },
             text_color: cosmic.on.into(),
             ..button::Appearance::default()
@@ -148,9 +146,7 @@ impl button::StyleSheet for Theme {
         let cosmic = style.cosmic(self);
 
         button::Appearance {
-            background: Some(Background::from(
-                Color::from(cosmic.hover)
-            )),
+            background: Some(Background::Color(cosmic.hover.into())),
             ..active
         }
     }
@@ -318,12 +314,12 @@ impl slider::StyleSheet for Theme {
     type Style = ();
 
     fn active(&self, _style: Self::Style) -> slider::Appearance {
-        let palette = self.palette();
+        let cosmic = self.cosmic();
 
         //TODO: no way to set rail thickness
         slider::Appearance {
             rail_colors: (
-                palette.primary,
+                cosmic.accent.base.into(),
                 //TODO: no way to set color before/after slider
                 Color::TRANSPARENT,
             ),
@@ -331,7 +327,7 @@ impl slider::StyleSheet for Theme {
                 shape: slider::HandleShape::Circle {
                     radius: 10.0,
                 },
-                color: palette.primary,
+                color: cosmic.accent.base.into(),
                 border_color: Color::TRANSPARENT,
                 border_width: 0.0,
             }
@@ -368,16 +364,16 @@ impl menu::StyleSheet for Theme {
     type Style = ();
 
     fn appearance(&self, _style: Self::Style) -> menu::Appearance {
-        let palette = self.extended_palette();
+        let cosmic = self.cosmic();
 
         menu::Appearance {
-            text_color: palette.background.weak.text,
-            background: palette.background.base.color.into(),
+            text_color: cosmic.primary.component.on.into(),
+            background: Background::Color(cosmic.background.base.into()),
             border_width: 0.0,
             border_radius: 16.0,
-            border_color: palette.background.strong.color,
-            selected_text_color: palette.background.weak.text,
-            selected_background: palette.background.weak.color.into(),
+            border_color: Color::TRANSPARENT,
+            selected_text_color: cosmic.primary.component.on.into(),
+            selected_background: Background::Color(cosmic.primary.component.hover.into()),
         }
     }
 }
@@ -389,30 +385,25 @@ impl pick_list::StyleSheet for Theme {
     type Style = ();
 
     fn active(&self, _style: ()) -> pick_list::Appearance {
-        let palette = self.extended_palette();
+        let cosmic = &self.cosmic().primary.component;
 
         pick_list::Appearance {
-            text_color: palette.background.weak.text,
+            text_color: cosmic.on.into(),
             background: Color::TRANSPARENT.into(),
-            placeholder_color: palette.background.strong.color,
+            placeholder_color: cosmic.on.into(),
             border_radius: 24.0,
             border_width: 0.0,
-            border_color: palette.background.strong.color,
+            border_color: Color::TRANSPARENT,
             icon_size: 0.7,
         }
     }
 
-    fn hovered(&self, _style: ()) -> pick_list::Appearance {
-        let palette = self.extended_palette();
+    fn hovered(&self, style: ()) -> pick_list::Appearance {
+        let cosmic = &self.cosmic().primary.component;
 
         pick_list::Appearance {
-            text_color: palette.background.weak.text,
-            background: palette.background.weak.color.into(),
-            placeholder_color: palette.background.strong.color,
-            border_radius: 24.0,
-            border_width: 0.0,
-            border_color: palette.primary.strong.color,
-            icon_size: 0.7,
+            background: Background::Color(cosmic.hover.into()),
+            ..self.active(style)
         }
     }
 }
