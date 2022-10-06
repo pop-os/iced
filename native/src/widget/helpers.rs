@@ -45,6 +45,19 @@ where
     widget::Container::new(content)
 }
 
+/// Creates a new [`EventContainer`] with the provided content.
+///
+/// [`EventContainer`]: widget::EventContainer
+pub fn event_container<'a, Message, Renderer>(
+    content: impl Into<Element<'a, Message, Renderer>>,
+) -> widget::EventContainer<'a, Message, Renderer>
+where
+    Renderer: crate::Renderer,
+    Renderer::Theme: widget::event_container::StyleSheet,
+{
+    widget::EventContainer::new(content)
+}
+
 /// Creates a new [`Column`] with the given children.
 ///
 /// [`Column`]: widget::Column
