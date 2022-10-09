@@ -14,6 +14,8 @@ pub enum Action<T> {
         /// The new logical height of the window
         height: u32,
     },
+    /// Resize a window with the mouse
+    ResizeMouse,
     /// Move the window.
     ///
     /// Unsupported on Wayland.
@@ -41,6 +43,7 @@ impl<T> Action<T> {
         match self {
             Self::Drag => Action::Drag,
             Self::Resize { width, height } => Action::Resize { width, height },
+            Self::ResizeMouse => Action::ResizeMouse,
             Self::Move { x, y } => Action::Move { x, y },
             Self::SetMode(mode) => Action::SetMode(mode),
             Self::FetchMode(o) => Action::FetchMode(Box::new(move |s| f(o(s)))),
@@ -57,6 +60,7 @@ impl<T> fmt::Debug for Action<T> {
                 "Action::Resize {{ widget: {}, height: {} }}",
                 width, height
             ),
+            Self::ResizeMouse => write!(f, "Action::ResizeMouse"),
             Self::Move { x, y } => {
                 write!(f, "Action::Move {{ x: {}, y: {} }}", x, y)
             }

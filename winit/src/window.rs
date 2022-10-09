@@ -17,6 +17,11 @@ pub fn resize<Message>(width: u32, height: u32) -> Command<Message> {
     }))
 }
 
+/// Begins resizing a window with the mouse.
+pub fn resize_mouse<Message>() -> Command<Message> {
+    Command::single(command::Action::Window(window::Action::ResizeMouse))
+}
+
 /// Moves a window to the given logical coordinates.
 pub fn move_to<Message>(x: i32, y: i32) -> Command<Message> {
     Command::single(command::Action::Window(window::Action::Move { x, y }))

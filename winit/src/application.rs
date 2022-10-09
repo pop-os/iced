@@ -624,6 +624,10 @@ pub fn run_command<A, E>(
                         height,
                     });
                 }
+                window::Action::ResizeMouse => {
+                    // TODO:
+                    // let _res = window.resize();
+                }
                 window::Action::Move { x, y } => {
                     window.set_outer_position(winit::dpi::LogicalPosition {
                         x,
