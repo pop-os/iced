@@ -37,6 +37,11 @@ pub fn minimize<Message>(id: window::Id, value: bool) -> Command<Message> {
     Command::single(command::Action::Window(id, window::Action::Minimize(value)))
 }
 
+/// Begins resizing a window with the mouse.
+pub fn resize_mouse<Message>(id: window::Id) -> Command<Message> {
+    Command::single(command::Action::Window(id, window::Action::ResizeMouse))
+}
+
 /// Moves a window to the given logical coordinates.
 pub fn move_to<Message>(id: window::Id, x: i32, y: i32) -> Command<Message> {
     Command::single(command::Action::Window(id, window::Action::Move { x, y }))

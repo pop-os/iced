@@ -29,6 +29,8 @@ pub enum Action<T> {
     Maximize(bool),
     /// Set the window to minimized or back
     Minimize(bool),
+    /// Resize a window with the mouse
+    ResizeMouse,
     /// Move the window.
     Move {
         /// The new logical x location of the window
@@ -60,6 +62,7 @@ impl<T> Action<T> {
             Self::Resize { width, height } => Action::Resize { width, height },
             Self::Maximize(bool) => Action::Maximize(bool),
             Self::Minimize(bool) => Action::Minimize(bool),
+            Self::ResizeMouse => Action::ResizeMouse,
             Self::Move { x, y } => Action::Move { x, y },
             Self::SetMode(mode) => Action::SetMode(mode),
             Self::ToggleMaximize => Action::ToggleMaximize,
@@ -83,6 +86,7 @@ impl<T> fmt::Debug for Action<T> {
             ),
             Self::Maximize(value) => write!(f, "Action::Maximize({})", value),
             Self::Minimize(value) => write!(f, "Action::Minimize({}", value),
+            Self::ResizeMouse => write!(f, "Action::ResizeMouse"),
             Self::Move { x, y } => {
                 write!(f, "Action::Move {{ x: {}, y: {} }}", x, y)
             }
