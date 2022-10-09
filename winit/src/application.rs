@@ -628,6 +628,9 @@ pub fn run_command<A, E>(
                     // TODO:
                     // let _res = window.resize();
                 }
+                window::Action::Maximize => {
+                    window.set_maximized(!window.is_maximized());
+                }
                 window::Action::Move { x, y } => {
                     window.set_outer_position(winit::dpi::LogicalPosition {
                         x,

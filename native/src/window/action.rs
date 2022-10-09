@@ -16,6 +16,8 @@ pub enum Action<T> {
     },
     /// Resize a window with the mouse
     ResizeMouse,
+    /// Toggle the maximization of a window
+    Maximize,
     /// Move the window.
     ///
     /// Unsupported on Wayland.
@@ -44,6 +46,7 @@ impl<T> Action<T> {
             Self::Drag => Action::Drag,
             Self::Resize { width, height } => Action::Resize { width, height },
             Self::ResizeMouse => Action::ResizeMouse,
+            Self::Maximize => Action::Maximize,
             Self::Move { x, y } => Action::Move { x, y },
             Self::SetMode(mode) => Action::SetMode(mode),
             Self::FetchMode(o) => Action::FetchMode(Box::new(move |s| f(o(s)))),
@@ -61,6 +64,7 @@ impl<T> fmt::Debug for Action<T> {
                 width, height
             ),
             Self::ResizeMouse => write!(f, "Action::ResizeMouse"),
+            Self::Maximize => write!(f, "Action::Maximize"),
             Self::Move { x, y } => {
                 write!(f, "Action::Move {{ x: {}, y: {} }}", x, y)
             }
