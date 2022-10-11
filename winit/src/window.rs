@@ -14,6 +14,11 @@ pub fn maximize<Message>() -> Command<Message> {
     Command::single(command::Action::Window(window::Action::Maximize))
 }
 
+/// Minimize the window
+pub fn minimize<Message>() -> Command<Message> {
+    Command::single(command::Action::Window(window::Action::Minimize))
+}
+
 /// Moves a window to the given logical coordinates.
 pub fn move_to<Message>(x: i32, y: i32) -> Command<Message> {
     Command::single(command::Action::Window(window::Action::Move { x, y }))
