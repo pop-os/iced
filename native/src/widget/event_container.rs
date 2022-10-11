@@ -1,4 +1,5 @@
-//! Decorate content and apply alignment.
+//! A container for capturing events.
+
 use crate::alignment::{self, Alignment};
 use crate::event::{self, Event};
 use crate::layout;

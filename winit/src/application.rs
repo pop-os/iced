@@ -631,6 +631,9 @@ pub fn run_command<A, E>(
                 window::Action::Maximize => {
                     window.set_maximized(!window.is_maximized());
                 }
+                window::Action::Minimize => {
+                    window.set_minimized(true);
+                }
                 window::Action::Move { x, y } => {
                     window.set_outer_position(winit::dpi::LogicalPosition {
                         x,
