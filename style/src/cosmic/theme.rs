@@ -6,6 +6,7 @@ use crate::application;
 use crate::button;
 use crate::checkbox;
 use crate::container;
+use crate::expander;
 use crate::menu;
 use crate::pane_grid;
 use crate::pick_list;
@@ -260,6 +261,35 @@ fn checkbox_appearance(
         border_width: if is_checked { 0.0 } else { 1.0 },
         border_color: accent.color,
         text_color: None,
+    }
+}
+
+#[derive(Clone, Copy)]
+pub enum Expander {
+    Default,
+    Custom(fn(&Theme) -> expander::Appearance),
+}
+
+impl Default for Expander {
+    fn default() -> Self {
+        Self::Default
+    }
+}
+
+impl From<fn(&Theme) -> expander::Appearance> for Expander {
+    fn from(f: fn(&Theme) -> expander::Appearance) -> Self {
+        Self::Custom(f)
+    }
+}
+
+impl expander::StyleSheet for Theme {
+    type Style = Expander;
+
+    fn appearance(&self, style: Self::Style) -> expander::Appearance {
+        match style {
+            Expander::Default => Default::default(),
+            Expander::Custom(f) => f(self),
+        }
     }
 }
 
