@@ -24,6 +24,7 @@ pub mod application;
 pub mod button;
 pub mod checkbox;
 pub mod container;
+pub mod expander;
 pub mod menu;
 pub mod pane_grid;
 pub mod pick_list;
