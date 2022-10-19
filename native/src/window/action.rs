@@ -7,15 +7,6 @@ use std::fmt;
 pub enum Action<T> {
     /// Starts a window drag while mouse button is held.
     Drag,
-    /// Resize the window.
-    Resize {
-        /// The new logical width of the window
-        width: u32,
-        /// The new logical height of the window
-        height: u32,
-    },
-    /// Resize a window with the mouse
-    ResizeMouse,
     /// Toggle the maximization of a window
     Maximize,
     /// Minimize the window
@@ -29,6 +20,15 @@ pub enum Action<T> {
         /// The new logical y location of the window
         y: i32,
     },
+    /// Resize the window.
+    Resize {
+        /// The new logical width of the window
+        width: u32,
+        /// The new logical height of the window
+        height: u32,
+    },
+    /// Resize a window with the mouse
+    ResizeDrag,
     /// Set the [`Mode`] of the window.
     SetMode(Mode),
     /// Fetch the current [`Mode`] of the window.
@@ -47,7 +47,7 @@ impl<T> Action<T> {
         match self {
             Self::Drag => Action::Drag,
             Self::Resize { width, height } => Action::Resize { width, height },
-            Self::ResizeMouse => Action::ResizeMouse,
+            Self::ResizeDrag => Action::ResizeDrag,
             Self::Maximize => Action::Maximize,
             Self::Minimize => Action::Minimize,
             Self::Move { x, y } => Action::Move { x, y },
@@ -66,7 +66,7 @@ impl<T> fmt::Debug for Action<T> {
                 "Action::Resize {{ widget: {}, height: {} }}",
                 width, height
             ),
-            Self::ResizeMouse => write!(f, "Action::ResizeMouse"),
+            Self::ResizeDrag => write!(f, "Action::ResizeDrag"),
             Self::Maximize => write!(f, "Action::Maximize"),
             Self::Minimize => write!(f, "Action::Minimize"),
             Self::Move { x, y } => {

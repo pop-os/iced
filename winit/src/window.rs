@@ -34,7 +34,7 @@ pub fn resize<Message>(width: u32, height: u32) -> Command<Message> {
 
 /// Begins resizing a window with the mouse.
 pub fn resize_mouse<Message>() -> Command<Message> {
-    Command::single(command::Action::Window(window::Action::ResizeMouse))
+    Command::single(command::Action::Window(window::Action::ResizeDrag))
 }
 
 /// Sets the [`Mode`] of the window.
