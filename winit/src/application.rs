@@ -24,6 +24,7 @@ pub use iced_native::application::{Appearance, StyleSheet};
 
 use std::collections::HashMap;
 use std::mem::ManuallyDrop;
+use winit::window::{CursorIcon, ResizeDirection};
 
 /// An interactive, native cross-platform application.
 ///
@@ -122,6 +123,8 @@ where
     let mut debug = Debug::new();
     debug.startup_started();
 
+    let border_size = settings.window.border_size;
+
     let event_loop = EventLoopBuilder::with_user_event().build();
     let proxy = event_loop.create_proxy();
 
@@ -194,6 +197,7 @@ where
         init_command,
         window,
         settings.exit_on_close_request,
+        border_size,
     ));
 
     let mut context = task::Context::from_waker(task::noop_waker_ref());
@@ -244,6 +248,7 @@ async fn run_instance<A, E, C>(
     init_command: Command<A::Message>,
     window: winit::window::Window,
     exit_on_close_request: bool,
+    border_size: u32,
 ) where
     A: Application + 'static,
     E: Executor + 'static,
@@ -293,6 +298,7 @@ async fn run_instance<A, E, C>(
 
     let mut window_ids =
         HashMap::from([(window.id(), iced_native::window::Id::MAIN)]);
+    let mut cursor_prev_resize_direction = None;
     let mut mouse_interaction = mouse::Interaction::default();
     let mut events = Vec::new();
     let mut messages = Vec::new();
@@ -479,6 +485,38 @@ async fn run_instance<A, E, C>(
                 event: window_event,
                 ..
             } => {
+                match window_event {
+                    winit::event::WindowEvent::CursorMoved {
+                        position, ..
+                    } => {
+                        if !window.is_decorated() {
+                            let location = cursor_resize_direction(
+                                window.inner_size(),
+                                position,
+                                border_size as f64,
+                            );
+                            if location != cursor_prev_resize_direction {
+                                window.set_cursor_icon(cursor_direction_icon(
+                                    location,
+                                ));
+                                cursor_prev_resize_direction = location;
+                                continue;
+                            }
+                        }
+                    }
+                    winit::event::WindowEvent::MouseInput {
+                        state: winit::event::ElementState::Pressed,
+                        button: winit::event::MouseButton::Left,
+                        ..
+                    } => {
+                        if let Some(direction) = cursor_prev_resize_direction {
+                            let _res = window.drag_resize_window(direction);
+                            continue;
+                        }
+                    }
+                    _ => (),
+                }
+
                 if requests_exit(&window_event, state.modifiers())
                     && exit_on_close_request
                 {
@@ -653,11 +691,8 @@ pub fn run_command<A, E>(
                     // TODO:
                     // let _res = window.resize();
                 }
-                window::Action::Maximize => {
-                    window.set_maximized(!window.is_maximized());
-                }
-                window::Action::Minimize => {
-                    window.set_minimized(true);
+                window::Action::ResizeDrag => {
+                    // let _res = window.drag_resize_window(resize_direction(state, window));
                 }
                 window::Action::Move { x, y } => {
                     window.set_outer_position(winit::dpi::LogicalPosition {
@@ -783,4 +818,76 @@ mod platform {
     {
         event_loop.run(event_handler)
     }
+}
+
+fn cursor_direction_icon(
+    resize_direction: Option<ResizeDirection>,
+) -> CursorIcon {
+    match resize_direction {
+        Some(resize_direction) => match resize_direction {
+            ResizeDirection::East => CursorIcon::EResize,
+            ResizeDirection::North => CursorIcon::NResize,
+            ResizeDirection::NorthEast => CursorIcon::NeResize,
+            ResizeDirection::NorthWest => CursorIcon::NwResize,
+            ResizeDirection::South => CursorIcon::SResize,
+            ResizeDirection::SouthEast => CursorIcon::SeResize,
+            ResizeDirection::SouthWest => CursorIcon::SwResize,
+            ResizeDirection::West => CursorIcon::WResize,
+        },
+        None => CursorIcon::Default,
+    }
+}
+
+fn cursor_resize_direction(
+    win_size: winit::dpi::PhysicalSize<u32>,
+    position: winit::dpi::PhysicalPosition<f64>,
+    border_size: f64,
+) -> Option<ResizeDirection> {
+    enum XDirection {
+        West,
+        East,
+        Default,
+    }
+
+    enum YDirection {
+        North,
+        South,
+        Default,
+    }
+
+    let xdir = if position.x < border_size {
+        XDirection::West
+    } else if position.x > (win_size.width as f64 - border_size) {
+        XDirection::East
+    } else {
+        XDirection::Default
+    };
+
+    let ydir = if position.y < border_size {
+        YDirection::North
+    } else if position.y > (win_size.height as f64 - border_size) {
+        YDirection::South
+    } else {
+        YDirection::Default
+    };
+
+    Some(match xdir {
+        XDirection::West => match ydir {
+            YDirection::North => ResizeDirection::NorthWest,
+            YDirection::South => ResizeDirection::SouthWest,
+            YDirection::Default => ResizeDirection::West,
+        },
+
+        XDirection::East => match ydir {
+            YDirection::North => ResizeDirection::NorthEast,
+            YDirection::South => ResizeDirection::SouthEast,
+            YDirection::Default => ResizeDirection::East,
+        },
+
+        XDirection::Default => match ydir {
+            YDirection::North => ResizeDirection::North,
+            YDirection::South => ResizeDirection::South,
+            YDirection::Default => return None,
+        },
+    })
 }

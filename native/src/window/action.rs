@@ -31,10 +31,6 @@ pub enum Action<T> {
     Minimize(bool),
     /// Resize a window with the mouse
     ResizeMouse,
-    /// Toggle the maximization of a window
-    Maximize,
-    /// Minimize the window
-    Minimize,
     /// Move the window.
     Move {
         /// The new logical x location of the window
@@ -44,6 +40,8 @@ pub enum Action<T> {
     },
     /// Sets the window to maximized or back
     ToggleMaximize,
+    /// Resize a window with the mouse
+    ResizeDrag,
     /// Set the [`Mode`] of the window.
     SetMode(window::Mode),
     /// Fetch the current [`Mode`] of the window.
@@ -63,12 +61,11 @@ impl<T> Action<T> {
             Self::Drag => Action::Drag,
             Self::Spawn { settings } => Action::Spawn { settings },
             Self::Close => Action::Close,
+            Self::ResizeDrag => Action::ResizeDrag,
             Self::Resize { width, height } => Action::Resize { width, height },
             Self::Maximize(bool) => Action::Maximize(bool),
             Self::Minimize(bool) => Action::Minimize(bool),
             Self::ResizeMouse => Action::ResizeMouse,
-            Self::Maximize => Action::Maximize,
-            Self::Minimize => Action::Minimize,
             Self::Move { x, y } => Action::Move { x, y },
             Self::SetMode(mode) => Action::SetMode(mode),
             Self::ToggleMaximize => Action::ToggleMaximize,
@@ -87,14 +84,13 @@ impl<T> fmt::Debug for Action<T> {
             Self::Close => write!(f, "Action::Close"),
             Self::Resize { width, height } => write!(
                 f,
-                "Action::Resize {{ widget: {}, height: {} }}",
+                "Action::Resize {{ width: {}, height: {} }}",
                 width, height
             ),
             Self::Maximize(value) => write!(f, "Action::Maximize({})", value),
             Self::Minimize(value) => write!(f, "Action::Minimize({}", value),
             Self::ResizeMouse => write!(f, "Action::ResizeMouse"),
-            Self::Maximize => write!(f, "Action::Maximize"),
-            Self::Minimize => write!(f, "Action::Minimize"),
+            Self::ResizeDrag => write!(f, "Action::ResizeDrag"),
             Self::Move { x, y } => {
                 write!(f, "Action::Move {{ x: {}, y: {} }}", x, y)
             }
