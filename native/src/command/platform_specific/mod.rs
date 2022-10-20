@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{fmt, marker::PhantomData};
 
 use iced_futures::MaybeSend;
 
@@ -12,6 +12,8 @@ pub enum Action<T> {
     /// LayerSurface Actions
     #[cfg(feature = "sctk")]
     Wayland(wayland::Action<T>),
+    /// phantom data variant in case the platform has not specific actions implemented
+    Phantom(PhantomData<T>)
 }
 
 impl<T> Action<T> {
@@ -27,6 +29,7 @@ impl<T> Action<T> {
         match self {
             #[cfg(feature = "sctk")]
             Action::Wayland(a) => Action::Wayland(a.map(f)),
+            Action::Phantom(_) => unimplemented!(),
         }
     }
 }
@@ -38,6 +41,7 @@ impl<T> fmt::Debug for Action<T> {
             Self::Wayland(arg0) => {
                 f.debug_tuple("LayerSurface").field(arg0).finish()
             }
+            Action::Phantom(_) => unimplemented!(),
         }
     }
 }

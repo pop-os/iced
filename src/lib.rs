@@ -192,18 +192,18 @@ pub mod window;
 #[cfg(all(
     not(feature = "glow"),
     feature = "wgpu",
-    not(feature = "sctk"),
+    not(feature = "wayland"),
     feature = "multi_window"
 ))]
 pub mod multi_window;
 
-#[cfg(all(feature = "glow", feature = "sctk",))]
+#[cfg(all(feature = "glow", feature = "wayland",))]
 use iced_sctk as runtime;
 
 #[cfg(all(
     not(feature = "glow"),
     feature = "wgpu",
-    not(feature = "sctk")
+    not(feature = "wayland")
 ))]
 use iced_winit as runtime;
 

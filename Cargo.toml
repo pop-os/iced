@@ -12,7 +12,7 @@ keywords = ["gui", "ui", "graphics", "interface", "widgets"]
 categories = ["gui"]
 
 [features]
-default = ["wayland"]
+default = ["wgpu"]
 # Enables the `Image` widget
 image = ["iced_wgpu?/image", "iced_glow?/image", "image_rs"]
 # Enables the `Svg` widget
@@ -40,7 +40,7 @@ palette = ["iced_core/palette"]
 # Enables querying system information
 system = ["iced_winit/system"]
 # Enables wayland shell
-wayland = ["sctk", "iced_sctk", "glow"]
+wayland = ["iced_sctk", "glow", "iced_native/sctk"]
 
 [badges]
 maintenance = { status = "actively-developed" }
@@ -93,13 +93,14 @@ members = [
 ]
 
 [dependencies]
-iced_core = { version = "0.6", path = "core" }
-iced_futures = { version = "0.5", path = "futures" }
-iced_native = { version = "0.6", path = "native" }
-iced_graphics = { version = "0.4", path = "graphics" }
-iced_winit = { version = "0.5", path = "winit", features = ["application"] }
-iced_glutin = { version = "0.4", path = "glutin", optional = true }
-iced_glow = { version = "0.4", path = "glow", optional = true }
+iced_core = { version = "0.5", path = "core" }
+iced_futures = { version = "0.4", path = "futures" }
+iced_native = { version = "0.5", path = "native" }
+iced_graphics = { version = "0.3", path = "graphics" }
+iced_winit = { version = "0.4", path = "winit", features = ["application"] }
+iced_glutin = { version = "0.3", path = "glutin", optional = true }
+iced_glow = { version = "0.3", path = "glow", optional = true }
+iced_sctk = { git = "https://github.com/wash2/iced-sctk", optional = true }
 thiserror = "1.0"
 
 [dependencies.image_rs]

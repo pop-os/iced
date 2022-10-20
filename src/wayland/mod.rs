@@ -87,7 +87,7 @@ pub trait Application: Sized {
     /// These widgets can produce __messages__ based on user interaction.
     fn view_window(
         &self,
-        window: window::Id,
+        window: iced_native::window::Id,
     ) -> Element<'_, Self::Message, crate::Renderer<Self::Theme>>;
 
     /// Returns the widgets to display in the [`Application`].
@@ -95,7 +95,7 @@ pub trait Application: Sized {
     /// These widgets can produce __messages__ based on user interaction.
     fn view_popup(
         &self,
-        window: window::Id,
+        window: iced_native::window::Id,
     ) -> Element<'_, Self::Message, crate::Renderer<Self::Theme>>;
 
     /// Returns the widgets to display in the [`Application`].
@@ -103,7 +103,7 @@ pub trait Application: Sized {
     /// These widgets can produce __messages__ based on user interaction.
     fn view_layer_surface(
         &self,
-        window: window::Id,
+        window: iced_native::window::Id,
     ) -> Element<'_, Self::Message, crate::Renderer<Self::Theme>>;
 
     /// Returns the scale factor of the [`Application`].
@@ -127,11 +127,11 @@ pub trait Application: Sized {
     }
 
     /// TODO(derezzedex)
-    fn close_window_requested(&self, window: window::Id) -> Self::Message;
+    fn close_window_requested(&self, window: iced_native::window::Id) -> Self::Message;
 
-    fn layer_surface_done(&self, window: window::Id) -> Self::Message;
+    fn layer_surface_done(&self, window: iced_native::window::Id) -> Self::Message;
 
-    fn popup_done(&self, window: window::Id) -> Self::Message;
+    fn popup_done(&self, window: iced_native::window::Id) -> Self::Message;
 
     /// Runs the [`Application`].
     ///
@@ -187,7 +187,7 @@ where
         self.0.title()
     }
 
-    // fn windows(&self) -> Vec<(window::Id, iced_winit::settings::Window)> {
+    // fn windows(&self) -> Vec<(iced_native::window::Id, iced_winit::settings::Window)> {
     //     self.0
     //         .windows()
     //         .into_iter()
@@ -203,21 +203,21 @@ where
 
     fn view_window(
         &self,
-        window: window::Id,
+        window: iced_native::window::Id,
     ) -> Element<'_, Self::Message, Self::Renderer> {
         self.0.view_window(window)
     }
 
     fn view_popup(
         &self,
-        window: window::Id,
+        window: iced_native::window::Id,
     ) -> Element<'_, Self::Message, Self::Renderer> {
         self.0.view_popup(window)
     }
 
     fn view_layer_surface(
         &self,
-        window: window::Id,
+        window: iced_native::window::Id,
     ) -> Element<'_, Self::Message, Self::Renderer> {
         self.0.view_layer_surface(window)
     }
@@ -242,7 +242,7 @@ where
         self.0.should_exit()
     }
 
-    fn close_requested(&self, window: window::Id) -> Self::Message {
+    fn close_requested(&self, window: iced_native::window::Id) -> Self::Message {
         self.0.close_requested(window)
     }
 }
