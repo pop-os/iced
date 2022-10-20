@@ -723,6 +723,7 @@ pub fn run_command<A, E>(
                 current_cache = user_interface.into_cache();
                 *cache = current_cache;
             }
+            command::Action::PlatformSpecific(_) => {},
         }
     }
 }

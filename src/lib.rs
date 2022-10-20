@@ -164,12 +164,21 @@
 #![allow(clippy::inherent_to_string, clippy::type_complexity)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
+#[cfg(all(not(feature = "glow"), feature = "wgpu", not(feature = "wayland")))]
+pub mod application;
 mod element;
 mod error;
 mod result;
 mod sandbox;
+#[cfg(all(
+    not(feature = "glow"),
+    feature = "wgpu",
+    not(feature = "wayland")
+))]
+pub use application::Application;
+#[cfg(all(feature = "wayland"))]
+pub mod wayland;
 
-pub mod application;
 pub mod clipboard;
 pub mod executor;
 pub mod keyboard;
@@ -177,14 +186,28 @@ pub mod mouse;
 pub mod overlay;
 pub mod settings;
 pub mod time;
-pub mod touch;
 pub mod widget;
 pub mod window;
 
-#[cfg(all(not(feature = "glow"), feature = "wgpu"))]
+#[cfg(all(
+    not(feature = "glow"),
+    feature = "wgpu",
+    not(feature = "sctk"),
+    feature = "multi_window"
+))]
+pub mod multi_window;
+
+#[cfg(all(feature = "glow", feature = "sctk",))]
+use iced_sctk as runtime;
+
+#[cfg(all(
+    not(feature = "glow"),
+    feature = "wgpu",
+    not(feature = "sctk")
+))]
 use iced_winit as runtime;
 
-#[cfg(feature = "glow")]
+#[cfg(all(feature = "glow", not(feature = "wayland")))]
 use iced_glutin as runtime;
 
 #[cfg(all(not(feature = "glow"), feature = "wgpu"))]
@@ -197,7 +220,6 @@ pub use iced_native::theme;
 pub use runtime::event;
 pub use runtime::subscription;
 
-pub use application::Application;
 pub use element::Element;
 pub use error::Error;
 pub use event::Event;
