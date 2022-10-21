@@ -4,17 +4,71 @@ use std::{collections::hash_map::DefaultHasher, fmt};
 use iced_futures::MaybeSend;
 use sctk::{
     reexports::client::backend::ObjectId,
-    shell::layer::{Layer, LayerSurfaceBuilder},
+    shell::layer::{Layer, KeyboardInteractivity, Anchor, },
 };
+
+/// output for layer surface
+#[derive(Debug, Clone)]
+pub enum IcedOutput {
+    /// show on all outputs
+    All,
+    /// show on active output
+    Active,
+    /// show on a specific output
+    Output {
+        /// make
+        make: String,
+        /// model
+        model: String
+    },
+}
+
+impl Default for IcedOutput {
+    fn default() -> Self {
+        Self::Active
+    }
+}
+
+/// margins of the layer surface
+#[derive(Debug, Clone, Copy, Default)]
+pub struct IcedMargin {
+    /// top
+    pub top: i32,
+    /// right
+    pub right: i32,
+    /// bottom
+    pub bottom: i32,
+    /// left
+    pub left: i32,
+}
+
+/// layer surface
+#[derive(Debug, Clone)]
+pub struct IcedLayerSurface {
+    /// layer
+    pub layer: Layer,
+    /// interactivity
+    pub keyboard_interactivity: KeyboardInteractivity,
+    /// anchor
+    pub anchor: Anchor,
+    /// output
+    pub output: IcedOutput,
+    /// namespace
+    pub namespace: String,
+    /// margin
+    pub margin: IcedMargin,
+    /// size
+    pub size: (u32, u32),
+    /// exclusive zone
+    pub exclusive_zone: i32,
+}
 
 /// LayerSurface Action
 pub enum Action<T> {
     /// create a layer surface and receive a message with its Id
     LayerSurface {
         /// surface builder
-        builder: LayerSurfaceBuilder,
-        /// layer of the surface
-        layer: Layer,
+        builder: IcedLayerSurface,
         /// the returned object id from sctk
         o: Box<dyn FnOnce(ObjectId) -> T + 'static>,
     },
@@ -39,11 +93,9 @@ impl<T> Action<T> {
         match self {
             Action::LayerSurface {
                 builder,
-                layer,
                 o: output,
             } => Action::LayerSurface {
                 builder,
-                layer,
                 o: Box::new(move |s| f(output(s))),
             },
             Action::Size { width, height } => Action::Size { width, height },
@@ -54,10 +106,10 @@ impl<T> Action<T> {
 impl<T> fmt::Debug for Action<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Action::LayerSurface { builder, layer, .. } => write!(
+            Action::LayerSurface { builder, .. } => write!(
                 f,
-                "Action::LayerSurfaceAction::LayerSurface {{ builder: {:?} layer: {:?} }}",
-                builder, layer
+                "Action::LayerSurfaceAction::LayerSurface {{ builder: {:?} }}",
+                builder
             ),
             Action::Size { width, height } => write!(
                 f,
