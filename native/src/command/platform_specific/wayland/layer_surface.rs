@@ -63,6 +63,12 @@ pub struct IcedLayerSurface {
     pub exclusive_zone: i32,
 }
 
+impl Default for IcedLayerSurface{
+    fn default() -> Self {
+        Self { layer: Layer::Top, keyboard_interactivity: Default::default(), anchor: Anchor::empty(), output: Default::default(), namespace: Default::default(), margin: Default::default(), size: (100, 100), exclusive_zone: Default::default() }
+    }
+}
+
 /// LayerSurface Action
 pub enum Action<T> {
     /// create a layer surface and receive a message with its Id
