@@ -1,4 +1,5 @@
 use std::hash::{Hash, Hasher};
+use std::marker::PhantomData;
 use std::{collections::hash_map::DefaultHasher, fmt};
 
 use iced_futures::MaybeSend;
@@ -6,14 +7,16 @@ use sctk::{
     reexports::client::backend::ObjectId, shell::xdg::window::WindowBuilder,
 };
 
+use crate::window;
+
 /// Window Action
 pub enum Action<T> {
     /// create a window and receive a message with its Id
     Window {
         /// window builder
         builder: WindowBuilder,
-        /// the returned object id from sctk
-        o: Box<dyn FnOnce(ObjectId) -> T + 'static>,
+        /// phanton
+        _phantom: PhantomData<T>
     },
 }
 
@@ -27,9 +30,9 @@ impl<T> Action<T> {
         T: 'static,
     {
         match self {
-            Action::Window { builder, o: output } => Action::Window {
+            Action::Window { builder, .. } => Action::Window {
                 builder,
-                o: Box::new(move |s| f(output(s))),
+                _phantom: PhantomData::default()
             },
         }
     }

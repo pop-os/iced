@@ -1,11 +1,13 @@
 use std::hash::{Hash, Hasher};
+use std::marker::PhantomData;
 use std::{collections::hash_map::DefaultHasher, fmt};
 
 use iced_futures::MaybeSend;
 use sctk::{
-    reexports::client::backend::ObjectId,
     shell::layer::{Layer, KeyboardInteractivity, Anchor, },
 };
+
+use crate::window;
 
 /// output for layer surface
 #[derive(Debug, Clone)]
@@ -45,6 +47,8 @@ pub struct IcedMargin {
 /// layer surface
 #[derive(Debug, Clone)]
 pub struct IcedLayerSurface {
+    /// XXX id must be unique for every surface, window, and popup
+    pub id: window::Id,
     /// layer
     pub layer: Layer,
     /// interactivity
@@ -65,7 +69,7 @@ pub struct IcedLayerSurface {
 
 impl Default for IcedLayerSurface{
     fn default() -> Self {
-        Self { layer: Layer::Top, keyboard_interactivity: Default::default(), anchor: Anchor::empty(), output: Default::default(), namespace: Default::default(), margin: Default::default(), size: (100, 100), exclusive_zone: Default::default() }
+        Self { id: window::Id::new(0),layer: Layer::Top, keyboard_interactivity: Default::default(), anchor: Anchor::empty(), output: Default::default(), namespace: Default::default(), margin: Default::default(), size: (100, 100), exclusive_zone: Default::default() }
     }
 }
 
@@ -75,11 +79,13 @@ pub enum Action<T> {
     LayerSurface {
         /// surface builder
         builder: IcedLayerSurface,
-        /// the returned object id from sctk
-        o: Box<dyn FnOnce(ObjectId) -> T + 'static>,
+        /// phantom
+        _phantom: PhantomData<T>
     },
     /// Set size of the layer surface.
     Size {
+        /// id of the layer surface
+        id: window::Id,
         /// The new logical width of the window
         width: u32,
         /// The new logical height of the window
@@ -99,12 +105,12 @@ impl<T> Action<T> {
         match self {
             Action::LayerSurface {
                 builder,
-                o: output,
+                ..
             } => Action::LayerSurface {
                 builder,
-                o: Box::new(move |s| f(output(s))),
+                _phantom: PhantomData::default(),
             },
-            Action::Size { width, height } => Action::Size { width, height },
+            Action::Size { id, width, height } => Action::Size { id, width, height },
         }
     }
 }
@@ -117,9 +123,9 @@ impl<T> fmt::Debug for Action<T> {
                 "Action::LayerSurfaceAction::LayerSurface {{ builder: {:?} }}",
                 builder
             ),
-            Action::Size { width, height } => write!(
+            Action::Size { id, width, height } => write!(
                 f,
-                "Action::LayerSurfaceAction::Size {{ width: {width}, height: {height} }}",
+                "Action::LayerSurfaceAction::Size {{ id: {:#?}, width: {width}, height: {height} }}", id
             ),
         }
     }

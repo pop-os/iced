@@ -14,7 +14,9 @@ pub enum Action<T> {
     /// LayerSurface Actions
     LayerSurface(layer_surface::Action<T>),
     /// Window Actions
-    Window(window::Action<T>)
+    Window(window::Action<T>),
+    /// popup
+    Popup(popup::Action<T>)
 }
 
 impl<T> Action<T> {
@@ -30,6 +32,7 @@ impl<T> Action<T> {
         match self {
             Action::LayerSurface(a) => Action::LayerSurface(a.map(f)),
             Action::Window(a) => Action::Window(a.map(f)),
+            Action::Popup(a) => Action::Popup(a.map(f)),
         }
     }
 }
@@ -42,6 +45,9 @@ impl<T> Debug for Action<T> {
             }
             Self::Window(arg0) => {
                 f.debug_tuple("Window").field(arg0).finish()
+            },
+            Self::Popup(arg0) => {
+                f.debug_tuple("Popup").field(arg0).finish()
             },
         }
     }
