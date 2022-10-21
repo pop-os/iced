@@ -21,7 +21,7 @@ pub enum Action<T> {
     Clipboard(clipboard::Action<T>),
 
     /// Run a window action.
-    Window(window::Action<T>),
+    Window(window::Id, window::Action<T>),
 
     /// Run a system action.
     System(system::Action<T>),
@@ -50,7 +50,7 @@ impl<T> Action<T> {
         match self {
             Self::Future(future) => Action::Future(Box::pin(future.map(f))),
             Self::Clipboard(action) => Action::Clipboard(action.map(f)),
-            Self::Window(window) => Action::Window(window.map(f)),
+            Self::Window(id, window) => Action::Window(id, window.map(f)),
             Self::System(system) => Action::System(system.map(f)),
             Self::Widget(widget) => Action::Widget(widget.map(f)),
             Self::PlatformSpecific(action) => {
@@ -67,8 +67,9 @@ impl<T> fmt::Debug for Action<T> {
             Self::Clipboard(action) => {
                 write!(f, "Action::Clipboard({:?})", action)
             }
-            Self::Window(action) => write!(f, "Action::Window({:?})", action),
-            Self::System(action) => write!(f, "Action::System({:?})", action),
+            Self::Window(id, action) => {
+                write!(f, "Action::Window({:?}, {:?})", id, action)
+            }            Self::System(action) => write!(f, "Action::System({:?})", action),
             Self::Widget(_action) => write!(f, "Action::Widget"),
             Self::PlatformSpecific(action) => {
                 write!(f, "Action::PlatformSpecific({:?})", action)

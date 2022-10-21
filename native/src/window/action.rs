@@ -1,4 +1,4 @@
-use crate::window::Mode;
+use crate::window;
 
 use iced_futures::MaybeSend;
 use std::fmt;
@@ -11,6 +11,13 @@ pub enum Action<T> {
     /// There’s no guarantee that this will work unless the left mouse
     /// button was pressed immediately before this function is called.
     Drag,
+    /// TODO(derezzedex)
+    Spawn {
+        /// TODO(derezzedex)
+        settings: window::Settings,
+    },
+    /// TODO(derezzedex)
+    Close,
     /// Resize the window.
     Resize {
         /// The new logical width of the window
@@ -23,20 +30,18 @@ pub enum Action<T> {
     /// Set the window to minimized or back
     Minimize(bool),
     /// Move the window.
-    ///
-    /// Unsupported on Wayland.
     Move {
         /// The new logical x location of the window
         x: i32,
         /// The new logical y location of the window
         y: i32,
     },
-    /// Set the [`Mode`] of the window.
-    SetMode(Mode),
     /// Sets the window to maximized or back
     ToggleMaximize,
+    /// Set the [`Mode`] of the window.
+    SetMode(window::Mode),
     /// Fetch the current [`Mode`] of the window.
-    FetchMode(Box<dyn FnOnce(Mode) -> T + 'static>),
+    FetchMode(Box<dyn FnOnce(window::Mode) -> T + 'static>),
 }
 
 impl<T> Action<T> {
@@ -50,6 +55,8 @@ impl<T> Action<T> {
     {
         match self {
             Self::Drag => Action::Drag,
+            Self::Spawn { settings } => Action::Spawn { settings },
+            Self::Close => Action::Close,
             Self::Resize { width, height } => Action::Resize { width, height },
             Self::Maximize(bool) => Action::Maximize(bool),
             Self::Minimize(bool) => Action::Minimize(bool),
@@ -65,6 +72,10 @@ impl<T> fmt::Debug for Action<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Drag => write!(f, "Action::Drag"),
+            Self::Spawn { settings } => {
+                write!(f, "Action::Spawn {{ settings: {:?} }}", settings)
+            }
+            Self::Close => write!(f, "Action::Close"),
             Self::Resize { width, height } => write!(
                 f,
                 "Action::Resize {{ widget: {}, height: {} }}",

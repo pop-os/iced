@@ -402,8 +402,8 @@ async fn run_instance<A, E, C>(
                 // Maybe we can use `ControlFlow::WaitUntil` for this.
             }
             event::Event::WindowEvent {
+                window_id,
                 event: window_event,
-                ..
             } => {
                 if application::requests_exit(&window_event, state.modifiers())
                     && exit_on_close_request
@@ -414,6 +414,7 @@ async fn run_instance<A, E, C>(
                 state.update(context.window(), &window_event, &mut debug);
 
                 if let Some(event) = conversion::window_event(
+                    crate::window::Id::MAIN,
                     &window_event,
                     state.scale_factor(),
                     state.modifiers(),
