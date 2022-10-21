@@ -26,7 +26,7 @@ pub trait Application: Sized {
     type Theme: Default + StyleSheet;
 
     /// The data needed to initialize your [`Application`].
-    type Flags;
+    type Flags: Clone;
 
     /// Initializes the [`Application`] with the flags provided to
     /// [`run`] as part of the [`Settings`].
@@ -126,7 +126,6 @@ pub trait Application: Sized {
         false
     }
 
-    /// TODO(derezzedex)
     fn close_window_requested(&self, window: iced_native::window::Id) -> Self::Message;
 
     fn layer_surface_done(&self, window: iced_native::window::Id) -> Self::Message;
@@ -243,6 +242,6 @@ where
     }
 
     fn close_requested(&self, window: iced_native::window::Id) -> Self::Message {
-        self.0.close_requested(window)
+        todo!()
     }
 }

@@ -184,10 +184,6 @@ where
         Command::none()
     }
 
-    fn view(&self) -> Element<'_, T::Message> {
-        T::view(self)
-    }
-
     fn theme(&self) -> Self::Theme {
         T::theme(self)
     }
@@ -206,5 +202,38 @@ where
 
     fn should_exit(&self) -> bool {
         T::should_exit(self)
+    }
+
+    fn view_window(
+        &self,
+        window: iced_native::window::Id,
+    ) -> Element<'_, Self::Message, crate::Renderer<Self::Theme>> {
+        todo!()
+    }
+
+    fn view_popup(
+        &self,
+        window: iced_native::window::Id,
+    ) -> Element<'_, Self::Message, crate::Renderer<Self::Theme>> {
+        todo!()
+    }
+
+    fn view_layer_surface(
+        &self,
+        window: iced_native::window::Id,
+    ) -> Element<'_, Self::Message, crate::Renderer<Self::Theme>> {
+        todo!()
+    }
+
+    fn close_window_requested(&self, window: iced_native::window::Id) -> Self::Message {
+        todo!()
+    }
+
+    fn layer_surface_done(&self, window: iced_native::window::Id) -> Self::Message {
+        todo!()
+    }
+
+    fn popup_done(&self, window: iced_native::window::Id) -> Self::Message {
+        todo!()
     }
 }

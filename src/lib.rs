@@ -176,8 +176,10 @@ mod sandbox;
     not(feature = "wayland")
 ))]
 pub use application::Application;
-#[cfg(all(feature = "wayland"))]
+#[cfg(feature = "wayland")]
 pub mod wayland;
+#[cfg(feature = "wayland")]
+pub use wayland::Application;
 
 pub mod clipboard;
 pub mod executor;

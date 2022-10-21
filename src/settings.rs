@@ -106,6 +106,7 @@ where
     }
 }
 
+#[cfg(not(any(target_arch = "wasm32", feature = "wayland")))]
 impl<Flags> From<Settings<Flags>> for iced_winit::Settings<Flags> {
     fn from(settings: Settings<Flags>) -> iced_winit::Settings<Flags> {
         iced_winit::Settings {
@@ -115,5 +116,11 @@ impl<Flags> From<Settings<Flags>> for iced_winit::Settings<Flags> {
             exit_on_close_request: settings.exit_on_close_request,
             try_opengles_first: settings.try_opengles_first,
         }
+    }
+}
+#[cfg(feature = "wayland")]
+impl<Flags> From<Settings<Flags>> for iced_sctk::Settings<Flags> {
+    fn from(_: Settings<Flags>) -> Self {
+        todo!()
     }
 }
