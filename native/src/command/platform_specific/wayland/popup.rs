@@ -9,8 +9,10 @@ use sctk::{
 };
 
 /// TODO
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct IcedPopup;
+
+#[derive(Clone)]
 /// Window Action
 pub enum Action<T> {
     /// create a window and receive a message with its Id

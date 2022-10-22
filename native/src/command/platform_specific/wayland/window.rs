@@ -9,12 +9,13 @@ use sctk::{
 
 use crate::window;
 
+#[derive(Clone)]
 /// Window Action
 pub enum Action<T> {
     /// create a window and receive a message with its Id
     Window {
         /// window builder
-        builder: WindowBuilder,
+        builder: window::Settings,
         /// phanton
         _phantom: PhantomData<T>
     },

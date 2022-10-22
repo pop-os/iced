@@ -73,6 +73,7 @@ impl Default for IcedLayerSurface{
     }
 }
 
+#[derive(Clone)]
 /// LayerSurface Action
 pub enum Action<T> {
     /// create a layer surface and receive a message with its Id

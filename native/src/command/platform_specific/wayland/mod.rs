@@ -9,6 +9,7 @@ pub mod popup;
 /// window actions
 pub mod window;
 
+#[derive(Clone)]
 /// Platform specific actions defined for wayland
 pub enum Action<T> {
     /// LayerSurface Actions
