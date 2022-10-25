@@ -126,10 +126,13 @@ pub trait Application: Sized {
         false
     }
 
+    /// window was requested to close
     fn close_window_requested(&self, window: iced_native::window::Id) -> Self::Message;
 
+    /// layer surface is done
     fn layer_surface_done(&self, window: iced_native::window::Id) -> Self::Message;
 
+    /// popup is done
     fn popup_done(&self, window: iced_native::window::Id) -> Self::Message;
 
     /// Runs the [`Application`].
@@ -185,16 +188,6 @@ where
     fn title(&self) -> String {
         self.0.title()
     }
-
-    // fn windows(&self) -> Vec<(iced_native::window::Id, iced_winit::settings::Window)> {
-    //     self.0
-    //         .windows()
-    //         .into_iter()
-    //         .map(|(id, settings)| {
-    //             (id, iced_winit::settings::Window::from(settings))
-    //         })
-    //         .collect()
-    // }
 
     fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
         self.0.update(message)

@@ -60,6 +60,7 @@ members = [
     "examples/arc",
     "examples/bezier_tool",
     "examples/clock",
+    "examples/clock_wayland",
     "examples/color_palette",
     "examples/component",
     "examples/counter",

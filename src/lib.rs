@@ -176,6 +176,7 @@ mod sandbox;
     not(feature = "wayland")
 ))]
 pub use application::Application;
+/// wayland application
 #[cfg(feature = "wayland")]
 pub mod wayland;
 #[cfg(feature = "wayland")]
