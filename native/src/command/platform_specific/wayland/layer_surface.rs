@@ -61,15 +61,15 @@ pub struct IcedLayerSurface {
     pub namespace: String,
     /// margin
     pub margin: IcedMargin,
-    /// size
-    pub size: (u32, u32),
+    /// size, None in a given dimension lets the compositor decide, usually this would be done with a layer surface that is anchored to left & right or top & bottom
+    pub size: (Option<u32>, Option<u32>),
     /// exclusive zone
     pub exclusive_zone: i32,
 }
 
 impl Default for IcedLayerSurface{
     fn default() -> Self {
-        Self { id: window::Id::new(0),layer: Layer::Top, keyboard_interactivity: Default::default(), anchor: Anchor::empty(), output: Default::default(), namespace: Default::default(), margin: Default::default(), size: (100, 100), exclusive_zone: Default::default() }
+        Self { id: window::Id::new(0),layer: Layer::Top, keyboard_interactivity: Default::default(), anchor: Anchor::empty(), output: Default::default(), namespace: Default::default(), margin: Default::default(), size: (Some(200), Some(200)), exclusive_zone: Default::default() }
     }
 }
 

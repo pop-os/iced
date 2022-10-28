@@ -13,8 +13,9 @@ pub fn main() -> iced::Result {
     Clock::run(Settings {
         antialiasing: true,
         initial_surface: InitialSurface::LayerSurface(IcedLayerSurface {
-            size: (400, 400),
-            anchor: Anchor::TOP,
+            size: (None, Some(200)),
+            anchor: Anchor::LEFT.union(Anchor::RIGHT).union(Anchor::TOP),
+            exclusive_zone: 200,
             ..Default::default()
 
         }),

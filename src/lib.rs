@@ -238,7 +238,7 @@ pub use runtime::alignment;
 pub use runtime::futures;
 pub use runtime::{
     color, Alignment, Background, Color, Command, ContentFit, Font, Length,
-    Padding, Point, Rectangle, Size, Vector,
+    Padding, Point, Rectangle, Size, Vector, settings as sctk_settings
 };
 
 #[cfg(feature = "system")]
