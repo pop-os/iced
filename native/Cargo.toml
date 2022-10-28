@@ -8,6 +8,8 @@ license = "MIT"
 repository = "https://github.com/iced-rs/iced"
 
 [features]
+default = ["wayland"]
+wayland = ["sctk"]
 debug = []
 
 [dependencies]

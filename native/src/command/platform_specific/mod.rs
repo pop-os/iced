@@ -4,13 +4,13 @@ use iced_futures::MaybeSend;
 
 // TODO feature gate
 /// wayland platform specific actions
-#[cfg(feature = "sctk")]
+#[cfg(feature = "wayland")]
 pub mod wayland;
 
 /// Platform specific actions defined for wayland
 pub enum Action<T> {
     /// LayerSurface Actions
-    #[cfg(feature = "sctk")]
+    #[cfg(feature = "wayland")]
     Wayland(wayland::Action<T>),
     /// phantom data variant in case the platform has not specific actions implemented
     Phantom(PhantomData<T>)
@@ -27,7 +27,7 @@ impl<T> Action<T> {
         A: 'static,
     {
         match self {
-            #[cfg(feature = "sctk")]
+            #[cfg(feature = "wayland")]
             Action::Wayland(a) => Action::Wayland(a.map(f)),
             Action::Phantom(_) => unimplemented!(),
         }
@@ -37,7 +37,7 @@ impl<T> Action<T> {
 impl<T> fmt::Debug for Action<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            #[cfg(feature = "sctk")]
+            #[cfg(feature = "wayland")]
             Self::Wayland(arg0) => {
                 f.debug_tuple("LayerSurface").field(arg0).finish()
             }

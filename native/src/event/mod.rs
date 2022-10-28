@@ -3,7 +3,9 @@ use crate::keyboard;
 use crate::mouse;
 use crate::touch;
 use crate::window;
-
+#[cfg(feature="wayland")]
+/// platform specific wayland events
+pub mod wayland;
 /// A user interface event.
 ///
 /// _**Note:** This type is largely incomplete! If you need to track
@@ -31,6 +33,8 @@ pub enum Event {
 /// A platform specific event
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PlatformSpecific {
+    /// A Wayland specific event
+    Wayland(wayland::Event),
     /// A MacOS specific event
     MacOS(MacOS),
 }
