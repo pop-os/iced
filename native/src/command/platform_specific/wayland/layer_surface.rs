@@ -88,9 +88,9 @@ pub enum Action<T> {
         /// id of the layer surface
         id: window::Id,
         /// The new logical width of the window
-        width: u32,
+        width: Option<u32>,
         /// The new logical height of the window
-        height: u32,
+        height: Option<u32>,
     },
     /// Destroy the layer surface
     Destroy(window::Id),
@@ -159,7 +159,7 @@ impl<T> fmt::Debug for Action<T> {
             ),
             Action::Size { id, width, height } => write!(
                 f,
-                "Action::LayerSurfaceAction::Size {{ id: {:#?}, width: {width}, height: {height} }}", id
+                "Action::LayerSurfaceAction::Size {{ id: {:#?}, width: {:?}, height: {:?} }}", id, width, height
             ),
             Action::Destroy(id) => write!(
                 f,
