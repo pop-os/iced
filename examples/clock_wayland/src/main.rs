@@ -5,12 +5,19 @@ use iced::widget::canvas::{Cache, Cursor, Geometry, LineCap, Path, Stroke};
 use iced::widget::{canvas, container};
 use iced::{
     Application, Color, Command, Element, Length, Point, Rectangle, Settings,
-    Subscription, Theme, Vector,
+    Subscription, Theme, Vector, sctk_settings::InitialSurface
 };
-
+use iced_native::command::platform_specific::wayland::layer_surface::IcedLayerSurface;
+use sctk::shell::layer::Anchor;
 pub fn main() -> iced::Result {
     Clock::run(Settings {
         antialiasing: true,
+        initial_surface: InitialSurface::LayerSurface(IcedLayerSurface {
+            size: (400, 400),
+            anchor: Anchor::TOP,
+            ..Default::default()
+
+        }),
         ..Settings::default()
     })
 }

@@ -9,3 +9,4 @@ publish = false
 iced = { path = "../..", features = ["canvas", "tokio", "debug"] }
 time = { version = "0.3.5", features = ["local-offset"] }
 iced_native = { path = "../../native" }
+sctk = { package = "smithay-client-toolkit", git = "https://github.com/Smithay/client-toolkit" }
