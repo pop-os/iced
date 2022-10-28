@@ -88,7 +88,7 @@ impl Application for Clock {
         &self,
         window: iced_native::window::Id,
     ) -> Element<'_, Self::Message, iced::Renderer<Self::Theme>> {
-                let canvas = canvas(self as &Self)
+        let canvas = canvas(self as &Self)
             .width(Length::Fill)
             .height(Length::Fill);
 
@@ -99,11 +99,17 @@ impl Application for Clock {
             .into()
     }
 
-    fn close_window_requested(&self, window: iced_native::window::Id) -> Self::Message {
+    fn close_window_requested(
+        &self,
+        window: iced_native::window::Id,
+    ) -> Self::Message {
         unimplemented!()
     }
 
-    fn layer_surface_done(&self, window: iced_native::window::Id) -> Self::Message {
+    fn layer_surface_done(
+        &self,
+        window: iced_native::window::Id,
+    ) -> Self::Message {
         exit(0);
     }
 
