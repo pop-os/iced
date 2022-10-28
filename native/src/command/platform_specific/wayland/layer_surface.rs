@@ -114,6 +114,20 @@ pub enum Action<T> {
         id: window::Id,
         /// margins of the layer surface
         margin: IcedMargin,
+    },
+    /// keyboard interactivity of the layer surface
+    KeyboardInteractivity {
+        /// id of the layer surface
+        id: window::Id,
+        /// keyboard interactivity of the layer surface
+        keyboard_interactivity: KeyboardInteractivity,
+    },
+    /// layer of the layer surface
+    Layer {
+        /// id of the layer surface
+        id: window::Id,
+        /// layer of the layer surface
+        layer: Layer,
     }
 }
 
@@ -139,6 +153,8 @@ impl<T> Action<T> {
             Action::Anchor { id, anchor } => Action::Anchor { id, anchor },
             Action::ExclusiveZone { id, exclusive_zone } => Action::ExclusiveZone { id, exclusive_zone },
             Action::Margin { id, margin } => Action::Margin { id, margin },
+            Action::KeyboardInteractivity { id, keyboard_interactivity } => Action::KeyboardInteractivity { id, keyboard_interactivity },
+            Action::Layer { id, layer } => Action::Layer { id, layer },
         }
     }
 }
@@ -170,6 +186,14 @@ impl<T> fmt::Debug for Action<T> {
             Action::Margin { id, margin } => write!(
                 f,
                 "Action::LayerSurfaceAction::Margin {{ id: {:#?}, margin: {:?} }}", id, margin
+            ),
+            Action::KeyboardInteractivity { id, keyboard_interactivity } => write!(
+                f,
+                "Action::LayerSurfaceAction::Margin {{ id: {:#?}, keyboard_interactivity: {:?} }}", id, keyboard_interactivity
+            ),
+            Action::Layer { id, layer } => write!(
+                f,
+                "Action::LayerSurfaceAction::Margin {{ id: {:#?}, layer: {:?} }}", id, layer
             ),
         }
     }
