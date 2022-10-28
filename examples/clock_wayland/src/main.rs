@@ -8,6 +8,8 @@ use iced::{
     Subscription, Theme, Vector, sctk_settings::InitialSurface
 };
 use iced_native::command::platform_specific::wayland::layer_surface::IcedLayerSurface;
+use iced_native::window::Id;
+use iced_sctk::commands::layer_surface::{get_layer_surface, destroy_layer_surface};
 use sctk::shell::layer::Anchor;
 pub fn main() -> iced::Result {
     Clock::run(Settings {
@@ -26,6 +28,8 @@ pub fn main() -> iced::Result {
 struct Clock {
     now: time::OffsetDateTime,
     clock: Cache,
+    count: u32,
+    to_destroy: Id,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -40,13 +44,24 @@ impl Application for Clock {
     type Flags = ();
 
     fn new(_flags: ()) -> (Self, Command<Message>) {
+        let to_destroy = Id::new(10);
         (
             Clock {
                 now: time::OffsetDateTime::now_local()
                     .unwrap_or_else(|_| time::OffsetDateTime::now_utc()),
                 clock: Default::default(),
+                count: 0,
+                to_destroy
             },
-            Command::none(),
+            get_layer_surface(IcedLayerSurface {
+                // XXX id must be unique!
+                id: to_destroy,
+                size: (None, Some(100)),
+                anchor: Anchor::LEFT.union(Anchor::RIGHT).union(Anchor::BOTTOM),
+                exclusive_zone: 100,
+                ..Default::default()
+
+            }),
         )
     }
 
@@ -62,6 +77,12 @@ impl Application for Clock {
                 if now != self.now {
                     self.now = now;
                     self.clock.clear();
+                }
+                // destroy the second layer surface after counting to 10.
+                self.count += 1;
+                if self.count == 10 {
+                    println!("time to remove the bottom clock!");
+                    return destroy_layer_surface::<Message>(self.to_destroy);
                 }
             }
         }
