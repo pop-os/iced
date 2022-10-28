@@ -112,14 +112,8 @@ pub enum Action<T> {
     Margin {
         /// id of the layer surface
         id: window::Id,
-        /// top margin if anchored to this edge
-        top: u32,
-        /// bottom margin if anchored to this edge
-        bottom: u32,
-        /// left margin if anchored to this edge
-        left: u32,
-        /// right margin if anchored to this edge
-        right: u32,
+        /// margins of the layer surface
+        margin: IcedMargin,
     }
 }
 
@@ -127,7 +121,7 @@ impl<T> Action<T> {
     /// Maps the output of a window [`Action`] using the provided closure.
     pub fn map<A>(
         self,
-        f: impl Fn(T) -> A + 'static + MaybeSend + Sync,
+        _: impl Fn(T) -> A + 'static + MaybeSend + Sync,
     ) -> Action<A>
     where
         T: 'static,
@@ -144,7 +138,7 @@ impl<T> Action<T> {
             Action::Destroy(id) => Action::Destroy(id),
             Action::Anchor { id, anchor } => Action::Anchor { id, anchor },
             Action::ExclusiveZone { id, exclusive_zone } => Action::ExclusiveZone { id, exclusive_zone },
-            Action::Margin { id, top, bottom, left, right } => Action::Margin { id, top, bottom, left, right },
+            Action::Margin { id, margin } => Action::Margin { id, margin },
         }
     }
 }
@@ -173,9 +167,9 @@ impl<T> fmt::Debug for Action<T> {
                 f,
                 "Action::LayerSurfaceAction::ExclusiveZone {{ id: {:#?}, exclusive_zone: {exclusive_zone} }}", id
             ),
-            Action::Margin { id, top, bottom, left, right } => write!(
+            Action::Margin { id, margin } => write!(
                 f,
-                "Action::LayerSurfaceAction::Margin {{ id: {:#?}, top: {top}, bottom: {bottom}, left: {left}, right: {right} }}", id
+                "Action::LayerSurfaceAction::Margin {{ id: {:#?}, margin: {:?} }}", id, margin
             ),
         }
     }
