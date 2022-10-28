@@ -92,6 +92,35 @@ pub enum Action<T> {
         /// The new logical height of the window
         height: u32,
     },
+    /// Destroy the layer surface
+    Destroy(window::Id),
+    /// The edges which the layer surface is anchored to
+    Anchor {
+        /// id of the layer surface
+        id: window::Id,
+        /// anchor of the layer surface
+        anchor: Anchor,
+    },
+    /// exclusive zone of the layer surface
+    ExclusiveZone {
+        /// id of the layer surface
+        id: window::Id,
+        /// exclusive zone of the layer surface
+        exclusive_zone: i32,
+    },
+    /// margin of the layer surface, ignored for un-anchored edges
+    Margin {
+        /// id of the layer surface
+        id: window::Id,
+        /// top margin if anchored to this edge
+        top: u32,
+        /// bottom margin if anchored to this edge
+        bottom: u32,
+        /// left margin if anchored to this edge
+        left: u32,
+        /// right margin if anchored to this edge
+        right: u32,
+    }
 }
 
 impl<T> Action<T> {
@@ -112,6 +141,10 @@ impl<T> Action<T> {
                 _phantom: PhantomData::default(),
             },
             Action::Size { id, width, height } => Action::Size { id, width, height },
+            Action::Destroy(id) => Action::Destroy(id),
+            Action::Anchor { id, anchor } => Action::Anchor { id, anchor },
+            Action::ExclusiveZone { id, exclusive_zone } => Action::ExclusiveZone { id, exclusive_zone },
+            Action::Margin { id, top, bottom, left, right } => Action::Margin { id, top, bottom, left, right },
         }
     }
 }
@@ -127,6 +160,22 @@ impl<T> fmt::Debug for Action<T> {
             Action::Size { id, width, height } => write!(
                 f,
                 "Action::LayerSurfaceAction::Size {{ id: {:#?}, width: {width}, height: {height} }}", id
+            ),
+            Action::Destroy(id) => write!(
+                f,
+                "Action::LayerSurfaceAction::Destroy {{ id: {:#?} }}", id
+            ),
+            Action::Anchor { id, anchor } => write!(
+                f,
+                "Action::LayerSurfaceAction::Anchor {{ id: {:#?}, anchor: {:?} }}", id, anchor
+            ),
+            Action::ExclusiveZone { id, exclusive_zone } => write!(
+                f,
+                "Action::LayerSurfaceAction::ExclusiveZone {{ id: {:#?}, exclusive_zone: {exclusive_zone} }}", id
+            ),
+            Action::Margin { id, top, bottom, left, right } => write!(
+                f,
+                "Action::LayerSurfaceAction::Margin {{ id: {:#?}, top: {top}, bottom: {bottom}, left: {left}, right: {right} }}", id
             ),
         }
     }
