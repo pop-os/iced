@@ -101,8 +101,8 @@ iced_graphics = { version = "0.3", path = "graphics" }
 iced_winit = { version = "0.4", path = "winit", features = ["application"] }
 iced_glutin = { version = "0.3", path = "glutin", optional = true }
 iced_glow = { version = "0.3", path = "glow", optional = true }
-# iced_sctk = { git = "https://github.com/wash2/iced-sctk", optional = true }
-iced_sctk = { path = "../fork/iced-sctk", optional = true }
+iced_sctk = { git = "https://github.com/pop-os/iced-sctk", optional = true }
+# iced_sctk = { path = "../fork/iced-sctk", optional = true }
 thiserror = "1.0"
 
 [dependencies.image_rs]
@@ -129,3 +129,8 @@ incremental = false
 opt-level = 3
 overflow-checks = false
 strip = "debuginfo"
+
+[patch."https://github.com/pop-os/iced"]
+iced_futures = { path = "./futures" }
+iced_native = { path = "./native" }
+iced_graphics = { path = "./graphics" }
