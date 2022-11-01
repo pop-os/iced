@@ -35,7 +35,7 @@ pub struct Cache<T: Storage> {
     svgs: HashMap<u64, Svg>,
     rasterized: HashMap<(u64, u32, u32), T::Entry>,
     svg_hits: HashSet<u64>,
-    rasterized_hits: HashSet<(u64, u32, u32)>,
+    rasterized_hits: HashSet<(u64, u32, u32, Option<[u8; 4]>)>,
 }
 
 impl<T: Storage> Cache<T> {
@@ -88,15 +88,17 @@ impl<T: Storage> Cache<T> {
             (scale * height).ceil() as u32,
         );
 
+        let fill = handle.appearance().fill.map(crate::Color::into_rgba8);
+
         // TODO: Optimize!
         // We currently rerasterize the SVG when its size changes. This is slow
         // as heck. A GPU rasterizer like `pathfinder` may perform better.
         // It would be cool to be able to smooth resize the `svg` example.
-        if self.rasterized.contains_key(&(id, width, height)) {
+        if self.rasterized.contains_key(&(id, width, height, fill)) {
             let _ = self.svg_hits.insert(id);
-            let _ = self.rasterized_hits.insert((id, width, height));
+            let _ = self.rasterized_hits.insert((id, width, height, fill));
 
-            return self.rasterized.get(&(id, width, height));
+            return self.rasterized.get(&(id, width, height, fill));
         }
 
         match self.load(handle) {
@@ -126,10 +128,12 @@ impl<T: Storage> Cache<T> {
                 log::debug!("allocating {} {}x{}", id, width, height);
 
                 let _ = self.svg_hits.insert(id);
-                let _ = self.rasterized_hits.insert((id, width, height));
-                let _ = self.rasterized.insert((id, width, height), allocation);
+                let _ = self.rasterized_hits.insert((id, width, height, fill));
+                let _ = self
+                    .rasterized
+                    .insert((id, width, height, fill), allocation);
 
-                self.rasterized.get(&(id, width, height))
+                self.rasterized.get(&(id, width, height, fill))
             }
             Svg::NotFound => None,
         }
