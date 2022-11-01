@@ -9,7 +9,7 @@ use crate::{
 
 use std::path::PathBuf;
 
-pub use svg::Handle;
+pub use svg::{Handle, StyleSheet};
 
 /// A vector graphics image.
 ///
@@ -17,15 +17,25 @@ pub use svg::Handle;
 ///
 /// [`Svg`] images can have a considerable rendering cost when resized,
 /// specially when they are complex.
-#[derive(Debug, Clone)]
-pub struct Svg {
+#[derive(Clone)]
+#[allow(missing_debug_implementations)]
+pub struct Svg<Renderer>
+where
+    Renderer: svg::Renderer,
+    Renderer::Theme: StyleSheet,
+{
     handle: Handle,
     width: Length,
     height: Length,
     content_fit: ContentFit,
+    style: <Renderer::Theme as StyleSheet>::Style,
 }
 
-impl Svg {
+impl<Renderer> Svg<Renderer>
+where
+    Renderer: svg::Renderer,
+    Renderer::Theme: StyleSheet,
+{
     /// Creates a new [`Svg`] from the given [`Handle`].
     pub fn new(handle: impl Into<Handle>) -> Self {
         Svg {
@@ -33,6 +43,7 @@ impl Svg {
             width: Length::Fill,
             height: Length::Shrink,
             content_fit: ContentFit::Contain,
+            style: Default::default(),
         }
     }
 
@@ -63,11 +74,21 @@ impl Svg {
             ..self
         }
     }
+
+    /// Sets the style variant of this [`Svg`].
+    pub fn style(
+        mut self,
+        style: <Renderer::Theme as StyleSheet>::Style,
+    ) -> Self {
+        self.style = style;
+        self
+    }
 }
 
-impl<Message, Renderer> Widget<Message, Renderer> for Svg
+impl<Message, Renderer> Widget<Message, Renderer> for Svg<Renderer>
 where
     Renderer: svg::Renderer,
+    Renderer::Theme: iced_style::svg::StyleSheet,
 {
     fn width(&self) -> Length {
         self.width
@@ -114,12 +135,15 @@ where
         &self,
         _state: &Tree,
         renderer: &mut Renderer,
-        _theme: &Renderer::Theme,
+        theme: &Renderer::Theme,
         _style: &renderer::Style,
         layout: Layout<'_>,
         _cursor_position: Point,
         _viewport: &Rectangle,
     ) {
+        let mut handle = self.handle.clone();
+        handle.set_appearance(theme.appearance(self.style));
+
         let (width, height) = renderer.dimensions(&self.handle);
         let image_size = Size::new(width as f32, height as f32);
 
@@ -138,7 +162,7 @@ where
                 ..bounds
             };
 
-            renderer.draw(self.handle.clone(), drawing_bounds + offset)
+            renderer.draw(handle, drawing_bounds + offset);
         };
 
         if adjusted_fit.width > bounds.width
@@ -151,11 +175,13 @@ where
     }
 }
 
-impl<'a, Message, Renderer> From<Svg> for Element<'a, Message, Renderer>
+impl<'a, Message, Renderer> From<Svg<Renderer>>
+    for Element<'a, Message, Renderer>
 where
-    Renderer: svg::Renderer,
+    Renderer: svg::Renderer + 'a,
+    Renderer::Theme: iced_style::svg::StyleSheet,
 {
-    fn from(icon: Svg) -> Element<'a, Message, Renderer> {
+    fn from(icon: Svg<Renderer>) -> Element<'a, Message, Renderer> {
         Element::new(icon)
     }
 }
