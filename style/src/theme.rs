@@ -14,6 +14,7 @@ use crate::radio;
 use crate::rule;
 use crate::scrollable;
 use crate::slider;
+use crate::svg;
 use crate::text;
 use crate::text_input;
 use crate::toggler;
@@ -564,6 +565,27 @@ pub enum Rule {
 impl Default for Rule {
     fn default() -> Self {
         Self::Default
+    }
+}
+
+/**
+ * SVG
+ */
+#[derive(Default, Clone, Copy)]
+pub enum Svg {
+    Custom(fn(&Theme) -> svg::Appearance),
+    #[default]
+    Default,
+}
+
+impl svg::StyleSheet for Theme {
+    type Style = Svg;
+
+    fn appearance(&self, style: Self::Style) -> svg::Appearance {
+        match style {
+            Svg::Default => Default::default(),
+            Svg::Custom(appearance) => appearance(self),
+        }
     }
 }
 
