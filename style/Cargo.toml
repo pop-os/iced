@@ -10,9 +10,6 @@ documentation = "https://docs.rs/iced_style"
 keywords = ["gui", "ui", "graphics", "interface", "widgets"]
 categories = ["gui"]
 
-[features]
-default = []
-
 [dependencies.iced_core]
 version = "0.5"
 path = "../core"
@@ -23,9 +20,3 @@ version = "0.6"
 
 [dependencies.lazy_static]
 version = "1.4"
-
-[dependencies.cosmic-theme]
-git = "https://github.com/pop-os/cosmic-theme.git"
-branch = "master"
-#path = "../../cosmic-theme"
-optional = true

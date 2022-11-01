@@ -42,8 +42,6 @@ smol = ["iced_futures/smol"]
 palette = ["iced_core/palette"]
 # Enables querying system information
 system = ["iced_winit/system"]
-# COSMIC Theme
-cosmic-theme = ["iced_native/cosmic-theme"]
 
 [badges]
 maintenance = { status = "actively-developed" }
