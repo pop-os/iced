@@ -298,6 +298,12 @@ where
 ///
 /// [`Svg`]: widget::Svg
 /// [`Handle`]: widget::svg::Handle
-pub fn svg(handle: impl Into<widget::svg::Handle>) -> widget::Svg {
+pub fn svg<Renderer>(
+    handle: impl Into<widget::svg::Handle>,
+) -> widget::Svg<Renderer>
+where
+    Renderer: crate::svg::Renderer,
+    Renderer::Theme: crate::svg::StyleSheet,
+{
     widget::Svg::new(handle)
 }
