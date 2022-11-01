@@ -24,7 +24,6 @@ pub mod application;
 pub mod button;
 pub mod checkbox;
 pub mod container;
-pub mod expander;
 pub mod menu;
 pub mod pane_grid;
 pub mod pick_list;
@@ -36,10 +35,6 @@ pub mod slider;
 pub mod svg;
 pub mod text;
 pub mod text_input;
-#[cfg(not(feature = "cosmic-theme"))]
-pub mod theme;
-#[cfg(feature = "cosmic-theme")]
-#[path = "cosmic/theme.rs"]
 pub mod theme;
 pub mod toggler;
 

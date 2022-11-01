@@ -11,8 +11,6 @@ repository = "https://github.com/iced-rs/iced"
 default = ["wayland"]
 wayland = ["sctk"]
 debug = []
-# COSMIC Theme
-cosmic-theme = ["iced_style/cosmic-theme"]
 
 [dependencies]
 twox-hash = { version = "1.5", default-features = false }
