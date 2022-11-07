@@ -3,11 +3,29 @@ use std::marker::PhantomData;
 use std::{collections::hash_map::DefaultHasher, fmt};
 
 use iced_futures::MaybeSend;
-use sctk::{
-    reexports::client::backend::ObjectId, shell::xdg::window::WindowBuilder,
-};
 
 use crate::window;
+
+/// window settings
+#[derive(Debug, Clone)]
+pub struct SctkWindowSettings {
+    /// vanilla window settings
+    pub iced_settings: window::Settings,
+    /// window id
+    pub window_id: window::Id,
+    /// optional app id
+    pub app_id: Option<String>,
+    /// optional window title
+    pub title: Option<String>,
+    /// optional window parent
+    pub parent: Option<window::Id>,
+}
+
+impl Default for SctkWindowSettings {
+    fn default() -> Self {
+        Self { iced_settings: Default::default(), window_id: window::Id::new(0), app_id: Default::default(), title: Default::default(), parent: Default::default() }
+    }
+}
 
 #[derive(Clone)]
 /// Window Action
@@ -15,7 +33,7 @@ pub enum Action<T> {
     /// create a window and receive a message with its Id
     Window {
         /// window builder
-        builder: window::Settings,
+        builder: SctkWindowSettings,
         /// phanton
         _phantom: PhantomData<T>
     },
@@ -25,7 +43,7 @@ impl<T> Action<T> {
     /// Maps the output of a window [`Action`] using the provided closure.
     pub fn map<A>(
         self,
-        f: impl Fn(T) -> A + 'static + MaybeSend + Sync,
+        _: impl Fn(T) -> A + 'static + MaybeSend + Sync,
     ) -> Action<A>
     where
         T: 'static,

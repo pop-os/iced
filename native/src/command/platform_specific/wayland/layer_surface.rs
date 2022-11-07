@@ -46,7 +46,7 @@ pub struct IcedMargin {
 
 /// layer surface
 #[derive(Debug, Clone)]
-pub struct IcedLayerSurface {
+pub struct SctkLayerSurfaceSettings {
     /// XXX id must be unique for every surface, window, and popup
     pub id: window::Id,
     /// layer
@@ -67,7 +67,7 @@ pub struct IcedLayerSurface {
     pub exclusive_zone: i32,
 }
 
-impl Default for IcedLayerSurface{
+impl Default for SctkLayerSurfaceSettings {
     fn default() -> Self {
         Self { id: window::Id::new(0),layer: Layer::Top, keyboard_interactivity: Default::default(), anchor: Anchor::empty(), output: Default::default(), namespace: Default::default(), margin: Default::default(), size: (Some(200), Some(200)), exclusive_zone: Default::default() }
     }
@@ -79,7 +79,7 @@ pub enum Action<T> {
     /// create a layer surface and receive a message with its Id
     LayerSurface {
         /// surface builder
-        builder: IcedLayerSurface,
+        builder: SctkLayerSurfaceSettings,
         /// phantom
         _phantom: PhantomData<T>
     },

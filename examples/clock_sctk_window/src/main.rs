@@ -7,20 +7,15 @@ use iced::{
     Application, Color, Command, Element, Length, Point, Rectangle, Settings,
     Subscription, Theme, Vector, sctk_settings::InitialSurface
 };
-use iced_native::command::platform_specific::wayland::layer_surface::IcedLayerSurface;
-use iced_native::window::Id;
+use iced_native::command::platform_specific::wayland::layer_surface::SctkLayerSurfaceSettings;
+use iced_native::command::platform_specific::wayland::window::SctkWindowSettings;
+use iced_native::window::{Id, self};
 use iced_sctk::commands::layer_surface::{get_layer_surface, destroy_layer_surface};
 use sctk::shell::layer::Anchor;
 pub fn main() -> iced::Result {
     Clock::run(Settings {
         antialiasing: true,
-        initial_surface: InitialSurface::LayerSurface(IcedLayerSurface {
-            size: (None, Some(200)),
-            anchor: Anchor::LEFT.union(Anchor::RIGHT).union(Anchor::TOP),
-            exclusive_zone: 200,
-            ..Default::default()
-
-        }),
+        initial_surface: InitialSurface::XdgWindow(SctkWindowSettings::default()),
         ..Settings::default()
     })
 }
@@ -53,15 +48,7 @@ impl Application for Clock {
                 count: 0,
                 to_destroy
             },
-            get_layer_surface(IcedLayerSurface {
-                // XXX id must be unique!
-                id: to_destroy,
-                size: (None, Some(100)),
-                anchor: Anchor::LEFT.union(Anchor::RIGHT).union(Anchor::BOTTOM),
-                exclusive_zone: 100,
-                ..Default::default()
-
-            }),
+            Command::none()
         )
     }
 
@@ -72,18 +59,18 @@ impl Application for Clock {
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
             Message::Tick(local_time) => {
-                let now = local_time;
+                // let now = local_time;
 
-                if now != self.now {
-                    self.now = now;
-                    self.clock.clear();
-                }
-                // destroy the second layer surface after counting to 10.
-                self.count += 1;
-                if self.count == 10 {
-                    println!("time to remove the bottom clock!");
-                    return destroy_layer_surface::<Message>(self.to_destroy);
-                }
+                // if now != self.now {
+                //     self.now = now;
+                //     self.clock.clear();
+                // }
+                // // destroy the second window after counting to 10.
+                // self.count += 1;
+                // if self.count == 10 {
+                //     println!("time to remove the bottom clock!");
+                //     return destroy_layer_surface::<Message>(self.to_destroy);
+                // }
             }
         }
 
@@ -103,7 +90,15 @@ impl Application for Clock {
         &self,
         window: iced_native::window::Id,
     ) -> Element<'_, Self::Message, iced::Renderer<Self::Theme>> {
-        unimplemented!()
+        let canvas = canvas(self as &Self)
+            .width(Length::Fill)
+            .height(Length::Fill);
+
+        container(canvas)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .padding(20)
+            .into()
     }
 
     fn view_popup(
@@ -117,15 +112,7 @@ impl Application for Clock {
         &self,
         window: iced_native::window::Id,
     ) -> Element<'_, Self::Message, iced::Renderer<Self::Theme>> {
-        let canvas = canvas(self as &Self)
-            .width(Length::Fill)
-            .height(Length::Fill);
-
-        container(canvas)
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .padding(20)
-            .into()
+        unimplemented!()
     }
 
     fn close_window_requested(
