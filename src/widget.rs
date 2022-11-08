@@ -47,6 +47,15 @@ pub mod container {
         iced_native::widget::Container<'a, Message, Renderer>;
 }
 
+pub mod event_container {
+    //! Track events within a container.
+    pub use iced_native::widget::event_container::{Appearance, StyleSheet};
+
+    /// A container that captures events which can be mapped to messages.
+    pub type EventContainer<'a, Message, Renderer = crate::Renderer> =
+        iced_native::widget::EventContainer<'a, Message, Renderer>;
+}
+
 pub mod pane_grid {
     //! Let your users split regions of your application and organize layout dynamically.
     //!

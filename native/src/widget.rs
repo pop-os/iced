@@ -15,6 +15,7 @@ pub mod button;
 pub mod checkbox;
 pub mod column;
 pub mod container;
+pub mod event_container;
 pub mod helpers;
 pub mod image;
 pub mod operation;
@@ -45,6 +46,8 @@ pub use checkbox::Checkbox;
 pub use column::Column;
 #[doc(no_inline)]
 pub use container::Container;
+#[doc(no_inline)]
+pub use event_container::EventContainer;
 #[doc(no_inline)]
 pub use helpers::*;
 #[doc(no_inline)]
