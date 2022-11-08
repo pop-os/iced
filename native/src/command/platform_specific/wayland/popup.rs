@@ -35,7 +35,7 @@ pub struct SctkPositioner {
     pub anchor: Anchor,
     /// the gravity of the popup
     pub gravity: Gravity,
-    /// the constraint adjustment, 
+    /// the constraint adjustment,
     /// Specify how the window should be positioned if the originally intended position caused the surface to be constrained, meaning at least partially outside positioning boundaries set by the compositor. The adjustment is set by constructing a bitmask describing the adjustment to be made when the surface is constrained on that axis.
     /// If no bit for one axis is set, the compositor will assume that the child surface should not change its position on that axis when constrained.
     ///
@@ -51,7 +51,20 @@ pub struct SctkPositioner {
 
 impl Default for SctkPositioner {
     fn default() -> Self {
-        Self { size: (200, 100), anchor_rect: Rectangle { x: 0, y: 0, width: 1, height: 1 }, anchor: Anchor::None, gravity: Gravity::None, constraint_adjustment: Default::default(), offset: Default::default(), reactive: true }
+        Self {
+            size: (200, 100),
+            anchor_rect: Rectangle {
+                x: 0,
+                y: 0,
+                width: 1,
+                height: 1,
+            },
+            anchor: Anchor::None,
+            gravity: Gravity::None,
+            constraint_adjustment: Default::default(),
+            offset: Default::default(),
+            reactive: true,
+        }
     }
 }
 
@@ -68,20 +81,20 @@ pub enum Action<T> {
     /// destroy the popup
     Destroy {
         /// id of the popup
-        id: window::Id
+        id: window::Id,
     },
     /// request that the popup be repositioned
     Reposition {
         /// id of the popup
         id: window::Id,
         /// the positioner
-        positioner: SctkPositioner
+        positioner: SctkPositioner,
     },
     /// request that the popup make an explicit grab
     Grab {
         /// id of the popup
-        id: window::Id
-    }
+        id: window::Id,
+    },
 }
 
 impl<T> Action<T> {
@@ -99,7 +112,9 @@ impl<T> Action<T> {
                 _phantom: PhantomData::default(),
             },
             Action::Destroy { id } => Action::Destroy { id },
-            Action::Reposition { id, positioner } => Action::Reposition { id, positioner },
+            Action::Reposition { id, positioner } => {
+                Action::Reposition { id, positioner }
+            }
             Action::Grab { id } => Action::Grab { id },
         }
     }

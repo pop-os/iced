@@ -1,4 +1,3 @@
-
 /// output events
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OutputEvent {

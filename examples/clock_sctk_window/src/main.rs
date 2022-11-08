@@ -2,13 +2,15 @@ use std::process::exit;
 
 use iced::executor;
 use iced::widget::canvas::{Cache, Cursor, Geometry, LineCap, Path, Stroke};
-use iced::widget::{canvas, container, text, button, column};
+use iced::widget::{button, canvas, column, container, text};
 use iced::{
     sctk_settings::InitialSurface, Application, Color, Command, Element,
     Length, Point, Rectangle, Settings, Subscription, Theme, Vector,
 };
 use iced_native::command::platform_specific::wayland::layer_surface::SctkLayerSurfaceSettings;
-use iced_native::command::platform_specific::wayland::popup::{SctkPopupSettings, SctkPositioner};
+use iced_native::command::platform_specific::wayland::popup::{
+    SctkPopupSettings, SctkPositioner,
+};
 use iced_native::command::platform_specific::wayland::window::SctkWindowSettings;
 use iced_native::window::{self, Id};
 use iced_sctk::commands::popup::get_popup;
@@ -77,19 +79,7 @@ impl Application for Clock {
                 self.count += 1;
                 if self.count == 10 {
                     println!("time to remove the bottom clock!");
-                    return Command::batch(vec![
-                        close_window::<Message>(self.to_destroy),
-                        get_popup(SctkPopupSettings {
-                        parent: Id::new(0),
-                        id: Id::new(3),
-                        positioner: SctkPositioner {
-                            anchor_rect: Rectangle { x: 100, y: 100, width: 160, height: 260 },
-                            ..Default::default()
-                        },
-                        parent_size: None,
-                        grab: true,
-                    })]);
-                        
+                    return close_window::<Message>(self.to_destroy);
                 }
             }
             Message::Click(id) => {
@@ -98,13 +88,18 @@ impl Application for Clock {
                     parent: id,
                     id: Id::new(3),
                     positioner: SctkPositioner {
-                        anchor_rect: Rectangle { x: 100, y: 100, width: 160, height: 260 },
+                        anchor_rect: Rectangle {
+                            x: 100,
+                            y: 100,
+                            width: 160,
+                            height: 260,
+                        },
                         ..Default::default()
                     },
                     parent_size: None,
                     grab: true,
                 });
-            },
+            }
         }
 
         Command::none()
@@ -129,19 +124,19 @@ impl Application for Clock {
 
         container(column![
             button("Popup").on_press(Message::Click(window)),
-            canvas,  
+            canvas,
         ])
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .padding(20)
-            .into()
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .padding(20)
+        .into()
     }
 
     fn view_popup(
         &self,
         id: iced_native::window::Id,
     ) -> Element<'_, Self::Message, iced::Renderer<Self::Theme>> {
-        container(button("Hi!, I'm a popup!").on_press(Message::Click(id)))
+        button("Hi!, I'm a popup!").on_press(Message::Click(id))
             .width(Length::Fill)
             .height(Length::Fill)
             .padding(20)
@@ -172,18 +167,6 @@ impl Application for Clock {
     fn popup_done(&self, window: iced_native::window::Id) -> Self::Message {
         unimplemented!()
     }
-
-    // fn view(&self) -> Element<Message> {
-    //     let canvas = canvas(self as &Self)
-    //         .width(Length::Fill)
-    //         .height(Length::Fill);
-
-    //     container(canvas)
-    //         .width(Length::Fill)
-    //         .height(Length::Fill)
-    //         .padding(20)
-    //         .into()
-    // }
 }
 
 impl<Message> canvas::Program<Message> for Clock {
