@@ -3,6 +3,7 @@ use std::marker::PhantomData;
 use std::{collections::hash_map::DefaultHasher, fmt};
 
 use iced_futures::MaybeSend;
+use sctk::reexports::protocols::xdg::shell::client::xdg_toplevel::ResizeEdge;
 
 use crate::window;
 
@@ -37,6 +38,84 @@ pub enum Action<T> {
         /// phanton
         _phantom: PhantomData<T>
     },
+    /// Destroy the window
+    Destroy(window::Id),
+    /// Set size of the window.
+    Size {
+        /// id of the window
+        id: window::Id,
+        /// The new logical width of the window
+        width: u32,
+        /// The new logical height of the window
+        height: u32,
+    },
+    /// Set min size of the window.
+    MinSize {
+        /// id of the window
+        id: window::Id,
+        /// optional size
+        size: Option<(u32, u32)>
+    },
+    /// Set max size of the window.
+    MaxSize {
+        /// id of the window
+        id: window::Id,
+        /// optional size
+        size: Option<(u32, u32)>
+    },
+    /// Set title of the window.
+    Title {
+        /// id of the window
+        id: window::Id,
+        /// The new logical width of the window
+        title: String,
+    },
+    /// Minimize the window.
+    Minimize {
+        /// id of the window
+        id: window::Id,
+    },
+    /// Maximize the window.
+    Maximize {
+        /// id of the window
+        id: window::Id,
+    },
+    /// UnsetMaximize the window.
+    UnsetMaximize {
+        /// id of the window
+        id: window::Id,
+    },
+    /// Fullscreen the window.
+    Fullscreen {
+        /// id of the window
+        id: window::Id,
+    },
+    /// UnsetFullscreen the window.
+    UnsetFullscreen {
+        /// id of the window
+        id: window::Id,
+    },
+    /// Start an interactive move of the window.
+    InteractiveResize {
+        /// id of the window
+        id: window::Id,
+        /// edge being resized
+        edge: ResizeEdge,
+    },
+    /// Start an interactive move of the window.
+    InteractiveMove {
+        /// id of the window
+        id: window::Id,
+    },
+    /// Show the window context menu
+    ShowWindowMenu {
+        /// id of the window
+        id: window::Id,
+        /// x location of popup
+        x: i32,
+        /// y location of popup
+        y: i32,
+    }
 }
 
 impl<T> Action<T> {
@@ -53,6 +132,19 @@ impl<T> Action<T> {
                 builder,
                 _phantom: PhantomData::default()
             },
+            Action::Size { id, width, height } => Action::Size { id, width, height },
+            Action::MinSize { id, size } => Action::MinSize { id, size },
+            Action::MaxSize { id, size } => Action::MaxSize { id, size },
+            Action::Title { id, title } => Action::Title { id, title },
+            Action::Minimize { id } => Action::Minimize { id },
+            Action::Maximize { id } => Action::Maximize { id },
+            Action::UnsetMaximize { id } => Action::UnsetMaximize { id },
+            Action::Fullscreen { id } => Action::Fullscreen { id },
+            Action::UnsetFullscreen { id } => Action::UnsetFullscreen { id },
+            Action::InteractiveMove { id } => Action::InteractiveMove { id },
+            Action::ShowWindowMenu { id, x, y } => Action::ShowWindowMenu { id, x, y },
+            Action::InteractiveResize { id, edge } => Action::InteractiveResize { id, edge },
+            Action::Destroy(id) => Action::Destroy(id),
         }
     }
 }
@@ -64,6 +156,71 @@ impl<T> fmt::Debug for Action<T> {
                 f,
                 "Action::LayerSurfaceAction::LayerSurface {{ builder: {:?} }}",
                 builder
+            ),
+            Action::Size { id, width, height } => write!(
+                f,
+                "Action::LayerSurfaceAction::Size {{ id: {:?}, width: {:?}, height: {:?} }}",
+                id, width, height
+            ),
+            Action::MinSize { id, size } => write!(
+                f,
+                "Action::LayerSurfaceAction::MinSize {{ id: {:?}, size: {:?} }}",
+                id, size
+            ),
+            Action::MaxSize { id, size } => write!(
+                f,
+                "Action::LayerSurfaceAction::MaxSize {{ id: {:?}, size: {:?} }}",
+                id, size
+            ),
+            Action::Title { id, title } => write!(
+                f,
+                "Action::LayerSurfaceAction::Title {{ id: {:?}, title: {:?} }}",
+                id, title
+            ),
+            Action::Minimize { id } => write!(
+                f,
+                "Action::LayerSurfaceAction::Minimize {{ id: {:?} }}",
+                id
+            ),
+            Action::Maximize { id } => write!(
+                f,
+                "Action::LayerSurfaceAction::Maximize {{ id: {:?} }}",
+                id
+            ),
+            Action::UnsetMaximize { id } => write!(
+                f,
+                "Action::LayerSurfaceAction::UnsetMaximize {{ id: {:?} }}",
+                id
+            ),
+            Action::Fullscreen { id } => write!(
+                f,
+                "Action::LayerSurfaceAction::Fullscreen {{ id: {:?} }}",
+                id
+            ),
+            Action::UnsetFullscreen { id } => write!(
+                f,
+                "Action::LayerSurfaceAction::UnsetFullscreen {{ id: {:?} }}",
+                id
+            ),
+            Action::InteractiveMove { id } => write!(
+                f,
+                "Action::LayerSurfaceAction::InteractiveMove {{ id: {:?} }}",
+                id
+            ),
+            Action::ShowWindowMenu { id, x, y } => write!(
+                f,
+                "Action::LayerSurfaceAction::ShowWindowMenu {{ id: {:?}, x: {x}, y: {y} }}",
+                id
+            ),
+            Action::InteractiveResize { id, edge } => write!(
+                f,
+                "Action::LayerSurfaceAction::InteractiveResize {{ id: {:?}, edge: {:?} }}",
+                id, edge
+            ),
+            Action::Destroy(id) => write!(
+                f,
+                "Action::LayerSurfaceAction::Destroy {{ id: {:?} }}",
+                id
             ),
         }
     }

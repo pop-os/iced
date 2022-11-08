@@ -10,7 +10,7 @@ use iced::{
 use iced_native::command::platform_specific::wayland::layer_surface::SctkLayerSurfaceSettings;
 use iced_native::command::platform_specific::wayland::window::SctkWindowSettings;
 use iced_native::window::{Id, self};
-use iced_sctk::commands::layer_surface::{get_layer_surface, destroy_layer_surface};
+use iced_sctk::commands::window::{get_window, close_window};
 use sctk::shell::layer::Anchor;
 pub fn main() -> iced::Result {
     Clock::run(Settings {
@@ -48,7 +48,10 @@ impl Application for Clock {
                 count: 0,
                 to_destroy
             },
-            Command::none()
+            get_window(SctkWindowSettings {
+                window_id: to_destroy,
+                ..Default::default()
+            })
         )
     }
 
@@ -59,18 +62,18 @@ impl Application for Clock {
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
             Message::Tick(local_time) => {
-                // let now = local_time;
+                let now = local_time;
 
-                // if now != self.now {
-                //     self.now = now;
-                //     self.clock.clear();
-                // }
-                // // destroy the second window after counting to 10.
-                // self.count += 1;
-                // if self.count == 10 {
-                //     println!("time to remove the bottom clock!");
-                //     return destroy_layer_surface::<Message>(self.to_destroy);
-                // }
+                if now != self.now {
+                    self.now = now;
+                    self.clock.clear();
+                }
+                // destroy the second window after counting to 10.
+                self.count += 1;
+                if self.count == 10 {
+                    println!("time to remove the bottom clock!");
+                    return close_window::<Message>(self.to_destroy);
+                }
             }
         }
 
