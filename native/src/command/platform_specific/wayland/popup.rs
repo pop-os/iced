@@ -7,34 +7,52 @@ use iced_futures::MaybeSend;
 use sctk::reexports::protocols::xdg::shell::client::xdg_positioner::{
     Anchor, Gravity,
 };
-use sctk::shell::xdg::XdgPositioner;
 
 use crate::window;
-/// TODO
+/// Popup creation details
 #[derive(Debug, Clone)]
-pub struct IcedPopup {
+pub struct SctkPopupSettings {
     /// XXX must be unique, id of the parent
-    parent: window::Id,
+    pub parent: window::Id,
     /// XXX must be unique, id of the popup
-    id: window::Id,
-    /// size of the popup
-    size: (u32, u32),
-    /// the rectangle which the popup will be anchored to
-    anchor_rect: Rectangle<u32>,
-    /// the anchor location on the popup
-    anchor: Anchor,
-    /// the gravity of the popup
-    gravity: Gravity,
-    /// the constraint adjustment
-    constraint_adjustment: u32,
-    /// offset of the popup
-    offset: (u32, u32),
-    /// whether the popup is reactive
-    reactive: bool,
-    /// optional parent size, must be correct or the behavior is undefined
-    parent_size: Option<(u32, u32)>,
+    pub id: window::Id,
+    /// positioner of the popup
+    pub positioner: SctkPositioner,
+    /// optional parent size, must be correct if specified or the behavior is undefined
+    pub parent_size: Option<(u32, u32)>,
     /// whether a grab should be requested for the popup after creation
-    grab: bool,
+    pub grab: bool,
+}
+
+/// Positioner of a popup
+#[derive(Debug, Clone)]
+pub struct SctkPositioner {
+    /// size of the popup
+    pub size: (u32, u32),
+    /// the rectangle which the popup will be anchored to
+    pub anchor_rect: Rectangle<i32>,
+    /// the anchor location on the popup
+    pub anchor: Anchor,
+    /// the gravity of the popup
+    pub gravity: Gravity,
+    /// the constraint adjustment, 
+    /// Specify how the window should be positioned if the originally intended position caused the surface to be constrained, meaning at least partially outside positioning boundaries set by the compositor. The adjustment is set by constructing a bitmask describing the adjustment to be made when the surface is constrained on that axis.
+    /// If no bit for one axis is set, the compositor will assume that the child surface should not change its position on that axis when constrained.
+    ///
+    /// If more than one bit for one axis is set, the order of how adjustments are applied is specified in the corresponding adjustment descriptions.
+    ///
+    /// The default adjustment is none.
+    pub constraint_adjustment: u32,
+    /// offset of the popup
+    pub offset: (i32, i32),
+    /// whether the popup is reactive
+    pub reactive: bool,
+}
+
+impl Default for SctkPositioner {
+    fn default() -> Self {
+        Self { size: (200, 100), anchor_rect: Rectangle { x: 0, y: 0, width: 1, height: 1 }, anchor: Anchor::None, gravity: Gravity::None, constraint_adjustment: Default::default(), offset: Default::default(), reactive: true }
+    }
 }
 
 #[derive(Clone)]
@@ -43,10 +61,27 @@ pub enum Action<T> {
     /// create a window and receive a message with its Id
     Popup {
         /// popup
-        popup: IcedPopup,
+        popup: SctkPopupSettings,
         /// phantom
         _phantom: PhantomData<T>,
     },
+    /// destroy the popup
+    Destroy {
+        /// id of the popup
+        id: window::Id
+    },
+    /// request that the popup be repositioned
+    Reposition {
+        /// id of the popup
+        id: window::Id,
+        /// the positioner
+        positioner: SctkPositioner
+    },
+    /// request that the popup make an explicit grab
+    Grab {
+        /// id of the popup
+        id: window::Id
+    }
 }
 
 impl<T> Action<T> {
@@ -63,6 +98,9 @@ impl<T> Action<T> {
                 popup,
                 _phantom: PhantomData::default(),
             },
+            Action::Destroy { id } => Action::Destroy { id },
+            Action::Reposition { id, positioner } => Action::Reposition { id, positioner },
+            Action::Grab { id } => Action::Grab { id },
         }
     }
 }
@@ -72,8 +110,23 @@ impl<T> fmt::Debug for Action<T> {
         match self {
             Action::Popup { popup, .. } => write!(
                 f,
-                "Action::LayerSurfaceAction::LayerSurface {{ popup: {:?} }}",
+                "Action::PopupAction::Popup {{ popup: {:?} }}",
                 popup
+            ),
+            Action::Destroy { id } => write!(
+                f,
+                "Action::PopupAction::Destroy {{ id: {:?} }}",
+                id
+            ),
+            Action::Reposition { id, positioner } => write!(
+                f,
+                "Action::PopupAction::Reposition {{ id: {:?}, positioner: {:?} }}",
+                id, positioner
+            ),
+            Action::Grab { id } => write!(
+                f,
+                "Action::PopupAction::Grab {{ id: {:?} }}",
+                id
             ),
         }
     }

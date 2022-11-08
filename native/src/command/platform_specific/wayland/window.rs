@@ -166,72 +166,72 @@ impl<T> fmt::Debug for Action<T> {
         match self {
             Action::Window { builder, .. } => write!(
                 f,
-                "Action::LayerSurfaceAction::LayerSurface {{ builder: {:?} }}",
+                "Action::Window::LayerSurface {{ builder: {:?} }}",
                 builder
             ),
             Action::Size { id, width, height } => write!(
                 f,
-                "Action::LayerSurfaceAction::Size {{ id: {:?}, width: {:?}, height: {:?} }}",
+                "Action::Window::Size {{ id: {:?}, width: {:?}, height: {:?} }}",
                 id, width, height
             ),
             Action::MinSize { id, size } => write!(
                 f,
-                "Action::LayerSurfaceAction::MinSize {{ id: {:?}, size: {:?} }}",
+                "Action::Window::MinSize {{ id: {:?}, size: {:?} }}",
                 id, size
             ),
             Action::MaxSize { id, size } => write!(
                 f,
-                "Action::LayerSurfaceAction::MaxSize {{ id: {:?}, size: {:?} }}",
+                "Action::Window::MaxSize {{ id: {:?}, size: {:?} }}",
                 id, size
             ),
             Action::Title { id, title } => write!(
                 f,
-                "Action::LayerSurfaceAction::Title {{ id: {:?}, title: {:?} }}",
+                "Action::Window::Title {{ id: {:?}, title: {:?} }}",
                 id, title
             ),
             Action::Minimize { id } => write!(
                 f,
-                "Action::LayerSurfaceAction::Minimize {{ id: {:?} }}",
+                "Action::Window::Minimize {{ id: {:?} }}",
                 id
             ),
             Action::Maximize { id } => write!(
                 f,
-                "Action::LayerSurfaceAction::Maximize {{ id: {:?} }}",
+                "Action::Window::Maximize {{ id: {:?} }}",
                 id
             ),
             Action::UnsetMaximize { id } => write!(
                 f,
-                "Action::LayerSurfaceAction::UnsetMaximize {{ id: {:?} }}",
+                "Action::Window::UnsetMaximize {{ id: {:?} }}",
                 id
             ),
             Action::Fullscreen { id } => write!(
                 f,
-                "Action::LayerSurfaceAction::Fullscreen {{ id: {:?} }}",
+                "Action::Window::Fullscreen {{ id: {:?} }}",
                 id
             ),
             Action::UnsetFullscreen { id } => write!(
                 f,
-                "Action::LayerSurfaceAction::UnsetFullscreen {{ id: {:?} }}",
+                "Action::Window::UnsetFullscreen {{ id: {:?} }}",
                 id
             ),
             Action::InteractiveMove { id } => write!(
                 f,
-                "Action::LayerSurfaceAction::InteractiveMove {{ id: {:?} }}",
+                "Action::Window::InteractiveMove {{ id: {:?} }}",
                 id
             ),
             Action::ShowWindowMenu { id, x, y } => write!(
                 f,
-                "Action::LayerSurfaceAction::ShowWindowMenu {{ id: {:?}, x: {x}, y: {y} }}",
+                "Action::Window::ShowWindowMenu {{ id: {:?}, x: {x}, y: {y} }}",
                 id
             ),
             Action::InteractiveResize { id, edge } => write!(
                 f,
-                "Action::LayerSurfaceAction::InteractiveResize {{ id: {:?}, edge: {:?} }}",
+                "Action::Window::InteractiveResize {{ id: {:?}, edge: {:?} }}",
                 id, edge
             ),
             Action::Destroy(id) => write!(
                 f,
-                "Action::LayerSurfaceAction::Destroy {{ id: {:?} }}",
+                "Action::Window::Destroy {{ id: {:?} }}",
                 id
             ),
         }

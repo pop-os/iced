@@ -2,14 +2,16 @@ use std::process::exit;
 
 use iced::executor;
 use iced::widget::canvas::{Cache, Cursor, Geometry, LineCap, Path, Stroke};
-use iced::widget::{canvas, container};
+use iced::widget::{canvas, container, text, button, column};
 use iced::{
     sctk_settings::InitialSurface, Application, Color, Command, Element,
     Length, Point, Rectangle, Settings, Subscription, Theme, Vector,
 };
 use iced_native::command::platform_specific::wayland::layer_surface::SctkLayerSurfaceSettings;
+use iced_native::command::platform_specific::wayland::popup::{SctkPopupSettings, SctkPositioner};
 use iced_native::command::platform_specific::wayland::window::SctkWindowSettings;
 use iced_native::window::{self, Id};
+use iced_sctk::commands::popup::get_popup;
 use iced_sctk::commands::window::{close_window, get_window};
 use sctk::shell::layer::Anchor;
 pub fn main() -> iced::Result {
@@ -32,6 +34,7 @@ struct Clock {
 #[derive(Debug, Clone, Copy)]
 enum Message {
     Tick(time::OffsetDateTime),
+    Click(window::Id),
 }
 
 impl Application for Clock {
@@ -41,7 +44,7 @@ impl Application for Clock {
     type Flags = ();
 
     fn new(_flags: ()) -> (Self, Command<Message>) {
-        let to_destroy = Id::new(10);
+        let to_destroy = Id::new(2);
         (
             Clock {
                 now: time::OffsetDateTime::now_local()
@@ -74,9 +77,34 @@ impl Application for Clock {
                 self.count += 1;
                 if self.count == 10 {
                     println!("time to remove the bottom clock!");
-                    return close_window::<Message>(self.to_destroy);
+                    return Command::batch(vec![
+                        close_window::<Message>(self.to_destroy),
+                        get_popup(SctkPopupSettings {
+                        parent: Id::new(0),
+                        id: Id::new(3),
+                        positioner: SctkPositioner {
+                            anchor_rect: Rectangle { x: 100, y: 100, width: 160, height: 260 },
+                            ..Default::default()
+                        },
+                        parent_size: None,
+                        grab: true,
+                    })]);
+                        
                 }
             }
+            Message::Click(id) => {
+                println!("creating a popup");
+                return get_popup(SctkPopupSettings {
+                    parent: id,
+                    id: Id::new(3),
+                    positioner: SctkPositioner {
+                        anchor_rect: Rectangle { x: 100, y: 100, width: 160, height: 260 },
+                        ..Default::default()
+                    },
+                    parent_size: None,
+                    grab: true,
+                });
+            },
         }
 
         Command::none()
@@ -99,7 +127,10 @@ impl Application for Clock {
             .width(Length::Fill)
             .height(Length::Fill);
 
-        container(canvas)
+        container(column![
+            button("Popup").on_press(Message::Click(window)),
+            canvas,  
+        ])
             .width(Length::Fill)
             .height(Length::Fill)
             .padding(20)
@@ -108,9 +139,13 @@ impl Application for Clock {
 
     fn view_popup(
         &self,
-        window: iced_native::window::Id,
+        id: iced_native::window::Id,
     ) -> Element<'_, Self::Message, iced::Renderer<Self::Theme>> {
-        unimplemented!()
+        container(button("Hi!, I'm a popup!").on_press(Message::Click(id)))
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .padding(20)
+            .into()
     }
 
     fn view_layer_surface(
