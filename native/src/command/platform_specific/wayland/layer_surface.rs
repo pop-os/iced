@@ -3,9 +3,7 @@ use std::marker::PhantomData;
 use std::{collections::hash_map::DefaultHasher, fmt};
 
 use iced_futures::MaybeSend;
-use sctk::{
-    shell::layer::{Layer, KeyboardInteractivity, Anchor, },
-};
+use sctk::shell::layer::{Anchor, KeyboardInteractivity, Layer};
 
 use crate::window;
 
@@ -21,7 +19,7 @@ pub enum IcedOutput {
         /// make
         make: String,
         /// model
-        model: String
+        model: String,
     },
 }
 
@@ -69,7 +67,17 @@ pub struct SctkLayerSurfaceSettings {
 
 impl Default for SctkLayerSurfaceSettings {
     fn default() -> Self {
-        Self { id: window::Id::new(0),layer: Layer::Top, keyboard_interactivity: Default::default(), anchor: Anchor::empty(), output: Default::default(), namespace: Default::default(), margin: Default::default(), size: (Some(200), Some(200)), exclusive_zone: Default::default() }
+        Self {
+            id: window::Id::new(0),
+            layer: Layer::Top,
+            keyboard_interactivity: Default::default(),
+            anchor: Anchor::empty(),
+            output: Default::default(),
+            namespace: Default::default(),
+            margin: Default::default(),
+            size: (Some(200), Some(200)),
+            exclusive_zone: Default::default(),
+        }
     }
 }
 
@@ -81,7 +89,7 @@ pub enum Action<T> {
         /// surface builder
         builder: SctkLayerSurfaceSettings,
         /// phantom
-        _phantom: PhantomData<T>
+        _phantom: PhantomData<T>,
     },
     /// Set size of the layer surface.
     Size {
@@ -128,7 +136,7 @@ pub enum Action<T> {
         id: window::Id,
         /// layer of the layer surface
         layer: Layer,
-    }
+    },
 }
 
 impl<T> Action<T> {
@@ -141,19 +149,26 @@ impl<T> Action<T> {
         T: 'static,
     {
         match self {
-            Action::LayerSurface {
-                builder,
-                ..
-            } => Action::LayerSurface {
+            Action::LayerSurface { builder, .. } => Action::LayerSurface {
                 builder,
                 _phantom: PhantomData::default(),
             },
-            Action::Size { id, width, height } => Action::Size { id, width, height },
+            Action::Size { id, width, height } => {
+                Action::Size { id, width, height }
+            }
             Action::Destroy(id) => Action::Destroy(id),
             Action::Anchor { id, anchor } => Action::Anchor { id, anchor },
-            Action::ExclusiveZone { id, exclusive_zone } => Action::ExclusiveZone { id, exclusive_zone },
+            Action::ExclusiveZone { id, exclusive_zone } => {
+                Action::ExclusiveZone { id, exclusive_zone }
+            }
             Action::Margin { id, margin } => Action::Margin { id, margin },
-            Action::KeyboardInteractivity { id, keyboard_interactivity } => Action::KeyboardInteractivity { id, keyboard_interactivity },
+            Action::KeyboardInteractivity {
+                id,
+                keyboard_interactivity,
+            } => Action::KeyboardInteractivity {
+                id,
+                keyboard_interactivity,
+            },
             Action::Layer { id, layer } => Action::Layer { id, layer },
         }
     }

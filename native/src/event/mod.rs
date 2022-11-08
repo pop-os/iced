@@ -3,7 +3,7 @@ use crate::keyboard;
 use crate::mouse;
 use crate::touch;
 use crate::window;
-#[cfg(feature="wayland")]
+#[cfg(feature = "wayland")]
 /// platform specific wayland events
 pub mod wayland;
 /// A user interface event.

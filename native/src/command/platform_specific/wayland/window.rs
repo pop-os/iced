@@ -24,7 +24,13 @@ pub struct SctkWindowSettings {
 
 impl Default for SctkWindowSettings {
     fn default() -> Self {
-        Self { iced_settings: Default::default(), window_id: window::Id::new(0), app_id: Default::default(), title: Default::default(), parent: Default::default() }
+        Self {
+            iced_settings: Default::default(),
+            window_id: window::Id::new(0),
+            app_id: Default::default(),
+            title: Default::default(),
+            parent: Default::default(),
+        }
     }
 }
 
@@ -36,7 +42,7 @@ pub enum Action<T> {
         /// window builder
         builder: SctkWindowSettings,
         /// phanton
-        _phantom: PhantomData<T>
+        _phantom: PhantomData<T>,
     },
     /// Destroy the window
     Destroy(window::Id),
@@ -54,14 +60,14 @@ pub enum Action<T> {
         /// id of the window
         id: window::Id,
         /// optional size
-        size: Option<(u32, u32)>
+        size: Option<(u32, u32)>,
     },
     /// Set max size of the window.
     MaxSize {
         /// id of the window
         id: window::Id,
         /// optional size
-        size: Option<(u32, u32)>
+        size: Option<(u32, u32)>,
     },
     /// Set title of the window.
     Title {
@@ -115,7 +121,7 @@ pub enum Action<T> {
         x: i32,
         /// y location of popup
         y: i32,
-    }
+    },
 }
 
 impl<T> Action<T> {
@@ -130,9 +136,11 @@ impl<T> Action<T> {
         match self {
             Action::Window { builder, .. } => Action::Window {
                 builder,
-                _phantom: PhantomData::default()
+                _phantom: PhantomData::default(),
             },
-            Action::Size { id, width, height } => Action::Size { id, width, height },
+            Action::Size { id, width, height } => {
+                Action::Size { id, width, height }
+            }
             Action::MinSize { id, size } => Action::MinSize { id, size },
             Action::MaxSize { id, size } => Action::MaxSize { id, size },
             Action::Title { id, title } => Action::Title { id, title },
@@ -142,8 +150,12 @@ impl<T> Action<T> {
             Action::Fullscreen { id } => Action::Fullscreen { id },
             Action::UnsetFullscreen { id } => Action::UnsetFullscreen { id },
             Action::InteractiveMove { id } => Action::InteractiveMove { id },
-            Action::ShowWindowMenu { id, x, y } => Action::ShowWindowMenu { id, x, y },
-            Action::InteractiveResize { id, edge } => Action::InteractiveResize { id, edge },
+            Action::ShowWindowMenu { id, x, y } => {
+                Action::ShowWindowMenu { id, x, y }
+            }
+            Action::InteractiveResize { id, edge } => {
+                Action::InteractiveResize { id, edge }
+            }
             Action::Destroy(id) => Action::Destroy(id),
         }
     }

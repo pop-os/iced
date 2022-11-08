@@ -13,7 +13,7 @@ pub enum Action<T> {
     #[cfg(feature = "wayland")]
     Wayland(wayland::Action<T>),
     /// phantom data variant in case the platform has not specific actions implemented
-    Phantom(PhantomData<T>)
+    Phantom(PhantomData<T>),
 }
 
 impl<T> Action<T> {

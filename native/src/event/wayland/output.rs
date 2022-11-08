@@ -1,5 +1,6 @@
- /// output events
- #[derive(Debug, Clone, PartialEq, Eq)]
+
+/// output events
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OutputEvent {
     /// created output
     Created {

@@ -1,7 +1,7 @@
 use crate::window;
 
- /// layer surface events
- #[derive(Debug, Clone, PartialEq, Eq)]
+/// layer surface events
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LayerEvent {
     /// layer surface Done
     Done(window::Id),

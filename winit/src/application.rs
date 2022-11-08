@@ -291,7 +291,8 @@ async fn run_instance<A, E, C>(
         &mut debug,
     ));
 
-    let mut window_ids = HashMap::from([(window.id(), iced_native::window::Id::MAIN)]);
+    let mut window_ids =
+        HashMap::from([(window.id(), iced_native::window::Id::MAIN)]);
     let mut mouse_interaction = mouse::Interaction::default();
     let mut events = Vec::new();
     let mut messages = Vec::new();
@@ -675,8 +676,8 @@ pub fn run_command<A, E>(
                         .send_event(tag(mode))
                         .expect("Send message to event loop");
                 }
-                window::Action::Spawn { settings } => {},
-                window::Action::Close => {},
+                window::Action::Spawn { settings } => {}
+                window::Action::Close => {}
             },
             command::Action::System(action) => match action {
                 system::Action::QueryInformation(_tag) => {
@@ -729,7 +730,7 @@ pub fn run_command<A, E>(
                 current_cache = user_interface.into_cache();
                 *cache = current_cache;
             }
-            command::Action::PlatformSpecific(_) => {},
+            command::Action::PlatformSpecific(_) => {}
         }
     }
 }

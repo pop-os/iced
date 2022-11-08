@@ -1,19 +1,18 @@
-
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::{collections::hash_map::DefaultHasher, fmt};
 
 use iced_core::Rectangle;
 use iced_futures::MaybeSend;
-use sctk::reexports::protocols::xdg::shell::client::xdg_positioner::{Anchor, Gravity};
+use sctk::reexports::protocols::xdg::shell::client::xdg_positioner::{
+    Anchor, Gravity,
+};
 use sctk::shell::xdg::XdgPositioner;
-
-
 
 use crate::window;
 /// TODO
 #[derive(Debug, Clone)]
-pub struct IcedPopup{
+pub struct IcedPopup {
     /// XXX must be unique, id of the parent
     parent: window::Id,
     /// XXX must be unique, id of the popup
@@ -35,7 +34,7 @@ pub struct IcedPopup{
     /// optional parent size, must be correct or the behavior is undefined
     parent_size: Option<(u32, u32)>,
     /// whether a grab should be requested for the popup after creation
-    grab: bool
+    grab: bool,
 }
 
 #[derive(Clone)]

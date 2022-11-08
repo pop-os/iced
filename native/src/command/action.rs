@@ -1,8 +1,8 @@
 use crate::clipboard;
+use crate::command::platform_specific;
 use crate::system;
 use crate::widget;
 use crate::window;
-use crate::command::platform_specific;
 
 use iced_futures::MaybeSend;
 
@@ -69,7 +69,8 @@ impl<T> fmt::Debug for Action<T> {
             }
             Self::Window(id, action) => {
                 write!(f, "Action::Window({:?}, {:?})", id, action)
-            }            Self::System(action) => write!(f, "Action::System({:?})", action),
+            }
+            Self::System(action) => write!(f, "Action::System({:?})", action),
             Self::Widget(_action) => write!(f, "Action::Widget"),
             Self::PlatformSpecific(action) => {
                 write!(f, "Action::PlatformSpecific({:?})", action)

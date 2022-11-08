@@ -1,7 +1,7 @@
 use crate::window;
 
- /// popup events
- #[derive(Debug, Clone, PartialEq, Eq)]
+/// popup events
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PopupEvent {
     /// Done
     Done(window::Id),
@@ -15,5 +15,5 @@ pub enum PopupEvent {
         width: u32,
         /// height
         height: u32,
-    }
+    },
 }

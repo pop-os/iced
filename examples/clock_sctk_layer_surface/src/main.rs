@@ -4,23 +4,26 @@ use iced::executor;
 use iced::widget::canvas::{Cache, Cursor, Geometry, LineCap, Path, Stroke};
 use iced::widget::{canvas, container};
 use iced::{
-    Application, Color, Command, Element, Length, Point, Rectangle, Settings,
-    Subscription, Theme, Vector, sctk_settings::InitialSurface
+    sctk_settings::InitialSurface, Application, Color, Command, Element,
+    Length, Point, Rectangle, Settings, Subscription, Theme, Vector,
 };
 use iced_native::command::platform_specific::wayland::layer_surface::SctkLayerSurfaceSettings;
 use iced_native::window::Id;
-use iced_sctk::commands::layer_surface::{get_layer_surface, destroy_layer_surface};
+use iced_sctk::commands::layer_surface::{
+    destroy_layer_surface, get_layer_surface,
+};
 use sctk::shell::layer::Anchor;
 pub fn main() -> iced::Result {
     Clock::run(Settings {
         antialiasing: true,
-        initial_surface: InitialSurface::LayerSurface(SctkLayerSurfaceSettings {
-            size: (None, Some(200)),
-            anchor: Anchor::LEFT.union(Anchor::RIGHT).union(Anchor::TOP),
-            exclusive_zone: 200,
-            ..Default::default()
-
-        }),
+        initial_surface: InitialSurface::LayerSurface(
+            SctkLayerSurfaceSettings {
+                size: (None, Some(200)),
+                anchor: Anchor::LEFT.union(Anchor::RIGHT).union(Anchor::TOP),
+                exclusive_zone: 200,
+                ..Default::default()
+            },
+        ),
         ..Settings::default()
     })
 }
@@ -51,7 +54,7 @@ impl Application for Clock {
                     .unwrap_or_else(|_| time::OffsetDateTime::now_utc()),
                 clock: Default::default(),
                 count: 0,
-                to_destroy
+                to_destroy,
             },
             get_layer_surface(SctkLayerSurfaceSettings {
                 // XXX id must be unique!
@@ -60,7 +63,6 @@ impl Application for Clock {
                 anchor: Anchor::LEFT.union(Anchor::RIGHT).union(Anchor::BOTTOM),
                 exclusive_zone: 100,
                 ..Default::default()
-
             }),
         )
     }
