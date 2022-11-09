@@ -12,7 +12,7 @@ keywords = ["gui", "ui", "graphics", "interface", "widgets"]
 categories = ["gui"]
 
 [features]
-default = ["wayland"]
+default = ["wgpu"]
 # Enables the `Image` widget
 image = ["iced_wgpu?/image", "iced_glow?/image", "image_rs"]
 # Enables the `Svg` widget

@@ -169,10 +169,11 @@ pub mod application;
 mod element;
 mod error;
 mod result;
+#[cfg(all(
+    not(feature = "wayland")
+))]
 mod sandbox;
 #[cfg(all(
-    not(feature = "glow"),
-    feature = "wgpu",
     not(feature = "wayland")
 ))]
 pub use application::Application;
@@ -181,6 +182,8 @@ pub use application::Application;
 pub mod wayland;
 #[cfg(feature = "wayland")]
 pub use wayland::Application;
+#[cfg(feature = "wayland")]
+pub use wayland::sandbox;
 
 pub mod clipboard;
 pub mod executor;

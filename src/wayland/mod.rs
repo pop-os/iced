@@ -1,6 +1,8 @@
 use crate::window;
 use crate::{Command, Element, Executor, Settings, Subscription};
 
+/// wayland sandbox
+pub mod sandbox;
 pub use iced_native::application::{Appearance, StyleSheet};
 
 /// A pure version of [`Application`].
