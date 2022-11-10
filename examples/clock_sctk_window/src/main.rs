@@ -15,7 +15,7 @@ use iced_native::command::platform_specific::wayland::popup::{
 };
 use iced_native::command::platform_specific::wayland::window::SctkWindowSettings;
 use iced_native::window::{self, Id};
-use iced_sctk::commands::popup::get_popup;
+use iced_sctk::commands::popup::{get_popup, destroy_popup};
 use iced_sctk::commands::window::{close_window, get_window};
 use sctk::shell::layer::Anchor;
 pub fn main() -> iced::Result {
@@ -33,6 +33,8 @@ struct Clock {
     clock: Cache,
     count: u32,
     to_destroy: Id,
+    id_ctr: u32,
+    popup: Option<Id>
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -48,14 +50,16 @@ impl Application for Clock {
     type Flags = ();
 
     fn new(_flags: ()) -> (Self, Command<Message>) {
-        let to_destroy = Id::new(2);
+        let to_destroy = Id::new(1);
         (
             Clock {
                 now: time::OffsetDateTime::now_local()
                     .unwrap_or_else(|_| time::OffsetDateTime::now_utc()),
                 clock: Default::default(),
                 count: 0,
+                popup: None,
                 to_destroy,
+                id_ctr: 2,
             },
             get_window(SctkWindowSettings {
                 window_id: to_destroy,
@@ -84,23 +88,29 @@ impl Application for Clock {
                     return close_window::<Message>(self.to_destroy);
                 }
             }
-            Message::Click(id) => {
-                println!("creating a popup");
-                return get_popup(SctkPopupSettings {
-                    parent: id,
-                    id: Id::new(3),
-                    positioner: SctkPositioner {
-                        anchor_rect: Rectangle {
-                            x: 100,
-                            y: 100,
-                            width: 160,
-                            height: 260,
+            Message::Click(parent_id) => {
+                if let Some(p) = self.popup.take() {
+                    return destroy_popup(p);
+                } else {
+                    self.id_ctr += 1;
+                    let new_id = window::Id::new(self.id_ctr);
+                    self.popup.replace(new_id);
+                    return get_popup(SctkPopupSettings {
+                        parent: parent_id,
+                        id: new_id,
+                        positioner: SctkPositioner {
+                            anchor_rect: Rectangle {
+                                x: 100,
+                                y: 100,
+                                width: 160,
+                                height: 260,
+                            },
+                            ..Default::default()
                         },
-                        ..Default::default()
-                    },
-                    parent_size: None,
-                    grab: true,
-                });
+                        parent_size: None,
+                        grab: true,
+                    });
+                }
             }
         }
 
