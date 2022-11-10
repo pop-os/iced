@@ -1,7 +1,9 @@
 use std::process::exit;
 
 use iced::executor;
-use iced::widget::canvas::{Cache, Cursor, Geometry, LineCap, Path, Stroke};
+use iced::widget::canvas::{
+    stroke, Cache, Cursor, Geometry, LineCap, Path, Stroke,
+};
 use iced::widget::{canvas, container};
 use iced::{
     sctk_settings::InitialSurface, Application, Color, Command, Element,
@@ -184,33 +186,41 @@ impl<Message> canvas::Program<Message> for Clock {
             let long_hand =
                 Path::line(Point::ORIGIN, Point::new(0.0, -0.8 * radius));
 
-            let thin_stroke = Stroke {
-                width: radius / 100.0,
-                color: Color::WHITE,
-                line_cap: LineCap::Round,
-                ..Stroke::default()
+            let width = radius / 100.0;
+
+            let thin_stroke = || -> Stroke {
+                Stroke {
+                    width,
+                    style: stroke::Style::Solid(Color::WHITE),
+                    line_cap: LineCap::Round,
+                    ..Stroke::default()
+                }
             };
 
-            let wide_stroke = Stroke {
-                width: thin_stroke.width * 3.0,
-                ..thin_stroke
+            let wide_stroke = || -> Stroke {
+                Stroke {
+                    width: width * 3.0,
+                    style: stroke::Style::Solid(Color::WHITE),
+                    line_cap: LineCap::Round,
+                    ..Stroke::default()
+                }
             };
 
             frame.translate(Vector::new(center.x, center.y));
 
             frame.with_save(|frame| {
                 frame.rotate(hand_rotation(self.now.hour(), 12));
-                frame.stroke(&short_hand, wide_stroke);
+                frame.stroke(&short_hand, wide_stroke());
             });
 
             frame.with_save(|frame| {
                 frame.rotate(hand_rotation(self.now.minute(), 60));
-                frame.stroke(&long_hand, wide_stroke);
+                frame.stroke(&long_hand, wide_stroke());
             });
 
             frame.with_save(|frame| {
                 frame.rotate(hand_rotation(self.now.second(), 60));
-                frame.stroke(&long_hand, thin_stroke);
+                frame.stroke(&long_hand, thin_stroke());
             })
         });
 

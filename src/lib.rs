@@ -203,7 +203,7 @@ pub mod window;
 ))]
 pub mod multi_window;
 
-#[cfg(all(feature = "glow", feature = "wayland",))]
+#[cfg(feature = "wayland")]
 use iced_sctk as runtime;
 
 #[cfg(all(
@@ -219,7 +219,7 @@ use iced_glutin as runtime;
 #[cfg(all(not(feature = "glow"), feature = "wgpu"))]
 use iced_wgpu as renderer;
 
-#[cfg(feature = "glow")]
+#[cfg(any(feature = "glow", feature = "wayland"))]
 use iced_glow as renderer;
 
 pub use iced_native::theme;

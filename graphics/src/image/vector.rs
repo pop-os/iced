@@ -33,7 +33,7 @@ impl Svg {
 #[derive(Debug)]
 pub struct Cache<T: Storage> {
     svgs: HashMap<u64, Svg>,
-    rasterized: HashMap<(u64, u32, u32), T::Entry>,
+    rasterized: HashMap<(u64, u32, u32, Option<[u8; 4]>), T::Entry>,
     svg_hits: HashSet<u64>,
     rasterized_hits: HashSet<(u64, u32, u32, Option<[u8; 4]>)>,
 }

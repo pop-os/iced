@@ -803,7 +803,9 @@ impl From<fn(&Theme) -> rule::Appearance> for Rule {
  */
 #[derive(Default, Clone, Copy)]
 pub enum Svg {
+    /// custom theme
     Custom(fn(&Theme) -> svg::Appearance),
+    /// default
     #[default]
     Default,
 }

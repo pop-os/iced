@@ -144,7 +144,7 @@ where
         let mut handle = self.handle.clone();
         handle.set_appearance(theme.appearance(self.style));
 
-        let (width, height) = renderer.dimensions(&self.handle);
+        let Size { width, height } = renderer.dimensions(&self.handle);
         let image_size = Size::new(width as f32, height as f32);
 
         let bounds = layout.bounds();
