@@ -12,7 +12,7 @@ keywords = ["gui", "ui", "graphics", "interface", "widgets"]
 categories = ["gui"]
 
 [features]
-default = ["wgpu"]
+default = ["wgpu", "iced_winit"]
 # Enables the `Image` widget
 image = ["iced_wgpu?/image", "iced_glow?/image", "image_rs"]
 # Enables the `Svg` widget
@@ -99,7 +99,7 @@ iced_core = { version = "0.6", path = "core" }
 iced_futures = { version = "0.5", path = "futures" }
 iced_native = { version = "0.6", path = "native" }
 iced_graphics = { version = "0.4", path = "graphics" }
-iced_winit = { version = "0.5", path = "winit", features = ["application"] }
+iced_winit = { version = "0.5", path = "winit", features = ["application"], optional = true }
 iced_glutin = { version = "0.4", path = "glutin", optional = true }
 iced_glow = { version = "0.4", path = "glow", optional = true }
 iced_sctk = { git = "https://github.com/pop-os/iced-sctk", optional = true }
