@@ -3,7 +3,7 @@ mod position;
 mod settings;
 
 pub mod icon;
-
+#[cfg(feature = "winit")]
 pub use icon::Icon;
 pub use position::Position;
 pub use settings::Settings;
