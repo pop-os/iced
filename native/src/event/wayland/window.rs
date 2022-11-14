@@ -1,7 +1,11 @@
+#![allow(missing_docs)]
+
  /// window events
  #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum WindowEvent {
+    /// window manager capabilities
     WmCapabilities(Vec<u32>),
+    /// window state
     State(WindowState)
 }
 
