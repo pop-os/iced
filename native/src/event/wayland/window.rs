@@ -1,12 +1,12 @@
 #![allow(missing_docs)]
 
- /// window events
- #[derive(Debug, Clone, PartialEq, Eq)]
+/// window events
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum WindowEvent {
     /// window manager capabilities
     WmCapabilities(Vec<u32>),
     /// window state
-    State(WindowState)
+    State(WindowState),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -18,5 +18,5 @@ pub enum WindowState {
     TiledLeft,
     TiledRight,
     TiledTop,
-    TiledBottom
+    TiledBottom,
 }

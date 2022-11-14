@@ -1,23 +1,21 @@
-use std::process::exit;
-
 use iced::executor;
 use iced::widget::canvas::{
     stroke, Cache, Cursor, Geometry, LineCap, Path, Stroke,
 };
-use iced::widget::{button, canvas, column, container, text};
+use iced::widget::{button, canvas, column, container};
 use iced::{
     sctk_settings::InitialSurface, Application, Color, Command, Element,
     Length, Point, Rectangle, Settings, Subscription, Theme, Vector,
 };
-use iced_native::command::platform_specific::wayland::layer_surface::SctkLayerSurfaceSettings;
 use iced_native::command::platform_specific::wayland::popup::{
     SctkPopupSettings, SctkPositioner,
 };
 use iced_native::command::platform_specific::wayland::window::SctkWindowSettings;
 use iced_native::window::{self, Id};
-use iced_sctk::commands::popup::{get_popup, destroy_popup};
+use iced_sctk::application::SurfaceIdWrapper;
+use iced_sctk::commands::popup::{destroy_popup, get_popup};
 use iced_sctk::commands::window::{close_window, get_window};
-use sctk::shell::layer::Anchor;
+
 pub fn main() -> iced::Result {
     Clock::run(Settings {
         antialiasing: true,
@@ -34,13 +32,14 @@ struct Clock {
     count: u32,
     to_destroy: Id,
     id_ctr: u32,
-    popup: Option<Id>
+    popup: Option<Id>,
 }
 
 #[derive(Debug, Clone, Copy)]
 enum Message {
     Tick(time::OffsetDateTime),
     Click(window::Id),
+    SurfaceClosed,
 }
 
 impl Application for Clock {
@@ -112,6 +111,9 @@ impl Application for Clock {
                     });
                 }
             }
+            Message::SurfaceClosed => {
+                // ignored
+            }
         }
 
         Command::none()
@@ -126,58 +128,37 @@ impl Application for Clock {
         })
     }
 
-    fn view_window(
+    fn view(
         &self,
-        window: iced_native::window::Id,
+        id: SurfaceIdWrapper,
     ) -> Element<'_, Self::Message, iced::Renderer<Self::Theme>> {
-        let canvas = canvas(self as &Self)
-            .width(Length::Fill)
-            .height(Length::Fill);
+        match id {
+            SurfaceIdWrapper::LayerSurface(_) => unimplemented!(),
+            SurfaceIdWrapper::Window(_) => {
+                let canvas = canvas(self as &Self)
+                    .width(Length::Fill)
+                    .height(Length::Fill);
 
-        container(column![
-            button("Popup").on_press(Message::Click(window)),
-            canvas,
-        ])
-        .width(Length::Fill)
-        .height(Length::Fill)
-        .padding(20)
-        .into()
+                container(column![
+                    button("Popup").on_press(Message::Click(id.inner())),
+                    canvas,
+                ])
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .padding(20)
+                .into()
+            }
+            SurfaceIdWrapper::Popup(_) => button("Hi!, I'm a popup!")
+                .on_press(Message::Click(id.inner()))
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .padding(20)
+                .into(),
+        }
     }
 
-    fn view_popup(
-        &self,
-        id: iced_native::window::Id,
-    ) -> Element<'_, Self::Message, iced::Renderer<Self::Theme>> {
-        button("Hi!, I'm a popup!").on_press(Message::Click(id))
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .padding(20)
-            .into()
-    }
-
-    fn view_layer_surface(
-        &self,
-        window: iced_native::window::Id,
-    ) -> Element<'_, Self::Message, iced::Renderer<Self::Theme>> {
-        unimplemented!()
-    }
-
-    fn close_window_requested(
-        &self,
-        window: iced_native::window::Id,
-    ) -> Self::Message {
-        unimplemented!()
-    }
-
-    fn layer_surface_done(
-        &self,
-        window: iced_native::window::Id,
-    ) -> Self::Message {
-        exit(0);
-    }
-
-    fn popup_done(&self, window: iced_native::window::Id) -> Self::Message {
-        unimplemented!()
+    fn close_requested(&self, id: SurfaceIdWrapper) -> Self::Message {
+        Message::SurfaceClosed
     }
 }
 

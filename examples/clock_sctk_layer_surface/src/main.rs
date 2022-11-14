@@ -1,5 +1,3 @@
-use std::process::exit;
-
 use iced::executor;
 use iced::widget::canvas::{
     stroke, Cache, Cursor, Geometry, LineCap, Path, Stroke,
@@ -11,6 +9,7 @@ use iced::{
 };
 use iced_native::command::platform_specific::wayland::layer_surface::SctkLayerSurfaceSettings;
 use iced_native::window::Id;
+use iced_sctk::application::SurfaceIdWrapper;
 use iced_sctk::commands::layer_surface::{
     destroy_layer_surface, get_layer_surface,
 };
@@ -103,23 +102,9 @@ impl Application for Clock {
         })
     }
 
-    fn view_window(
+    fn view(
         &self,
-        window: iced_native::window::Id,
-    ) -> Element<'_, Self::Message, iced::Renderer<Self::Theme>> {
-        unimplemented!()
-    }
-
-    fn view_popup(
-        &self,
-        window: iced_native::window::Id,
-    ) -> Element<'_, Self::Message, iced::Renderer<Self::Theme>> {
-        unimplemented!()
-    }
-
-    fn view_layer_surface(
-        &self,
-        window: iced_native::window::Id,
+        _id: SurfaceIdWrapper,
     ) -> Element<'_, Self::Message, iced::Renderer<Self::Theme>> {
         let canvas = canvas(self as &Self)
             .width(Length::Fill)
@@ -132,35 +117,12 @@ impl Application for Clock {
             .into()
     }
 
-    fn close_window_requested(
+    fn close_requested(
         &self,
-        window: iced_native::window::Id,
+        _id: SurfaceIdWrapper,
     ) -> Self::Message {
         unimplemented!()
     }
-
-    fn layer_surface_done(
-        &self,
-        window: iced_native::window::Id,
-    ) -> Self::Message {
-        exit(0);
-    }
-
-    fn popup_done(&self, window: iced_native::window::Id) -> Self::Message {
-        unimplemented!()
-    }
-
-    // fn view(&self) -> Element<Message> {
-    //     let canvas = canvas(self as &Self)
-    //         .width(Length::Fill)
-    //         .height(Length::Fill);
-
-    //     container(canvas)
-    //         .width(Length::Fill)
-    //         .height(Length::Fill)
-    //         .padding(20)
-    //         .into()
-    // }
 }
 
 impl<Message> canvas::Program<Message> for Clock {

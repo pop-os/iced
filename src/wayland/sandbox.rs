@@ -1,3 +1,5 @@
+use iced_sctk::application::SurfaceIdWrapper;
+
 use crate::theme::{self, Theme};
 use crate::{Application, Command, Element, Error, Settings, Subscription};
 
@@ -108,35 +110,13 @@ pub trait Sandbox {
     /// Returns the widgets to display in the [`Sandbox`] window.
     ///
     /// These widgets can produce __messages__ based on user interaction.
-    fn view_window(
+    fn view(
         &self,
-        window: iced_native::window::Id,
-    ) -> Element<'_, Self::Message>;
-
-    /// Returns the widgets to display in the [`Sandbox`] popup.
-    ///
-    /// These widgets can produce __messages__ based on user interaction.
-    fn view_popup(
-        &self,
-        window: iced_native::window::Id,
-    ) -> Element<'_, Self::Message>;
-
-    /// Returns the widgets to display in the [`Sandbox`] layer surface.
-    ///
-    /// These widgets can produce __messages__ based on user interaction.
-    fn view_layer_surface(
-        &self,
-        window: iced_native::window::Id,
+        id: SurfaceIdWrapper,
     ) -> Element<'_, Self::Message>;
 
     /// window was requested to close
-    fn close_window_requested(&self, window: iced_native::window::Id) -> Self::Message;
-
-    /// layer surface is done
-    fn layer_surface_done(&self, window: iced_native::window::Id) -> Self::Message;
-
-    /// popup is done
-    fn popup_done(&self, window: iced_native::window::Id) -> Self::Message;
+    fn close_requested(&self, id: SurfaceIdWrapper) -> Self::Message;
 
     /// Returns the current [`Theme`] of the [`Sandbox`].
     ///
@@ -235,45 +215,15 @@ where
     /// Returns the widgets to display in the [`Sandbox`] window.
     ///
     /// These widgets can produce __messages__ based on user interaction.
-    fn view_window(
+    fn view(
         &self,
-        id: iced_native::window::Id,
+        id: SurfaceIdWrapper,
     ) -> Element<'_, Self::Message> {
-        T::view_window(self, id)
-    }
-
-    /// Returns the widgets to display in the [`Sandbox`] popup.
-    ///
-    /// These widgets can produce __messages__ based on user interaction.
-    fn view_popup(
-        &self,
-        id: iced_native::window::Id,
-    ) -> Element<'_, Self::Message> {
-        T::view_popup(self, id)
-    }
-
-    /// Returns the widgets to display in the [`Sandbox`] layer surface.
-    ///
-    /// These widgets can produce __messages__ based on user interaction.
-    fn view_layer_surface(
-        &self,
-        id: iced_native::window::Id,
-    ) -> Element<'_, Self::Message> {
-        T::view_layer_surface(self, id)
+        T::view(self, id)
     }
 
     /// window was requested to close
-    fn close_window_requested(&self, id: iced_native::window::Id) -> Self::Message {
-        T::close_window_requested(&self, id)
-    }
-
-    /// layer surface is done
-    fn layer_surface_done(&self, id: iced_native::window::Id) -> Self::Message {
-        T::layer_surface_done(self, id)
-    }
-
-    /// popup is done
-    fn popup_done(&self, id: iced_native::window::Id) -> Self::Message {
-        T::popup_done(self, id)
+    fn close_requested(&self, id: SurfaceIdWrapper) -> Self::Message {
+        T::close_requested(&self, id)
     }
 }

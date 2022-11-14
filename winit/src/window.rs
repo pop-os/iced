@@ -29,12 +29,18 @@ pub fn resize<Message>(
 
 /// Sets the window to maximized or back.
 pub fn maximize<Message>(id: window::Id, value: bool) -> Command<Message> {
-    Command::single(command::Action::Window(id, window::Action::Maximize(value)))
+    Command::single(command::Action::Window(
+        id,
+        window::Action::Maximize(value),
+    ))
 }
 
 /// Set the window to minimized or back.
 pub fn minimize<Message>(id: window::Id, value: bool) -> Command<Message> {
-    Command::single(command::Action::Window(id, window::Action::Minimize(value)))
+    Command::single(command::Action::Window(
+        id,
+        window::Action::Minimize(value),
+    ))
 }
 
 /// Begins resizing a window with the mouse.

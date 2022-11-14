@@ -18,5 +18,5 @@ pub enum Event {
     /// output event
     Output(OutputEvent),
     /// window event
-    Window(WindowEvent)
+    Window(WindowEvent),
 }

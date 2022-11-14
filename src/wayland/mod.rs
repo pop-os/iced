@@ -1,9 +1,9 @@
-use crate::window;
 use crate::{Command, Element, Executor, Settings, Subscription};
 
 /// wayland sandbox
 pub mod sandbox;
 pub use iced_native::application::{Appearance, StyleSheet};
+use iced_sctk::application::SurfaceIdWrapper;
 
 /// A pure version of [`Application`].
 ///
@@ -87,25 +87,9 @@ pub trait Application: Sized {
     /// Returns the widgets to display in the [`Application`].
     ///
     /// These widgets can produce __messages__ based on user interaction.
-    fn view_window(
+    fn view(
         &self,
-        window: iced_native::window::Id,
-    ) -> Element<'_, Self::Message, crate::Renderer<Self::Theme>>;
-
-    /// Returns the widgets to display in the [`Application`].
-    ///
-    /// These widgets can produce __messages__ based on user interaction.
-    fn view_popup(
-        &self,
-        window: iced_native::window::Id,
-    ) -> Element<'_, Self::Message, crate::Renderer<Self::Theme>>;
-
-    /// Returns the widgets to display in the [`Application`].
-    ///
-    /// These widgets can produce __messages__ based on user interaction.
-    fn view_layer_surface(
-        &self,
-        window: iced_native::window::Id,
+        id: SurfaceIdWrapper,
     ) -> Element<'_, Self::Message, crate::Renderer<Self::Theme>>;
 
     /// Returns the scale factor of the [`Application`].
@@ -129,13 +113,7 @@ pub trait Application: Sized {
     }
 
     /// window was requested to close
-    fn close_window_requested(&self, window: iced_native::window::Id) -> Self::Message;
-
-    /// layer surface is done
-    fn layer_surface_done(&self, window: iced_native::window::Id) -> Self::Message;
-
-    /// popup is done
-    fn popup_done(&self, window: iced_native::window::Id) -> Self::Message;
+    fn close_requested(&self, id: SurfaceIdWrapper) -> Self::Message;
 
     /// Runs the [`Application`].
     ///
@@ -195,25 +173,11 @@ where
         self.0.update(message)
     }
 
-    fn view_window(
+    fn view(
         &self,
-        window: iced_native::window::Id,
+        id: SurfaceIdWrapper,
     ) -> Element<'_, Self::Message, Self::Renderer> {
-        self.0.view_window(window)
-    }
-
-    fn view_popup(
-        &self,
-        window: iced_native::window::Id,
-    ) -> Element<'_, Self::Message, Self::Renderer> {
-        self.0.view_popup(window)
-    }
-
-    fn view_layer_surface(
-        &self,
-        window: iced_native::window::Id,
-    ) -> Element<'_, Self::Message, Self::Renderer> {
-        self.0.view_layer_surface(window)
+        self.0.view(id)
     }
 
     fn theme(&self) -> A::Theme {
@@ -236,7 +200,7 @@ where
         self.0.should_exit()
     }
 
-    fn close_requested(&self, window: iced_native::window::Id) -> Self::Message {
-        todo!()
+    fn close_requested(&self, id: SurfaceIdWrapper) -> Self::Message {
+        self.0.close_requested(id)
     }
 }
