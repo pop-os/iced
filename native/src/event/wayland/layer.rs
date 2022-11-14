@@ -7,6 +7,6 @@ pub enum LayerEvent {
     Done(window::Id),
     /// layer surface focused
     Focused(window::Id),
-    /// layer_surface focused
+    /// layer_surface unfocused
     Unfocused(window::Id),
 }

@@ -16,4 +16,8 @@ pub enum PopupEvent {
         /// height
         height: u32,
     },
+    /// popup focused
+    Focused(window::Id),
+    /// popup unfocused
+    Unfocused(window::Id),
 }
