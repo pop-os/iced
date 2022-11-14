@@ -1,6 +1,7 @@
 //! Configure the window of your application in native platforms.
 mod position;
 mod settings;
+#[cfg(feature = "winit")]
 
 pub mod icon;
 #[cfg(feature = "winit")]
