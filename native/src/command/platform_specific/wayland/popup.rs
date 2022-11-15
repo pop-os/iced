@@ -10,7 +10,7 @@ use sctk::reexports::protocols::xdg::shell::client::xdg_positioner::{
 
 use crate::window;
 /// Popup creation details
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SctkPopupSettings {
     /// XXX must be unique, id of the parent
     pub parent: window::Id,
@@ -25,7 +25,7 @@ pub struct SctkPopupSettings {
 }
 
 /// Positioner of a popup
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SctkPositioner {
     /// size of the popup
     pub size: (u32, u32),
@@ -47,6 +47,21 @@ pub struct SctkPositioner {
     pub offset: (i32, i32),
     /// whether the popup is reactive
     pub reactive: bool,
+}
+
+impl Hash for SctkPositioner {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.size.hash(state);
+        self.anchor_rect.x.hash(state);
+        self.anchor_rect.y.hash(state);
+        self.anchor_rect.width.hash(state);
+        self.anchor_rect.height.hash(state);
+        self.anchor.hash(state);
+        self.gravity.hash(state);
+        self.constraint_adjustment.hash(state);
+        self.offset.hash(state);
+        self.reactive.hash(state);
+    }
 }
 
 impl Default for SctkPositioner {
