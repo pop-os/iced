@@ -10,7 +10,7 @@ use sctk::reexports::protocols::xdg::shell::client::xdg_positioner::{
 
 use crate::window;
 /// Popup creation details
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct SctkPopupSettings {
     /// XXX must be unique, id of the parent
     pub parent: window::Id,
@@ -22,6 +22,12 @@ pub struct SctkPopupSettings {
     pub parent_size: Option<(u32, u32)>,
     /// whether a grab should be requested for the popup after creation
     pub grab: bool,
+}
+
+impl Hash for SctkPopupSettings {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
+    }
 }
 
 /// Positioner of a popup
