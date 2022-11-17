@@ -90,6 +90,9 @@ impl Color {
     }
 
     /// Converts the [`Color`] into its RGBA8 equivalent.
+    #[must_use]
+    #[allow(clippy::cast_sign_loss)]
+    #[allow(clippy::cast_possible_truncation)]
     pub fn into_rgba8(self) -> [u8; 4] {
         [
             (self.r * 255.0).round() as u8,

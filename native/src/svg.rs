@@ -39,7 +39,7 @@ impl Handle {
         Handle {
             id: hasher.finish(),
             data: Arc::new(data),
-            appearance: Default::default(),
+            appearance: Appearance::default(),
         }
     }
 

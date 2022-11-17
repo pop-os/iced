@@ -803,11 +803,11 @@ impl From<fn(&Theme) -> rule::Appearance> for Rule {
  */
 #[derive(Default, Clone, Copy)]
 pub enum Svg {
-    /// custom theme
-    Custom(fn(&Theme) -> svg::Appearance),
-    /// default
+    /// No filtering to the rendered SVG.
     #[default]
     Default,
+    /// Apply custom filtering to the SVG.
+    Custom(fn(&Theme) -> svg::Appearance),
 }
 
 impl svg::StyleSheet for Theme {

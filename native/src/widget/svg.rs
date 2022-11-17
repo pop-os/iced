@@ -49,17 +49,20 @@ where
 
     /// Creates a new [`Svg`] that will display the contents of the file at the
     /// provided path.
+    #[must_use]
     pub fn from_path(path: impl Into<PathBuf>) -> Self {
         Self::new(Handle::from_path(path))
     }
 
     /// Sets the width of the [`Svg`].
+    #[must_use]
     pub fn width(mut self, width: Length) -> Self {
         self.width = width;
         self
     }
 
     /// Sets the height of the [`Svg`].
+    #[must_use]
     pub fn height(mut self, height: Length) -> Self {
         self.height = height;
         self
@@ -68,6 +71,7 @@ where
     /// Sets the [`ContentFit`] of the [`Svg`].
     ///
     /// Defaults to [`ContentFit::Contain`]
+    #[must_use]
     pub fn content_fit(self, content_fit: ContentFit) -> Self {
         Self {
             content_fit,
@@ -76,6 +80,7 @@ where
     }
 
     /// Sets the style variant of this [`Svg`].
+    #[must_use]
     pub fn style(
         mut self,
         style: <Renderer::Theme as StyleSheet>::Style,
@@ -170,7 +175,7 @@ where
         {
             renderer.with_layer(bounds, render);
         } else {
-            render(renderer)
+            render(renderer);
         }
     }
 }

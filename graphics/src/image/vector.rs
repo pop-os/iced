@@ -7,6 +7,8 @@ use iced_native::Size;
 use std::collections::{HashMap, HashSet};
 use std::fs;
 
+type Fill = Option<[u8; 4]>;
+
 /// Entry in cache corresponding to an svg handle
 pub enum Svg {
     /// Parsed svg
@@ -33,9 +35,9 @@ impl Svg {
 #[derive(Debug)]
 pub struct Cache<T: Storage> {
     svgs: HashMap<u64, Svg>,
-    rasterized: HashMap<(u64, u32, u32, Option<[u8; 4]>), T::Entry>,
+    rasterized: HashMap<(u64, u32, u32, Fill), T::Entry>,
     svg_hits: HashSet<u64>,
-    rasterized_hits: HashSet<(u64, u32, u32, Option<[u8; 4]>)>,
+    rasterized_hits: HashSet<(u64, u32, u32, Fill)>,
 }
 
 impl<T: Storage> Cache<T> {
@@ -88,7 +90,8 @@ impl<T: Storage> Cache<T> {
             (scale * height).ceil() as u32,
         );
 
-        let fill = handle.appearance().fill.map(crate::Color::into_rgba8);
+        let appearance = handle.appearance();
+        let fill = appearance.fill.map(crate::Color::into_rgba8);
 
         // TODO: Optimize!
         // We currently rerasterize the SVG when its size changes. This is slow
@@ -123,8 +126,19 @@ impl<T: Storage> Cache<T> {
                     img.as_mut(),
                 )?;
 
-                let allocation =
-                    storage.upload(width, height, img.data(), state)?;
+                let mut rgba = img.take();
+
+                if let Some(color) = fill {
+                    rgba.chunks_exact_mut(4).for_each(|rgba| {
+                        if rgba[3] > 0 {
+                            rgba[0] = color[0];
+                            rgba[1] = color[1];
+                            rgba[2] = color[2];
+                        }
+                    });
+                }
+
+                let allocation = storage.upload(width, height, &rgba, state)?;
                 log::debug!("allocating {} {}x{}", id, width, height);
 
                 let _ = self.svg_hits.insert(id);

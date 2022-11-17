@@ -1,19 +1,21 @@
-//! Change the appearance of svg.
+//! Change the appearance of a svg.
 
 use iced_core::Color;
 
-/// appearance
+/// The appearance of a svg.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct Appearance {
-    /// fill
+    /// Changes the fill color
+    ///
+    /// Useful for coloring a symbolic icon.
     pub fill: Option<Color>,
 }
 
-/// svf stylesheet
+/// The stylesheet of a svg.
 pub trait StyleSheet {
-    /// style
+    /// The supported style of the [`StyleSheet`].
     type Style: Default + Copy;
 
-    /// appearance
+    /// Produces the [`Appearance`] of the svg.
     fn appearance(&self, style: Self::Style) -> Appearance;
 }
