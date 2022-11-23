@@ -12,7 +12,7 @@ keywords = ["gui", "ui", "graphics", "interface", "widgets"]
 categories = ["gui"]
 
 [features]
-default = ["wayland"]
+default = ["wgpu", "winit"]
 # Enables the `Image` widget
 image = ["iced_wgpu?/image", "iced_glow?/image", "image_rs"]
 # Enables the `Svg` widget
@@ -90,6 +90,7 @@ members = [
     "examples/svg_style",
     "examples/system_information",
     "examples/todos",
+    "examples/todos_sctk",
     "examples/tooltip",
     "examples/tour",
     "examples/url_handler",
@@ -104,8 +105,8 @@ iced_graphics = { version = "0.4", path = "graphics" }
 iced_winit = { version = "0.5", path = "winit", features = ["application"], optional = true }
 iced_glutin = { version = "0.4", path = "glutin", optional = true }
 iced_glow = { version = "0.4", path = "glow", optional = true }
-iced_sctk = { git = "https://github.com/pop-os/iced-sctk", optional = true }
-# iced_sctk = { path = "../fork/iced-sctk", optional = true }
+# iced_sctk = { git = "https://github.com/pop-os/iced-sctk", optional = true }
+iced_sctk = { path = "../fork/iced-sctk", optional = true }
 thiserror = "1.0"
 
 [dependencies.image_rs]

@@ -216,7 +216,7 @@ use iced_winit as runtime;
 #[cfg(all(feature = "glow", not(feature = "wayland")))]
 use iced_glutin as runtime;
 
-#[cfg(all(not(feature = "glow"), feature = "wgpu"))]
+#[cfg(all(not(feature = "iced_glow"), feature = "wgpu"))]
 use iced_wgpu as renderer;
 
 #[cfg(any(feature = "glow", feature = "wayland"))]

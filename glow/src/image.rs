@@ -13,7 +13,7 @@ use iced_graphics::image::raster;
 #[cfg(feature = "svg")]
 use iced_graphics::image::vector;
 
-use iced_graphics::layer;
+use iced_graphics::{layer, Rectangle};
 use iced_graphics::Size;
 
 use glow::HasContext;
@@ -144,11 +144,13 @@ impl Pipeline {
         transformation: Transformation,
         _scale_factor: f32,
         images: &[layer::Image],
+        layer_bounds: Rectangle<u32>,
     ) {
         unsafe {
             gl.use_program(Some(self.program));
             gl.bind_vertex_array(Some(self.vertex_array));
             gl.bind_buffer(glow::ARRAY_BUFFER, Some(self.vertex_buffer));
+            gl.enable(glow::SCISSOR_TEST);
         }
 
         #[cfg(feature = "image")]
@@ -187,14 +189,22 @@ impl Pipeline {
             };
 
             unsafe {
+                gl.scissor(
+                    layer_bounds.x as i32,
+                    layer_bounds.y as i32,
+                    layer_bounds.width as i32,
+                    layer_bounds.height as i32,
+                );
+
                 if let Some(storage::Entry { texture, .. }) = entry {
                     gl.bind_texture(glow::TEXTURE_2D, Some(*texture))
                 } else {
                     continue;
                 }
 
-                let translate = Transformation::translate(bounds.x, bounds.y);
-                let scale = Transformation::scale(bounds.width, bounds.height);
+
+                let translate = Transformation::translate(bounds.x as f32, bounds.y as f32);
+                let scale = Transformation::scale(bounds.width as f32, bounds.height as f32);
                 let transformation = transformation * translate * scale;
                 let matrix: [f32; 16] = transformation.into();
                 gl.uniform_matrix_4_f32_slice(
@@ -213,6 +223,7 @@ impl Pipeline {
             gl.bind_buffer(glow::ARRAY_BUFFER, None);
             gl.bind_vertex_array(None);
             gl.use_program(None);
+            gl.disable(glow::SCISSOR_TEST);
         }
     }
 
