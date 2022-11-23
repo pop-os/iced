@@ -145,6 +145,7 @@ impl Pipeline {
         _scale_factor: f32,
         images: &[layer::Image],
         layer_bounds: Rectangle<u32>,
+        target_height: u32,
     ) {
         unsafe {
             gl.use_program(Some(self.program));
@@ -189,11 +190,10 @@ impl Pipeline {
             };
 
             unsafe {
-                dbg!(bounds);
-                dbg!(layer_bounds);
                 gl.scissor(
-                    layer_bounds.x as i32,
-                    layer_bounds.y as i32,
+                    layer_bounds.x  as i32,
+                    (target_height - (layer_bounds.y + layer_bounds.height))
+                        as i32,
                     layer_bounds.width as i32,
                     layer_bounds.height as i32,
                 );

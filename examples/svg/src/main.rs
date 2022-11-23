@@ -31,9 +31,7 @@ impl Sandbox for Tiger {
         container(svg)
             .width(Length::Fill)
             .height(Length::Fill)
-            .padding(20)
-            .center_x()
-            .center_y()
+            .padding([10, 20, 30, 40])
             .into()
     }
     fn close_requested(&self, _: iced_sctk::application::SurfaceIdWrapper) -> <Self as Sandbox>::Message { todo!() }

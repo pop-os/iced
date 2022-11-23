@@ -129,7 +129,7 @@ impl Backend {
                 * Transformation::scale(scale_factor, scale_factor);
 
             self.image_pipeline
-                .draw(gl, scaled, scale_factor, &layer.images, bounds);
+                .draw(gl, scaled, scale_factor, &layer.images, bounds, target_height);
         }
 
         if !layer.text.is_empty() {
