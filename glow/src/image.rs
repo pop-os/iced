@@ -189,6 +189,8 @@ impl Pipeline {
             };
 
             unsafe {
+                dbg!(bounds);
+                dbg!(layer_bounds);
                 gl.scissor(
                     layer_bounds.x as i32,
                     layer_bounds.y as i32,
@@ -205,7 +207,7 @@ impl Pipeline {
 
                 let translate = Transformation::translate(bounds.x as f32, bounds.y as f32);
                 let scale = Transformation::scale(bounds.width as f32, bounds.height as f32);
-                let transformation = transformation * translate * scale;
+                let transformation = transformation * scale;
                 let matrix: [f32; 16] = transformation.into();
                 gl.uniform_matrix_4_f32_slice(
                     Some(&self.transform_location),
