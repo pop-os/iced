@@ -13,3 +13,5 @@ pub use settings::Settings;
 pub use crate::runtime::window::resize;
 #[cfg(not(any(target_arch = "wasm32", feature = "wayland")))]
 pub use crate::runtime::window::move_to;
+
+pub use iced_native::window::Id;
