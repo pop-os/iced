@@ -1,7 +1,7 @@
-use crate::backend::{CpuStorage, FONT_SYSTEM};
+use crate::backend::{Backend, CpuStorage, FONT_SYSTEM};
 
 use cosmic_text::{Attrs, AttrsList, BufferLine, SwashCache, SwashContent};
-use iced_graphics::{Background, Primitive, alignment::{Horizontal, Vertical}};
+use iced_graphics::{Background, Gradient, Primitive, alignment::{Horizontal, Vertical}};
 #[cfg(feature = "image")]
 use iced_graphics::image::raster;
 #[cfg(feature = "svg")]
@@ -100,19 +100,11 @@ impl Surface {
             ));
 
             renderer.with_primitives(|backend, primitives| {
-                let mut draw_cache = DrawCache {
-                    swash_cache: &mut backend.swash_cache,
-                    #[cfg(feature = "image")]
-                    raster_cache: backend.raster_cache.borrow_mut(),
-                    #[cfg(feature = "svg")]
-                    vector_cache: backend.vector_cache.borrow_mut(),
-                };
-
                 for primitive in primitives.iter() {
                     draw_primitive(
                         &mut draw_target,
                         &draw_options,
-                        &mut draw_cache,
+                        backend,
                         primitive
                     );
                 }
@@ -129,25 +121,17 @@ impl Surface {
     }
 }
 
-struct DrawCache<'a, 'b> {
-    swash_cache: &'a mut SwashCache<'b>,
-    #[cfg(feature = "image")]
-    raster_cache: RefMut<'a, raster::Cache<CpuStorage>>,
-    #[cfg(feature = "svg")]
-    vector_cache: RefMut<'a, vector::Cache<CpuStorage>>,
-}
-
-fn draw_primitive<'a, 'b>(
+fn draw_primitive(
     draw_target: &mut DrawTarget<&mut [u32]>,
     draw_options: &DrawOptions,
-    draw_cache: &mut DrawCache<'a, 'b>,
+    backend: &mut Backend,
     primitive: &Primitive
 ) {
     match primitive {
         Primitive::None => (),
         Primitive::Group { primitives } => {
             for child in primitives.iter() {
-                draw_primitive(draw_target, draw_options, draw_cache, child);
+                draw_primitive(draw_target, draw_options, backend, child);
             }
         },
         Primitive::Text {
@@ -266,7 +250,7 @@ fn draw_primitive<'a, 'b>(
                         None => cosmic_color,
                     };
 
-                    if let Some(image) = draw_cache.swash_cache.get_image(cache_key) {
+                    if let Some(image) = backend.swash_cache.get_image(cache_key) {
                         let x = line_x + x_int + image.placement.left;
                         let y = line_y + y_int + -image.placement.top;
 
@@ -452,6 +436,62 @@ fn draw_primitive<'a, 'b>(
                 draw_options
             );
         },
+        Primitive::Image {
+            handle,
+            bounds
+        } => {
+            #[cfg(feature = "image")]
+            match backend.raster_cache.upload(
+                handle,
+                &mut (),
+                &mut CpuStorage
+            ) {
+                Some(entry) => {
+                    draw_target.draw_image_with_size_at(
+                        bounds.width,
+                        bounds.height,
+                        bounds.x,
+                        bounds.y,
+                        &Image {
+                            width: entry.size.width as i32,
+                            height: entry.size.height as i32,
+                            data: &entry.data
+                        },
+                        draw_options
+                    );
+                },
+                None => (),
+            }
+        }
+        Primitive::Svg {
+            handle,
+            bounds
+        } => {
+            #[cfg(feature = "svg")]
+            match backend.vector_cache.upload(
+                handle,
+                [bounds.width, bounds.height],
+                1.0, /*TODO: what should scale be?*/
+                &mut (),
+                &mut CpuStorage
+            ) {
+                Some(entry) => {
+                    draw_target.draw_image_with_size_at(
+                        bounds.width,
+                        bounds.height,
+                        bounds.x,
+                        bounds.y,
+                        &Image {
+                            width: entry.size.width as i32,
+                            height: entry.size.height as i32,
+                            data: &entry.data
+                        },
+                        draw_options
+                    );
+                },
+                None => (),
+            }
+        },
         Primitive::Clip {
             bounds,
             content,
@@ -466,7 +506,7 @@ fn draw_primitive<'a, 'b>(
                     (bounds.y + bounds.height) as i32
                 )
             ));
-            draw_primitive(draw_target, draw_options, draw_cache, &content);
+            draw_primitive(draw_target, draw_options, backend, &content);
             draw_target.pop_clip();
         },
         Primitive::Translate {
@@ -477,78 +517,145 @@ fn draw_primitive<'a, 'b>(
                 translation.x,
                 translation.y
             ));
-            draw_primitive(draw_target, draw_options, draw_cache, &content);
+            draw_primitive(draw_target, draw_options, backend, &content);
             draw_target.set_transform(&Transform::identity());
+        },
+        Primitive::SolidMesh {
+            buffers,
+            size,
+        } => {
+            /*
+            draw_target.push_clip_rect(IntRect::new(
+                IntPoint::new(0, 0),
+                IntPoint::new(size.width as i32, size.height as i32),
+            ));
+            */
+
+            for indices in buffers.indices.chunks_exact(3) {
+                let a = &buffers.vertices[indices[0] as usize];
+                let b = &buffers.vertices[indices[1] as usize];
+                let c = &buffers.vertices[indices[2] as usize];
+
+                let mut pb = PathBuilder::new();
+                pb.move_to(a.position[0], a.position[1]);
+                pb.line_to(b.position[0], b.position[1]);
+                pb.line_to(c.position[0], c.position[1]);
+                pb.close();
+                let path = pb.finish();
+
+                fn undo_linear_component(linear: f32) -> f32 {
+                    if linear < 0.0031308 {
+                        linear * 12.92
+                    } else {
+                        1.055 * linear.powf(1.0 / 2.4) - 0.055
+                    }
+                }
+
+                fn linear_to_rgba8(color: &[f32; 4]) -> [u8; 4] {
+                    let r = undo_linear_component(color[0]) * 255.0;
+                    let g = undo_linear_component(color[1]) * 255.0;
+                    let b = undo_linear_component(color[2]) * 255.0;
+                    let a = color[3] * 255.0;
+                    [
+                        cmp::max(0, cmp::min(255, r as i32)) as u8,
+                        cmp::max(0, cmp::min(255, g as i32)) as u8,
+                        cmp::max(0, cmp::min(255, b as i32)) as u8,
+                        cmp::max(0, cmp::min(255, a as i32)) as u8,
+                    ]
+                }
+
+                let color = [
+                    (a.color[0] + b.color[0] + c.color[0]) / 3.0,
+                    (a.color[1] + b.color[1] + c.color[1]) / 3.0,
+                    (a.color[2] + b.color[2] + c.color[2]) / 3.0,
+                    (a.color[3] + b.color[3] + c.color[3]) / 3.0,
+                ];
+                let rgba8 = linear_to_rgba8(&color);
+
+                //TODO: use colors as gradient instead of taking average
+                let source = Source::Solid(SolidSource::from_unpremultiplied_argb(
+                    rgba8[3],
+                    rgba8[0],
+                    rgba8[1],
+                    rgba8[2],
+                ));
+
+                draw_target.fill(
+                    &path,
+                    &source,
+                    draw_options
+                );
+            }
+
+            /*
+            draw_target.pop_clip();
+            */
+        },
+        Primitive::GradientMesh {
+            buffers,
+            size,
+            gradient,
+        } => {
+            /*
+            draw_target.push_clip_rect(IntRect::new(
+                IntPoint::new(0, 0),
+                IntPoint::new(size.width as i32, size.height as i32),
+            ));
+            */
+
+            let source = match gradient {
+                Gradient::Linear(linear) => {
+                    let mut stops = Vec::new();
+                    for stop in linear.color_stops.iter() {
+                        let rgba8 = stop.color.into_rgba8();
+                        stops.push(raqote::GradientStop {
+                            position: stop.offset,
+                            color: raqote::Color::new(
+                                rgba8[3],
+                                rgba8[0],
+                                rgba8[1],
+                                rgba8[2]
+                            )
+                        });
+                    }
+                    Source::new_linear_gradient(
+                        raqote::Gradient { stops },
+                        raqote::Point::new(linear.start.x, linear.start.y),
+                        raqote::Point::new(linear.end.x, linear.end.y),
+                        raqote::Spread::Pad /*TODO: which pad?*/
+                    )
+                }
+            };
+
+            let mut pb = PathBuilder::new();
+
+            for indices in buffers.indices.chunks_exact(3) {
+                let a = &buffers.vertices[indices[0] as usize];
+                let b = &buffers.vertices[indices[1] as usize];
+                let c = &buffers.vertices[indices[2] as usize];
+
+                pb.move_to(a.position[0], a.position[1]);
+                pb.line_to(b.position[0], b.position[1]);
+                pb.line_to(c.position[0], c.position[1]);
+                pb.close();
+
+            }
+
+            let path = pb.finish();
+            draw_target.fill(
+                &path,
+                &source,
+                draw_options
+            );
+
+            /*
+            draw_target.pop_clip();
+            */
         },
         Primitive::Cached {
             cache
         } => {
-            draw_primitive(draw_target, draw_options, draw_cache, &cache);
-        },
-        #[cfg(feature = "image")]
-        Primitive::Image {
-            handle,
-            bounds
-        } => {
-            match draw_cache.raster_cache.upload(
-                handle,
-                &mut (),
-                &mut CpuStorage
-            ) {
-                Some(entry) => {
-                    draw_target.draw_image_with_size_at(
-                        bounds.width,
-                        bounds.height,
-                        bounds.x,
-                        bounds.y,
-                        &Image {
-                            width: entry.size.width as i32,
-                            height: entry.size.height as i32,
-                            data: &entry.data
-                        },
-                        draw_options
-                    );
-                },
-                None => {
-                    eprintln!("Unsupported SVG");
-                }
-            }
-        }
-        #[cfg(feature = "svg")]
-        Primitive::Svg {
-            handle,
-            bounds
-        } => {
-            let size = [bounds.width, bounds.height];
-            let scale = 1.0; //TODO
-            match draw_cache.vector_cache.upload(
-                handle,
-                size,
-                scale,
-                &mut (),
-                &mut CpuStorage
-            ) {
-                Some(entry) => {
-                    draw_target.draw_image_with_size_at(
-                        bounds.width,
-                        bounds.height,
-                        bounds.x,
-                        bounds.y,
-                        &Image {
-                            width: entry.size.width as i32,
-                            height: entry.size.height as i32,
-                            data: &entry.data
-                        },
-                        draw_options
-                    );
-                },
-                None => {
-                    eprintln!("Unsupported SVG");
-                }
-            }
-        }
-        _ => {
-            eprintln!("{:?}", primitive);
+            draw_primitive(draw_target, draw_options, backend, &cache);
         },
     }
 }
