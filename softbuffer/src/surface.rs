@@ -1,4 +1,4 @@
-use crate::renderer::CpuStorage;
+use crate::backend::{CpuStorage, FONT_SYSTEM};
 
 use cosmic_text::{Attrs, AttrsList, BufferLine, SwashCache, SwashContent};
 use iced_graphics::{Background, Primitive, alignment::{Horizontal, Vertical}};
@@ -99,22 +99,24 @@ impl Surface {
                 IntPoint::new(self.width as i32, self.height as i32)
             ));
 
-            let mut draw_cache = DrawCache {
-                swash_cache: &mut renderer.swash_cache,
-                #[cfg(feature = "image")]
-                raster_cache: renderer.raster_cache.borrow_mut(),
-                #[cfg(feature = "svg")]
-                vector_cache: renderer.vector_cache.borrow_mut(),
-            };
+            renderer.with_primitives(|backend, primitives| {
+                let mut draw_cache = DrawCache {
+                    swash_cache: &mut backend.swash_cache,
+                    #[cfg(feature = "image")]
+                    raster_cache: backend.raster_cache.borrow_mut(),
+                    #[cfg(feature = "svg")]
+                    vector_cache: backend.vector_cache.borrow_mut(),
+                };
 
-            for primitive in renderer.primitives.iter() {
-                draw_primitive(
-                    &mut draw_target,
-                    &draw_options,
-                    &mut draw_cache,
-                    primitive
-                );
-            }
+                for primitive in primitives.iter() {
+                    draw_primitive(
+                        &mut draw_target,
+                        &draw_options,
+                        &mut draw_cache,
+                        primitive
+                    );
+                }
+            });
 
             draw_target.pop_clip();
         }
@@ -185,7 +187,7 @@ fn draw_primitive<'a, 'b>(
 
             //TODO: improve implementation
             let mut buffer_line = BufferLine::new(content, AttrsList::new(Attrs::new()));
-            let layout = buffer_line.layout(&crate::renderer::FONT_SYSTEM, *size as i32, bounds.width as i32);
+            let layout = buffer_line.layout(&FONT_SYSTEM, *size as i32, bounds.width as i32);
 
             //TODO: how to properly calculate line height?
             let line_height = *size as i32 * 5 / 4;
@@ -477,6 +479,11 @@ fn draw_primitive<'a, 'b>(
             ));
             draw_primitive(draw_target, draw_options, draw_cache, &content);
             draw_target.set_transform(&Transform::identity());
+        },
+        Primitive::Cached {
+            cache
+        } => {
+            draw_primitive(draw_target, draw_options, draw_cache, &cache);
         },
         #[cfg(feature = "image")]
         Primitive::Image {

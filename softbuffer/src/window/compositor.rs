@@ -1,4 +1,4 @@
-use crate::surface::Surface;
+use crate::{Backend, surface::Surface};
 
 use iced_graphics::{
     Color, Error, Viewport,
@@ -32,7 +32,7 @@ impl<Theme> compositor::Compositor for Compositor<Theme> {
             theme: PhantomData,
         };
 
-        let renderer = Self::Renderer::new();
+        let renderer = Self::Renderer::new(Backend::new());
 
         Ok((compositor, renderer))
     }

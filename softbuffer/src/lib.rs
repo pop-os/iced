@@ -4,8 +4,11 @@
 )]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
-pub mod renderer;
-pub use self::renderer::Renderer;
+mod backend;
+pub use self::backend::Backend;
+
+//pub mod renderer;
+//pub use self::renderer::Renderer;
 
 pub mod settings;
 pub use self::settings::Settings;
@@ -13,3 +16,6 @@ pub use self::settings::Settings;
 pub(crate) mod surface;
 
 pub mod window;
+
+pub type Renderer<Theme = iced_native::Theme> =
+    iced_graphics::Renderer<Backend, Theme>;

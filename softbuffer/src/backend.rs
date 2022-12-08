@@ -84,99 +84,33 @@ impl storage::Storage for CpuStorage {
     }
 }
 
-pub struct Renderer<T = iced_native::Theme> {
+pub struct Backend {
+    pub(crate) swash_cache: SwashCache<'static>,
     #[cfg(feature = "image")]
     pub(crate) raster_cache: RefCell<raster::Cache<CpuStorage>>,
     #[cfg(feature = "svg")]
     pub(crate) vector_cache: RefCell<vector::Cache<CpuStorage>>,
-    pub(crate) swash_cache: SwashCache<'static>,
-    pub(crate) primitives: Vec<Primitive>,
-    pub(crate) theme: PhantomData<T>,
 }
 
-impl<T> Renderer<T> {
+impl Backend {
     pub(crate) fn new() -> Self {
         Self {
+            swash_cache: SwashCache::new(&FONT_SYSTEM),
             #[cfg(feature = "image")]
             raster_cache: RefCell::new(raster::Cache::default()),
             #[cfg(feature = "svg")]
             vector_cache: RefCell::new(vector::Cache::default()),
-            swash_cache: SwashCache::new(&FONT_SYSTEM),
-            primitives: Vec::new(),
-            theme: PhantomData,
         }
     }
 }
 
-impl<T> iced_native::Renderer for Renderer<T> {
-    type Theme = T;
-
-    fn layout<'a, Message>(
-        &mut self,
-        element: &Element<'a, Message, Self>,
-        limits: &layout::Limits,
-    ) -> layout::Node {
-        element.as_widget().layout(self, limits)
-    }
-
-    fn with_layer(&mut self, bounds: Rectangle, f: impl FnOnce(&mut Self)) {
-        let current_primitives = std::mem::take(&mut self.primitives);
-
-        f(self);
-
-        let layer_primitives =
-            std::mem::replace(&mut self.primitives, current_primitives);
-
-        self.primitives.push(Primitive::Clip {
-            bounds,
-            content: Box::new(Primitive::Group {
-                primitives: layer_primitives,
-            }),
-        });
-    }
-
-    fn with_translation(
-        &mut self,
-        translation: Vector,
-        f: impl FnOnce(&mut Self),
-    ) {
-        let current_primitives = std::mem::take(&mut self.primitives);
-
-        f(self);
-
-        let layer_primitives =
-            std::mem::replace(&mut self.primitives, current_primitives);
-
-        self.primitives.push(Primitive::Translate {
-            translation,
-            content: Box::new(Primitive::Group {
-                primitives: layer_primitives,
-            }),
-        });
-    }
-
-    fn fill_quad(
-        &mut self,
-        quad: renderer::Quad,
-        background: impl Into<Background>,
-    ) {
-        self.primitives.push(Primitive::Quad {
-            bounds: quad.bounds,
-            background: background.into(),
-            border_radius: quad.border_radius,
-            border_width: quad.border_width,
-            border_color: quad.border_color,
-        });
-    }
-
-    fn clear(&mut self) {
-        self.primitives.clear();
+impl iced_graphics::backend::Backend for Backend {
+    fn trim_measurements(&mut self) {
+        // no-op
     }
 }
 
-impl<T> text::Renderer for Renderer<T> {
-    type Font = Font;
-
+impl iced_graphics::backend::Text for Backend {
     const ICON_FONT: Font = Font::Default;
     const CHECKMARK_ICON: char = '✓';
     const ARROW_DOWN_ICON: char = '⌄';
@@ -189,7 +123,7 @@ impl<T> text::Renderer for Renderer<T> {
     fn measure(
         &self,
         content: &str,
-        size: u16,
+        size: f32,
         font: Font,
         bounds: Size,
     ) -> (f32, f32) {
@@ -198,7 +132,7 @@ impl<T> text::Renderer for Renderer<T> {
         let layout = buffer_line.layout(&FONT_SYSTEM, size as i32, bounds.width as i32);
 
         //TODO: how to properly calculate line height?
-        let line_height = size * 5 / 4;
+        let line_height = size as i32 * 5 / 4;
         let mut width = 0.0;
         let mut height = 0.0;
         for layout_line in layout.iter() {
@@ -302,46 +236,24 @@ impl<T> text::Renderer for Renderer<T> {
             None => None,
         }
     }
-
-    fn fill_text(&mut self, text: Text<'_, Self::Font>) {
-        self.primitives.push(Primitive::Text {
-            content: text.content.to_string(),
-            bounds: text.bounds,
-            size: text.size,
-            color: text.color,
-            font: text.font,
-            horizontal_alignment: text.horizontal_alignment,
-            vertical_alignment: text.vertical_alignment,
-        });
-    }
 }
 
 #[cfg(feature = "image")]
-impl<T> image::Renderer for Renderer<T> {
-    type Handle = image::Handle;
-
+impl iced_graphics::backend::Image for Backend {
     fn dimensions(&self, handle: &image::Handle) -> Size<u32> {
         let mut cache = self.raster_cache.borrow_mut();
         let memory = cache.load(handle);
 
         memory.dimensions()
     }
-
-    fn draw(&mut self, handle: image::Handle, bounds: Rectangle) {
-        self.primitives.push(Primitive::Image { handle, bounds })
-    }
 }
 
 #[cfg(feature = "svg")]
-impl<T> svg::Renderer for Renderer<T> {
-    fn dimensions(&self, handle: &svg::Handle) -> Size<u32> {
+impl iced_graphics::backend::Svg for Backend {
+    fn viewport_dimensions(&self, handle: &svg::Handle) -> Size<u32> {
         let mut cache = self.vector_cache.borrow_mut();
         let svg = cache.load(handle);
 
         svg.viewport_dimensions()
-    }
-
-    fn draw(&mut self, handle: svg::Handle, bounds: Rectangle) {
-        self.primitives.push(Primitive::Svg { handle, bounds })
     }
 }
