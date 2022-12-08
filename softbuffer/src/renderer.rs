@@ -227,8 +227,80 @@ impl<T> text::Renderer for Renderer<T> {
         point: Point,
         nearest_only: bool,
     ) -> Option<text::Hit> {
-        //TODO: implement hit test
-        None
+        //TODO: improve implementation
+        let mut buffer_line = BufferLine::new(content, AttrsList::new(Attrs::new()));
+        let layout = buffer_line.layout(&FONT_SYSTEM, size as i32, bounds.width as i32);
+
+        //TODO: how to properly calculate line height?
+        let line_height = size as i32 * 5 / 4;
+
+        // Find exact hit
+        if ! nearest_only {
+            let mut line_y = 0.0;
+            for layout_line in layout.iter() {
+                if point.y > line_y && point.y < line_y + line_height as f32 {
+                    for glyph in layout_line.glyphs.iter() {
+                        let (min_x, max_x) = if glyph.rtl {
+                            (glyph.x - glyph.w, glyph.x)
+                        } else {
+                            (glyph.x, glyph.x + glyph.w)
+                        };
+
+                        if point.x > min_x && point.x < max_x {
+                            println!("EXACT HIT {:?}", glyph);
+                            return Some(text::Hit::CharOffset(
+                                glyph.start
+                            ));
+                        }
+                    }
+                }
+
+                line_y += line_height as f32;
+            }
+        }
+
+        // Find nearest
+        let mut nearest_opt = None;
+        let mut line_y = 0.0;
+        for layout_line in layout.iter() {
+            let center_y = line_y + line_height as f32 / 2.0;
+
+            for glyph in layout_line.glyphs.iter() {
+                let (min_x, max_x) = if glyph.rtl {
+                    (glyph.x - glyph.w, glyph.x)
+                } else {
+                    (glyph.x, glyph.x + glyph.w)
+                };
+
+                let center_x = (min_x + max_x) / 2.0;
+                let center = Point::new(center_x, center_y);
+
+                let distance = center.distance(point);
+                let vector = point - center;
+                nearest_opt = match nearest_opt {
+                    Some((nearest_offset, nearest_vector, nearest_distance)) => {
+                        if distance < nearest_distance {
+                            Some((glyph.start, vector, distance))
+                        } else {
+                            Some((nearest_offset, nearest_vector, nearest_distance))
+                        }
+                    },
+                    None => {
+                        Some((glyph.start, vector, distance))
+                    }
+                };
+            }
+
+            line_y += line_height as f32;
+        }
+
+        match nearest_opt {
+            Some((offset, vector, distance)) => Some(text::Hit::NearestCharOffset(
+                offset,
+                vector
+            )),
+            None => None,
+        }
     }
 
     fn fill_text(&mut self, text: Text<'_, Self::Font>) {

@@ -183,12 +183,12 @@ fn draw_primitive<'a, 'b>(
             );
             */
 
-            //TODO: how to properly calculate line height?
-            let line_height = *size as i32 * 5 / 4;
-
+            //TODO: improve implementation
             let mut buffer_line = BufferLine::new(content, AttrsList::new(Attrs::new()));
             let layout = buffer_line.layout(&crate::renderer::FONT_SYSTEM, *size as i32, bounds.width as i32);
 
+            //TODO: how to properly calculate line height?
+            let line_height = *size as i32 * 5 / 4;
             let mut line_y = match vertical_alignment {
                 Vertical::Top => bounds.y as i32 + *size as i32,
                 Vertical::Center => {
