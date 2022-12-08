@@ -187,8 +187,7 @@ fn draw_primitive<'a, 'b>(
             let line_height = *size as i32 * 5 / 4;
 
             let mut buffer_line = BufferLine::new(content, AttrsList::new(Attrs::new()));
-            let buffer_width = i32::max_value(); // TODO: allow wrapping
-            let layout = buffer_line.layout(&crate::renderer::FONT_SYSTEM, *size as i32, buffer_width);
+            let layout = buffer_line.layout(&crate::renderer::FONT_SYSTEM, *size as i32, bounds.width as i32);
 
             let mut line_y = match vertical_alignment {
                 Vertical::Top => bounds.y as i32 + *size as i32,
@@ -202,43 +201,45 @@ fn draw_primitive<'a, 'b>(
                 },
             };
 
+            let mut line_width = 0.0;
             for layout_line in layout.iter() {
-                let mut line_width = 0.0;
                 for glyph in layout_line.glyphs.iter() {
                     let max_x = if glyph.rtl {
                         glyph.x - glyph.w
                     } else {
                         glyph.x + glyph.w
                     };
-                    if max_x > line_width {
-                        line_width = max_x;
+                    if max_x + 1.0 > line_width {
+                        line_width = max_x + 1.0;
                     }
                 }
+            }
 
-                let line_x = match horizontal_alignment {
-                    Horizontal::Left => bounds.x as i32,
-                    Horizontal::Center => {
-                        //TODO: why is this so weird?
-                        bounds.x as i32 - (line_width / 2.0) as i32
-                    },
-                    Horizontal::Right => {
-                        //TODO: why is this so weird?
-                        bounds.x as i32 - line_width as i32
-                    }
-                };
+            let line_x = match horizontal_alignment {
+                Horizontal::Left => bounds.x as i32,
+                Horizontal::Center => {
+                    //TODO: why is this so weird?
+                    bounds.x as i32 - (line_width / 2.0) as i32
+                },
+                Horizontal::Right => {
+                    //TODO: why is this so weird?
+                    bounds.x as i32 - line_width as i32
+                }
+            };
 
-                /*
-                eprintln!(
-                    "{:?}: {}, {}, {}, {} in {:?} from {:?}, {:?}",
-                    content,
-                    line_x, line_y,
-                    line_width, line_height,
-                    bounds,
-                    horizontal_alignment,
-                    vertical_alignment
-                );
-                */
+            /*
+            eprintln!(
+                "{:?}: {}, {}, {}, {} in {:?} from {:?}, {:?}",
+                content,
+                line_x, line_y,
+                line_width, line_height,
+                bounds,
+                horizontal_alignment,
+                vertical_alignment
+            );
+            */
 
+            for layout_line in layout.iter() {
                 /*
                 let mut pb = PathBuilder::new();
                 pb.move_to(line_x as f32, line_y as f32 - *size);

@@ -195,8 +195,7 @@ impl<T> text::Renderer for Renderer<T> {
     ) -> (f32, f32) {
         //TODO: improve implementation
         let mut buffer_line = BufferLine::new(content, AttrsList::new(Attrs::new()));
-        let buffer_width = i32::max_value(); // TODO: allow wrapping
-        let layout = buffer_line.layout(&FONT_SYSTEM, size as i32, buffer_width);
+        let layout = buffer_line.layout(&FONT_SYSTEM, size as i32, bounds.width as i32);
 
         //TODO: how to properly calculate line height?
         let line_height = size * 5 / 4;
@@ -209,8 +208,8 @@ impl<T> text::Renderer for Renderer<T> {
                 } else {
                     glyph.x + glyph.w
                 };
-                if max_x > width {
-                    width = max_x;
+                if max_x + 1.0 > width {
+                    width = max_x + 1.0;
                 }
             }
 
