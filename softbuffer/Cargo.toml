@@ -12,7 +12,7 @@ cosmic-text = { git = "https://github.com/pop-os/cosmic-text.git" }
 lazy_static = "1.4"
 log = "0.4"
 raw-window-handle = "0.5"
-raqote = "0.8"
+raqote = { version = "0.8", default-features = false }
 # Patched version for raw-window-handle 0.5 and Redox support
 softbuffer = { git = "https://github.com/jackpot51/softbuffer", branch = "redox-0.1.1" }
 
