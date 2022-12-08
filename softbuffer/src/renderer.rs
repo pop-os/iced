@@ -117,6 +117,8 @@ impl<T> text::Renderer for Renderer<T> {
         let buffer_width = i32::max_value(); // TODO: allow wrapping
         let layout = buffer_line.layout(&FONT_SYSTEM, size as i32, buffer_width);
 
+        //TODO: how to properly calculate line height?
+        let line_height = size * 5 / 4;
         let mut width = 0.0;
         let mut height = 0.0;
         for layout_line in layout.iter() {
@@ -131,7 +133,7 @@ impl<T> text::Renderer for Renderer<T> {
                 }
             }
 
-            height += size as f32;
+            height += line_height as f32;
         }
         (width, height)
     }

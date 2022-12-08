@@ -85,9 +85,17 @@ impl Surface {
 
             let draw_options = DrawOptions::new();
 
+            // Having at least one clip fixes some font rendering issues
+            draw_target.push_clip_rect(IntRect::new(
+                IntPoint::new(0, 0),
+                IntPoint::new(self.width as i32, self.height as i32)
+            ));
+
             for primitive in renderer.primitives.iter() {
                 draw_primitive(&mut draw_target, &draw_options, &mut renderer.swash_cache, primitive);
             }
+
+            draw_target.pop_clip();
         }
 
         self.context.set_buffer(
@@ -115,7 +123,6 @@ fn draw_primitive(draw_target: &mut DrawTarget<&mut [u32]>, draw_options: &DrawO
             horizontal_alignment,
             vertical_alignment,
         } => {
-            let rect = bounds.snap();
             let cosmic_color = {
                 let rgba8 = color.into_rgba8();
                 cosmic_text::Color::rgba(
@@ -125,21 +132,26 @@ fn draw_primitive(draw_target: &mut DrawTarget<&mut [u32]>, draw_options: &DrawO
                     rgba8[3],
                 )
             };
+
+            //TODO: how to properly calculate line height?
+            let line_height = *size as i32 * 5 / 4;
+
             let mut buffer_line = BufferLine::new(content, AttrsList::new(Attrs::new()));
             let buffer_width = i32::max_value(); // TODO: allow wrapping
             let layout = buffer_line.layout(&crate::renderer::FONT_SYSTEM, *size as i32, buffer_width);
 
             let mut line_y = match vertical_alignment {
-                Vertical::Top => rect.y as i32 + *size as i32,
+                Vertical::Top => bounds.y as i32 + *size as i32,
                 Vertical::Center => {
-                    let center = (rect.y + rect.height / 2) as i32;
-                    center + (*size as i32)/2 - *size as i32 * layout.len() as i32 / 2
+                    let center = (bounds.y + bounds.height / 2.0) as i32;
+                    center + *size as i32/2 - line_height * layout.len() as i32 / 2
                 }
                 Vertical::Bottom => {
-                    let bottom = (rect.y + rect.height) as i32;
-                    bottom - *size as i32 * layout.len() as i32
+                    let bottom = (bounds.y + bounds.height) as i32;
+                    bottom + *size as i32 - line_height * layout.len() as i32
                 },
             };
+            println!("{:?}: {:?} {:?} = {}", content, bounds, vertical_alignment, line_y);
 
             for layout_line in layout.iter() {
                 let mut line_width = 0.0;
@@ -155,13 +167,13 @@ fn draw_primitive(draw_target: &mut DrawTarget<&mut [u32]>, draw_options: &DrawO
                 }
 
                 let line_x = match horizontal_alignment {
-                    Horizontal::Left => rect.x as i32,
+                    Horizontal::Left => bounds.x as i32,
                     Horizontal::Center => {
-                        let center = (rect.x + rect.width / 2) as i32;
+                        let center = (bounds.x + bounds.width / 2.0) as i32;
                         center - line_width as i32 / 2
                     },
                     Horizontal::Right => {
-                        let right = (rect.x + rect.width) as i32;
+                        let right = (bounds.x + bounds.width) as i32;
                         right - line_width as i32
                     }
                 };
@@ -235,7 +247,7 @@ fn draw_primitive(draw_target: &mut DrawTarget<&mut [u32]>, draw_options: &DrawO
                     }
                 }
 
-                line_y += *size as i32;
+                line_y += line_height;
             }
         },
         Primitive::Quad {
