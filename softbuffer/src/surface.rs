@@ -14,6 +14,7 @@ use raw_window_handle::{
     RawWindowHandle
 };
 use softbuffer::GraphicsContext;
+use std::cmp;
 use std::cell::RefMut;
 use std::slice;
 
@@ -351,6 +352,15 @@ fn draw_primitive<'a, 'b>(
             border_width,
             border_color,
         } => {
+            // Ensure radius is not too large
+            let mut border_radius = *border_radius;
+            if border_radius > bounds.width / 2.0 {
+                border_radius = bounds.width / 2.0;
+            }
+            if border_radius > bounds.height / 2.0 {
+                border_radius = bounds.height / 2.0;
+            }
+
             let mut pb = PathBuilder::new();
 
             // Move to top left corner at start of clockwise arc
@@ -358,7 +368,7 @@ fn draw_primitive<'a, 'b>(
             pb.arc(
                 bounds.x + border_radius,
                 bounds.y + border_radius,
-                *border_radius,
+                border_radius,
                 180.0f32.to_radians(),
                 90.0f32.to_radians()
             );
@@ -368,7 +378,7 @@ fn draw_primitive<'a, 'b>(
             pb.arc(
                 bounds.x + bounds.width - border_radius,
                 bounds.y + border_radius,
-                *border_radius,
+                border_radius,
                 270.0f32.to_radians(),
                 90.0f32.to_radians()
             );
@@ -378,7 +388,7 @@ fn draw_primitive<'a, 'b>(
             pb.arc(
                 bounds.x + bounds.width - border_radius,
                 bounds.y + bounds.height - border_radius,
-                *border_radius,
+                border_radius,
                 0.0f32.to_radians(),
                 90.0f32.to_radians()
             );
@@ -388,7 +398,7 @@ fn draw_primitive<'a, 'b>(
             pb.arc(
                 bounds.x + border_radius,
                 bounds.y + bounds.height - border_radius,
-                *border_radius,
+                border_radius,
                 90.0f32.to_radians(),
                 90.0f32.to_radians()
             );

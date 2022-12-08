@@ -1,5 +1,4 @@
 use cosmic_text::{Attrs, AttrsList, BufferLine, FontSystem, SwashCache};
-use iced_graphics::font;
 #[cfg(feature = "image")]
 use iced_graphics::image::raster;
 use iced_graphics::image::storage;
@@ -178,9 +177,9 @@ impl<T> iced_native::Renderer for Renderer<T> {
 impl<T> text::Renderer for Renderer<T> {
     type Font = Font;
 
-    const ICON_FONT: Font = font::ICONS;
-    const CHECKMARK_ICON: char = font::CHECKMARK_ICON;
-    const ARROW_DOWN_ICON: char = font::ARROW_DOWN_ICON;
+    const ICON_FONT: Font = Font::Default;
+    const CHECKMARK_ICON: char = '✓';
+    const ARROW_DOWN_ICON: char = '▼';
 
     fn default_size(&self) -> u16 {
         //TODO: get from settings
