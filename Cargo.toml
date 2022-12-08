@@ -23,6 +23,8 @@ canvas = ["iced_graphics/canvas"]
 qr_code = ["iced_graphics/qr_code"]
 # Enables the `iced_wgpu` renderer
 wgpu = ["iced_wgpu"]
+# Enables the `iced_softbuffer` renderer
+softbuffer = ["iced_softbuffer"]
 # Enables using system fonts
 default_system_font = ["iced_wgpu?/default_system_font", "iced_glow?/default_system_font"]
 # Enables the `iced_glow` renderer. Overrides `iced_wgpu`
@@ -55,6 +57,7 @@ members = [
     "glutin",
     "lazy",
     "native",
+    "softbuffer",
     "style",
     "wgpu",
     "winit",
@@ -107,6 +110,7 @@ iced_glutin = { version = "0.4", path = "glutin", optional = true }
 iced_glow = { version = "0.4", path = "glow", optional = true }
 iced_sctk = { git = "https://github.com/pop-os/iced-sctk", optional = true }
 # iced_sctk = { path = "../fork/iced-sctk", optional = true }
+iced_softbuffer = { version = "0.1", path = "softbuffer", optional = true }
 thiserror = "1.0"
 
 [dependencies.image_rs]
