@@ -441,7 +441,7 @@ fn draw_primitive(
             bounds
         } => {
             #[cfg(feature = "image")]
-            match backend.raster_cache.upload(
+            match backend.raster_cache.borrow_mut().upload(
                 handle,
                 &mut (),
                 &mut CpuStorage
@@ -468,7 +468,7 @@ fn draw_primitive(
             bounds
         } => {
             #[cfg(feature = "svg")]
-            match backend.vector_cache.upload(
+            match backend.vector_cache.borrow_mut().upload(
                 handle,
                 [bounds.width, bounds.height],
                 1.0, /*TODO: what should scale be?*/
