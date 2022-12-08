@@ -179,7 +179,7 @@ impl<T> text::Renderer for Renderer<T> {
 
     const ICON_FONT: Font = Font::Default;
     const CHECKMARK_ICON: char = '✓';
-    const ARROW_DOWN_ICON: char = '▼';
+    const ARROW_DOWN_ICON: char = '⌄';
 
     fn default_size(&self) -> u16 {
         //TODO: get from settings
