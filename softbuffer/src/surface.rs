@@ -1,6 +1,12 @@
+use crate::renderer::CpuStorage;
+
 use cosmic_text::{Attrs, AttrsList, BufferLine, SwashCache, SwashContent};
 use iced_graphics::{Background, Primitive, alignment::{Horizontal, Vertical}};
-use raqote::{DrawOptions, DrawTarget, Image, IntPoint, IntRect, PathBuilder, SolidSource, Source, Transform};
+#[cfg(feature = "image")]
+use iced_graphics::image::raster;
+#[cfg(feature = "svg")]
+use iced_graphics::image::vector;
+use raqote::{DrawOptions, DrawTarget, Image, IntPoint, IntRect, PathBuilder, SolidSource, StrokeStyle, Source, Transform};
 use raw_window_handle::{
     HasRawDisplayHandle,
     HasRawWindowHandle,
@@ -8,7 +14,8 @@ use raw_window_handle::{
     RawWindowHandle
 };
 use softbuffer::GraphicsContext;
-
+use std::cell::RefMut;
+use std::slice;
 
 // Wrapper to get around lifetimes in GraphicsContext
 #[derive(Debug)]
@@ -91,8 +98,21 @@ impl Surface {
                 IntPoint::new(self.width as i32, self.height as i32)
             ));
 
+            let mut draw_cache = DrawCache {
+                swash_cache: &mut renderer.swash_cache,
+                #[cfg(feature = "image")]
+                raster_cache: renderer.raster_cache.borrow_mut(),
+                #[cfg(feature = "svg")]
+                vector_cache: renderer.vector_cache.borrow_mut(),
+            };
+
             for primitive in renderer.primitives.iter() {
-                draw_primitive(&mut draw_target, &draw_options, &mut renderer.swash_cache, primitive);
+                draw_primitive(
+                    &mut draw_target,
+                    &draw_options,
+                    &mut draw_cache,
+                    primitive
+                );
             }
 
             draw_target.pop_clip();
@@ -106,12 +126,25 @@ impl Surface {
     }
 }
 
-fn draw_primitive(draw_target: &mut DrawTarget<&mut [u32]>, draw_options: &DrawOptions, swash_cache: &mut SwashCache, primitive: &Primitive) {
+struct DrawCache<'a, 'b> {
+    swash_cache: &'a mut SwashCache<'b>,
+    #[cfg(feature = "image")]
+    raster_cache: RefMut<'a, raster::Cache<CpuStorage>>,
+    #[cfg(feature = "svg")]
+    vector_cache: RefMut<'a, vector::Cache<CpuStorage>>,
+}
+
+fn draw_primitive<'a, 'b>(
+    draw_target: &mut DrawTarget<&mut [u32]>,
+    draw_options: &DrawOptions,
+    draw_cache: &mut DrawCache<'a, 'b>,
+    primitive: &Primitive
+) {
     match primitive {
         Primitive::None => (),
         Primitive::Group { primitives } => {
             for child in primitives.iter() {
-                draw_primitive(draw_target, draw_options, swash_cache, child);
+                draw_primitive(draw_target, draw_options, draw_cache, child);
             }
         },
         Primitive::Text {
@@ -133,6 +166,22 @@ fn draw_primitive(draw_target: &mut DrawTarget<&mut [u32]>, draw_options: &DrawO
                 )
             };
 
+            /*
+            let mut pb = PathBuilder::new();
+            pb.move_to(bounds.x, bounds.y);
+            pb.line_to(bounds.x + bounds.width, bounds.y);
+            pb.line_to(bounds.x + bounds.width, bounds.y + bounds.height);
+            pb.line_to(bounds.x, bounds.y + bounds.height);
+            pb.close();
+            let path = pb.finish();
+            draw_target.stroke(
+                &path,
+                &Source::Solid(SolidSource::from_unpremultiplied_argb(0xFF, 0, 0xFF, 0)),
+                &StrokeStyle::default(),
+                draw_options
+            );
+            */
+
             //TODO: how to properly calculate line height?
             let line_height = *size as i32 * 5 / 4;
 
@@ -143,12 +192,12 @@ fn draw_primitive(draw_target: &mut DrawTarget<&mut [u32]>, draw_options: &DrawO
             let mut line_y = match vertical_alignment {
                 Vertical::Top => bounds.y as i32 + *size as i32,
                 Vertical::Center => {
-                    let center = (bounds.y + bounds.height / 2.0) as i32;
-                    center + *size as i32/2 - line_height * layout.len() as i32 / 2
+                    //TODO: why is this so weird?
+                    bounds.y as i32 + *size as i32 - line_height * layout.len() as i32 / 2
                 }
                 Vertical::Bottom => {
-                    let bottom = (bounds.y + bounds.height) as i32;
-                    bottom + *size as i32 - line_height * layout.len() as i32
+                    //TODO: why is this so weird?
+                    bounds.y as i32 + *size as i32 - line_height * layout.len() as i32
                 },
             };
 
@@ -168,14 +217,42 @@ fn draw_primitive(draw_target: &mut DrawTarget<&mut [u32]>, draw_options: &DrawO
                 let line_x = match horizontal_alignment {
                     Horizontal::Left => bounds.x as i32,
                     Horizontal::Center => {
-                        let center = (bounds.x + bounds.width / 2.0) as i32;
-                        center - line_width as i32 / 2
+                        //TODO: why is this so weird?
+                        bounds.x as i32 - (line_width / 2.0) as i32
                     },
                     Horizontal::Right => {
-                        let right = (bounds.x + bounds.width) as i32;
-                        right - line_width as i32
+                        //TODO: why is this so weird?
+                        bounds.x as i32 - line_width as i32
                     }
                 };
+
+                /*
+                eprintln!(
+                    "{:?}: {}, {}, {}, {} in {:?} from {:?}, {:?}",
+                    content,
+                    line_x, line_y,
+                    line_width, line_height,
+                    bounds,
+                    horizontal_alignment,
+                    vertical_alignment
+                );
+                */
+
+                /*
+                let mut pb = PathBuilder::new();
+                pb.move_to(line_x as f32, line_y as f32 - *size);
+                pb.line_to(line_x as f32 + line_width, line_y as f32 - *size);
+                pb.line_to(line_x as f32 + line_width, line_y as f32 + line_height as f32 - *size);
+                pb.line_to(line_x as f32, line_y as f32 + line_height as f32 - *size);
+                pb.close();
+                let path = pb.finish();
+                draw_target.stroke(
+                    &path,
+                    &Source::Solid(SolidSource::from_unpremultiplied_argb(0xFF, 0, 0, 0xFF)),
+                    &StrokeStyle::default(),
+                    draw_options
+                );
+                */
 
                 for glyph in layout_line.glyphs.iter() {
                     let (cache_key, x_int, y_int) = (glyph.cache_key, glyph.x_int, glyph.y_int);
@@ -185,11 +262,29 @@ fn draw_primitive(draw_target: &mut DrawTarget<&mut [u32]>, draw_options: &DrawO
                         None => cosmic_color,
                     };
 
-                    if let Some(image) = swash_cache.get_image(cache_key) {
+                    if let Some(image) = draw_cache.swash_cache.get_image(cache_key) {
                         let x = line_x + x_int + image.placement.left;
                         let y = line_y + y_int + -image.placement.top;
 
-                        let mut image_data = Vec::new();
+                        /*
+                        let mut pb = PathBuilder::new();
+                        pb.move_to(x as f32, y as f32);
+                        pb.line_to(x as f32 + image.placement.width as f32, y as f32);
+                        pb.line_to(x as f32 + image.placement.width as f32, y as f32 + image.placement.height as f32);
+                        pb.line_to(x as f32, y as f32 + image.placement.height as f32);
+                        pb.close();
+                        let path = pb.finish();
+                        draw_target.stroke(
+                            &path,
+                            &Source::Solid(SolidSource::from_unpremultiplied_argb(0xFF, 0xFF, 0, 0)),
+                            &StrokeStyle::default(),
+                            draw_options
+                        );
+                        */
+
+                        let mut image_data = Vec::with_capacity(
+                            image.placement.height as usize * image.placement.width as usize
+                        );
                         match image.content {
                             SwashContent::Mask => {
                                 let mut i = 0;
@@ -322,8 +417,8 @@ fn draw_primitive(draw_target: &mut DrawTarget<&mut [u32]>, draw_options: &DrawO
 
             let border_source = {
                 let rgba = border_color.into_rgba8();
-                raqote::Source::Solid(
-                    raqote::SolidSource::from_unpremultiplied_argb(
+                Source::Solid(
+                    SolidSource::from_unpremultiplied_argb(
                         rgba[3],
                         rgba[0],
                         rgba[1],
@@ -332,7 +427,7 @@ fn draw_primitive(draw_target: &mut DrawTarget<&mut [u32]>, draw_options: &DrawO
                 )
             };
 
-            let style = raqote::StrokeStyle {
+            let style = StrokeStyle {
                 width: *border_width,
                 ..Default::default()
             };
@@ -358,7 +453,7 @@ fn draw_primitive(draw_target: &mut DrawTarget<&mut [u32]>, draw_options: &DrawO
                     (bounds.y + bounds.height) as i32
                 )
             ));
-            draw_primitive(draw_target, draw_options, swash_cache, &content);
+            draw_primitive(draw_target, draw_options, draw_cache, &content);
             draw_target.pop_clip();
         },
         Primitive::Translate {
@@ -369,9 +464,71 @@ fn draw_primitive(draw_target: &mut DrawTarget<&mut [u32]>, draw_options: &DrawO
                 translation.x,
                 translation.y
             ));
-            draw_primitive(draw_target, draw_options, swash_cache, &content);
+            draw_primitive(draw_target, draw_options, draw_cache, &content);
             draw_target.set_transform(&Transform::identity());
         },
+        #[cfg(feature = "image")]
+        Primitive::Image {
+            handle,
+            bounds
+        } => {
+            match draw_cache.raster_cache.upload(
+                handle,
+                &mut (),
+                &mut CpuStorage
+            ) {
+                Some(entry) => {
+                    draw_target.draw_image_with_size_at(
+                        bounds.width,
+                        bounds.height,
+                        bounds.x,
+                        bounds.y,
+                        &Image {
+                            width: entry.size.width as i32,
+                            height: entry.size.height as i32,
+                            data: &entry.data
+                        },
+                        draw_options
+                    );
+                },
+                None => {
+                    eprintln!("Unsupported SVG");
+                }
+            }
+        }
+        #[cfg(feature = "svg")]
+        Primitive::Svg {
+            handle,
+            bounds
+        } => {
+            let size = [bounds.width, bounds.height];
+            let scale = 1.0; //TODO
+            match draw_cache.vector_cache.upload(
+                handle,
+                size,
+                scale,
+                &mut (),
+                &mut CpuStorage
+            ) {
+                Some(entry) => {
+                    draw_target.draw_image_with_size_at(
+                        bounds.width,
+                        bounds.height,
+                        bounds.x,
+                        bounds.y,
+                        &Image {
+                            width: entry.size.width as i32,
+                            height: entry.size.height as i32,
+                            data: &entry.data
+                        },
+                        draw_options
+                    );
+                },
+                None => {
+                    eprintln!("Unsupported SVG");
+                }
+            }
+        }
         _ => {
             eprintln!("{:?}", primitive);
         },

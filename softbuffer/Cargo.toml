@@ -25,6 +25,11 @@ version = "0.4"
 path = "../graphics"
 features = ["font-fallback", "font-icons"]
 
+[features]
+default = []
+svg = ["iced_graphics/svg"]
+image = ["iced_graphics/image"]
+
 [package.metadata.docs.rs]
 rustdoc-args = ["--cfg", "docsrs"]
 all-features = true
