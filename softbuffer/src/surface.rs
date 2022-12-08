@@ -151,7 +151,6 @@ fn draw_primitive(draw_target: &mut DrawTarget<&mut [u32]>, draw_options: &DrawO
                     bottom + *size as i32 - line_height * layout.len() as i32
                 },
             };
-            println!("{:?}: {:?} {:?} = {}", content, bounds, vertical_alignment, line_y);
 
             for layout_line in layout.iter() {
                 let mut line_width = 0.0;
