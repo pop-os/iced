@@ -569,10 +569,10 @@ fn draw_primitive(
                     let b = undo_linear_component(color[2]) * 255.0;
                     let a = color[3] * 255.0;
                     [
-                        cmp::max(0, cmp::min(255, r as i32)) as u8,
-                        cmp::max(0, cmp::min(255, g as i32)) as u8,
-                        cmp::max(0, cmp::min(255, b as i32)) as u8,
-                        cmp::max(0, cmp::min(255, a as i32)) as u8,
+                        cmp::max(0, cmp::min(255, r.round() as i32)) as u8,
+                        cmp::max(0, cmp::min(255, g.round() as i32)) as u8,
+                        cmp::max(0, cmp::min(255, b.round() as i32)) as u8,
+                        cmp::max(0, cmp::min(255, a.round() as i32)) as u8,
                     ]
                 }
 
