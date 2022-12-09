@@ -91,7 +91,11 @@ impl Surface {
                 )
             });
 
-            let draw_options = DrawOptions::new();
+            let draw_options = DrawOptions {
+                // Default to antialiasing off, enable it when necessary
+                antialias: raqote::AntialiasMode::None,
+                ..Default::default()
+            };
 
             // Having at least one clip fixes some font rendering issues
             draw_target.push_clip_rect(IntRect::new(
@@ -409,7 +413,11 @@ fn draw_primitive(
             draw_target.fill(
                 &path,
                 &background_source,
-                draw_options
+                &DrawOptions {
+                    // Anti-alias rounded rectangles
+                    antialias: raqote::AntialiasMode::Gray,
+                    ..*draw_options
+                }
             );
 
             let border_source = {
@@ -433,7 +441,11 @@ fn draw_primitive(
                 &path,
                 &border_source,
                 &style,
-                draw_options
+                &DrawOptions {
+                    // Anti-alias rounded rectangles
+                    antialias: raqote::AntialiasMode::Gray,
+                    ..*draw_options
+                }
             );
         },
         Primitive::Image {
@@ -622,7 +634,7 @@ fn draw_primitive(
                         raqote::Gradient { stops },
                         raqote::Point::new(linear.start.x, linear.start.y),
                         raqote::Point::new(linear.end.x, linear.end.y),
-                        raqote::Spread::Pad /*TODO: which pad?*/
+                        raqote::Spread::Pad /*TODO: which spread?*/
                     )
                 }
             };
