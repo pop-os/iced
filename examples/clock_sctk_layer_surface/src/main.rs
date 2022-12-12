@@ -9,11 +9,10 @@ use iced::{
 };
 use iced_native::command::platform_specific::wayland::layer_surface::SctkLayerSurfaceSettings;
 use iced_native::window::Id;
-use iced_sctk::application::SurfaceIdWrapper;
-use iced_sctk::commands::layer_surface::{
-    destroy_layer_surface, get_layer_surface,
-};
 use sctk::shell::layer::Anchor;
+use iced::wayland::SurfaceIdWrapper;
+use iced::wayland::layer_surface::{get_layer_surface, set_size};
+
 pub fn main() -> iced::Result {
     Clock::run(Settings {
         antialiasing: true,
@@ -85,7 +84,7 @@ impl Application for Clock {
                 self.count += 1;
                 if self.count == 10 {
                     println!("time to remove the bottom clock!");
-                    return destroy_layer_surface::<Message>(self.to_destroy);
+                    return set_size::<Message>(self.to_destroy, None, Some(200));
                 }
             }
         }

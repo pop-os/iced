@@ -3,7 +3,8 @@ use crate::{Command, Element, Executor, Settings, Subscription};
 /// wayland sandbox
 pub mod sandbox;
 pub use iced_native::application::{Appearance, StyleSheet};
-use iced_sctk::application::SurfaceIdWrapper;
+pub use iced_native::command::platform_specific::wayland as actions;
+pub use iced_sctk::{application::SurfaceIdWrapper, commands::*, command::*, settings::*};
 
 /// A pure version of [`Application`].
 ///

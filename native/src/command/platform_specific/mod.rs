@@ -2,7 +2,6 @@ use std::{fmt, marker::PhantomData};
 
 use iced_futures::MaybeSend;
 
-// TODO feature gate
 /// wayland platform specific actions
 #[cfg(feature = "wayland")]
 pub mod wayland;

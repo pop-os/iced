@@ -12,9 +12,7 @@ use iced_native::command::platform_specific::wayland::popup::{
 };
 use iced_native::command::platform_specific::wayland::window::SctkWindowSettings;
 use iced_native::window::{self, Id};
-use iced_sctk::application::SurfaceIdWrapper;
-use iced_sctk::commands::popup::{destroy_popup, get_popup};
-use iced_sctk::commands::window::{close_window, get_window};
+use iced::wayland::{SurfaceIdWrapper, popup::{get_popup, destroy_popup}, window::{close_window, get_window}};
 
 pub fn main() -> iced::Result {
     Clock::run(Settings {
@@ -85,6 +83,7 @@ impl Application for Clock {
                 if self.count == 10 {
                     println!("time to remove the bottom clock!");
                     return close_window::<Message>(self.to_destroy);
+                    // return close_window(self.to_destroy);
                 }
             }
             Message::Click(parent_id) => {

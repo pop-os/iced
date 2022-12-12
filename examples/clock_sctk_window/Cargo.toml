@@ -10,5 +10,3 @@ iced = { path = "../..", default-features = false, features = ["canvas", "tokio"
 time = { version = "0.3.5", features = ["local-offset"] }
 iced_native = { path = "../../native" }
 sctk = { package = "smithay-client-toolkit", git = "https://github.com/Smithay/client-toolkit" }
-iced_sctk = { git = "https://github.com/pop-os/iced-sctk" }
-# iced_sctk = { path = "../../../fork/iced-sctk" }
