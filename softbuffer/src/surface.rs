@@ -1,11 +1,13 @@
 use crate::backend::{Backend, CpuStorage, FONT_SYSTEM};
 
 use cosmic_text::{Attrs, AttrsList, BufferLine, SwashCache, SwashContent};
-use iced_graphics::{Background, Gradient, Primitive, alignment::{Horizontal, Vertical}};
+use iced_graphics::{Background, Gradient, Primitive};
+use iced_graphics::alignment::{Horizontal, Vertical};
 #[cfg(feature = "image")]
 use iced_graphics::image::raster;
 #[cfg(feature = "svg")]
 use iced_graphics::image::vector;
+use iced_graphics::triangle;
 use raqote::{DrawOptions, DrawTarget, Image, IntPoint, IntRect, PathBuilder, SolidSource, StrokeStyle, Source, Transform};
 use raw_window_handle::{
     HasRawDisplayHandle,
@@ -532,112 +534,79 @@ fn draw_primitive(
             draw_primitive(draw_target, draw_options, backend, &content);
             draw_target.set_transform(&Transform::identity());
         },
-        Primitive::SolidMesh {
+        Primitive::Mesh2D {
             buffers,
             size,
+            style,
         } => {
-            /*
-            draw_target.push_clip_rect(IntRect::new(
-                IntPoint::new(0, 0),
-                IntPoint::new(size.width as i32, size.height as i32),
-            ));
-            */
-
-            for indices in buffers.indices.chunks_exact(3) {
-                let a = &buffers.vertices[indices[0] as usize];
-                let b = &buffers.vertices[indices[1] as usize];
-                let c = &buffers.vertices[indices[2] as usize];
-
-                let mut pb = PathBuilder::new();
-                pb.move_to(a.position[0], a.position[1]);
-                pb.line_to(b.position[0], b.position[1]);
-                pb.line_to(c.position[0], c.position[1]);
-                pb.close();
-                let path = pb.finish();
-
-                fn undo_linear_component(linear: f32) -> f32 {
-                    if linear < 0.0031308 {
-                        linear * 12.92
-                    } else {
-                        1.055 * linear.powf(1.0 / 2.4) - 0.055
+            let source = match style {
+                triangle::Style::Solid(color) => {
+                    /*TODO: will this be needed?
+                    fn undo_linear_component(linear: f32) -> f32 {
+                        if linear < 0.0031308 {
+                            linear * 12.92
+                        } else {
+                            1.055 * linear.powf(1.0 / 2.4) - 0.055
+                        }
                     }
-                }
 
-                fn linear_to_rgba8(color: &[f32; 4]) -> [u8; 4] {
-                    let r = undo_linear_component(color[0]) * 255.0;
-                    let g = undo_linear_component(color[1]) * 255.0;
-                    let b = undo_linear_component(color[2]) * 255.0;
-                    let a = color[3] * 255.0;
-                    [
-                        cmp::max(0, cmp::min(255, r.round() as i32)) as u8,
-                        cmp::max(0, cmp::min(255, g.round() as i32)) as u8,
-                        cmp::max(0, cmp::min(255, b.round() as i32)) as u8,
-                        cmp::max(0, cmp::min(255, a.round() as i32)) as u8,
-                    ]
-                }
+                    fn linear_to_rgba8(color: &[f32; 4]) -> [u8; 4] {
+                        let r = undo_linear_component(color[0]) * 255.0;
+                        let g = undo_linear_component(color[1]) * 255.0;
+                        let b = undo_linear_component(color[2]) * 255.0;
+                        let a = color[3] * 255.0;
+                        [
+                            cmp::max(0, cmp::min(255, r.round() as i32)) as u8,
+                            cmp::max(0, cmp::min(255, g.round() as i32)) as u8,
+                            cmp::max(0, cmp::min(255, b.round() as i32)) as u8,
+                            cmp::max(0, cmp::min(255, a.round() as i32)) as u8,
+                        ]
+                    }
 
-                let color = [
-                    (a.color[0] + b.color[0] + c.color[0]) / 3.0,
-                    (a.color[1] + b.color[1] + c.color[1]) / 3.0,
-                    (a.color[2] + b.color[2] + c.color[2]) / 3.0,
-                    (a.color[3] + b.color[3] + c.color[3]) / 3.0,
-                ];
-                let rgba8 = linear_to_rgba8(&color);
+                    let rgba8 = linear_to_rgba8(&color);
+                    */
 
-                //TODO: use colors as gradient instead of taking average
-                let source = Source::Solid(SolidSource::from_unpremultiplied_argb(
-                    rgba8[3],
-                    rgba8[0],
-                    rgba8[1],
-                    rgba8[2],
-                ));
-
-                draw_target.fill(
-                    &path,
-                    &source,
-                    draw_options
-                );
-            }
-
-            /*
-            draw_target.pop_clip();
-            */
-        },
-        Primitive::GradientMesh {
-            buffers,
-            size,
-            gradient,
-        } => {
-            /*
-            draw_target.push_clip_rect(IntRect::new(
-                IntPoint::new(0, 0),
-                IntPoint::new(size.width as i32, size.height as i32),
-            ));
-            */
-
-            let source = match gradient {
-                Gradient::Linear(linear) => {
-                    let mut stops = Vec::new();
-                    for stop in linear.color_stops.iter() {
-                        let rgba8 = stop.color.into_rgba8();
-                        stops.push(raqote::GradientStop {
-                            position: stop.offset,
-                            color: raqote::Color::new(
-                                rgba8[3],
-                                rgba8[0],
-                                rgba8[1],
-                                rgba8[2]
+                    let rgba8 = color.into_rgba8();
+                    Source::Solid(SolidSource::from_unpremultiplied_argb(
+                        rgba8[3],
+                        rgba8[0],
+                        rgba8[1],
+                        rgba8[2],
+                    ))
+                },
+                triangle::Style::Gradient(gradient) => {
+                    match gradient {
+                        Gradient::Linear(linear) => {
+                            let mut stops = Vec::new();
+                            for stop in linear.color_stops.iter() {
+                                let rgba8 = stop.color.into_rgba8();
+                                stops.push(raqote::GradientStop {
+                                    position: stop.offset,
+                                    color: raqote::Color::new(
+                                        rgba8[3],
+                                        rgba8[0],
+                                        rgba8[1],
+                                        rgba8[2]
+                                    )
+                                });
+                            }
+                            Source::new_linear_gradient(
+                                raqote::Gradient { stops },
+                                raqote::Point::new(linear.start.x, linear.start.y),
+                                raqote::Point::new(linear.end.x, linear.end.y),
+                                raqote::Spread::Pad /*TODO: which spread?*/
                             )
-                        });
+                        },
                     }
-                    Source::new_linear_gradient(
-                        raqote::Gradient { stops },
-                        raqote::Point::new(linear.start.x, linear.start.y),
-                        raqote::Point::new(linear.end.x, linear.end.y),
-                        raqote::Spread::Pad /*TODO: which spread?*/
-                    )
-                }
+                },
             };
+
+            /*
+            draw_target.push_clip_rect(IntRect::new(
+                IntPoint::new(0, 0),
+                IntPoint::new(size.width as i32, size.height as i32),
+            ));
+            */
 
             let mut pb = PathBuilder::new();
 

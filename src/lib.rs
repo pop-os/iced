@@ -164,7 +164,11 @@
 #![allow(clippy::inherent_to_string, clippy::type_complexity)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
-#[cfg(all(not(feature = "glow"), feature = "wgpu", not(feature = "wayland")))]
+#[cfg(all(
+    not(feature = "glow"),
+    any(feature = "wgpu", feature = "softbuffer"),
+    not(feature = "wayland")
+))]
 pub mod application;
 mod element;
 mod error;

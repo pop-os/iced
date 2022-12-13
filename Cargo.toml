@@ -12,7 +12,7 @@ keywords = ["gui", "ui", "graphics", "interface", "widgets"]
 categories = ["gui"]
 
 [features]
-default = ["wgpu", "winit"]
+default = ["softbuffer", "winit"]
 # Enables the `Image` widget
 image = ["iced_wgpu?/image", "iced_glow?/image", "iced_softbuffer?/image", "image_rs"]
 # Enables the `Svg` widget
