@@ -8,6 +8,7 @@ use iced_graphics::image::raster;
 #[cfg(feature = "svg")]
 use iced_graphics::image::vector;
 use iced_graphics::triangle;
+use iced_native::Font;
 use raqote::{DrawOptions, DrawTarget, Image, IntPoint, IntRect, PathBuilder, SolidSource, StrokeStyle, Source, Transform};
 use raw_window_handle::{
     HasRawDisplayHandle,
@@ -159,7 +160,31 @@ fn draw_primitive(
                 )
             };
 
+            //TODO: why is this conversion necessary?
+            let font_size = (*size * 5.0 / 6.0) as i32;
+
+            //TODO: how to properly calculate line height?
+            let line_height = *size as i32;
+
+            let attrs = match font {
+                Font::Default => Attrs::new(),
+                //TODO: support using the bytes field. Right now this is just a hack for libcosmic
+                Font::External {
+                    name,
+                    bytes,
+                } => match *name {
+                    "Fira Sans Regular" => Attrs::new().weight(cosmic_text::Weight::NORMAL),
+                    "Fira Sans Light" => Attrs::new().weight(cosmic_text::Weight::LIGHT),
+                    "Fira Sans SemiBold" => Attrs::new().weight(cosmic_text::Weight::SEMIBOLD),
+                    _ => {
+                        log::warn!("Unsupported font name {:?}", name);
+                        Attrs::new()
+                    }
+                }
+            };
+
             /*
+            // Debug bounds in green
             let mut pb = PathBuilder::new();
             pb.move_to(bounds.x, bounds.y);
             pb.line_to(bounds.x + bounds.width, bounds.y);
@@ -176,20 +201,18 @@ fn draw_primitive(
             */
 
             //TODO: improve implementation
-            let mut buffer_line = BufferLine::new(content, AttrsList::new(Attrs::new()));
-            let layout = buffer_line.layout(&FONT_SYSTEM, *size as i32, bounds.width as i32);
+            let mut buffer_line = BufferLine::new(content, AttrsList::new(attrs));
+            let layout = buffer_line.layout(&FONT_SYSTEM, font_size, bounds.width as i32);
 
-            //TODO: how to properly calculate line height?
-            let line_height = *size as i32 * 5 / 4;
             let mut line_y = match vertical_alignment {
-                Vertical::Top => bounds.y as i32 + *size as i32,
+                Vertical::Top => bounds.y as i32 + font_size,
                 Vertical::Center => {
                     //TODO: why is this so weird?
-                    bounds.y as i32 + *size as i32 - line_height * layout.len() as i32 / 2
+                    bounds.y as i32 + font_size - line_height * layout.len() as i32 / 2
                 }
                 Vertical::Bottom => {
                     //TODO: why is this so weird?
-                    bounds.y as i32 + *size as i32 - line_height * layout.len() as i32
+                    bounds.y as i32 + font_size - line_height * layout.len() as i32
                 },
             };
 
@@ -219,25 +242,25 @@ fn draw_primitive(
                 }
             };
 
-            /*
             eprintln!(
-                "{:?}: {}, {}, {}, {} in {:?} from {:?}, {:?}",
+                "{:?}: {}, {}, {}, {} in {:?} from font size {}, {:?}, {:?}",
                 content,
                 line_x, line_y,
                 line_width, line_height,
                 bounds,
+                *size,
                 horizontal_alignment,
                 vertical_alignment
             );
-            */
 
             for layout_line in layout.iter() {
                 /*
+                // Debug line placement in blue
                 let mut pb = PathBuilder::new();
-                pb.move_to(line_x as f32, line_y as f32 - *size);
-                pb.line_to(line_x as f32 + line_width, line_y as f32 - *size);
-                pb.line_to(line_x as f32 + line_width, line_y as f32 + line_height as f32 - *size);
-                pb.line_to(line_x as f32, line_y as f32 + line_height as f32 - *size);
+                pb.move_to(line_x as f32, line_y as f32 - font_size as f32);
+                pb.line_to(line_x as f32 + line_width, line_y as f32 - font_size as f32);
+                pb.line_to(line_x as f32 + line_width, line_y as f32 + line_height as f32 - font_size as f32);
+                pb.line_to(line_x as f32, line_y as f32 + line_height as f32 - font_size as f32);
                 pb.close();
                 let path = pb.finish();
                 draw_target.stroke(
@@ -247,6 +270,19 @@ fn draw_primitive(
                     draw_options
                 );
                 */
+
+                //TODO: also clip y, it does not seem to work though because
+                // bounds.height < line_height * layout_lines.len()
+                draw_target.push_clip_rect(IntRect::new(
+                    IntPoint::new(
+                        line_x,
+                        0,
+                    ),
+                    IntPoint::new(
+                        line_x + bounds.width as i32,
+                        i32::max_value(),
+                    )
+                ));
 
                 for glyph in layout_line.glyphs.iter() {
                     let (cache_key, x_int, y_int) = (glyph.cache_key, glyph.x_int, glyph.y_int);
@@ -261,6 +297,7 @@ fn draw_primitive(
                         let y = line_y + y_int + -image.placement.top;
 
                         /*
+                        // Debug glyph placement in red
                         let mut pb = PathBuilder::new();
                         pb.move_to(x as f32, y as f32);
                         pb.line_to(x as f32 + image.placement.width as f32, y as f32);
@@ -334,6 +371,8 @@ fn draw_primitive(
                         }
                     }
                 }
+
+                draw_target.pop_clip();
 
                 line_y += line_height;
             }

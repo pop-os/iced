@@ -8,7 +8,7 @@ license = "MIT AND OFL-1.1"
 repository = "https://github.com/iced-rs/iced"
 
 [dependencies]
-cosmic-text = "0.5.2"
+cosmic-text = "0.5.3"
 lazy_static = "1.4"
 log = "0.4"
 raw-window-handle = "0.5"

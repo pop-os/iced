@@ -127,12 +127,33 @@ impl iced_graphics::backend::Text for Backend {
         font: Font,
         bounds: Size,
     ) -> (f32, f32) {
-        //TODO: improve implementation
-        let mut buffer_line = BufferLine::new(content, AttrsList::new(Attrs::new()));
-        let layout = buffer_line.layout(&FONT_SYSTEM, size as i32, bounds.width as i32);
+        //TODO: why is this conversion necessary?
+        let font_size = (size * 5.0 / 6.0) as i32;
 
         //TODO: how to properly calculate line height?
-        let line_height = size as i32 * 5 / 4;
+        let line_height = size as i32;
+
+        let attrs = match font {
+            Font::Default => Attrs::new(),
+            //TODO: support using the bytes field. Right now this is just a hack for libcosmic
+            Font::External {
+                name,
+                bytes,
+            } => match name {
+                "Fira Sans Regular" => Attrs::new().weight(cosmic_text::Weight::NORMAL),
+                "Fira Sans Light" => Attrs::new().weight(cosmic_text::Weight::LIGHT),
+                "Fira Sans SemiBold" => Attrs::new().weight(cosmic_text::Weight::SEMIBOLD),
+                _ => {
+                    log::warn!("Unsupported font name {:?}", name);
+                    Attrs::new()
+                }
+            }
+        };
+
+        //TODO: improve implementation
+        let mut buffer_line = BufferLine::new(content, AttrsList::new(attrs));
+        let layout = buffer_line.layout(&FONT_SYSTEM, font_size, bounds.width as i32);
+
         let mut width = 0.0;
         let mut height = 0.0;
         for layout_line in layout.iter() {
@@ -149,6 +170,7 @@ impl iced_graphics::backend::Text for Backend {
 
             height += line_height as f32;
         }
+        eprintln!("Measure {:?}: {}, {} from font size {}", content, width, height, size);
         (width, height)
     }
 
@@ -161,12 +183,32 @@ impl iced_graphics::backend::Text for Backend {
         point: Point,
         nearest_only: bool,
     ) -> Option<text::Hit> {
-        //TODO: improve implementation
-        let mut buffer_line = BufferLine::new(content, AttrsList::new(Attrs::new()));
-        let layout = buffer_line.layout(&FONT_SYSTEM, size as i32, bounds.width as i32);
+        //TODO: why is this conversion necessary?
+        let font_size = (size * 5.0 / 6.0) as i32;
 
         //TODO: how to properly calculate line height?
-        let line_height = size as i32 * 5 / 4;
+        let line_height = size as i32;
+
+        let attrs = match font {
+            Font::Default => Attrs::new(),
+            //TODO: support using the bytes field. Right now this is just a hack for libcosmic
+            Font::External {
+                name,
+                bytes,
+            } => match name {
+                "Fira Sans Regular" => Attrs::new().weight(cosmic_text::Weight::NORMAL),
+                "Fira Sans Light" => Attrs::new().weight(cosmic_text::Weight::LIGHT),
+                "Fira Sans SemiBold" => Attrs::new().weight(cosmic_text::Weight::SEMIBOLD),
+                _ => {
+                    log::warn!("Unsupported font name {:?}", name);
+                    Attrs::new()
+                }
+            }
+        };
+
+        //TODO: improve implementation
+        let mut buffer_line = BufferLine::new(content, AttrsList::new(attrs));
+        let layout = buffer_line.layout(&FONT_SYSTEM, size as i32, bounds.width as i32);
 
         // Find exact hit
         if ! nearest_only {
