@@ -323,7 +323,7 @@ impl SctkEvent {
             SctkEvent::KeyboardEvent {
                 variant,
                 kbd_id: _,
-                seat_id: _,
+                seat_id,
             } => match variant {
                 KeyboardEventVariant::Leave(surface) => surface_ids
                     .get(&surface.id())
@@ -343,6 +343,9 @@ impl SctkEvent {
                         }
                     })
                     .into_iter()
+                    .chain([iced_native::Event::PlatformSpecific(PlatformSpecific::Wayland(
+                        wayland::Event::Seat(wayland::SeatEvent::Leave, seat_id),
+                    ))])
                     .collect(),
                 KeyboardEventVariant::Enter(surface) => surface_ids
                     .get(&surface.id())
@@ -362,6 +365,9 @@ impl SctkEvent {
                         }
                     })
                     .into_iter()
+                    .chain([iced_native::Event::PlatformSpecific(PlatformSpecific::Wayland(
+                        wayland::Event::Seat(wayland::SeatEvent::Enter, seat_id),
+                    ))])
                     .collect(),
                 KeyboardEventVariant::Press(ke) => {
                     let mut skip_char = false;
