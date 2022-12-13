@@ -7,4 +7,3 @@ publish = false
 
 [dependencies]
 iced = { path = "../..", features = ["svg", "wayland"] }
-iced_sctk = { git = "https://github.com/pop-os/iced-sctk" }

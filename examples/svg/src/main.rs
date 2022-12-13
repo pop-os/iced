@@ -1,6 +1,6 @@
 use iced::widget::{container, svg, scrollable};
 use iced::{Element, Length, Sandbox, Settings};
-use iced_sctk::application::SurfaceIdWrapper;
+
 pub fn main() -> iced::Result {
     Tiger::run(Settings::default())
 }
@@ -34,5 +34,5 @@ impl Sandbox for Tiger {
             .padding([10, 20, 30, 40])
             .into()
     }
-    fn close_requested(&self, _: iced_sctk::application::SurfaceIdWrapper) -> <Self as Sandbox>::Message { todo!() }
+    fn close_requested(&self, _: SurfaceIdWrapper) -> <Self as Sandbox>::Message { todo!() }
 }

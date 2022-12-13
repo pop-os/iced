@@ -4,6 +4,7 @@ use iced::keyboard;
 use iced::sctk_settings::InitialSurface;
 use iced::subscription;
 use iced::theme::{self, Theme};
+use iced::wayland::SurfaceIdWrapper;
 use iced::widget::{
     self, button, checkbox, column, container, row, scrollable, text,
     text_input, Text,
@@ -11,7 +12,6 @@ use iced::widget::{
 use iced::{Application, Element};
 use iced::{Color, Command, Font, Length, Settings, Subscription};
 
-use iced_sctk::application::SurfaceIdWrapper;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 
@@ -271,7 +271,7 @@ impl Application for Todos {
         })
     }
 
-    fn close_requested(&self, id: iced_sctk::application::SurfaceIdWrapper) -> Self::Message {
+    fn close_requested(&self, id: SurfaceIdWrapper) -> Self::Message {
         todo!()
     }
 }

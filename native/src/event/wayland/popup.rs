@@ -4,7 +4,7 @@ use crate::window;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PopupEvent {
     /// Done
-    Done(window::Id),
+    Done,
     /// repositioned,
     Configured {
         /// x position
@@ -17,7 +17,7 @@ pub enum PopupEvent {
         height: u32,
     },
     /// popup focused
-    Focused(window::Id),
+    Focused,
     /// popup unfocused
-    Unfocused(window::Id),
+    Unfocused,
 }

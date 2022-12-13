@@ -4,9 +4,9 @@ use crate::window;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LayerEvent {
     /// layer surface Done
-    Done(window::Id),
+    Done,
     /// layer surface focused
-    Focused(window::Id),
+    Focused,
     /// layer_surface unfocused
-    Unfocused(window::Id),
+    Unfocused,
 }
