@@ -160,28 +160,7 @@ fn draw_primitive(
                 )
             };
 
-            //TODO: why is this conversion necessary?
-            let font_size = (*size * 5.0 / 6.0) as i32;
-
-            //TODO: how to properly calculate line height?
-            let line_height = *size as i32;
-
-            let attrs = match font {
-                Font::Default => Attrs::new(),
-                //TODO: support using the bytes field. Right now this is just a hack for libcosmic
-                Font::External {
-                    name,
-                    bytes,
-                } => match *name {
-                    "Fira Sans Regular" => Attrs::new().weight(cosmic_text::Weight::NORMAL),
-                    "Fira Sans Light" => Attrs::new().weight(cosmic_text::Weight::LIGHT),
-                    "Fira Sans SemiBold" => Attrs::new().weight(cosmic_text::Weight::SEMIBOLD),
-                    _ => {
-                        log::warn!("Unsupported font name {:?}", name);
-                        Attrs::new()
-                    }
-                }
-            };
+            let (metrics, attrs) = backend.cosmic_metrics_attrs(*size, &font);
 
             /*
             // Debug bounds in green
@@ -202,17 +181,17 @@ fn draw_primitive(
 
             //TODO: improve implementation
             let mut buffer_line = BufferLine::new(content, AttrsList::new(attrs));
-            let layout = buffer_line.layout(&FONT_SYSTEM, font_size, bounds.width as i32);
+            let layout = buffer_line.layout(&FONT_SYSTEM, metrics.font_size, bounds.width as i32);
 
             let mut line_y = match vertical_alignment {
-                Vertical::Top => bounds.y as i32 + font_size,
+                Vertical::Top => bounds.y as i32 + metrics.font_size,
                 Vertical::Center => {
                     //TODO: why is this so weird?
-                    bounds.y as i32 + font_size - line_height * layout.len() as i32 / 2
+                    bounds.y as i32 + metrics.font_size - metrics.line_height * layout.len() as i32 / 2
                 }
                 Vertical::Bottom => {
                     //TODO: why is this so weird?
-                    bounds.y as i32 + font_size - line_height * layout.len() as i32
+                    bounds.y as i32 + metrics.font_size - metrics.line_height * layout.len() as i32
                 },
             };
 
@@ -242,25 +221,27 @@ fn draw_primitive(
                 }
             };
 
+            /*
             eprintln!(
                 "{:?}: {}, {}, {}, {} in {:?} from font size {}, {:?}, {:?}",
                 content,
                 line_x, line_y,
-                line_width, line_height,
+                line_width, metrics.line_height,
                 bounds,
                 *size,
                 horizontal_alignment,
                 vertical_alignment
             );
+            */
 
             for layout_line in layout.iter() {
                 /*
                 // Debug line placement in blue
                 let mut pb = PathBuilder::new();
-                pb.move_to(line_x as f32, line_y as f32 - font_size as f32);
-                pb.line_to(line_x as f32 + line_width, line_y as f32 - font_size as f32);
-                pb.line_to(line_x as f32 + line_width, line_y as f32 + line_height as f32 - font_size as f32);
-                pb.line_to(line_x as f32, line_y as f32 + line_height as f32 - font_size as f32);
+                pb.move_to(line_x as f32, line_y as f32 - metrics.font_size as f32);
+                pb.line_to(line_x as f32 + line_width, line_y as f32 - metrics.font_size as f32);
+                pb.line_to(line_x as f32 + line_width, line_y as f32 + metrics.line_height as f32 - metrics.font_size as f32);
+                pb.line_to(line_x as f32, line_y as f32 + metrics.line_height as f32 - metrics.font_size as f32);
                 pb.close();
                 let path = pb.finish();
                 draw_target.stroke(
@@ -272,7 +253,7 @@ fn draw_primitive(
                 */
 
                 //TODO: also clip y, it does not seem to work though because
-                // bounds.height < line_height * layout_lines.len()
+                // bounds.height < metrics.line_height * layout_lines.len()
                 draw_target.push_clip_rect(IntRect::new(
                     IntPoint::new(
                         line_x,
@@ -374,7 +355,7 @@ fn draw_primitive(
 
                 draw_target.pop_clip();
 
-                line_y += line_height;
+                line_y += metrics.line_height;
             }
         },
         Primitive::Quad {

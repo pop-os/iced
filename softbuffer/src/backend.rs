@@ -1,4 +1,4 @@
-use cosmic_text::{Attrs, AttrsList, BufferLine, FontSystem, SwashCache};
+use cosmic_text::{Attrs, AttrsList, BufferLine, FontSystem, Metrics, SwashCache, Weight};
 #[cfg(feature = "image")]
 use iced_graphics::image::raster;
 use iced_graphics::image::storage;
@@ -102,6 +102,36 @@ impl Backend {
             vector_cache: RefCell::new(vector::Cache::default()),
         }
     }
+
+    pub(crate) fn cosmic_metrics_attrs(&self, size: f32, font: &Font) -> (Metrics, Attrs) {
+        //TODO: why is this conversion necessary?
+        let font_size = (size * 5.0 / 6.0) as i32;
+
+        //TODO: how to properly calculate line height?
+        let line_height = size as i32;
+
+        let attrs = match font {
+            Font::Default => Attrs::new().weight(Weight::NORMAL),
+            //TODO: support using the bytes field. Right now this is just a hack for libcosmic
+            Font::External {
+                name,
+                bytes,
+            } => match *name {
+                "Fira Sans Regular" => Attrs::new().weight(Weight::NORMAL),
+                "Fira Sans Light" => Attrs::new().weight(Weight::LIGHT),
+                "Fira Sans SemiBold" => Attrs::new().weight(Weight::SEMIBOLD),
+                _ => {
+                    log::warn!("Unsupported font name {:?}", name);
+                    Attrs::new()
+                }
+            }
+        };
+
+        (
+            Metrics::new(font_size, line_height),
+            attrs
+        )
+    }
 }
 
 impl iced_graphics::backend::Backend for Backend {
@@ -127,32 +157,11 @@ impl iced_graphics::backend::Text for Backend {
         font: Font,
         bounds: Size,
     ) -> (f32, f32) {
-        //TODO: why is this conversion necessary?
-        let font_size = (size * 5.0 / 6.0) as i32;
-
-        //TODO: how to properly calculate line height?
-        let line_height = size as i32;
-
-        let attrs = match font {
-            Font::Default => Attrs::new(),
-            //TODO: support using the bytes field. Right now this is just a hack for libcosmic
-            Font::External {
-                name,
-                bytes,
-            } => match name {
-                "Fira Sans Regular" => Attrs::new().weight(cosmic_text::Weight::NORMAL),
-                "Fira Sans Light" => Attrs::new().weight(cosmic_text::Weight::LIGHT),
-                "Fira Sans SemiBold" => Attrs::new().weight(cosmic_text::Weight::SEMIBOLD),
-                _ => {
-                    log::warn!("Unsupported font name {:?}", name);
-                    Attrs::new()
-                }
-            }
-        };
+        let (metrics, attrs) = self.cosmic_metrics_attrs(size, &font);
 
         //TODO: improve implementation
         let mut buffer_line = BufferLine::new(content, AttrsList::new(attrs));
-        let layout = buffer_line.layout(&FONT_SYSTEM, font_size, bounds.width as i32);
+        let layout = buffer_line.layout(&FONT_SYSTEM, metrics.font_size, bounds.width as i32);
 
         let mut width = 0.0;
         let mut height = 0.0;
@@ -168,9 +177,8 @@ impl iced_graphics::backend::Text for Backend {
                 }
             }
 
-            height += line_height as f32;
+            height += metrics.line_height as f32;
         }
-        eprintln!("Measure {:?}: {}, {} from font size {}", content, width, height, size);
         (width, height)
     }
 
@@ -183,38 +191,17 @@ impl iced_graphics::backend::Text for Backend {
         point: Point,
         nearest_only: bool,
     ) -> Option<text::Hit> {
-        //TODO: why is this conversion necessary?
-        let font_size = (size * 5.0 / 6.0) as i32;
-
-        //TODO: how to properly calculate line height?
-        let line_height = size as i32;
-
-        let attrs = match font {
-            Font::Default => Attrs::new(),
-            //TODO: support using the bytes field. Right now this is just a hack for libcosmic
-            Font::External {
-                name,
-                bytes,
-            } => match name {
-                "Fira Sans Regular" => Attrs::new().weight(cosmic_text::Weight::NORMAL),
-                "Fira Sans Light" => Attrs::new().weight(cosmic_text::Weight::LIGHT),
-                "Fira Sans SemiBold" => Attrs::new().weight(cosmic_text::Weight::SEMIBOLD),
-                _ => {
-                    log::warn!("Unsupported font name {:?}", name);
-                    Attrs::new()
-                }
-            }
-        };
+        let (metrics, attrs) = self.cosmic_metrics_attrs(size, &font);
 
         //TODO: improve implementation
         let mut buffer_line = BufferLine::new(content, AttrsList::new(attrs));
-        let layout = buffer_line.layout(&FONT_SYSTEM, size as i32, bounds.width as i32);
+        let layout = buffer_line.layout(&FONT_SYSTEM, metrics.font_size, bounds.width as i32);
 
         // Find exact hit
         if ! nearest_only {
             let mut line_y = 0.0;
             for layout_line in layout.iter() {
-                if point.y > line_y && point.y < line_y + line_height as f32 {
+                if point.y > line_y && point.y < line_y + metrics.line_height as f32 {
                     for glyph in layout_line.glyphs.iter() {
                         let (min_x, max_x) = if glyph.rtl {
                             (glyph.x - glyph.w, glyph.x)
@@ -231,7 +218,7 @@ impl iced_graphics::backend::Text for Backend {
                     }
                 }
 
-                line_y += line_height as f32;
+                line_y += metrics.line_height as f32;
             }
         }
 
@@ -239,7 +226,7 @@ impl iced_graphics::backend::Text for Backend {
         let mut nearest_opt = None;
         let mut line_y = 0.0;
         for layout_line in layout.iter() {
-            let center_y = line_y + line_height as f32 / 2.0;
+            let center_y = line_y + metrics.line_height as f32 / 2.0;
 
             for glyph in layout_line.glyphs.iter() {
                 let (min_x, max_x) = if glyph.rtl {
@@ -267,7 +254,7 @@ impl iced_graphics::backend::Text for Backend {
                 };
             }
 
-            line_y += line_height as f32;
+            line_y += metrics.line_height as f32;
         }
 
         match nearest_opt {
