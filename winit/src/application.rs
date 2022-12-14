@@ -22,6 +22,7 @@ use iced_native::user_interface::{self, UserInterface};
 
 pub use iced_native::application::{Appearance, StyleSheet};
 
+use std::collections::HashMap;
 use std::mem::ManuallyDrop;
 use winit::window::{CursorIcon, ResizeDirection};
 
@@ -301,6 +302,9 @@ async fn run_instance<A, E, C>(
         border_size as f64 * window.scale_factor(),
     );
 
+    let window_ids =
+        HashMap::from([(window.id(), iced_native::window::Id::MAIN)]);
+
     let mut mouse_interaction = mouse::Interaction::default();
     let mut events = Vec::new();
     let mut messages = Vec::new();
@@ -483,6 +487,7 @@ async fn run_instance<A, E, C>(
                 }
             }
             event::Event::WindowEvent {
+                window_id,
                 event: window_event,
                 ..
             } => {
@@ -501,6 +506,7 @@ async fn run_instance<A, E, C>(
                 state.update(&window, &window_event, &mut debug);
 
                 if let Some(event) = conversion::window_event(
+                    *window_ids.get(&window_id).unwrap(),
                     &window_event,
                     state.scale_factor(),
                     state.modifiers(),
@@ -645,7 +651,7 @@ pub fn run_command<A, E>(
                     clipboard.write(contents);
                 }
             },
-            command::Action::Window(action) => match action {
+            command::Action::Window(_, action) => match action {
                 window::Action::Drag => {
                     let _res = window.drag_window();
                 }
@@ -688,6 +694,8 @@ pub fn run_command<A, E>(
                         .send_event(tag(mode))
                         .expect("Send message to event loop");
                 }
+                window::Action::Spawn { .. } => {}
+                window::Action::Close => {}
             },
             command::Action::System(action) => match action {
                 system::Action::QueryInformation(_tag) => {
@@ -740,6 +748,7 @@ pub fn run_command<A, E>(
                 current_cache = user_interface.into_cache();
                 *cache = current_cache;
             }
+            command::Action::PlatformSpecific(_) => {}
         }
     }
 }
