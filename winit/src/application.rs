@@ -22,6 +22,7 @@ use iced_native::user_interface::{self, UserInterface};
 
 pub use iced_native::application::{Appearance, StyleSheet};
 
+use std::collections::HashMap;
 use std::mem::ManuallyDrop;
 use winit::window::{CursorIcon, ResizeDirection};
 
@@ -296,11 +297,9 @@ async fn run_instance<A, E, C>(
         &mut debug,
     ));
 
-    let mut cursor_resize_event = cursor_resize_event_func(
-        &window,
-        border_size as f64 * window.scale_factor(),
-    );
-
+    let window_ids =
+        HashMap::from([(window.id(), iced_native::window::Id::MAIN)]);
+    let mut cursor_prev_resize_direction = None;
     let mut mouse_interaction = mouse::Interaction::default();
     let mut events = Vec::new();
     let mut messages = Vec::new();
@@ -483,13 +482,40 @@ async fn run_instance<A, E, C>(
                 }
             }
             event::Event::WindowEvent {
+                window_id,
                 event: window_event,
                 ..
             } => {
-                if let Some(func) = cursor_resize_event.as_mut() {
-                    if func(&window, &window_event) {
-                        continue;
+                match window_event {
+                    winit::event::WindowEvent::CursorMoved {
+                        position, ..
+                    } => {
+                        if !window.is_decorated() {
+                            let location = cursor_resize_direction(
+                                window.inner_size(),
+                                position,
+                                border_size as f64,
+                            );
+                            if location != cursor_prev_resize_direction {
+                                window.set_cursor_icon(cursor_direction_icon(
+                                    location,
+                                ));
+                                cursor_prev_resize_direction = location;
+                                continue;
+                            }
+                        }
                     }
+                    winit::event::WindowEvent::MouseInput {
+                        state: winit::event::ElementState::Pressed,
+                        button: winit::event::MouseButton::Left,
+                        ..
+                    } => {
+                        if let Some(direction) = cursor_prev_resize_direction {
+                            let _res = window.drag_resize_window(direction);
+                            continue;
+                        }
+                    }
+                    _ => (),
                 }
 
                 if requests_exit(&window_event, state.modifiers())
@@ -501,6 +527,7 @@ async fn run_instance<A, E, C>(
                 state.update(&window, &window_event, &mut debug);
 
                 if let Some(event) = conversion::window_event(
+                    *window_ids.get(&window_id).unwrap(),
                     &window_event,
                     state.scale_factor(),
                     state.modifiers(),
@@ -645,7 +672,7 @@ pub fn run_command<A, E>(
                     clipboard.write(contents);
                 }
             },
-            command::Action::Window(action) => match action {
+            command::Action::Window(_, action) => match action {
                 window::Action::Drag => {
                     let _res = window.drag_window();
                 }
@@ -688,6 +715,8 @@ pub fn run_command<A, E>(
                         .send_event(tag(mode))
                         .expect("Send message to event loop");
                 }
+                window::Action::Spawn { .. } => {}
+                window::Action::Close => {}
             },
             command::Action::System(action) => match action {
                 system::Action::QueryInformation(_tag) => {
@@ -740,6 +769,7 @@ pub fn run_command<A, E>(
                 current_cache = user_interface.into_cache();
                 *cache = current_cache;
             }
+            command::Action::PlatformSpecific(_) => {}
         }
     }
 }
@@ -784,64 +814,7 @@ mod platform {
     }
 }
 
-/// If supported by winit, returns a closure that implements cursor resize support.
-fn cursor_resize_event_func(
-    window: &winit::window::Window,
-    border_size: f64,
-) -> Option<
-    impl FnMut(&winit::window::Window, &winit::event::WindowEvent<'_>) -> bool,
-> {
-    if window.drag_resize_window(ResizeDirection::East).is_ok() {
-        // Keep track of cursor when it is within a resizeable border.
-        let mut cursor_prev_resize_direction = None;
-
-        Some(
-            move |window: &winit::window::Window,
-                  window_event: &winit::event::WindowEvent<'_>|
-                  -> bool {
-                // Keep track of border resize state and set cursor icon when in range
-                match window_event {
-                    winit::event::WindowEvent::CursorMoved {
-                        position, ..
-                    } => {
-                        if !window.is_decorated() {
-                            let location = cursor_resize_direction(
-                                window.inner_size(),
-                                *position,
-                                border_size,
-                            );
-                            if location != cursor_prev_resize_direction {
-                                window.set_cursor_icon(
-                                    resize_direction_cursor_icon(location),
-                                );
-                                cursor_prev_resize_direction = location;
-                                return true;
-                            }
-                        }
-                    }
-                    winit::event::WindowEvent::MouseInput {
-                        state: winit::event::ElementState::Pressed,
-                        button: winit::event::MouseButton::Left,
-                        ..
-                    } => {
-                        if let Some(direction) = cursor_prev_resize_direction {
-                            let _res = window.drag_resize_window(direction);
-                            return true;
-                        }
-                    }
-                    _ => (),
-                }
-
-                false
-            },
-        )
-    } else {
-        None
-    }
-}
-
-/// Get the cursor icon that corresponds to the resize direction.
-fn resize_direction_cursor_icon(
+fn cursor_direction_icon(
     resize_direction: Option<ResizeDirection>,
 ) -> CursorIcon {
     match resize_direction {
