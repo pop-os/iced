@@ -198,7 +198,7 @@ pub mod window;
 
 #[cfg(all(
     not(feature = "glow"),
-    any(feature = "wgpu", feature = "softbuffer"),
+    any(feature = "wgpu", feature = "softbuffer", feature = "dyrend",),
     not(feature = "wayland"),
     feature = "multi_window"
 ))]
@@ -222,15 +222,28 @@ use iced_glow as renderer;
 #[cfg(feature = "softbuffer")]
 use iced_softbuffer as renderer;
 
+#[cfg(feature = "dyrend")]
+use iced_dyrend as renderer;
+
 pub use iced_native::theme;
 
-#[cfg(any(feature = "softbuffer", feature = "glow", feature = "wgpu"))]
+#[cfg(any(
+    feature = "softbuffer",
+    feature = "glow",
+    feature = "wgpu",
+    feature = "dyrend"
+))]
 pub use element::Element;
 pub use error::Error;
 pub use event::Event;
 #[cfg(any(feature = "winit", feature = "wayland"))]
 pub use executor::Executor;
-#[cfg(any(feature = "softbuffer", feature = "glow", feature = "wgpu"))]
+#[cfg(any(
+    feature = "softbuffer",
+    feature = "glow",
+    feature = "wgpu",
+    feature = "dyrend"
+))]
 pub use renderer::Renderer;
 pub use result::Result;
 #[cfg(any(feature = "winit", feature = "wayland"))]
