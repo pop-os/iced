@@ -836,6 +836,10 @@ where
                     (*id, surface, interface, state)
                 }) {
                     debug.render_started();
+                    let comp_surface = match wrapper.comp_surface.as_mut() {
+                        Some(s) => s,
+                        None => continue,
+                    };
 
                     if current_context_window != native_id.inner() {
                         // XXX what to do here
@@ -871,7 +875,8 @@ where
                             new_mouse_interaction,
                         ));
 
-                        compositor.configure_surface(wrapper.comp_surface.as_mut().unwrap(), physical_size.width, physical_size.height);
+                        compositor.configure_surface(comp_surface, physical_size.width, physical_size.height);
+                        // is resize viewport still necessary?
 
                         let _ = interfaces
                             .insert(native_id.inner(), user_interface);
@@ -879,15 +884,13 @@ where
                         interfaces.insert(native_id.inner(), user_interface);
                     }
 
-                    compositor.present(
+                    let _ = compositor.present(
                         &mut renderer,
-                        wrapper.comp_surface.as_mut().unwrap(),
+                        comp_surface,
                         state.viewport(),
                         state.background_color(),
                         &debug.overlay(),
                     );
-                    // XXX what to do here                    
-                    // let _ = wrapper.swap_buffers(&egl_context);
 
                     debug.render_finished();
                 }
