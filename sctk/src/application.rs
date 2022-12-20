@@ -25,7 +25,7 @@ use iced_native::{
 };
 
 use sctk::{
-    reexports::client::Proxy,
+    reexports::client::{Proxy, protocol::wl_surface::WlSurface},
     seat::{keyboard::Modifiers, pointer::PointerEventKind},
 };
 use std::{
@@ -35,11 +35,14 @@ use std::{
 use wayland_backend::client::ObjectId;
 
 use glutin::{api::egl, prelude::*, surface::WindowSurface};
-use iced_graphics::{compositor, renderer, window, Color, Point, Viewport};
+use iced_graphics::{compositor, renderer, window::{self, Compositor}, Color, Point, Viewport, Backend};
 use iced_native::user_interface::{self, UserInterface};
 use iced_native::window::Id as SurfaceId;
 use std::mem::ManuallyDrop;
-
+use raw_window_handle::{
+    HasRawDisplayHandle, HasRawWindowHandle, RawDisplayHandle, RawWindowHandle,
+    WaylandDisplayHandle, WaylandWindowHandle
+};
 #[derive(Debug)]
 pub enum Event<Message> {
     /// A normal sctk event
@@ -166,6 +169,28 @@ where
     fn close_requested(&self, id: SurfaceIdWrapper) -> Self::Message;
 }
 
+pub struct SurfaceDisplayWrapper<C: Compositor> {
+    comp_surface: Option<<C as Compositor>::Surface>,
+    backend: wayland_backend::client::Backend,
+    wl_surface: WlSurface,
+}
+
+unsafe impl<C: Compositor> HasRawDisplayHandle for SurfaceDisplayWrapper<C> {
+    fn raw_display_handle(&self) -> RawDisplayHandle {
+        let mut display_handle = WaylandDisplayHandle::empty();
+        display_handle.display = self.backend.display_ptr() as *mut _;
+        RawDisplayHandle::Wayland(display_handle)
+    }
+}
+
+unsafe impl<C: Compositor> HasRawWindowHandle for SurfaceDisplayWrapper<C> {
+    fn raw_window_handle(&self) -> RawWindowHandle {
+        let mut window_handle = WaylandWindowHandle::empty();
+        window_handle.surface = self.wl_surface.id().as_ptr() as *mut _;
+        RawWindowHandle::Wayland(window_handle)
+    }
+}
+
 /// Runs an [`Application`] with an executor, compositor, and the provided
 /// settings.
 pub fn run<A, E, C>(
@@ -175,7 +200,7 @@ pub fn run<A, E, C>(
 where
     A: Application + 'static,
     E: Executor + 'static,
-    C: window::GLCompositor<Renderer = A::Renderer> + 'static,
+    C: window::Compositor<Renderer = A::Renderer> + 'static,
     <A::Renderer as iced_native::Renderer>::Theme: StyleSheet,
     A::Flags: Clone,
 {
@@ -221,19 +246,18 @@ where
         runtime.enter(|| A::new(flags))
     };
 
-    let (display, context, config, surface) = init_egl(&wl_surface, 100, 100);
+    // let (display, context, config, surface) = init_egl(&wl_surface, 100, 100);
+    let backend = event_loop.state.connection.backend();
+    let mut wrapper = SurfaceDisplayWrapper { comp_surface: None, backend: backend.clone(), wl_surface };
 
-    let context = context.make_current(&surface).unwrap();
-    let egl_surfaces = HashMap::from([(native_id.inner(), surface)]);
-
+    
     #[allow(unsafe_code)]
-    let (compositor, renderer) = unsafe {
-        C::new(compositor_settings, |name| {
-            let name = CString::new(name).unwrap();
-            display.get_proc_address(name.as_c_str())
-        })?
-    };
+    let (mut compositor, renderer) = C::new(compositor_settings, Some(&wrapper)).unwrap();
+    let c_surface = compositor.create_surface(&wrapper);
+    wrapper.comp_surface.replace(c_surface);
     let (mut sender, receiver) = mpsc::unbounded::<IcedSctkEvent<A::Message>>();
+
+    let compositor_surfaces = HashMap::from([(native_id.inner(), wrapper)]);
 
     let mut instance = Box::pin(run_instance::<A, E, C>(
         application,
@@ -243,11 +267,12 @@ where
         ev_proxy,
         debug,
         receiver,
-        egl_surfaces,
+        compositor_surfaces,
         surface_ids,
-        display,
-        context,
-        config,
+        // display,
+        // context,
+        // config,
+        backend,
         init_command,
         exit_on_close_request,
         if is_layer_surface {
@@ -281,7 +306,7 @@ fn subscription_map<A, E, C>(e: A::Message) -> Event<A::Message>
 where
     A: Application + 'static,
     E: Executor + 'static,
-    C: window::GLCompositor<Renderer = A::Renderer> + 'static,
+    C: window::Compositor<Renderer = A::Renderer> + 'static,
     <A::Renderer as iced_native::Renderer>::Theme: StyleSheet,
 {
     Event::SctkEvent(IcedSctkEvent::UserEvent(e))
@@ -296,14 +321,14 @@ async fn run_instance<A, E, C>(
     mut ev_proxy: proxy::Proxy<Event<A::Message>>,
     mut debug: Debug,
     mut receiver: mpsc::UnboundedReceiver<IcedSctkEvent<A::Message>>,
-    mut egl_surfaces: HashMap<
+    mut compositor_surfaces: HashMap<
         SurfaceId,
-        glutin::api::egl::surface::Surface<WindowSurface>,
+        SurfaceDisplayWrapper<C>,
     >,
     mut surface_ids: HashMap<ObjectId, SurfaceIdWrapper>,
-    mut egl_display: egl::display::Display,
-    mut egl_context: egl::context::PossiblyCurrentContext,
-    mut egl_config: glutin::api::egl::config::Config,
+    mut backend: wayland_backend::client::Backend,
+    // mut egl_context: egl::context::PossiblyCurrentContext,
+    // mut egl_config: glutin::api::egl::config::Config,
     init_command: Command<A::Message>,
     exit_on_close_request: bool,
     init_id: SurfaceIdWrapper,
@@ -311,7 +336,7 @@ async fn run_instance<A, E, C>(
 where
     A: Application + 'static,
     E: Executor + 'static,
-    C: window::GLCompositor<Renderer = A::Renderer> + 'static,
+    C: window::Compositor<Renderer = A::Renderer> + 'static,
     <A::Renderer as iced_native::Renderer>::Theme: StyleSheet,
 {
     let mut cache = user_interface::Cache::default();
@@ -429,7 +454,7 @@ where
                         }
                         crate::sctk_event::WindowEventVariant::Close => {
                             if let Some(surface_id) = surface_ids.remove(&id.id()) {
-                                drop(egl_surfaces.remove(&surface_id.inner()));
+                                // drop(compositor_surfaces.remove(&surface_id.inner()));
                                 interfaces.remove(&surface_id.inner());
                                 states.remove(&surface_id.inner());
                                 messages.push(application.close_requested(surface_id));
@@ -449,15 +474,15 @@ where
                             if let Some(id) = surface_ids.get(&id.id()) {
                                 let new_size = configure.new_size.unwrap();
 
-                                if first && !egl_surfaces.contains_key(&id.inner()) {
-                                    let egl_surface = get_surface(
-                                        &egl_display,
-                                        &egl_config,
-                                        &wl_surface,
-                                        new_size.0,
-                                        new_size.1,
-                                    );
-                                    egl_surfaces.insert(id.inner(), egl_surface);
+                                if first && !compositor_surfaces.contains_key(&id.inner()) {
+                                    let mut wrapper = SurfaceDisplayWrapper {
+                                        comp_surface: None,
+                                        backend: backend.clone(),
+                                        wl_surface
+                                    };
+                                    let c_surface = compositor.create_surface(&wrapper);
+                                    wrapper.comp_surface.replace(c_surface);
+                                    compositor_surfaces.insert(id.inner(), wrapper);
                                     let state = State::new(&application, *id);
 
                                     let user_interface = build_user_interface(
@@ -483,7 +508,7 @@ where
                         }
                         LayerSurfaceEventVariant::Done => {
                             if let Some(surface_id) = surface_ids.remove(&id.id()) {
-                                drop(egl_surfaces.remove(&surface_id.inner()));
+                                drop(compositor_surfaces.remove(&surface_id.inner()));
                                 interfaces.remove(&surface_id.inner());
                                 states.remove(&surface_id.inner());
                                 messages.push(application.close_requested(surface_id));
@@ -495,15 +520,15 @@ where
                         }
                         LayerSurfaceEventVariant::Configure(configure, wl_surface, first) => {
                             if let Some(id) = surface_ids.get(&id.id()) {
-                                if first && !egl_surfaces.contains_key(&id.inner()) {
-                                    let egl_surface = get_surface(
-                                        &egl_display,
-                                        &egl_config,
-                                        &wl_surface,
-                                        configure.new_size.0,
-                                        configure.new_size.1,
-                                    );
-                                    egl_surfaces.insert(id.inner(), egl_surface);
+                                if first && !compositor_surfaces.contains_key(&id.inner()) {
+                                    let mut wrapper = SurfaceDisplayWrapper {
+                                        comp_surface: None,
+                                        backend: backend.clone(),
+                                        wl_surface
+                                    };
+                                    let c_surface = compositor.create_surface(&wrapper);
+                                    wrapper.comp_surface.replace(c_surface);
+                                    compositor_surfaces.insert(id.inner(), wrapper);
                                     let state = State::new(&application, *id);
 
                                     let user_interface = build_user_interface(
@@ -537,7 +562,7 @@ where
                         }
                         PopupEventVariant::Done => {
                             if let Some(surface_id) = surface_ids.remove(&id.id()) {
-                                drop(egl_surfaces.remove(&surface_id.inner()));
+                                drop(compositor_surfaces.remove(&surface_id.inner()));
                                 interfaces.remove(&surface_id.inner());
                                 states.remove(&surface_id.inner());
                                 messages.push(application.close_requested(surface_id));
@@ -547,15 +572,15 @@ where
                         PopupEventVariant::WmCapabilities(_) => {}
                         PopupEventVariant::Configure(configure, wl_surface, first) => {
                             if let Some(id) = surface_ids.get(&id.id()) {
-                                if first && !egl_surfaces.contains_key(&id.inner()) {
-                                    let egl_surface = get_surface(
-                                        &egl_display,
-                                        &egl_config,
-                                        &wl_surface,
-                                        configure.width as u32,
-                                        configure.height as u32,
-                                    );
-                                    egl_surfaces.insert(id.inner(), egl_surface);
+                                if first && !compositor_surfaces.contains_key(&id.inner()) {
+                                    let mut wrapper = SurfaceDisplayWrapper {
+                                        comp_surface: None,
+                                        backend: backend.clone(),
+                                        wl_surface
+                                    };
+                                    let c_surface = compositor.create_surface(&wrapper);
+                                    wrapper.comp_surface.replace(c_surface);
+                                    compositor_surfaces.insert(id.inner(), wrapper);
                                     let state = State::new(&application, *id);
 
                                     let user_interface = build_user_interface(
@@ -801,11 +826,11 @@ where
             IcedSctkEvent::RedrawRequested(id) => {
                 if let Some((
                     native_id,
-                    Some(egl_surface),
+                    Some(wrapper),
                     Some(mut user_interface),
                     Some(state),
                 )) = surface_ids.get(&id).map(|id| {
-                    let surface = egl_surfaces.get_mut(&id.inner());
+                    let surface = compositor_surfaces.get_mut(&id.inner());
                     let interface = interfaces.remove(&id.inner());
                     let state = states.get_mut(&id.inner());
                     (*id, surface, interface, state)
@@ -813,13 +838,14 @@ where
                     debug.render_started();
 
                     if current_context_window != native_id.inner() {
-                        if egl_context.make_current(egl_surface).is_ok() {
-                            current_context_window = native_id.inner();
-                        } else {
-                            interfaces
-                                .insert(native_id.inner(), user_interface);
-                            continue;
-                        }
+                        // XXX what to do here
+                        // if egl_context.make_current(egl_surface).is_ok() {
+                        //     current_context_window = native_id.inner();
+                        // } else {
+                        //     interfaces
+                        //         .insert(native_id.inner(), user_interface);
+                        //     continue;
+                        // }
                     }
 
                     if state.viewport_changed() {
@@ -845,13 +871,7 @@ where
                             new_mouse_interaction,
                         ));
 
-                        egl_surface.resize(
-                            &egl_context,
-                            NonZeroU32::new(physical_size.width).unwrap(),
-                            NonZeroU32::new(physical_size.height).unwrap(),
-                        );
-
-                        compositor.resize_viewport(physical_size);
+                        compositor.configure_surface(wrapper.comp_surface.as_mut().unwrap(), physical_size.width, physical_size.height);
 
                         let _ = interfaces
                             .insert(native_id.inner(), user_interface);
@@ -861,11 +881,13 @@ where
 
                     compositor.present(
                         &mut renderer,
+                        wrapper.comp_surface.as_mut().unwrap(),
                         state.viewport(),
                         state.background_color(),
                         &debug.overlay(),
                     );
-                    let _ = egl_surface.swap_buffers(&egl_context);
+                    // XXX what to do here                    
+                    // let _ = wrapper.swap_buffers(&egl_context);
 
                     debug.render_finished();
                 }
@@ -1093,7 +1115,7 @@ pub(crate) fn update<A, E, C>(
 ) where
     A: Application + 'static,
     E: Executor + 'static,
-    C: window::GLCompositor<Renderer = A::Renderer> + 'static,
+    C: window::Compositor<Renderer = A::Renderer> + 'static,
     <A::Renderer as iced_native::Renderer>::Theme: StyleSheet,
 {
     for message in messages.drain(..) {

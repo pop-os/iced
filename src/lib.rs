@@ -229,7 +229,7 @@ use iced_glutin as runtime;
 #[cfg(all(not(feature = "iced_glow"), feature = "wgpu"))]
 use iced_wgpu as renderer;
 
-#[cfg(any(feature = "glow", feature = "wayland"))]
+#[cfg(anyfeature = "glow")]
 use iced_glow as renderer;
 
 #[cfg(all(not(feature = "iced_glow"), feature = "dyrend"))]

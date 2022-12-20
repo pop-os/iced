@@ -12,7 +12,7 @@ keywords = ["gui", "ui", "graphics", "interface", "widgets"]
 categories = ["gui"]
 
 [features]
-default = ["dyrend", "winit"]
+default = ["wayland"]
 # Enables the `Image` widget
 image = ["iced_wgpu?/image", "iced_glow?/image", "iced_dyrend?/image", "iced_swbuf?/image", "image_rs"]
 # Enables the `Svg` widget
@@ -44,7 +44,7 @@ palette = ["iced_core/palette"]
 # Enables querying system information
 system = ["iced_winit/system"]
 # Enables wayland shell
-wayland = ["iced_sctk", "iced_glow", "iced_native/sctk"]
+wayland = ["iced_sctk", "dyrend", "iced_native/sctk"]
 winit = ["iced_winit"]
 
 [badges]

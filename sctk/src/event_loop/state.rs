@@ -131,11 +131,6 @@ pub struct SctkPopup<T> {
 /// Wrapper to carry sctk state.
 #[derive(Debug)]
 pub struct SctkState<T> {
-    // egl
-    // pub(crate) context: Option<egl::context::PossiblyCurrentContext>,
-    // pub(crate) glow: Option<glow::Context>,
-    // pub(crate) display: Option<Display>,
-    // pub(crate) config: Option<glutin::api::egl::config::Config>,
     /// the cursor wl_surface
     pub(crate) cursor_surface: Option<wl_surface::WlSurface>,
     /// a memory pool

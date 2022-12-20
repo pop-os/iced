@@ -16,7 +16,7 @@ log = "0.4"
 thiserror = "1.0"
 sctk = { package = "smithay-client-toolkit", git = "https://github.com/Smithay/client-toolkit", rev = "73346019952f82ec7e4d4d15f5d66841b54e8b61"  }
 glutin = "0.30.0-beta.3"
-glow = "0.11.2"
+iced_dyrend = { path = "../dyrend" }
 raw-window-handle = "0.5.0"
 enum-repr = "0.2.6"
 futures = "0.3"
