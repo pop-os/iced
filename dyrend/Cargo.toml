@@ -1,0 +1,47 @@
+[package]
+name = "iced_dyrend"
+version = "0.1.0"
+authors = ["Jeremy Soller <jackpot51@gmail.com>"]
+edition = "2021"
+description = "A dynamicly chosen renderer for Iced"
+license = "MIT AND OFL-1.1"
+repository = "https://github.com/iced-rs/iced"
+
+[dependencies]
+log = "0.4"
+raw-window-handle = "0.5"
+
+[dependencies.iced_native]
+path = "../native"
+
+[dependencies.iced_graphics]
+path = "../graphics"
+features = ["font-fallback", "font-icons"]
+
+[dependencies.iced_glow]
+path = "../glow"
+default-features = false
+optional = true
+
+[dependencies.iced_swbuf]
+path = "../swbuf"
+default-features = false
+optional = true
+
+[dependencies.iced_wgpu]
+path = "../wgpu"
+default-features = false
+optional = true
+
+[features]
+default = ["swbuf", "wgpu"]
+image = ["iced_graphics/image", "iced_glow?/image", "iced_swbuf?/image", "iced_wgpu?/image"]
+svg = ["iced_graphics/svg", "iced_glow?/svg", "iced_swbuf?/svg", "iced_wgpu?/svg"]
+#TODO: implement Compositor for glow Backend
+#glow = ["iced_glow"]
+swbuf = ["iced_swbuf"]
+wgpu = ["iced_wgpu"]
+
+[package.metadata.docs.rs]
+rustdoc-args = ["--cfg", "docsrs"]
+all-features = true

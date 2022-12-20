@@ -166,7 +166,7 @@
 
 #[cfg(all(
     not(feature = "glow"),
-    any(feature = "wgpu", feature = "swbuf"),
+    any(feature = "wgpu", feature = "dyrend", feature = "swbuf"),
     not(feature = "wayland")
 ))]
 pub mod application;
@@ -207,7 +207,7 @@ pub mod window;
 
 #[cfg(all(
     not(feature = "glow"),
-    any(feature = "wgpu", feature = "swbuf"),
+    any(feature = "wgpu", feature = "dyrend", feature = "swbuf"),
     not(feature = "wayland"),
     feature = "multi_window"
 ))]
@@ -218,7 +218,7 @@ use iced_sctk as runtime;
 
 #[cfg(all(
     not(feature = "glow"),
-    any(feature = "wgpu", feature = "swbuf"),
+    any(feature = "wgpu", feature = "dyrend", feature = "swbuf"),
     not(feature = "wayland")
 ))]
 use iced_winit as runtime;
@@ -231,6 +231,9 @@ use iced_wgpu as renderer;
 
 #[cfg(any(feature = "glow", feature = "wayland"))]
 use iced_glow as renderer;
+
+#[cfg(all(not(feature = "iced_glow"), feature = "dyrend"))]
+use iced_dyrend as renderer;
 
 #[cfg(all(not(feature = "iced_glow"), feature = "swbuf"))]
 use iced_swbuf as renderer;

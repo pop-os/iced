@@ -35,6 +35,11 @@ impl<B: Backend, T> Renderer<B, T> {
         &self.backend
     }
 
+    /// Returns the [`Backend`] of the [`Renderer`], mutably.
+    pub fn backend_mut(&mut self) -> &mut B {
+        &mut self.backend
+    }
+
     /// Enqueues the given [`Primitive`] in the [`Renderer`] for drawing.
     pub fn draw_primitive(&mut self, primitive: Primitive) {
         self.primitives.push(primitive);
