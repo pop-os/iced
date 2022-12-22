@@ -155,7 +155,7 @@ pub enum SctkEvent {
         id: WlOutput,
         info: OutputInfo,
     },
-    RemovedOutput(ObjectId),
+    RemovedOutput(WlOutput),
 
     //
     // compositor events
@@ -604,9 +604,34 @@ impl SctkEvent {
                     } // TODO
                 }
             }
-            SctkEvent::NewOutput { id, info } => Default::default(),
-            SctkEvent::UpdateOutput { id, info } => Default::default(),
-            SctkEvent::RemovedOutput(_) => Default::default(),
+            SctkEvent::NewOutput { id, info } => {
+                Some(iced_native::Event::PlatformSpecific(
+                    PlatformSpecific::Wayland(wayland::Event::Output(
+                        wayland::OutputEvent::Created(info),
+                        id,
+                    )),
+                ))
+                .into_iter()
+                .collect()
+            }
+            SctkEvent::UpdateOutput { id, info } => vec![
+                iced_native::Event::PlatformSpecific(
+                    PlatformSpecific::Wayland(wayland::Event::Output(
+                        wayland::OutputEvent::InfoUpdate(info),
+                        id.clone(),
+                    )),
+                ),
+            ],
+            SctkEvent::RemovedOutput(id) => {
+                Some(iced_native::Event::PlatformSpecific(
+                    PlatformSpecific::Wayland(wayland::Event::Output(
+                        wayland::OutputEvent::Removed,
+                        id.clone(),
+                    )),
+                ))
+                .into_iter()
+                .collect()
+            }
             SctkEvent::Draw(_) => Default::default(),
             SctkEvent::ScaleFactorChanged {
                 factor,
