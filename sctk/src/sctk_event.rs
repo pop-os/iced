@@ -607,7 +607,7 @@ impl SctkEvent {
             SctkEvent::NewOutput { id, info } => {
                 Some(iced_native::Event::PlatformSpecific(
                     PlatformSpecific::Wayland(wayland::Event::Output(
-                        wayland::OutputEvent::Created,
+                        wayland::OutputEvent::Created(info),
                         id,
                     )),
                 ))
@@ -617,30 +617,7 @@ impl SctkEvent {
             SctkEvent::UpdateOutput { id, info } => vec![
                 iced_native::Event::PlatformSpecific(
                     PlatformSpecific::Wayland(wayland::Event::Output(
-                        wayland::OutputEvent::Name(info.name.clone()),
-                        id.clone(),
-                    )),
-                ),
-                iced_native::Event::PlatformSpecific(
-                    PlatformSpecific::Wayland(wayland::Event::Output(
-                        wayland::OutputEvent::LogicalSize(info.logical_size),
-                        id.clone(),
-                    )),
-                ),
-                iced_native::Event::PlatformSpecific(
-                    PlatformSpecific::Wayland(wayland::Event::Output(
-                        wayland::OutputEvent::LogicalPosition(
-                            info.logical_position,
-                        ),
-                        id.clone(),
-                    )),
-                ),
-                iced_native::Event::PlatformSpecific(
-                    PlatformSpecific::Wayland(wayland::Event::Output(
-                        wayland::OutputEvent::MakeAndModel {
-                            make: info.make,
-                            model: info.model,
-                        },
+                        wayland::OutputEvent::InfoUpdate(info),
                         id.clone(),
                     )),
                 ),
