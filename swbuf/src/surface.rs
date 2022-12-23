@@ -11,7 +11,7 @@ use raqote::{
 };
 use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
 use std::cmp;
-use swbuf::GraphicsContext;
+use softbuffer::GraphicsContext;
 
 // A software rendering surface
 pub struct Surface {
