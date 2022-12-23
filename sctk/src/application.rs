@@ -581,13 +581,10 @@ where
                     },
                     // TODO forward these events to an application which requests them?
                     SctkEvent::NewOutput { id, info } => {
-                        events.push(SctkEvent::NewOutput { id, info });
                     }
                     SctkEvent::UpdateOutput { id, info } => {
-                        events.push(SctkEvent::UpdateOutput { id, info });
                     }
                     SctkEvent::RemovedOutput(id) => {
-                        events.push(SctkEvent::RemovedOutput(id));
                     }
                     SctkEvent::Draw(_) => unimplemented!(), // probably should never be forwarded here...
                     SctkEvent::ScaleFactorChanged {

@@ -3,7 +3,10 @@ use std::marker::PhantomData;
 use std::{collections::hash_map::DefaultHasher, fmt};
 
 use iced_futures::MaybeSend;
-use sctk::shell::layer::{Anchor, KeyboardInteractivity, Layer};
+use sctk::{
+    reexports::client::protocol::wl_output::WlOutput,
+    shell::layer::{Anchor, KeyboardInteractivity, Layer},
+};
 
 use crate::window;
 
@@ -15,12 +18,7 @@ pub enum IcedOutput {
     /// show on active output
     Active,
     /// show on a specific output
-    Output {
-        /// make
-        make: String,
-        /// model
-        model: String,
-    },
+    Output(WlOutput),
 }
 
 impl Default for IcedOutput {

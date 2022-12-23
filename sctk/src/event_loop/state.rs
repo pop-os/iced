@@ -10,7 +10,7 @@ use iced_native::{
     command::platform_specific::{
         self,
         wayland::{
-            layer_surface::{IcedMargin, SctkLayerSurfaceSettings},
+            layer_surface::{IcedMargin, IcedOutput, SctkLayerSurfaceSettings},
             popup::SctkPopupSettings,
             window::SctkWindowSettings,
         },
@@ -460,6 +460,12 @@ where
         }: SctkLayerSurfaceSettings,
     ) -> Result<(iced_native::window::Id, WlSurface), LayerSurfaceCreationError>
     {
+        let wl_output = match output {
+            IcedOutput::All => None, // TODO
+            IcedOutput::Active => None,
+            IcedOutput::Output(output) => Some(output),
+        };
+
         let layer_shell = self
             .layer_shell
             .as_ref()
@@ -467,13 +473,17 @@ where
         let wl_surface =
             self.compositor_state.create_surface(&self.queue_handle);
 
-        let layer_surface = LayerSurface::builder()
+        let mut builder = LayerSurface::builder()
             .anchor(anchor)
             .keyboard_interactivity(keyboard_interactivity)
             .margin(margin.top, margin.right, margin.bottom, margin.left)
             .size((size.0.unwrap_or_default(), size.1.unwrap_or_default()))
             .namespace(namespace)
-            .exclusive_zone(exclusive_zone)
+            .exclusive_zone(exclusive_zone);
+        if let Some(wl_output) = wl_output {
+            builder = builder.output(&wl_output);
+        }
+        let layer_surface = builder
             .map(&self.queue_handle, layer_shell, wl_surface.clone(), layer)
             .map_err(|g_err| {
                 LayerSurfaceCreationError::LayerSurfaceCreationFailed(g_err)
