@@ -21,6 +21,7 @@ use crate::text;
 use crate::text_input;
 use crate::toggler;
 
+use iced_core::BorderRadius;
 use iced_core::{Background, Color, Vector};
 
 use std::rc::Rc;
@@ -146,7 +147,7 @@ impl button::StyleSheet for Theme {
         let palette = self.extended_palette();
 
         let appearance = button::Appearance {
-            border_radius: 2.0,
+            border_radius: BorderRadius::from(2.0),
             ..button::Appearance::default()
         };
 
