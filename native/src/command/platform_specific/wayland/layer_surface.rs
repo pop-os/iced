@@ -8,6 +8,7 @@ use sctk::{
     shell::layer::{Anchor, KeyboardInteractivity, Layer},
 };
 
+use crate::layout::Limits;
 use crate::window;
 
 /// output for layer surface
@@ -49,7 +50,7 @@ pub struct SctkLayerSurfaceSettings {
     pub layer: Layer,
     /// interactivity
     pub keyboard_interactivity: KeyboardInteractivity,
-    /// anchor
+    /// anchor, if a surface is anchored to two opposite edges, it will be stretched to fit between those edges, regardless of the specified size in that dimension.
     pub anchor: Anchor,
     /// output
     pub output: IcedOutput,
@@ -57,10 +58,13 @@ pub struct SctkLayerSurfaceSettings {
     pub namespace: String,
     /// margin
     pub margin: IcedMargin,
-    /// size, None in a given dimension lets the compositor decide, usually this would be done with a layer surface that is anchored to left & right or top & bottom
-    pub size: (Option<u32>, Option<u32>),
+    /// XXX size, providing None will autosize the layer surface to its contents
+    /// If Some size is provided, None in a given dimension lets the compositor decide for that dimension, usually this would be done with a layer surface that is anchored to left & right or top & bottom
+    pub size: Option<(Option<u32>, Option<u32>)>,
     /// exclusive zone
     pub exclusive_zone: i32,
+    /// Limits of the popup size
+    pub size_limits: Limits,
 }
 
 impl Default for SctkLayerSurfaceSettings {
@@ -73,8 +77,9 @@ impl Default for SctkLayerSurfaceSettings {
             output: Default::default(),
             namespace: Default::default(),
             margin: Default::default(),
-            size: (Some(200), Some(200)),
+            size: Default::default(),
             exclusive_zone: Default::default(),
+            size_limits: Limits::NONE,
         }
     }
 }

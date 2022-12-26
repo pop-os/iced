@@ -3,7 +3,7 @@ use std::{collections::HashMap, fmt::Debug, sync::Arc};
 use crate::{
     application::Event,
     dpi::LogicalSize,
-    sctk_event::{SctkEvent, SurfaceCompositorUpdate, SurfaceUserRequest},
+    sctk_event::{SctkEvent, SurfaceCompositorUpdate, SurfaceUserRequest}, commands::popup,
 };
 
 use iced_native::{
@@ -16,7 +16,7 @@ use iced_native::{
         },
     },
     keyboard::Modifiers,
-    window,
+    window, layout::Limits,
 };
 use sctk::{
     compositor::CompositorState,
@@ -117,15 +117,21 @@ impl SctkSurface {
 
 #[derive(Debug, Clone)]
 pub struct SctkPopup<T> {
-    pub(crate) id: iced_native::window::Id,
     pub(crate) popup: Popup,
-    pub(crate) parent: SctkSurface,
-    pub(crate) toplevel: WlSurface,
-    pub(crate) requested_size: (u32, u32),
     pub(crate) last_configure: Option<PopupConfigure>,
     // pub(crate) positioner: XdgPositioner,
     pub(crate) pending_requests:
         Vec<platform_specific::wayland::popup::Action<T>>,
+    pub(crate) data: SctkPopupData
+}
+
+#[derive(Debug, Clone)]
+pub struct SctkPopupData {
+    pub(crate) id: iced_native::window::Id,
+    pub(crate) parent: SctkSurface,
+    pub(crate) toplevel: WlSurface,
+    pub(crate) requested_size: (u32, u32),
+    pub(crate) limits: Limits,
 }
 
 /// Wrapper to carry sctk state.
@@ -214,6 +220,10 @@ pub enum PopupCreationError {
     #[error("The specified parent is missing")]
     ParentMissing,
 
+    /// The specified size is missing
+    #[error("The specified size is missing")]
+    SizeMissing,
+
     /// Popup creation failed
     #[error("Popup creation failed")]
     PopupCreationFailed(GlobalError),
@@ -244,8 +254,38 @@ where
         settings: SctkPopupSettings,
     ) -> Result<(window::Id, WlSurface, WlSurface, WlSurface), PopupCreationError>
     {
+        let limits = settings.positioner.size_limits;
+        
+        let (parent, toplevel) = if let Some(parent) =
+            self.layer_surfaces.iter().find(|l| l.id == settings.parent)
+        {
+            (SctkSurface::LayerSurface(
+                parent.surface.wl_surface().clone(),
+            ), parent.surface.wl_surface().clone())
+        } else if let Some(parent) =
+            self.windows.iter().find(|w| w.id == settings.parent)
+        {
+            (SctkSurface::Window(parent.window.wl_surface().clone()),parent.window.wl_surface().clone())
+        } else if let Some(i) =
+            self.popups.iter().position(|p| p.data.id == settings.parent)
+        {
+            let parent = &self.popups[i];
+            (
+                SctkSurface::Popup(parent.popup.wl_surface().clone()),
+                parent.data.toplevel.clone(),
+            )
+        } else {
+            return Err(PopupCreationError::ParentMissing);
+        };
+
+        let size = if settings.positioner.size.is_none() {
+            return Err(PopupCreationError::SizeMissing);
+        } else {
+            settings.positioner.size.unwrap()
+        };
+
         let positioner = XdgPositioner::new(&self.xdg_shell_state)
-            .map_err(|e| PopupCreationError::PositionerCreationFailed(e))?;
+        .map_err(|e| PopupCreationError::PositionerCreationFailed(e))?;
         positioner.set_anchor(settings.positioner.anchor);
         positioner.set_anchor_rect(
             settings.positioner.anchor_rect.x,
@@ -265,99 +305,106 @@ where
             positioner.set_reactive();
         }
         positioner.set_size(
-            settings.positioner.size.0 as i32,
-            settings.positioner.size.1 as i32,
+            size.0 as i32,
+            size.1 as i32,
         );
 
-        if let Some(parent) =
-            self.layer_surfaces.iter().find(|l| l.id == settings.parent)
-        {
-            let wl_surface =
-                self.compositor_state.create_surface(&self.queue_handle);
-            let popup = Popup::from_surface(
-                None,
-                &positioner,
-                &self.queue_handle,
-                wl_surface.clone(),
-                &self.xdg_shell_state,
-            )
-            .map_err(|e| PopupCreationError::PopupCreationFailed(e))?;
+        match parent {
+            SctkSurface::LayerSurface(parent) => {
+                let parent_layer_surface = self.layer_surfaces.iter().find(|w| w.surface.wl_surface() == &parent).unwrap();
 
-            parent.surface.get_popup(popup.xdg_popup());
-            wl_surface.commit();
-            self.popups.push(SctkPopup {
-                id: settings.id,
-                popup: popup.clone(),
-                parent: SctkSurface::LayerSurface(
-                    parent.surface.wl_surface().clone(),
-                ),
-                toplevel: parent.surface.wl_surface().clone(),
-                requested_size: settings.positioner.size,
-                last_configure: None,
-                pending_requests: Default::default(),
-            });
-            Ok((
-                settings.id,
-                parent.surface.wl_surface().clone(),
-                parent.surface.wl_surface().clone(),
-                popup.wl_surface().clone(),
-            ))
-        } else if let Some(parent) =
-            self.windows.iter().find(|w| w.id == settings.parent)
-        {
-            let popup = Popup::new(
-                parent.window.xdg_surface(),
-                &positioner,
-                &self.queue_handle,
-                &self.compositor_state,
-                &self.xdg_shell_state,
-            )
-            .map_err(|e| PopupCreationError::PopupCreationFailed(e))?;
-            self.popups.push(SctkPopup {
-                id: settings.id,
-                popup: popup.clone(),
-                parent: SctkSurface::Window(parent.window.wl_surface().clone()),
-                toplevel: parent.window.wl_surface().clone(),
-                requested_size: settings.positioner.size,
-                last_configure: None,
-                pending_requests: Default::default(),
-            });
-            Ok((
-                settings.id,
-                parent.window.wl_surface().clone(),
-                parent.window.wl_surface().clone(),
-                popup.wl_surface().clone(),
-            ))
-        } else if let Some(i) =
-            self.popups.iter().position(|p| p.id == settings.parent)
-        {
-            let (popup, parent, toplevel) = {
-                let parent = &self.popups[i];
-                (
-                    Popup::new(
-                        parent.popup.xdg_surface(),
-                        &positioner,
-                        &self.queue_handle,
-                        &self.compositor_state,
-                        &self.xdg_shell_state,
-                    )
-                    .map_err(|e| PopupCreationError::PopupCreationFailed(e))?,
-                    parent.popup.wl_surface().clone(),
-                    parent.toplevel.clone(),
+                let wl_surface =
+                    self.compositor_state.create_surface(&self.queue_handle);
+                let popup = Popup::from_surface(
+                    None,
+                    &positioner,
+                    &self.queue_handle,
+                    wl_surface.clone(),
+                    &self.xdg_shell_state,
                 )
-            };
-            self.popups.push(SctkPopup {
-                id: settings.id,
-                popup: popup.clone(),
-                parent: SctkSurface::Popup(parent.clone()),
-                toplevel: toplevel.clone(),
-                requested_size: settings.positioner.size,
-                last_configure: None,
-                pending_requests: Default::default(),
-            });
-            Ok((settings.id, parent, toplevel, popup.wl_surface().clone()))
-        } else {
-            Err(PopupCreationError::ParentMissing)
+                .map_err(|e| PopupCreationError::PopupCreationFailed(e))?;
+
+                parent_layer_surface.surface.get_popup(popup.xdg_popup());
+                wl_surface.commit();
+                self.popups.push(SctkPopup {
+                    data: SctkPopupData {
+                        id: settings.id,
+                        parent: SctkSurface::LayerSurface(
+                            parent.clone(),
+                        ),
+                        toplevel: parent.clone(),
+                        requested_size: size,
+                        limits,
+                    },
+                    popup: popup.clone(),
+                    last_configure: None,
+                    pending_requests: Default::default(),
+                });
+                Ok((
+                    settings.id,
+                    parent.clone(),
+                    parent.clone(),
+                    wl_surface.clone(),
+                ))
+            },
+            SctkSurface::Window(parent) => {
+                let parent_window = self.windows.iter().find(|w| w.window.wl_surface() == &parent).unwrap();
+                let popup = Popup::new(
+                    parent_window.window.xdg_surface(),
+                    &positioner,
+                    &self.queue_handle,
+                    &self.compositor_state,
+                    &self.xdg_shell_state,
+                )
+                .map_err(|e| PopupCreationError::PopupCreationFailed(e))?;
+                self.popups.push(SctkPopup {
+                    popup: popup.clone(),
+                    data: SctkPopupData {
+                        id: settings.id,
+                        parent: SctkSurface::Window(parent.clone()),
+                        toplevel: parent.clone(),
+                        requested_size: size,
+                        limits
+                    },
+                    last_configure: None,
+                    pending_requests: Default::default(),
+                });
+                Ok((
+                    settings.id,
+                    parent.clone(),
+                    parent.clone(),
+                    popup.wl_surface().clone(),
+                ))
+            },
+            SctkSurface::Popup(parent) => {
+                let parent_xdg = self.windows.iter().find_map(|w| if w.window.wl_surface() == &parent {
+                    Some(w.window.xdg_surface())
+                } else {
+                    None
+                }).unwrap();
+
+                let popup = Popup::new(
+                    parent_xdg,
+                    &positioner,
+                    &self.queue_handle,
+                    &self.compositor_state,
+                    &self.xdg_shell_state,
+                )
+                .map_err(|e| PopupCreationError::PopupCreationFailed(e))?;
+                self.popups.push(SctkPopup {
+                    popup: popup.clone(),
+                    data: SctkPopupData {
+                        id: settings.id,
+                        parent: SctkSurface::Popup(parent.clone()),
+                        toplevel: toplevel.clone(),
+                        requested_size: size,
+                        limits,
+                    },
+                    last_configure: None,
+                    pending_requests: Default::default(),
+                });
+                Ok((settings.id, parent, toplevel, popup.wl_surface().clone()))
+            },
         }
     }
 
@@ -380,6 +427,7 @@ where
             app_id,
             title,
             parent,
+            ..
         } = settings;
         // TODO Ashley: set window as opaque if transparency is false
         // TODO Ashley: set icon
@@ -426,7 +474,6 @@ where
                 wl_surface.clone(),
             )
             .expect("failed to create window");
-
         window.xdg_surface().set_window_geometry(
             0,
             0,
@@ -456,8 +503,7 @@ where
             namespace,
             margin,
             size,
-            exclusive_zone,
-        }: SctkLayerSurfaceSettings,
+            exclusive_zone, .. }: SctkLayerSurfaceSettings,
     ) -> Result<(iced_native::window::Id, WlSurface), LayerSurfaceCreationError>
     {
         let wl_output = match output {
@@ -472,7 +518,13 @@ where
             .ok_or(LayerSurfaceCreationError::LayerShellNotSupported)?;
         let wl_surface =
             self.compositor_state.create_surface(&self.queue_handle);
-
+        let mut size = size.unwrap();
+        if anchor.contains(Anchor::BOTTOM.union(Anchor::TOP)) {
+            size.1 = None;
+        }
+        if anchor.contains(Anchor::LEFT.union(Anchor::RIGHT)) {
+            size.0 = None;
+        }
         let mut builder = LayerSurface::builder()
             .anchor(anchor)
             .keyboard_interactivity(keyboard_interactivity)
@@ -491,7 +543,7 @@ where
         self.layer_surfaces.push(SctkLayerSurface {
             id,
             surface: layer_surface,
-            requested_size: (None, None),
+            requested_size: size,
             current_size: None,
             layer,
             // builder needs to be refactored such that these fields are accessible

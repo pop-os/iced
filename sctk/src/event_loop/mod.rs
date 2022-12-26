@@ -720,14 +720,14 @@ where
                             let sctk_popup = match self.state
                                 .popups
                                 .iter()
-                                .position(|s| s.id == id)
+                                .position(|s| s.data.id == id)
                             {
                                 Some(p) => self.state.popups.remove(p),
                                 None => continue,
                             };
                             let mut to_destroy = vec![sctk_popup];
                             while let Some(popup_to_destroy) = to_destroy.last() {
-                                match popup_to_destroy.parent.clone() {
+                                match popup_to_destroy.data.parent.clone() {
                                     state::SctkSurface::LayerSurface(_) | state::SctkSurface::Window(_) => {
                                         break;
                                     }
@@ -746,8 +746,8 @@ where
                             for popup in to_destroy.into_iter().rev() {
                                 sticky_exit_callback(IcedSctkEvent::SctkEvent(SctkEvent::PopupEvent {
                                     variant: PopupEventVariant::Done,
-                                    toplevel_id: popup.toplevel.clone(),
-                                    parent_id: popup.parent.wl_surface().clone(),
+                                    toplevel_id: popup.data.toplevel.clone(),
+                                    parent_id: popup.data.parent.wl_surface().clone(),
                                     id: popup.popup.wl_surface().clone(),
                                 }),
                                     &self.state,
@@ -759,6 +759,7 @@ where
                         platform_specific::wayland::popup::Action::Reposition { id, positioner } => todo!(),
                         platform_specific::wayland::popup::Action::Grab { id } => todo!(),
                     },
+                    Event::InitSurfaceSize(id, requested_size) => todo!(),
                 }
             }
 

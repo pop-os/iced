@@ -204,6 +204,7 @@ pub enum WindowEventVariant {
 
 #[derive(Debug, Clone)]
 pub enum PopupEventVariant {
+    /// Popup Created
     Created(ObjectId, SurfaceId),
     /// <https://wayland.app/protocols/xdg-shell#xdg_popup:event:popup_done>
     Done,

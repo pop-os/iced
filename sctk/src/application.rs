@@ -18,10 +18,10 @@ use futures::{channel::mpsc, task, Future, FutureExt, StreamExt};
 use iced_native::{
     application::{self, StyleSheet},
     clipboard::{self, Null},
-    command::platform_specific,
+    command::platform_specific::{self, wayland::popup},
     mouse::{self, Interaction},
     widget::operation,
-    Element, Renderer,
+    Element, Renderer, Widget,
 };
 
 use sctk::{
@@ -34,7 +34,7 @@ use std::{
 };
 use wayland_backend::client::ObjectId;
 
-use glutin::{api::egl, prelude::*, surface::WindowSurface};
+use glutin::{api::egl, prelude::*, surface::WindowSurface, platform};
 use iced_graphics::{compositor, renderer, window, Color, Point, Viewport};
 use iced_native::user_interface::{self, UserInterface};
 use iced_native::window::Id as SurfaceId;
@@ -54,7 +54,8 @@ pub enum Event<Message> {
     Window(platform_specific::wayland::window::Action<Message>),
     /// popup requests from the client
     Popup(platform_specific::wayland::popup::Action<Message>),
-
+    /// init size of surface
+    InitSurfaceSize(SurfaceIdWrapper, (u32, u32)),
     /// request sctk to set the cursor of the active pointer
     SetCursor(Interaction),
 }
@@ -169,7 +170,7 @@ where
 /// Runs an [`Application`] with an executor, compositor, and the provided
 /// settings.
 pub fn run<A, E, C>(
-    settings: settings::Settings<A::Flags>,
+    mut settings: settings::Settings<A::Flags>,
     compositor_settings: C::Settings,
 ) -> Result<(), error::Error>
 where
@@ -189,25 +190,6 @@ where
     let mut event_loop = SctkEventLoop::<A::Message>::new(&settings)
         .expect("Failed to initialize the event loop");
 
-    let (object_id, native_id, wl_surface) = match &settings.surface {
-        settings::InitialSurface::LayerSurface(l) => {
-            // TODO ASHLEY should an application panic if it's initial surface can't be created?
-            let (native_id, surface) =
-                event_loop.get_layer_surface(l.clone()).unwrap();
-            (
-                surface.id(),
-                SurfaceIdWrapper::LayerSurface(native_id),
-                surface,
-            )
-        }
-        settings::InitialSurface::XdgWindow(w) => {
-            let (native_id, surface) = event_loop.get_window(w.clone());
-            (surface.id(), SurfaceIdWrapper::Window(native_id), surface)
-        }
-    };
-
-    let surface_ids = HashMap::from([(object_id.clone(), native_id)]);
-
     let (runtime, ev_proxy) = {
         let ev_proxy = event_loop.proxy();
         let executor = E::new().map_err(Error::ExecutorCreationFailed)?;
@@ -220,12 +202,10 @@ where
 
         runtime.enter(|| A::new(flags))
     };
-
-    let (display, context, config, surface) = init_egl(&wl_surface, 100, 100);
+    let wl_surface = event_loop.state.compositor_state.create_surface(&event_loop.state.queue_handle);
+    let (display, context, config, surface) = init_egl(&wl_surface, 1, 1);
 
     let context = context.make_current(&surface).unwrap();
-    let egl_surfaces = HashMap::from([(native_id.inner(), surface)]);
-
     #[allow(unsafe_code)]
     let (compositor, renderer) = unsafe {
         C::new(compositor_settings, |name| {
@@ -233,6 +213,47 @@ where
             display.get_proc_address(name.as_c_str())
         })?
     };
+
+    let (object_id, native_id, wl_surface, (w, h)) = match &mut settings.surface {
+        settings::InitialSurface::LayerSurface(builder) => {
+            // TODO ASHLEY should an application panic if it's initial surface can't be created?
+            if builder.size.is_none() {
+                let e = application.view(SurfaceIdWrapper::LayerSurface(builder.id));
+                let node = Widget::layout(e.as_widget(), &renderer, &builder.size_limits);
+                let bounds = node.bounds();
+                builder.size = Some((Some(bounds.width as u32), Some(bounds.height as u32)));
+            };
+            let (native_id, surface) =
+                event_loop.get_layer_surface(builder.clone()).unwrap();
+            (
+                surface.id(),
+                SurfaceIdWrapper::LayerSurface(native_id),
+                surface,
+                builder.size.map(|(w, h)| (w.unwrap_or_default().max(1), h.unwrap_or_default().max(1))).unwrap_or((1, 1)),
+            )
+        }
+        settings::InitialSurface::XdgWindow(builder) => {
+            if builder.autosize {
+                let e = application.view(SurfaceIdWrapper::Window(builder.window_id));
+                let node = Widget::layout(e.as_widget(), &renderer, &builder.size_limits);
+                let bounds = node.bounds();
+                builder.iced_settings.size = (bounds.width as u32, bounds.height as u32);
+            };
+            let (native_id, surface) = event_loop.get_window(builder.clone());
+            (surface.id(), SurfaceIdWrapper::Window(native_id), surface, builder.iced_settings.size)
+        }
+    };
+    let surface = get_surface(
+        &display,
+        &config,
+        &wl_surface,
+        w,
+        h,
+    );
+
+    let surface_ids = HashMap::from([(object_id.clone(), native_id)]);
+    let egl_surfaces = HashMap::from([(native_id.inner(), surface)]);
+
     let (mut sender, receiver) = mpsc::unbounded::<IcedSctkEvent<A::Message>>();
 
     let mut instance = Box::pin(run_instance::<A, E, C>(
@@ -1223,21 +1244,51 @@ fn run_command<A, E>(
                     ),
                 ),
             ) => {
-                proxy.send_event(Event::LayerSurface(layer_surface_action));
+                if let platform_specific::wayland::layer_surface::Action::LayerSurface{ mut builder, _phantom } = layer_surface_action {
+                    if builder.size.is_none() {
+                        let e = application.view(SurfaceIdWrapper::LayerSurface(builder.id));
+                        let node = Widget::layout(e.as_widget(), renderer, &builder.size_limits);
+                        let bounds = node.bounds();
+                        builder.size = Some((Some(bounds.width as u32), Some(bounds.height as u32)));
+                    }
+                    proxy.send_event(Event::LayerSurface(platform_specific::wayland::layer_surface::Action::LayerSurface {builder, _phantom}));
+                } else {
+                    proxy.send_event(Event::LayerSurface(layer_surface_action));
+                }
             }
             command::Action::PlatformSpecific(
                 platform_specific::Action::Wayland(
                     platform_specific::wayland::Action::Window(window_action),
                 ),
             ) => {
-                proxy.send_event(Event::Window(window_action));
+                if let platform_specific::wayland::window::Action::Window{ mut builder, _phantom } = window_action {
+                    if builder.autosize {
+                        let e = application.view(SurfaceIdWrapper::Window(builder.window_id));
+                        let node = Widget::layout(e.as_widget(), renderer, &builder.size_limits);
+                        let bounds = node.bounds();
+                        builder.iced_settings.size = (bounds.width as u32, bounds.height as u32);
+                    }
+                    proxy.send_event(Event::Window(platform_specific::wayland::window::Action::Window{builder, _phantom}));
+                } else {
+                    proxy.send_event(Event::Window(window_action));
+                }
             }
             command::Action::PlatformSpecific(
                 platform_specific::Action::Wayland(
                     platform_specific::wayland::Action::Popup(popup_action),
                 ),
             ) => {
-                proxy.send_event(Event::Popup(popup_action));
+                if let popup::Action::Popup { mut popup, _phantom } = popup_action {
+                    if popup.positioner.size.is_none() {
+                        let e = application.view(SurfaceIdWrapper::Popup(popup.id));
+                        let node = Widget::layout(e.as_widget(), renderer, &popup.positioner.size_limits);
+                        let bounds = node.bounds();
+                        popup.positioner.size = Some((bounds.width as u32, bounds.height as u32));
+                    }
+                    proxy.send_event(Event::Popup(popup::Action::Popup{popup, _phantom}));
+                } else {
+                    proxy.send_event(Event::Popup(popup_action));
+                }
             }
             _ => {}
         }

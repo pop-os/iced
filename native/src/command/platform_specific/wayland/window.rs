@@ -5,6 +5,7 @@ use std::{collections::hash_map::DefaultHasher, fmt};
 use iced_futures::MaybeSend;
 use sctk::reexports::protocols::xdg::shell::client::xdg_toplevel::ResizeEdge;
 
+use crate::layout::Limits;
 use crate::window;
 
 /// window settings
@@ -20,6 +21,10 @@ pub struct SctkWindowSettings {
     pub title: Option<String>,
     /// optional window parent
     pub parent: Option<window::Id>,
+    /// autosize the window to fit its contents
+    pub autosize: bool,
+    /// Limits of the popup size
+    pub size_limits: Limits,
 }
 
 impl Default for SctkWindowSettings {
@@ -30,6 +35,8 @@ impl Default for SctkWindowSettings {
             app_id: Default::default(),
             title: Default::default(),
             parent: Default::default(),
+            autosize: Default::default(),
+            size_limits: Limits::NONE,
         }
     }
 }

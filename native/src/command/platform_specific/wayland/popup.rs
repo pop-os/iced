@@ -8,6 +8,7 @@ use sctk::reexports::protocols::xdg::shell::client::xdg_positioner::{
     Anchor, Gravity,
 };
 
+use crate::layout::Limits;
 use crate::window;
 /// Popup creation details
 #[derive(Debug, Clone)]
@@ -31,10 +32,12 @@ impl Hash for SctkPopupSettings {
 }
 
 /// Positioner of a popup
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct SctkPositioner {
-    /// size of the popup
-    pub size: (u32, u32),
+    /// size of the popup (if it is None, the popup will be autosized)
+    pub size: Option<(u32, u32)>,
+    /// Limits of the popup size
+    pub size_limits: Limits,
     /// the rectangle which the popup will be anchored to
     pub anchor_rect: Rectangle<i32>,
     /// the anchor location on the popup
@@ -73,7 +76,8 @@ impl Hash for SctkPositioner {
 impl Default for SctkPositioner {
     fn default() -> Self {
         Self {
-            size: (200, 100),
+            size: None,
+            size_limits: Limits::NONE,
             anchor_rect: Rectangle {
                 x: 0,
                 y: 0,
@@ -82,7 +86,7 @@ impl Default for SctkPositioner {
             },
             anchor: Anchor::None,
             gravity: Gravity::None,
-            constraint_adjustment: Default::default(),
+            constraint_adjustment: 15,
             offset: Default::default(),
             reactive: true,
         }

@@ -33,8 +33,8 @@ impl<T: Debug> PopupHandler for SctkState<T> {
                 first,
             ),
             id: popup.wl_surface().clone(),
-            toplevel_id: sctk_popup.toplevel.clone(),
-            parent_id: match &sctk_popup.parent {
+            toplevel_id: sctk_popup.data.toplevel.clone(),
+            parent_id: match &sctk_popup.data.parent {
                 SctkSurface::LayerSurface(s) => s.clone(),
                 SctkSurface::Window(s) => s.clone(),
                 SctkSurface::Popup(s) => s.clone(),
@@ -56,7 +56,7 @@ impl<T: Debug> PopupHandler for SctkState<T> {
         };
         let mut to_destroy = vec![sctk_popup];
         while let Some(popup_to_destroy) = to_destroy.last() {
-            match popup_to_destroy.parent.clone() {
+            match popup_to_destroy.data.parent.clone() {
                 state::SctkSurface::LayerSurface(_)
                 | state::SctkSurface::Window(_) => {
                     break;
@@ -78,8 +78,8 @@ impl<T: Debug> PopupHandler for SctkState<T> {
         for popup in to_destroy.into_iter().rev() {
             self.sctk_events.push(SctkEvent::PopupEvent {
                 variant: PopupEventVariant::Done,
-                toplevel_id: popup.toplevel.clone(),
-                parent_id: popup.parent.wl_surface().clone(),
+                toplevel_id: popup.data.toplevel.clone(),
+                parent_id: popup.data.parent.wl_surface().clone(),
                 id: popup.popup.wl_surface().clone(),
             });
             self.popups.push(popup);

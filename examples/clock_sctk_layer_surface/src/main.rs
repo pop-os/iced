@@ -18,7 +18,6 @@ pub fn main() -> iced::Result {
         antialiasing: true,
         initial_surface: InitialSurface::LayerSurface(
             SctkLayerSurfaceSettings {
-                size: (None, Some(200)),
                 anchor: Anchor::LEFT.union(Anchor::RIGHT).union(Anchor::TOP),
                 exclusive_zone: 200,
                 ..Default::default()
@@ -59,8 +58,8 @@ impl Application for Clock {
             get_layer_surface(SctkLayerSurfaceSettings {
                 // XXX id must be unique!
                 id: to_destroy,
-                size: (None, Some(100)),
-                anchor: Anchor::LEFT.union(Anchor::RIGHT).union(Anchor::BOTTOM),
+                size: None,
+                anchor: Anchor::BOTTOM,
                 exclusive_zone: 100,
                 ..Default::default()
             }),
@@ -74,22 +73,22 @@ impl Application for Clock {
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
             Message::Tick(local_time) => {
-                let now = local_time;
+                // let now = local_time;
 
-                if now != self.now {
-                    self.now = now;
-                    self.clock.clear();
-                }
-                // destroy the second layer surface after counting to 10.
-                self.count += 1;
-                if self.count == 10 {
-                    println!("time to remove the bottom clock!");
-                    return set_size::<Message>(
-                        self.to_destroy,
-                        None,
-                        Some(200),
-                    );
-                }
+                // if now != self.now {
+                //     self.now = now;
+                //     self.clock.clear();
+                // }
+                // // destroy the second layer surface after counting to 10.
+                // self.count += 1;
+                // if self.count == 10 {
+                //     println!("time to remove the bottom clock!");
+                //     return set_size::<Message>(
+                //         self.to_destroy,
+                //         None,
+                //         Some(200),
+                //     );
+                // }
             }
         }
 
@@ -109,13 +108,9 @@ impl Application for Clock {
         &self,
         _id: SurfaceIdWrapper,
     ) -> Element<'_, Self::Message, iced::Renderer<Self::Theme>> {
-        let canvas = canvas(self as &Self)
-            .width(Length::Fill)
-            .height(Length::Fill);
+        let canvas = canvas(self as &Self).height(Length::Units(200)).width(Length::Units(200));
 
         container(canvas)
-            .width(Length::Fill)
-            .height(Length::Fill)
             .padding(20)
             .into()
     }

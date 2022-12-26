@@ -46,17 +46,18 @@ impl<T: Debug> LayerShellHandler for SctkState<T> {
                 Some(l) => l,
                 None => return,
             };
-        let id = layer.surface.wl_surface().id();
-        configure.new_size.0 = if configure.new_size.0 > 0 {
-            configure.new_size.0
-        } else {
-            layer.requested_size.0.unwrap_or(1)
+        
+        configure.new_size.0 = if let Some(w)  = layer.requested_size.0 {
+            w
+        } else  {
+            configure.new_size.0.max(1)
         };
-        configure.new_size.1 = if configure.new_size.1 > 0 {
-            configure.new_size.1
-        } else {
-            layer.requested_size.1.unwrap_or(1)
+        configure.new_size.1 = if let Some(h)  = layer.requested_size.1 {
+            h
+        } else  {
+            configure.new_size.1.max(1)
         };
+
         layer.current_size.replace(LogicalSize::new(
             configure.new_size.0,
             configure.new_size.1,

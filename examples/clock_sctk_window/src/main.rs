@@ -22,7 +22,10 @@ pub fn main() -> iced::Result {
     Clock::run(Settings {
         antialiasing: true,
         initial_surface: InitialSurface::XdgWindow(
-            SctkWindowSettings::default(),
+            SctkWindowSettings {
+                autosize: true,
+                ..Default::default()
+            },
         ),
         ..Settings::default()
     })
@@ -107,6 +110,7 @@ impl Application for Clock {
                                 width: 160,
                                 height: 260,
                             },
+                            // size: Some((100, 200)),
                             ..Default::default()
                         },
                         parent_size: None,
@@ -139,24 +143,21 @@ impl Application for Clock {
             SurfaceIdWrapper::LayerSurface(_) => unimplemented!(),
             SurfaceIdWrapper::Window(_) => {
                 let canvas = canvas(self as &Self)
-                    .width(Length::Fill)
-                    .height(Length::Fill);
+                    .width(Length::Units(100))
+                    .height(Length::Units(100));
 
                 container(column![
                     button("Popup").on_press(Message::Click(id.inner())),
                     canvas,
                 ])
-                .width(Length::Fill)
-                .height(Length::Fill)
                 .padding(20)
                 .into()
             }
-            SurfaceIdWrapper::Popup(_) => button("Hi!, I'm a popup!")
+            SurfaceIdWrapper::Popup(_) => {                
+                button("Hi!, I'm a popup!")
                 .on_press(Message::Click(id.inner()))
-                .width(Length::Fill)
-                .height(Length::Fill)
                 .padding(20)
-                .into(),
+                .into()},
         }
     }
 
