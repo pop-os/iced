@@ -20,7 +20,7 @@ use iced_native::{
     clipboard::{self, Null},
     command::platform_specific::{self, wayland::popup},
     mouse::{self, Interaction},
-    widget::operation,
+    widget::{operation, Tree},
     Element, Renderer, Widget,
 };
 
@@ -219,6 +219,8 @@ where
             // TODO ASHLEY should an application panic if it's initial surface can't be created?
             if builder.size.is_none() {
                 let e = application.view(SurfaceIdWrapper::LayerSurface(builder.id));
+                let _state = Widget::state(e.as_widget());
+                e.as_widget().diff(&mut Tree::empty());
                 let node = Widget::layout(e.as_widget(), &renderer, &builder.size_limits);
                 let bounds = node.bounds();
                 builder.size = Some((Some(bounds.width as u32), Some(bounds.height as u32)));
@@ -235,6 +237,8 @@ where
         settings::InitialSurface::XdgWindow(builder) => {
             if builder.autosize {
                 let e = application.view(SurfaceIdWrapper::Window(builder.window_id));
+                let _state = Widget::state(e.as_widget());
+                e.as_widget().diff(&mut Tree::empty());
                 let node = Widget::layout(e.as_widget(), &renderer, &builder.size_limits);
                 let bounds = node.bounds();
                 builder.iced_settings.size = (bounds.width as u32, bounds.height as u32);
@@ -1248,6 +1252,8 @@ fn run_command<A, E>(
                 if let platform_specific::wayland::layer_surface::Action::LayerSurface{ mut builder, _phantom } = layer_surface_action {
                     if builder.size.is_none() {
                         let e = application.view(SurfaceIdWrapper::LayerSurface(builder.id));
+                        let _state = Widget::state(e.as_widget());
+                        e.as_widget().diff(&mut Tree::empty());
                         let node = Widget::layout(e.as_widget(), renderer, &builder.size_limits);
                         let bounds = node.bounds();
                         builder.size = Some((Some(bounds.width as u32), Some(bounds.height as u32)));
@@ -1265,6 +1271,8 @@ fn run_command<A, E>(
                 if let platform_specific::wayland::window::Action::Window{ mut builder, _phantom } = window_action {
                     if builder.autosize {
                         let e = application.view(SurfaceIdWrapper::Window(builder.window_id));
+                        let _state = Widget::state(e.as_widget());
+                        e.as_widget().diff(&mut Tree::empty());
                         let node = Widget::layout(e.as_widget(), renderer, &builder.size_limits);
                         let bounds = node.bounds();
                         builder.iced_settings.size = (bounds.width as u32, bounds.height as u32);
@@ -1282,6 +1290,8 @@ fn run_command<A, E>(
                 if let popup::Action::Popup { mut popup, _phantom } = popup_action {
                     if popup.positioner.size.is_none() {
                         let e = application.view(SurfaceIdWrapper::Popup(popup.id));
+                        let _state = Widget::state(e.as_widget());
+                        e.as_widget().diff(&mut Tree::empty());
                         let node = Widget::layout(e.as_widget(), renderer, &popup.positioner.size_limits);
                         let bounds = node.bounds();
                         popup.positioner.size = Some((bounds.width as u32, bounds.height as u32));
