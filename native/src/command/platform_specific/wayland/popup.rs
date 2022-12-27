@@ -77,7 +77,7 @@ impl Default for SctkPositioner {
     fn default() -> Self {
         Self {
             size: None,
-            size_limits: Limits::NONE,
+            size_limits: Limits::NONE.min_height(1).min_width(1).max_width(300).max_height(1080),
             anchor_rect: Rectangle {
                 x: 0,
                 y: 0,
