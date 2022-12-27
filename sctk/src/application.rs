@@ -250,6 +250,7 @@ where
         w,
         h,
     );
+    context.make_current(&surface).unwrap();
 
     let surface_ids = HashMap::from([(object_id.clone(), native_id)]);
     let egl_surfaces = HashMap::from([(native_id.inner(), surface)]);
