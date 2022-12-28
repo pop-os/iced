@@ -7,7 +7,7 @@ use iced::wayland::{
 use iced::widget::canvas::{
     stroke, Cache, Cursor, Geometry, LineCap, Path, Stroke,
 };
-use iced::widget::{button, canvas, column, container};
+use iced::widget::{button, canvas, column, container, text};
 use iced::{
     sctk_settings::InitialSurface, Application, Color, Command, Element,
     Length, Point, Rectangle, Settings, Subscription, Theme, Vector,
@@ -154,7 +154,7 @@ impl Application for Clock {
                 .into()
             }
             SurfaceIdWrapper::Popup(_) => {                
-                button("Hi!, I'm a popup!")
+                button(text(format!("{}", self.count)))
                 .on_press(Message::Click(id.inner()))
                 .padding(20)
                 .into()},

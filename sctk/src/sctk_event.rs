@@ -216,6 +216,8 @@ pub enum PopupEventVariant {
     RepositionionedPopup {
         token: u32,
     },
+    /// size
+    Size(u32, u32)
 }
 
 #[derive(Debug, Clone)]
@@ -602,7 +604,8 @@ impl SctkEvent {
                     PopupEventVariant::Configure(_, _, _) => Default::default(), // TODO
                     PopupEventVariant::RepositionionedPopup { token } => {
                         Default::default()
-                    } // TODO
+                    }
+                    PopupEventVariant::Size(_, _) => Default::default(), // TODO
                 }
             }
             SctkEvent::NewOutput { id, info } => {

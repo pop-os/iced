@@ -756,7 +756,26 @@ where
                                 );
                             }
                         },
-                        platform_specific::wayland::popup::Action::Reposition { id, positioner } => todo!(),
+                        platform_specific::wayland::popup::Action::Size { id, width, height } => {
+                            if let Some(sctk_popup) = self.state
+                                .popups
+                                .iter()
+                                .find(|s| s.data.id == id)
+                            {
+                                sctk_popup.popup.xdg_surface().set_window_geometry(0, 0, width as i32, height as i32);
+                                sctk_popup.popup.wl_surface().commit();
+                                sticky_exit_callback(IcedSctkEvent::SctkEvent(SctkEvent::PopupEvent {
+                                    variant: PopupEventVariant::Size(width, height),
+                                    toplevel_id: sctk_popup.data.toplevel.clone(),
+                                    parent_id: sctk_popup.data.parent.wl_surface().clone(),
+                                    id: sctk_popup.popup.wl_surface().clone(),
+                                }),
+                                    &self.state,
+                                    &mut control_flow,
+                                    &mut callback,
+                                );
+                            }
+                        },
                         platform_specific::wayland::popup::Action::Grab { id } => todo!(),
                     },
                     Event::InitSurfaceSize(id, requested_size) => todo!(),

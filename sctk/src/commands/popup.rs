@@ -5,7 +5,7 @@ use iced_native::command::{
         self,
         wayland::{
             self,
-            popup::{SctkPopupSettings, SctkPositioner},
+            popup::SctkPopupSettings,
         },
     },
 };
@@ -27,13 +27,14 @@ pub fn get_popup<Message>(popup: SctkPopupSettings) -> Command<Message> {
 }
 
 /// <https://wayland.app/protocols/xdg-shell#xdg_popup:request:reposition>
-pub fn reposition_popup<Message>(
+pub fn set_size<Message>(
     id: SurfaceId,
-    positioner: SctkPositioner,
+    width: u32,
+    height: u32,
 ) -> Command<Message> {
     Command::single(command::Action::PlatformSpecific(
         platform_specific::Action::Wayland(wayland::Action::Popup(
-            wayland::popup::Action::Reposition { id, positioner },
+            wayland::popup::Action::Size { id, width, height },
         )),
     ))
 }

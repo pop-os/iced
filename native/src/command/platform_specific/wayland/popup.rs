@@ -108,18 +108,20 @@ pub enum Action<T> {
         /// id of the popup
         id: window::Id,
     },
-    /// request that the popup be repositioned
-    Reposition {
-        /// id of the popup
-        id: window::Id,
-        /// the positioner
-        positioner: SctkPositioner,
-    },
     /// request that the popup make an explicit grab
     Grab {
         /// id of the popup
         id: window::Id,
     },
+    /// set the size of the popup
+    Size {
+        /// id of the popup
+        id: window::Id,
+        /// width
+        width: u32,
+        /// height
+        height: u32,
+    }
 }
 
 impl<T> Action<T> {
@@ -137,10 +139,8 @@ impl<T> Action<T> {
                 _phantom: PhantomData::default(),
             },
             Action::Destroy { id } => Action::Destroy { id },
-            Action::Reposition { id, positioner } => {
-                Action::Reposition { id, positioner }
-            }
             Action::Grab { id } => Action::Grab { id },
+            Action::Size { id, width, height } => Action::Size { id, width, height },
         }
     }
 }
@@ -158,10 +158,10 @@ impl<T> fmt::Debug for Action<T> {
                 "Action::PopupAction::Destroy {{ id: {:?} }}",
                 id
             ),
-            Action::Reposition { id, positioner } => write!(
+            Action::Size { id, width, height } => write!(
                 f,
-                "Action::PopupAction::Reposition {{ id: {:?}, positioner: {:?} }}",
-                id, positioner
+                "Action::PopupAction::Size {{ id: {:?}, width: {:?}, height: {:?} }}",
+                id, width, height
             ),
             Action::Grab { id } => write!(
                 f,
