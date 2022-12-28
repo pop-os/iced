@@ -763,7 +763,7 @@ where
                                 .find(|s| s.data.id == id)
                             {
                                 sctk_popup.popup.xdg_surface().set_window_geometry(0, 0, width as i32, height as i32);
-                                sctk_popup.popup.wl_surface().commit();
+                                to_commit.insert(id, sctk_popup.popup.wl_surface().clone());
                                 sticky_exit_callback(IcedSctkEvent::SctkEvent(SctkEvent::PopupEvent {
                                     variant: PopupEventVariant::Size(width, height),
                                     toplevel_id: sctk_popup.data.toplevel.clone(),

@@ -888,9 +888,7 @@ where
                                     );
                                 },
                             };
-                            interfaces.insert(native_id.inner(), user_interface);
                             auto_size_surfaces.insert(native_id, (w, h, limits, false));
-                            continue;
                         } else {
                             auto_size_surfaces.insert(native_id, (w, h, limits, false));
                         }
@@ -1004,6 +1002,7 @@ where
     let size = if let Some((prev_w, prev_h, limits, dirty)) = auto_size_surfaces.remove(&id) {
         let view = view.as_widget();
         let _state = view.state();
+        // TODO would it be ok to diff against the current cache?
         let _ = view.diff(&mut Tree::empty());
         let bounds = view.layout(renderer, &limits).bounds().size();
         let (w, h) = (bounds.width as u32, bounds.height as u32);
