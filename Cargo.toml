@@ -42,7 +42,7 @@ palette = ["iced_core/palette"]
 # Enables querying system information
 system = ["iced_winit/system"]
 # Enables wayland shell
-wayland = ["iced_sctk", "iced_glow", "iced_native/sctk"]
+wayland = ["iced_sctk", "iced_glow"]
 winit = ["iced_winit"]
 
 [badges]
