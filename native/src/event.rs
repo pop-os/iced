@@ -35,6 +35,7 @@ pub enum Event {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PlatformSpecific {
     /// A Wayland specific event
+    #[cfg(feature = "wayland")]
     Wayland(wayland::Event),
     /// A MacOS specific event
     MacOS(MacOS),

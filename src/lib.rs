@@ -164,35 +164,26 @@
 #![allow(clippy::inherent_to_string, clippy::type_complexity)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
-#[cfg(all(
-    not(feature = "glow"),
-    any(feature = "wgpu", feature = "swbuf"),
-    not(feature = "wayland")
-))]
+#[cfg(feature = "winit")]
 pub mod application;
 
 mod element;
 mod error;
 mod result;
 
-#[cfg(all(
-    not(feature = "wayland")
-))]
+#[cfg(feature = "winit")]
 mod sandbox;
 
-#[cfg(all(
-    not(feature = "wayland")
-))]
+#[cfg(feature = "winit")]
 pub use application::Application;
 
 /// wayland application
 #[cfg(feature = "wayland")]
 pub mod wayland;
 #[cfg(feature = "wayland")]
-pub use wayland::Application;
-#[cfg(feature = "wayland")]
 pub use wayland::sandbox;
-
+#[cfg(feature = "wayland")]
+pub use wayland::Application;
 
 pub mod clipboard;
 pub mod executor;
@@ -216,45 +207,45 @@ pub mod multi_window;
 #[cfg(feature = "wayland")]
 use iced_sctk as runtime;
 
-#[cfg(all(
-    not(feature = "glow"),
-    any(feature = "wgpu", feature = "swbuf"),
-    not(feature = "wayland")
-))]
+#[cfg(feature = "winit")]
 use iced_winit as runtime;
 
-#[cfg(all(feature = "glow", not(feature = "wayland")))]
+#[cfg(feature = "glutin")]
 use iced_glutin as runtime;
 
-#[cfg(all(not(feature = "iced_glow"), feature = "wgpu"))]
+#[cfg(feature = "wgpu")]
 use iced_wgpu as renderer;
 
-#[cfg(any(feature = "glow", feature = "wayland"))]
+#[cfg(any(feature = "glow", feature = "glutin"))]
 use iced_glow as renderer;
 
-#[cfg(all(not(feature = "iced_glow"), feature = "swbuf"))]
+#[cfg(feature = "swbuf")]
 use iced_swbuf as renderer;
 
 pub use iced_native::theme;
-pub use runtime::event;
-pub use runtime::subscription;
 
+#[cfg(any(feature = "winit", feature = "wayland"))]
 pub use element::Element;
 pub use error::Error;
+#[cfg(any(feature = "winit", feature = "wayland"))]
 pub use event::Event;
+#[cfg(any(feature = "winit", feature = "wayland"))]
 pub use executor::Executor;
+#[cfg(any(feature = "swbuf", feature = "glow", feature = "wgpu"))]
 pub use renderer::Renderer;
 pub use result::Result;
+#[cfg(any(feature = "winit", feature = "wayland"))]
 pub use sandbox::Sandbox;
 pub use settings::Settings;
+#[cfg(any(feature = "winit", feature = "wayland"))]
 pub use subscription::Subscription;
 pub use theme::Theme;
 
-pub use runtime::alignment;
-pub use runtime::futures;
+#[cfg(any(feature = "winit", feature = "wayland"))]
 pub use runtime::{
-    color, Alignment, Background, Color, Command, ContentFit, Font, Length,
-    Padding, Point, Rectangle, Size, Vector, settings as sctk_settings
+    alignment, color, event, futures, settings as sctk_settings, subscription,
+    Alignment, Background, Color, Command, ContentFit, Font, Length, Padding,
+    Point, Rectangle, Size, Vector,
 };
 
 #[cfg(feature = "system")]
