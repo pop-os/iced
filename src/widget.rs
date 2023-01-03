@@ -4,20 +4,33 @@ pub use iced_native::widget::helpers::*;
 pub use iced_native::{column, row};
 
 /// A container that distributes its contents vertically.
+#[cfg(any(feature = "swbuf", feature = "glow", feature = "wgpu"))]
 pub type Column<'a, Message, Renderer = crate::Renderer> =
     iced_native::widget::Column<'a, Message, Renderer>;
+#[cfg(not(any(feature = "swbuf", feature = "glow", feature = "wgpu")))]
+pub use iced_native::widget::Column;
 
 /// A container that distributes its contents horizontally.
+#[cfg(any(feature = "swbuf", feature = "glow", feature = "wgpu"))]
 pub type Row<'a, Message, Renderer = crate::Renderer> =
     iced_native::widget::Row<'a, Message, Renderer>;
+#[cfg(not(any(feature = "swbuf", feature = "glow", feature = "wgpu")))]
+pub use iced_native::widget::Row;
 
 pub mod text {
     //! Write some text for your users to read.
     pub use iced_native::widget::text::{Appearance, StyleSheet};
 
     /// A paragraph of text.
+    #[cfg(any(feature = "swbuf", feature = "glow", feature = "wgpu"))]
     pub type Text<'a, Renderer = crate::Renderer> =
         iced_native::widget::Text<'a, Renderer>;
+    #[cfg(not(any(
+        feature = "swbuf",
+        feature = "glow",
+        feature = "wgpu"
+    )))]
+    pub use iced_native::widget::Text;
 }
 
 pub mod button {
@@ -25,8 +38,15 @@ pub mod button {
     pub use iced_native::widget::button::{Appearance, StyleSheet};
 
     /// A widget that produces a message when clicked.
+    #[cfg(any(feature = "swbuf", feature = "glow", feature = "wgpu"))]
     pub type Button<'a, Message, Renderer = crate::Renderer> =
         iced_native::widget::Button<'a, Message, Renderer>;
+    #[cfg(not(any(
+        feature = "swbuf",
+        feature = "glow",
+        feature = "wgpu"
+    )))]
+    pub use iced_native::widget::Button;
 }
 
 pub mod checkbox {
@@ -34,8 +54,15 @@ pub mod checkbox {
     pub use iced_native::widget::checkbox::{Appearance, StyleSheet};
 
     /// A box that can be checked.
+    #[cfg(any(feature = "swbuf", feature = "glow", feature = "wgpu"))]
     pub type Checkbox<'a, Message, Renderer = crate::Renderer> =
         iced_native::widget::Checkbox<'a, Message, Renderer>;
+    #[cfg(not(any(
+        feature = "swbuf",
+        feature = "glow",
+        feature = "wgpu"
+    )))]
+    pub use iced_native::widget::Checkbox;
 }
 
 pub mod container {
@@ -43,16 +70,30 @@ pub mod container {
     pub use iced_native::widget::container::{Appearance, StyleSheet};
 
     /// An element decorating some content.
+    #[cfg(any(feature = "swbuf", feature = "glow", feature = "wgpu"))]
     pub type Container<'a, Message, Renderer = crate::Renderer> =
         iced_native::widget::Container<'a, Message, Renderer>;
+    #[cfg(not(any(
+        feature = "swbuf",
+        feature = "glow",
+        feature = "wgpu"
+    )))]
+    pub use iced_native::widget::Container;
 }
 
 pub mod mouse_listener {
     //! Intercept mouse events on a widget.
 
     /// A container intercepting mouse events.
+    #[cfg(any(feature = "swbuf", feature = "glow", feature = "wgpu"))]
     pub type MouseListener<'a, Message, Renderer = crate::Renderer> =
         iced_native::widget::MouseListener<'a, Message, Renderer>;
+    #[cfg(not(any(
+        feature = "swbuf",
+        feature = "glow",
+        feature = "wgpu"
+    )))]
+    pub use iced_native::widget::MouseListener;
 }
 
 pub mod pane_grid {
@@ -74,16 +115,37 @@ pub mod pane_grid {
     /// to completely fill the space available.
     ///
     /// [![Pane grid - Iced](https://thumbs.gfycat.com/MixedFlatJellyfish-small.gif)](https://gfycat.com/mixedflatjellyfish)
+    #[cfg(any(feature = "swbuf", feature = "glow", feature = "wgpu"))]
     pub type PaneGrid<'a, Message, Renderer = crate::Renderer> =
         iced_native::widget::PaneGrid<'a, Message, Renderer>;
+    #[cfg(not(any(
+        feature = "swbuf",
+        feature = "glow",
+        feature = "wgpu"
+    )))]
+    pub use iced_native::widget::PaneGrid;
 
     /// The content of a [`Pane`].
+    #[cfg(any(feature = "swbuf", feature = "glow", feature = "wgpu"))]
     pub type Content<'a, Message, Renderer = crate::Renderer> =
         iced_native::widget::pane_grid::Content<'a, Message, Renderer>;
+    #[cfg(not(any(
+        feature = "swbuf",
+        feature = "glow",
+        feature = "wgpu"
+    )))]
+    pub use iced_native::widget::pane_grid::Content;
 
     /// The title bar of a [`Pane`].
+    #[cfg(any(feature = "swbuf", feature = "glow", feature = "wgpu"))]
     pub type TitleBar<'a, Message, Renderer = crate::Renderer> =
         iced_native::widget::pane_grid::TitleBar<'a, Message, Renderer>;
+    #[cfg(not(any(
+        feature = "swbuf",
+        feature = "glow",
+        feature = "wgpu"
+    )))]
+    pub use iced_native::widget::pane_grid::TitleBar;
 }
 
 pub mod pick_list {
@@ -91,8 +153,15 @@ pub mod pick_list {
     pub use iced_native::widget::pick_list::{Appearance, StyleSheet};
 
     /// A widget allowing the selection of a single value from a list of options.
+    #[cfg(any(feature = "swbuf", feature = "glow", feature = "wgpu"))]
     pub type PickList<'a, T, Message, Renderer = crate::Renderer> =
         iced_native::widget::PickList<'a, T, Message, Renderer>;
+    #[cfg(not(any(
+        feature = "swbuf",
+        feature = "glow",
+        feature = "wgpu"
+    )))]
+    pub use iced_native::widget::PickList;
 }
 
 pub mod radio {
@@ -100,8 +169,15 @@ pub mod radio {
     pub use iced_native::widget::radio::{Appearance, StyleSheet};
 
     /// A circular button representing a choice.
+    #[cfg(any(feature = "swbuf", feature = "glow", feature = "wgpu"))]
     pub type Radio<Message, Renderer = crate::Renderer> =
         iced_native::widget::Radio<Message, Renderer>;
+    #[cfg(not(any(
+        feature = "swbuf",
+        feature = "glow",
+        feature = "wgpu"
+    )))]
+    pub use iced_native::widget::Radio;
 }
 
 pub mod scrollable {
@@ -112,8 +188,15 @@ pub mod scrollable {
 
     /// A widget that can vertically display an infinite amount of content
     /// with a scrollbar.
+    #[cfg(any(feature = "swbuf", feature = "glow", feature = "wgpu"))]
     pub type Scrollable<'a, Message, Renderer = crate::Renderer> =
         iced_native::widget::Scrollable<'a, Message, Renderer>;
+    #[cfg(not(any(
+        feature = "swbuf",
+        feature = "glow",
+        feature = "wgpu"
+    )))]
+    pub use iced_native::widget::Scrollable;
 }
 
 pub mod toggler {
@@ -121,8 +204,15 @@ pub mod toggler {
     pub use iced_native::widget::toggler::{Appearance, StyleSheet};
 
     /// A toggler widget.
+    #[cfg(any(feature = "swbuf", feature = "glow", feature = "wgpu"))]
     pub type Toggler<'a, Message, Renderer = crate::Renderer> =
         iced_native::widget::Toggler<'a, Message, Renderer>;
+    #[cfg(not(any(
+        feature = "swbuf",
+        feature = "glow",
+        feature = "wgpu"
+    )))]
+    pub use iced_native::widget::Toggler;
 }
 
 pub mod text_input {
@@ -133,8 +223,15 @@ pub mod text_input {
     };
 
     /// A field that can be filled with text.
+    #[cfg(any(feature = "swbuf", feature = "glow", feature = "wgpu"))]
     pub type TextInput<'a, Message, Renderer = crate::Renderer> =
         iced_native::widget::TextInput<'a, Message, Renderer>;
+    #[cfg(not(any(
+        feature = "swbuf",
+        feature = "glow",
+        feature = "wgpu"
+    )))]
+    pub use iced_native::widget::TextInput;
 }
 
 pub mod tooltip {
@@ -142,8 +239,15 @@ pub mod tooltip {
     pub use iced_native::widget::tooltip::Position;
 
     /// A widget allowing the selection of a single value from a list of options.
+    #[cfg(any(feature = "swbuf", feature = "glow", feature = "wgpu"))]
     pub type Tooltip<'a, Message, Renderer = crate::Renderer> =
         iced_native::widget::Tooltip<'a, Message, Renderer>;
+    #[cfg(not(any(
+        feature = "swbuf",
+        feature = "glow",
+        feature = "wgpu"
+    )))]
+    pub use iced_native::widget::Tooltip;
 }
 
 pub use iced_native::widget::progress_bar;
@@ -223,10 +327,13 @@ pub use qr_code::QRCode;
 #[cfg_attr(docsrs, doc(cfg(feature = "svg")))]
 pub use svg::Svg;
 
+#[cfg(any(feature = "winit", feature = "wayland"))]
 use crate::Command;
+#[cfg(any(feature = "winit", feature = "wayland"))]
 use iced_native::widget::operation;
 
 /// Focuses the previous focusable widget.
+#[cfg(any(feature = "winit", feature = "wayland"))]
 pub fn focus_previous<Message>() -> Command<Message>
 where
     Message: 'static,
@@ -235,6 +342,7 @@ where
 }
 
 /// Focuses the next focusable widget.
+#[cfg(any(feature = "winit", feature = "wayland"))]
 pub fn focus_next<Message>() -> Command<Message>
 where
     Message: 'static,

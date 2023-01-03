@@ -21,16 +21,16 @@ svg = ["iced_wgpu?/svg", "iced_glow?/svg", "iced_swbuf?/svg"]
 canvas = ["iced_graphics/canvas"]
 # Enables the `QRCode` widget
 qr_code = ["iced_graphics/qr_code"]
-# Enables the `iced_wgpu` renderer
+# Enables the `iced_wgpu` renderer. Conflicts with `iced_glow` and `iced_swbuf`
 wgpu = ["iced_wgpu"]
-# Enables the `iced_swbuf` renderer
+# Enables the `iced_swbuf` renderer. Conflicts with `iced_wgpu` and `iced_glow`
 swbuf = ["iced_swbuf"]
+# Enables the `iced_glow` renderer. Conflicts with `iced_wgpu` and `iced_swbuf`
+glow = ["iced_glow"]
 # Enables using system fonts
 default_system_font = ["iced_wgpu?/default_system_font", "iced_glow?/default_system_font"]
-# Enables the `iced_glow` renderer. Overrides `iced_wgpu`
-glow = ["iced_glow", "iced_glutin"]
 # Enables a debug view in native platforms (press F12)
-debug = ["iced_winit/debug"]
+debug = ["iced_winit?/debug"]
 # Enables `tokio` as the `executor::Default` on native platforms
 tokio = ["iced_futures/tokio"]
 # Enables `async-std` as the `executor::Default` on native platforms
@@ -40,9 +40,14 @@ smol = ["iced_futures/smol"]
 # Enables advanced color conversion via `palette`
 palette = ["iced_core/palette"]
 # Enables querying system information
-system = ["iced_winit/system"]
-# Enables wayland shell
-wayland = ["iced_sctk", "iced_glow"]
+system = ["iced_winit?/system"]
+# Enables the glutin shell. Conflicts with `sctk` and `winit`.
+# Forces the `glow` renderer, further conflicting with `wgpu` and `swbuf`.
+glutin = ["iced_glutin", "iced_glow"]
+# Enables the wayland shell. Conflicts with `winit` and `glutin`.
+# Incompatible with the `swbuf` and `wgpu` renderer.
+wayland = ["iced_sctk"]
+# Enables the winit shell. Conflicts with `wayland` and `glutin`.
 winit = ["iced_winit"]
 
 [badges]
@@ -102,3 +107,6 @@ opt-level = 3
 overflow-checks = false
 strip = "debuginfo"
 
+[patch."https://github.com/iced-rs/winit.git".winit]
+git = "https://github.com/pop-os/winit.git"
+branch = "iced"

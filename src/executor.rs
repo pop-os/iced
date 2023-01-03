@@ -1,4 +1,5 @@
 //! Choose your preferred executor to power your application.
+#[cfg(any(feature = "winit", feature = "wayland"))]
 pub use crate::runtime::Executor;
 
 /// A default cross-platform executor.

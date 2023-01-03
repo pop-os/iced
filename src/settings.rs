@@ -17,7 +17,6 @@ pub struct Settings<Flags> {
     #[cfg(not(feature = "wayland"))]
     pub window: window::Settings,
 
-
     /// the initial surface to be created
     #[cfg(feature = "wayland")]
     pub initial_surface: iced_sctk::settings::InitialSurface,
@@ -119,7 +118,7 @@ where
     }
 }
 
-#[cfg(not(any(target_arch = "wasm32", feature = "wayland")))]
+#[cfg(all(not(target_arch = "wasm32"), feature = "winit"))]
 impl<Flags> From<Settings<Flags>> for iced_winit::Settings<Flags> {
     fn from(settings: Settings<Flags>) -> iced_winit::Settings<Flags> {
         iced_winit::Settings {

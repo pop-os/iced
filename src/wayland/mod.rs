@@ -4,7 +4,9 @@ use crate::{Command, Element, Executor, Settings, Subscription};
 pub mod sandbox;
 pub use iced_native::application::{Appearance, StyleSheet};
 pub use iced_native::command::platform_specific::wayland as actions;
-pub use iced_sctk::{application::SurfaceIdWrapper, commands::*, command::*, settings::*};
+pub use iced_sctk::{
+    application::SurfaceIdWrapper, command::*, commands::*, settings::*,
+};
 
 /// A pure version of [`Application`].
 ///
