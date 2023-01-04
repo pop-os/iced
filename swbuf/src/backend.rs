@@ -89,7 +89,7 @@ pub struct Backend {
 }
 
 impl Backend {
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             swash_cache: SwashCache::new(&FONT_SYSTEM),
             #[cfg(feature = "image")]
