@@ -224,10 +224,9 @@ use iced_swbuf as renderer;
 
 pub use iced_native::theme;
 
-#[cfg(any(feature = "winit", feature = "wayland"))]
+#[cfg(any(feature = "swbuf", feature = "glow", feature = "wgpu"))]
 pub use element::Element;
 pub use error::Error;
-#[cfg(any(feature = "winit", feature = "wayland"))]
 pub use event::Event;
 #[cfg(any(feature = "winit", feature = "wayland"))]
 pub use executor::Executor;
@@ -237,15 +236,20 @@ pub use result::Result;
 #[cfg(any(feature = "winit", feature = "wayland"))]
 pub use sandbox::Sandbox;
 pub use settings::Settings;
-#[cfg(any(feature = "winit", feature = "wayland"))]
 pub use subscription::Subscription;
 pub use theme::Theme;
 
+#[cfg(not(any(feature = "winit", feature = "wayland")))]
+pub use iced_native::{
+    alignment, color, event, futures, subscription, Alignment, Background,
+    Color, Command, ContentFit, Font, Length, Padding, Point, Rectangle, Size,
+    Vector,
+};
 #[cfg(any(feature = "winit", feature = "wayland"))]
 pub use runtime::{
-    alignment, color, event, futures, settings as sctk_settings, subscription,
-    Alignment, Background, Color, Command, ContentFit, Font, Length, Padding,
-    Point, Rectangle, Size, Vector,
+    alignment, color, event, futures, subscription, Alignment, Background,
+    Color, Command, ContentFit, Font, Length, Padding, Point, Rectangle, Size,
+    Vector,
 };
 
 #[cfg(feature = "system")]
