@@ -35,7 +35,7 @@ pub mod text {
 
 pub mod button {
     //! Allow your users to perform actions by pressing a button.
-    pub use iced_native::widget::button::{Appearance, StyleSheet};
+    pub use iced_native::widget::button::{focus, Appearance, Id, StyleSheet};
 
     /// A widget that produces a message when clicked.
     #[cfg(any(feature = "swbuf", feature = "glow", feature = "wgpu"))]
