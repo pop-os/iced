@@ -108,7 +108,7 @@ impl<T: Debug> KeyboardHandler for SctkState<T> {
         _conn: &sctk::reexports::client::Connection,
         _qh: &sctk::reexports::client::QueueHandle<Self>,
         keyboard: &sctk::reexports::client::protocol::wl_keyboard::WlKeyboard,
-        _serial: u32,
+        serial: u32,
         event: sctk::seat::keyboard::KeyEvent,
     ) {
         let (is_active, my_seat) =
@@ -124,7 +124,7 @@ impl<T: Debug> KeyboardHandler for SctkState<T> {
             };
         let seat_id = my_seat.seat.clone();
         let kbd_id = keyboard.clone();
-        my_seat.last_kbd_press.replace(event.clone());
+        my_seat.last_kbd_press.replace((event.clone(), serial));
         if is_active {
             self.sctk_events.push(SctkEvent::KeyboardEvent {
                 variant: KeyboardEventVariant::Press(event),

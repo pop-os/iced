@@ -1,4 +1,6 @@
 use iced::executor;
+use iced::wayland::actions::layer_surface::SctkLayerSurfaceSettings;
+use iced::wayland::layer_surface::KeyboardInteractivity;
 use iced::wayland::{
     popup::{destroy_popup, get_popup},
     window::{close_window, get_window},
@@ -7,26 +9,25 @@ use iced::wayland::{
 use iced::widget::canvas::{
     stroke, Cache, Cursor, Geometry, LineCap, Path, Stroke,
 };
-use iced::widget::{button, canvas, column, container, text};
+use iced::widget::{button, canvas, column, container, text, text_input};
 use iced::{
-    sctk_settings::InitialSurface, Application, Color, Command, Element,
-    Length, Point, Rectangle, Settings, Subscription, Theme, Vector,
+    wayland::InitialSurface, Application, Color, Command, Element, Length,
+    Point, Rectangle, Settings, Subscription, Theme, Vector,
 };
 use iced_native::command::platform_specific::wayland::popup::{
     SctkPopupSettings, SctkPositioner,
 };
 use iced_native::command::platform_specific::wayland::window::SctkWindowSettings;
 use iced_native::window::{self, Id};
+use iced_native::Widget;
 
 pub fn main() -> iced::Result {
     Clock::run(Settings {
         antialiasing: true,
-        initial_surface: InitialSurface::XdgWindow(
-            SctkWindowSettings {
-                autosize: true,
-                ..Default::default()
-            },
-        ),
+        initial_surface: InitialSurface::XdgWindow(SctkWindowSettings {
+            autosize: true,
+            ..Default::default()
+        }),
         ..Settings::default()
     })
 }
@@ -38,13 +39,15 @@ struct Clock {
     to_destroy: Id,
     id_ctr: u32,
     popup: Option<Id>,
+    input: String,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 enum Message {
     Tick(time::OffsetDateTime),
     Click(window::Id),
     SurfaceClosed,
+    Input(String),
 }
 
 impl Application for Clock {
@@ -64,6 +67,7 @@ impl Application for Clock {
                 popup: None,
                 to_destroy,
                 id_ctr: 2,
+                input: String::new(),
             },
             get_window(SctkWindowSettings {
                 window_id: to_destroy,
@@ -121,6 +125,9 @@ impl Application for Clock {
             Message::SurfaceClosed => {
                 // ignored
             }
+            Message::Input(input) => {
+                self.input = input;
+            }
         }
 
         Command::none()
@@ -140,24 +147,40 @@ impl Application for Clock {
         id: SurfaceIdWrapper,
     ) -> Element<'_, Self::Message, iced::Renderer<Self::Theme>> {
         match id {
-            SurfaceIdWrapper::LayerSurface(_) => unimplemented!(),
-            SurfaceIdWrapper::Window(_) => {
+            SurfaceIdWrapper::LayerSurface(_) => {
                 let canvas = canvas(self as &Self)
                     .width(Length::Units(100))
                     .height(Length::Units(100));
 
                 container(column![
+                    text_input("hello", &self.input, Message::Input)
+                        .width(Length::Fill),
                     button("Popup").on_press(Message::Click(id.inner())),
                     canvas,
                 ])
                 .padding(20)
                 .into()
             }
-            SurfaceIdWrapper::Popup(_) => {                
-                button(text(format!("{}", self.count)))
-                .on_press(Message::Click(id.inner()))
+            SurfaceIdWrapper::Window(_) => {
+                let canvas = canvas(self as &Self)
+                    .width(Length::Units(100))
+                    .height(Length::Units(100));
+
+                container(column![
+                    text_input("hello", &self.input, Message::Input)
+                        .width(Length::Fill),
+                    button("Popup").on_press(Message::Click(id.inner())),
+                    canvas,
+                ])
                 .padding(20)
-                .into()},
+                .into()
+            }
+            SurfaceIdWrapper::Popup(_) => container(
+                text_input("hello", &self.input, Message::Input)
+                    .width(Length::Fill),
+            )
+            .width(Length::Units(300))
+            .into(),
         }
     }
 
