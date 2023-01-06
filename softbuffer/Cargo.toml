@@ -13,7 +13,7 @@ lazy_static = "1.4"
 log = "0.4"
 raw-window-handle = "0.5"
 raqote = { version = "0.8", default-features = false }
-softbuffer = { git = "https://github.com/rust-windowing/softbuffer" }
+softbuffer = "0.2"
 
 [dependencies.iced_native]
 path = "../native"
