@@ -15,6 +15,11 @@ pub use self::settings::Settings;
 
 pub(crate) mod surface;
 
+pub mod native {
+    pub use crate::surface::draw_primitive;
+    pub use raqote;
+}
+
 pub mod window;
 
 pub type Renderer<Theme = iced_native::Theme> =

@@ -10,8 +10,8 @@ use raqote::{
     SolidSource, Source, StrokeStyle, Transform,
 };
 use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
-use std::cmp;
 use softbuffer::GraphicsContext;
+use std::cmp;
 
 // A software rendering surface
 pub struct Surface {
@@ -96,7 +96,7 @@ impl Surface {
     }
 }
 
-fn draw_primitive(
+pub fn draw_primitive(
     draw_target: &mut DrawTarget<&mut [u32]>,
     draw_options: &DrawOptions,
     backend: &mut Backend,
