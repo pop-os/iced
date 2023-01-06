@@ -1,6 +1,6 @@
 use crate::backend::{Backend, CpuStorage, FONT_SYSTEM};
 
-use cosmic_text::{AttrsList, BufferLine, SwashContent};
+use cosmic_text::{AttrsList, BufferLine, Metrics, SwashContent};
 use iced_graphics::alignment::{Horizontal, Vertical};
 #[cfg(feature = "svg")]
 use iced_graphics::image::vector;
@@ -147,14 +147,20 @@ pub fn draw_primitive(
             // Apply scaling
             //TODO: align to integers?
             let bounds = scale_rect(bounds, false);
-            let size = scale_size(*size, false);
 
             let cosmic_color = {
                 let rgba8 = color.into_rgba8();
                 cosmic_text::Color::rgba(rgba8[0], rgba8[1], rgba8[2], rgba8[3])
             };
 
-            let (metrics, attrs) = backend.cosmic_metrics_attrs(size, &font);
+            let (metrics_unscaled, attrs) =
+                backend.cosmic_metrics_attrs(*size, &font);
+            // Scale metrics separately to avoid errors
+            //TODO: fix this by knowing correct scale when measuring text and doing hit test
+            let metrics = Metrics::new(
+                ((metrics_unscaled.font_size as f32) * scale_factor) as i32,
+                ((metrics_unscaled.line_height as f32) * scale_factor) as i32,
+            );
 
             /*
             // Debug bounds in green
@@ -229,7 +235,7 @@ pub fn draw_primitive(
                 line_x, line_y,
                 line_width, metrics.line_height,
                 bounds,
-                size,
+                *size,
                 horizontal_alignment,
                 vertical_alignment
             );
