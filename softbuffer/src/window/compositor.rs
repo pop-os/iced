@@ -74,7 +74,7 @@ impl<Theme> compositor::Compositor for Compositor<Theme> {
         background: Color,
         overlay: &[T],
     ) -> Result<(), SurfaceError> {
-        surface.present(renderer, background);
+        surface.present(renderer, viewport.scale_factor() as f32, background);
         Ok(())
     }
 }

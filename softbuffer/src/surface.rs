@@ -4,10 +4,10 @@ use cosmic_text::{AttrsList, BufferLine, SwashContent};
 use iced_graphics::alignment::{Horizontal, Vertical};
 #[cfg(feature = "svg")]
 use iced_graphics::image::vector;
-use iced_graphics::{Background, Gradient, Primitive};
+use iced_graphics::{Background, Gradient, Point, Primitive, Rectangle, Size};
 use raqote::{
     DrawOptions, DrawTarget, Image, IntPoint, IntRect, PathBuilder,
-    SolidSource, Source, StrokeStyle, Transform,
+    SolidSource, Source, StrokeStyle, Transform, Vector,
 };
 use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
 use softbuffer::GraphicsContext;
@@ -46,6 +46,7 @@ impl Surface {
     pub(crate) fn present<Theme>(
         &mut self,
         renderer: &mut crate::Renderer<Theme>,
+        scale_factor: f32,
         background: iced_graphics::Color,
     ) {
         {
@@ -80,6 +81,7 @@ impl Surface {
                         &mut draw_target,
                         &draw_options,
                         backend,
+                        scale_factor,
                         primitive,
                     );
                 }
@@ -100,13 +102,37 @@ pub fn draw_primitive(
     draw_target: &mut DrawTarget<&mut [u32]>,
     draw_options: &DrawOptions,
     backend: &mut Backend,
+    scale_factor: f32,
     primitive: &Primitive,
 ) {
+    let scale_size = |size: f32, align: bool| -> f32 {
+        if align {
+            (size * scale_factor).round()
+        } else {
+            size * scale_factor
+        }
+    };
+    let scale_rect = |rect: &Rectangle<f32>, align: bool| -> Rectangle<f32> {
+        Rectangle::new(
+            Point::new(scale_size(rect.x, align), scale_size(rect.y, align)),
+            Size::new(
+                scale_size(rect.width, align),
+                scale_size(rect.height, align),
+            ),
+        )
+    };
+
     match primitive {
         Primitive::None => (),
         Primitive::Group { primitives } => {
             for child in primitives.iter() {
-                draw_primitive(draw_target, draw_options, backend, child);
+                draw_primitive(
+                    draw_target,
+                    draw_options,
+                    backend,
+                    scale_factor,
+                    child,
+                );
             }
         }
         Primitive::Text {
@@ -118,12 +144,17 @@ pub fn draw_primitive(
             horizontal_alignment,
             vertical_alignment,
         } => {
+            // Apply scaling
+            //TODO: align to integers?
+            let bounds = scale_rect(bounds, false);
+            let size = scale_size(*size, false);
+
             let cosmic_color = {
                 let rgba8 = color.into_rgba8();
                 cosmic_text::Color::rgba(rgba8[0], rgba8[1], rgba8[2], rgba8[3])
             };
 
-            let (metrics, attrs) = backend.cosmic_metrics_attrs(*size, &font);
+            let (metrics, attrs) = backend.cosmic_metrics_attrs(size, &font);
 
             /*
             // Debug bounds in green
@@ -198,7 +229,7 @@ pub fn draw_primitive(
                 line_x, line_y,
                 line_width, metrics.line_height,
                 bounds,
-                *size,
+                size,
                 horizontal_alignment,
                 vertical_alignment
             );
@@ -341,6 +372,17 @@ pub fn draw_primitive(
             border_width,
             border_color,
         } => {
+            // Apply scaling
+            //TODO: align to integers?
+            let bounds = scale_rect(bounds, false);
+            let border_radius = [
+                scale_size(border_radius[0], false),
+                scale_size(border_radius[1], false),
+                scale_size(border_radius[2], false),
+                scale_size(border_radius[3], false),
+            ];
+            let border_width = scale_size(*border_width, false);
+
             // Ensure radius is not too large
             let clamp_radius = |radius: f32| -> f32 {
                 if radius > bounds.width / 2.0 {
@@ -435,7 +477,7 @@ pub fn draw_primitive(
             };
 
             let style = StrokeStyle {
-                width: *border_width,
+                width: border_width,
                 ..Default::default()
             };
 
@@ -451,6 +493,10 @@ pub fn draw_primitive(
             );
         }
         Primitive::Image { handle, bounds } => {
+            // Apply scaling
+            //TODO: align to integers?
+            let bounds = scale_rect(bounds, false);
+
             #[cfg(feature = "image")]
             match backend.raster_cache.borrow_mut().upload(
                 handle,
@@ -479,6 +525,10 @@ pub fn draw_primitive(
             bounds,
             color,
         } => {
+            // Apply scaling
+            //TODO: align to integers?
+            let bounds = scale_rect(bounds, false);
+
             #[cfg(feature = "svg")]
             match backend.vector_cache.borrow_mut().upload(
                 handle,
@@ -506,6 +556,10 @@ pub fn draw_primitive(
             }
         }
         Primitive::Clip { bounds, content } => {
+            // Apply scaling
+            //TODO: align to integers?
+            let bounds = scale_rect(bounds, false);
+
             draw_target.push_clip_rect(IntRect::new(
                 IntPoint::new(bounds.x as i32, bounds.y as i32),
                 IntPoint::new(
@@ -513,19 +567,38 @@ pub fn draw_primitive(
                     (bounds.y + bounds.height) as i32,
                 ),
             ));
-            draw_primitive(draw_target, draw_options, backend, &content);
+            draw_primitive(
+                draw_target,
+                draw_options,
+                backend,
+                scale_factor,
+                &content,
+            );
             draw_target.pop_clip();
         }
         Primitive::Translate {
             translation,
             content,
         } => {
-            draw_target.set_transform(&Transform::translation(
-                translation.x,
-                translation.y,
-            ));
-            draw_primitive(draw_target, draw_options, backend, &content);
-            draw_target.set_transform(&Transform::identity());
+            // Apply scaling
+            //TODO: align to integers?
+            let translation = Vector::new(
+                scale_size(translation.x, false),
+                scale_size(translation.y, false),
+            );
+
+            let transform = draw_target.get_transform().clone();
+            draw_target.set_transform(&transform.then_translate(translation));
+
+            draw_primitive(
+                draw_target,
+                draw_options,
+                backend,
+                scale_factor,
+                &content,
+            );
+
+            draw_target.set_transform(&transform);
         }
         Primitive::GradientMesh {
             buffers,
@@ -567,9 +640,20 @@ pub fn draw_primitive(
                 let b = &buffers.vertices[indices[1] as usize];
                 let c = &buffers.vertices[indices[2] as usize];
 
-                pb.move_to(a.position[0], a.position[1]);
-                pb.line_to(b.position[0], b.position[1]);
-                pb.line_to(c.position[0], c.position[1]);
+                // Scaling is applied here
+                //TODO: align to integers?
+                pb.move_to(
+                    scale_size(a.position[0], false),
+                    scale_size(a.position[1], false),
+                );
+                pb.line_to(
+                    scale_size(b.position[0], false),
+                    scale_size(b.position[1], false),
+                );
+                pb.line_to(
+                    scale_size(c.position[0], false),
+                    scale_size(c.position[1], false),
+                );
                 pb.close();
             }
 
@@ -614,10 +698,21 @@ pub fn draw_primitive(
                 let b = &buffers.vertices[indices[1] as usize];
                 let c = &buffers.vertices[indices[2] as usize];
 
+                // Scaling is applied here
+                //TODO: align to integers?
                 let mut pb = PathBuilder::new();
-                pb.move_to(a.position[0], a.position[1]);
-                pb.line_to(b.position[0], b.position[1]);
-                pb.line_to(c.position[0], c.position[1]);
+                pb.move_to(
+                    scale_size(a.position[0], false),
+                    scale_size(a.position[1], false),
+                );
+                pb.line_to(
+                    scale_size(b.position[0], false),
+                    scale_size(b.position[1], false),
+                );
+                pb.line_to(
+                    scale_size(c.position[0], false),
+                    scale_size(c.position[1], false),
+                );
                 pb.close();
 
                 // TODO: Each vertice has its own separate color.
@@ -636,7 +731,13 @@ pub fn draw_primitive(
             */
         }
         Primitive::Cached { cache } => {
-            draw_primitive(draw_target, draw_options, backend, &cache);
+            draw_primitive(
+                draw_target,
+                draw_options,
+                backend,
+                scale_factor,
+                &cache,
+            );
         }
     }
 }
