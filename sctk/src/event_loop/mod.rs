@@ -169,6 +169,7 @@ where
                 layer_surface_user_requests: Default::default(),
                 popup_user_requests: Default::default(),
                 pending_user_events: Vec::new(),
+                token_ctr: 0,
             },
             features: Default::default(),
             event_loop_awakener: ping,
@@ -762,7 +763,13 @@ where
                                 .iter()
                                 .find(|s| s.data.id == id)
                             {
+                                // update geometry
                                 sctk_popup.popup.xdg_surface().set_window_geometry(0, 0, width as i32, height as i32);
+                                // update positioner
+                                self.state.token_ctr += 1;
+                                sctk_popup.data.positioner.set_size(width as i32, height as i32);
+                                sctk_popup.popup.reposition(&sctk_popup.data.positioner, self.state.token_ctr);
+
                                 to_commit.insert(id, sctk_popup.popup.wl_surface().clone());
                                 sticky_exit_callback(IcedSctkEvent::SctkEvent(SctkEvent::PopupEvent {
                                     variant: PopupEventVariant::Size(width, height),
@@ -776,7 +783,8 @@ where
                                 );
                             }
                         },
-                        platform_specific::wayland::popup::Action::Grab { id } => todo!(),
+                        // TODO probably remove this?
+                        platform_specific::wayland::popup::Action::Grab { id } => {},
                     },
                     Event::InitSurfaceSize(id, requested_size) => todo!(),
                 }

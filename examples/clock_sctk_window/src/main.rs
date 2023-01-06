@@ -134,7 +134,7 @@ impl Application for Clock {
     }
 
     fn subscription(&self) -> Subscription<Message> {
-        iced::time::every(std::time::Duration::from_millis(500)).map(|_| {
+        iced::time::every(std::time::Duration::from_millis(2000)).map(|_| {
             Message::Tick(
                 time::OffsetDateTime::now_local()
                     .unwrap_or_else(|_| time::OffsetDateTime::now_utc()),
@@ -175,12 +175,16 @@ impl Application for Clock {
                 .padding(20)
                 .into()
             }
-            SurfaceIdWrapper::Popup(_) => container(
-                text_input("hello", &self.input, Message::Input)
-                    .width(Length::Fill),
-            )
-            .width(Length::Units(300))
-            .into(),
+            SurfaceIdWrapper::Popup(_) => {
+                let mut s = String::with_capacity(self.count as usize);
+                for i in 0..self.count {
+                    s.push('X');
+                }
+                button(text(format!("{}", s)))
+                    .on_press(Message::Click(id.inner()))
+                    .padding(20)
+                    .into()
+            }
         }
     }
 

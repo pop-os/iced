@@ -116,7 +116,7 @@ impl SctkSurface {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct SctkPopup<T> {
     pub(crate) popup: Popup,
     pub(crate) last_configure: Option<PopupConfigure>,
@@ -126,14 +126,12 @@ pub struct SctkPopup<T> {
     pub(crate) data: SctkPopupData,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct SctkPopupData {
     pub(crate) id: iced_native::window::Id,
     pub(crate) parent: SctkSurface,
     pub(crate) toplevel: WlSurface,
-    pub(crate) requested_size: (u32, u32),
-    pub(crate) limits: Limits,
-    pub(crate) grab: bool,
+    pub(crate) positioner: XdgPositioner,
 }
 
 /// Wrapper to carry sctk state.
@@ -209,6 +207,7 @@ pub struct SctkState<T> {
     pub(crate) layer_shell: Option<LayerShell>,
 
     pub(crate) connection: Connection,
+    pub(crate) token_ctr: u32,
 }
 
 /// An error that occurred while running an application.
@@ -401,9 +400,7 @@ where
                 id: settings.id,
                 parent: parent.clone(),
                 toplevel: toplevel.clone(),
-                requested_size: size,
-                limits,
-                grab,
+                positioner,
             },
             last_configure: None,
             pending_requests: Default::default(),
