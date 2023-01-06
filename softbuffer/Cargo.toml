@@ -1,9 +1,9 @@
 [package]
-name = "iced_swbuf"
+name = "iced_softbuffer"
 version = "0.1.0"
 authors = ["Jeremy Soller <jackpot51@gmail.com>"]
 edition = "2021"
-description = "A swbuf renderer for Iced"
+description = "A softbuffer renderer for Iced"
 license = "MIT AND OFL-1.1"
 repository = "https://github.com/iced-rs/iced"
 
@@ -13,7 +13,7 @@ lazy_static = "1.4"
 log = "0.4"
 raw-window-handle = "0.5"
 raqote = { version = "0.8", default-features = false }
-softbuffer = { git = "https://github.com/rust-windowing/softbuffer", rev = "d5bb2c1" }
+softbuffer = { git = "https://github.com/rust-windowing/softbuffer" }
 
 [dependencies.iced_native]
 path = "../native"

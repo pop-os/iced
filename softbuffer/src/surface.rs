@@ -27,7 +27,7 @@ impl Surface {
     ) -> Self {
         let context = match unsafe { GraphicsContext::new(window, window) } {
             Ok(ok) => ok,
-            Err(err) => panic!("failed to create swbuf context: {}", err),
+            Err(err) => panic!("failed to create softbuffer context: {}", err),
         };
         Surface {
             context,
