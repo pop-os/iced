@@ -249,7 +249,7 @@ where
                 let w = bounds.width as u32;
                 let h = bounds.height as u32;
                 builder.iced_settings.size = (w, h);
-                auto_size_surfaces.insert(SurfaceIdWrapper::LayerSurface(builder.window_id), (w, h, builder.size_limits, false));
+                auto_size_surfaces.insert(SurfaceIdWrapper::Window(builder.window_id), (w, h, builder.size_limits, false));
 
             };
             let (native_id, surface) = event_loop.get_window(builder.clone());
