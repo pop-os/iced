@@ -34,7 +34,7 @@ default-features = false
 optional = true
 
 [features]
-default = ["softbuffer", "wgpu"]
+default = ["softbuffer"]
 image = ["iced_graphics/image", "iced_glow?/image", "iced_softbuffer?/image", "iced_wgpu?/image"]
 svg = ["iced_graphics/svg", "iced_glow?/svg", "iced_softbuffer?/svg", "iced_wgpu?/svg"]
 #TODO: implement Compositor for glow Backend
