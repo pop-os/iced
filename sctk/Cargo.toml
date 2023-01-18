@@ -15,8 +15,6 @@ multi_window = []
 log = "0.4"
 thiserror = "1.0"
 sctk = { package = "smithay-client-toolkit", git = "https://github.com/Smithay/client-toolkit", rev = "3776d4a"  }
-glutin = "0.30.0"
-glow = "0.11.2"
 raw-window-handle = "0.5.0"
 enum-repr = "0.2.6"
 futures = "0.3"

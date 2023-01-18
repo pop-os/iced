@@ -51,7 +51,6 @@ impl<T: Debug> WindowHandler for SctkState<T> {
             configure.new_size =
                 Some(window.requested_size.unwrap_or((300, 500)));
         };
-
         let wl_surface = window.window.wl_surface();
         let id = wl_surface.clone();
         let first = window.last_configure.is_none();
@@ -64,7 +63,8 @@ impl<T: Debug> WindowHandler for SctkState<T> {
                 first,
             ),
             id,
-        })
+        });
+        self.sctk_events.push(SctkEvent::Draw(wl_surface.clone()));
     }
 }
 

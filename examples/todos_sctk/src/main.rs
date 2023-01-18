@@ -1,13 +1,13 @@
 use iced::alignment::{self, Alignment};
 use iced::event::{self, Event};
 use iced::keyboard;
-use iced::sctk_settings::InitialSurface;
 use iced::subscription;
 use iced::theme::{self, Theme};
 use iced::wayland::actions::popup::SctkPopupSettings;
 use iced::wayland::actions::window::SctkWindowSettings;
 use iced::wayland::popup::get_popup;
 use iced::wayland::window::get_window;
+use iced::wayland::InitialSurface;
 use iced::wayland::SurfaceIdWrapper;
 use iced::widget::{
     self, button, checkbox, column, container, row, scrollable, text,
@@ -23,7 +23,6 @@ static INPUT_ID: Lazy<text_input::Id> = Lazy::new(text_input::Id::unique);
 
 pub fn main() -> iced::Result {
     Todos::run(Settings {
-        antialiasing: true,
         initial_surface: InitialSurface::XdgWindow(Default::default()),
         ..Settings::default()
     })
@@ -53,6 +52,7 @@ enum Message {
     FilterChanged(Filter),
     TaskMessage(usize, TaskMessage),
     TabPressed { shift: bool },
+    CloseRequested(SurfaceIdWrapper),
 }
 
 impl Application for Todos {
@@ -170,6 +170,10 @@ impl Application for Todos {
                         } else {
                             widget::focus_next()
                         }
+                    }
+                    Message::CloseRequested(s) => {
+                        dbg!(s);
+                        std::process::exit(0);
                     }
                     _ => Command::none(),
                 };
@@ -293,7 +297,7 @@ impl Application for Todos {
     }
 
     fn close_requested(&self, id: SurfaceIdWrapper) -> Self::Message {
-        todo!()
+        Message::CloseRequested(id)
     }
 }
 
