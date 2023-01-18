@@ -1,6 +1,5 @@
 use iced::alignment::{self, Alignment};
 use iced::event::{self, Event};
-use iced::keyboard;
 use iced::subscription;
 use iced::theme::{self, Theme};
 use iced::widget::{
@@ -8,6 +7,7 @@ use iced::widget::{
     text_input, Text,
 };
 use iced::window;
+use iced::{application, keyboard};
 use iced::{Application, Element};
 use iced::{Color, Command, Font, Length, Settings, Subscription};
 
@@ -376,6 +376,26 @@ impl Task {
                 .align_items(Alignment::Center)
                 .into()
             }
+        }
+    }
+
+    fn style(&self) -> <iced_style::Theme as application::StyleSheet>::Style {
+        <iced_style::Theme as application::StyleSheet>::Style::Custom(Box::new(
+            CustomTheme,
+        ))
+    }
+}
+
+pub struct CustomTheme;
+
+impl application::StyleSheet for CustomTheme {
+    type Style = iced::Theme;
+
+    fn appearance(&self, style: &Self::Style) -> application::Appearance {
+        dbg!(Color::TRANSPARENT);
+        application::Appearance {
+            background_color: Color::TRANSPARENT,
+            text_color: Color::BLACK,
         }
     }
 }

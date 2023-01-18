@@ -15,6 +15,7 @@ use iced::widget::{
 };
 use iced::{window, Application, Element};
 use iced::{Color, Command, Font, Length, Settings, Subscription};
+use iced_style::application;
 
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
@@ -298,6 +299,25 @@ impl Application for Todos {
 
     fn close_requested(&self, id: SurfaceIdWrapper) -> Self::Message {
         Message::CloseRequested(id)
+    }
+
+    fn style(&self) -> <iced_style::Theme as application::StyleSheet>::Style {
+        <iced_style::Theme as application::StyleSheet>::Style::Custom(Box::new(
+            CustomTheme,
+        ))
+    }
+}
+
+pub struct CustomTheme;
+
+impl application::StyleSheet for CustomTheme {
+    type Style = iced::Theme;
+
+    fn appearance(&self, style: &Self::Style) -> application::Appearance {
+        application::Appearance {
+            background_color: Color::TRANSPARENT,
+            text_color: Color::BLACK,
+        }
     }
 }
 
