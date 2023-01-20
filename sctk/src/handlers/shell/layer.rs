@@ -46,15 +46,15 @@ impl<T: Debug> LayerShellHandler for SctkState<T> {
                 Some(l) => l,
                 None => return,
             };
-        
-        configure.new_size.0 = if let Some(w)  = layer.requested_size.0 {
+
+        configure.new_size.0 = if let Some(w) = layer.requested_size.0 {
             w
-        } else  {
+        } else {
             configure.new_size.0.max(1)
         };
-        configure.new_size.1 = if let Some(h)  = layer.requested_size.1 {
+        configure.new_size.1 = if let Some(h) = layer.requested_size.1 {
             h
-        } else  {
+        } else {
             configure.new_size.1.max(1)
         };
 
@@ -74,7 +74,7 @@ impl<T: Debug> LayerShellHandler for SctkState<T> {
             id: layer.surface.wl_surface().clone(),
         });
         self.sctk_events
-            .push(SctkEvent::Draw(layer.surface.wl_surface().clone()));
+            .push(SctkEvent::Frame(layer.surface.wl_surface().clone()));
     }
 }
 

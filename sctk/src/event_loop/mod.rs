@@ -5,7 +5,6 @@ pub mod state;
 use std::{
     collections::HashMap,
     fmt::Debug,
-    mem,
     time::{Duration, Instant},
 };
 
@@ -13,7 +12,7 @@ use crate::{
     application::Event,
     sctk_event::{
         IcedSctkEvent, LayerSurfaceEventVariant, PopupEventVariant, SctkEvent,
-        StartCause, SurfaceUserRequest, WindowEventVariant,
+        StartCause, WindowEventVariant,
     },
     settings,
 };
@@ -31,7 +30,7 @@ use sctk::{
     reexports::{
         calloop::{self, EventLoop},
         client::{
-            backend::ObjectId, globals::registry_queue_init,
+            globals::registry_queue_init,
             protocol::wl_surface::WlSurface, ConnectError, Connection,
             DispatchError, Proxy,
         },
@@ -161,13 +160,10 @@ where
                 layer_surfaces: Vec::new(),
                 popups: Vec::new(),
                 kbd_focus: None,
-                window_user_requests: HashMap::new(),
                 window_compositor_updates: HashMap::new(),
                 sctk_events: Vec::new(),
                 popup_compositor_updates: Default::default(),
                 layer_surface_compositor_updates: Default::default(),
-                layer_surface_user_requests: Default::default(),
-                popup_user_requests: Default::default(),
                 pending_user_events: Vec::new(),
                 token_ctr: 0,
             },
@@ -207,9 +203,6 @@ where
             &self.state,
             &mut control_flow,
         );
-
-        let mut surface_user_requests: Vec<(ObjectId, SurfaceUserRequest)> =
-            Vec::new();
 
         let mut event_sink_back_buffer = Vec::new();
 
@@ -352,11 +345,14 @@ where
             );
 
             // Handle pending sctk events.
-            let mut must_redraw = Vec::new();
-
             for event in event_sink_back_buffer.drain(..) {
                 match event {
-                    SctkEvent::Draw(id) => must_redraw.push(id),
+                    SctkEvent::Frame(id) => sticky_exit_callback(
+                        IcedSctkEvent::SctkEvent(SctkEvent::Frame(id)),
+                        &self.state,
+                        &mut control_flow,
+                        &mut callback,
+                    ),
                     SctkEvent::PopupEvent {
                         variant: PopupEventVariant::Done,
                         toplevel_id,
@@ -451,11 +447,20 @@ where
                 .drain(..)
                 .partition(|e| matches!(e, Event::SctkEvent(_)));
             let mut to_commit = HashMap::new();
+            let mut pending_redraws = Vec::new();
             for event in sctk_events.into_iter().chain(user_events.into_iter())
             {
                 match event {
                     Event::SctkEvent(event) => {
-                        sticky_exit_callback(event, &self.state, &mut control_flow, &mut callback)
+                        match event {
+                            IcedSctkEvent::RedrawRequested(id) => {pending_redraws.push(id);},
+                            e => sticky_exit_callback(
+                                e,
+                                &self.state,
+                                &mut control_flow,
+                                &mut callback,
+                            ),
+                        }
                     }
                     Event::LayerSurface(action) => match action {
                         platform_specific::wayland::layer_surface::Action::LayerSurface {
@@ -642,7 +647,6 @@ where
                         platform_specific::wayland::window::Action::ToggleMaximized { id } => {
                             if let Some(window) = self.state.windows.iter_mut().find(|w| w.id == id) {
                                 if let Some(c) = &window.last_configure {
-                                    dbg!(c);
                                     if c.is_maximized() {
                                         window.window.unset_maximized();
                                     } else {
@@ -769,8 +773,6 @@ where
                                 self.state.token_ctr += 1;
                                 sctk_popup.data.positioner.set_size(width as i32, height as i32);
                                 sctk_popup.popup.reposition(&sctk_popup.data.positioner, self.state.token_ctr);
-
-                                to_commit.insert(id, sctk_popup.popup.wl_surface().clone());
                                 sticky_exit_callback(IcedSctkEvent::SctkEvent(SctkEvent::PopupEvent {
                                     variant: PopupEventVariant::Size(width, height),
                                     toplevel_id: sctk_popup.data.toplevel.clone(),
@@ -785,14 +787,8 @@ where
                         },
                         // TODO probably remove this?
                         platform_specific::wayland::popup::Action::Grab { id } => {},
-                    },
-                    Event::InitSurfaceSize(id, requested_size) => todo!(),
+                    },                
                 }
-            }
-
-            // commit changes made via actions
-            for s in to_commit {
-                s.1.commit();
             }
 
             // Send events cleared.
@@ -803,68 +799,20 @@ where
                 &mut callback,
             );
 
-            // Apply user requests, so every event required resize and latter surface commit will
-            // be applied right before drawing. This will also ensure that every `RedrawRequested`
-            // event will be delivered in time.
-            // Process 'new' pending updates from compositor.
-            surface_user_requests.clear();
-            surface_user_requests.extend(
-                self.state.window_user_requests.iter_mut().map(
-                    |(wid, window_request)| {
-                        (wid.clone(), mem::take(window_request))
-                    },
-                ),
-            );
-
-            // Handle RedrawRequested requests.
-            for (surface_id, mut surface_request) in
-                surface_user_requests.iter()
-            {
-                if let Some(i) =
-                    must_redraw.iter().position(|a_id| &a_id.id() == surface_id)
-                {
-                    must_redraw.remove(i);
-                }
-                let wl_suface = self
-                    .state
-                    .windows
-                    .iter()
-                    .map(|w| w.window.wl_surface())
-                    .chain(
-                        self.state
-                            .layer_surfaces
-                            .iter()
-                            .map(|l| l.surface.wl_surface()),
-                    )
-                    .find(|s| s.id() == *surface_id)
-                    .unwrap();
-
-                // Handle refresh of the frame.
-                if surface_request.refresh_frame {
-                    // In general refreshing the frame requires surface commit, those force user
-                    // to redraw.
-                    surface_request.redraw_requested = true;
-                }
-
-                // Handle redraw request.
-                if surface_request.redraw_requested {
-                    sticky_exit_callback(
-                        IcedSctkEvent::RedrawRequested(surface_id.clone()),
-                        &self.state,
-                        &mut control_flow,
-                        &mut callback,
-                    );
-                }
-                wl_suface.commit();
-            }
-
-            for id in must_redraw {
+            // redraw
+            pending_redraws.dedup();
+            for id in pending_redraws {
                 sticky_exit_callback(
-                    IcedSctkEvent::RedrawRequested(id.id()),
+                    IcedSctkEvent::RedrawRequested(id.clone()),
                     &self.state,
                     &mut control_flow,
                     &mut callback,
-                );
+                )
+            }
+
+            // commit changes made via actions
+            for s in to_commit {
+                s.1.commit();
             }
 
             // Send RedrawEventCleared.

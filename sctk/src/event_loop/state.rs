@@ -174,15 +174,6 @@ pub struct SctkState<T> {
     /// A sink for window and device events that is being filled during dispatching
     /// event loop and forwarded downstream afterwards.
     pub(crate) sctk_events: Vec<SctkEvent>,
-    /// Window updates comming from the user requests. Those are separatelly dispatched right after
-    /// `MainEventsCleared`.
-    pub window_user_requests: HashMap<ObjectId, SurfaceUserRequest>,
-    /// Layer Surface updates comming from the user requests. Those are separatelly dispatched right after
-    /// `MainEventsCleared`.
-    pub layer_surface_user_requests: HashMap<ObjectId, SurfaceUserRequest>,
-    /// Window updates comming from the user requests. Those are separatelly dispatched right after
-    /// `MainEventsCleared`.
-    pub popup_user_requests: HashMap<ObjectId, SurfaceUserRequest>,
 
     /// pending user events
     pub pending_user_events: Vec<Event<T>>,
