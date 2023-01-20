@@ -160,7 +160,7 @@ pub enum SctkEvent {
     //
     // compositor events
     //
-    Draw(WlSurface),
+    Frame(WlSurface),
     ScaleFactorChanged {
         factor: f64,
         id: WlOutput,
@@ -213,11 +213,9 @@ pub enum PopupEventVariant {
     /// <https://wayland.app/protocols/xdg-shell#xdg_popup:event:configure>
     Configure(PopupConfigure, WlSurface, bool),
     /// <https://wayland.app/protocols/xdg-shell#xdg_popup:event:repositioned>
-    RepositionionedPopup {
-        token: u32,
-    },
+    RepositionionedPopup { token: u32 },
     /// size
-    Size(u32, u32)
+    Size(u32, u32),
 }
 
 #[derive(Debug, Clone)]
@@ -618,14 +616,14 @@ impl SctkEvent {
                 .into_iter()
                 .collect()
             }
-            SctkEvent::UpdateOutput { id, info } => vec![
-                iced_native::Event::PlatformSpecific(
+            SctkEvent::UpdateOutput { id, info } => {
+                vec![iced_native::Event::PlatformSpecific(
                     PlatformSpecific::Wayland(wayland::Event::Output(
                         wayland::OutputEvent::InfoUpdate(info),
                         id.clone(),
                     )),
-                ),
-            ],
+                )]
+            }
             SctkEvent::RemovedOutput(id) => {
                 Some(iced_native::Event::PlatformSpecific(
                     PlatformSpecific::Wayland(wayland::Event::Output(
@@ -636,7 +634,7 @@ impl SctkEvent {
                 .into_iter()
                 .collect()
             }
-            SctkEvent::Draw(_) => Default::default(),
+            SctkEvent::Frame(_) => Default::default(),
             SctkEvent::ScaleFactorChanged {
                 factor,
                 id,

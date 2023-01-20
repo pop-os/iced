@@ -22,6 +22,7 @@ pub struct Settings<Flags> {
 pub enum InitialSurface {
     LayerSurface(SctkLayerSurfaceSettings),
     XdgWindow(SctkWindowSettings),
+    None,
 }
 
 impl Default for InitialSurface {

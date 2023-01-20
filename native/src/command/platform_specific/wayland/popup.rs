@@ -77,7 +77,11 @@ impl Default for SctkPositioner {
     fn default() -> Self {
         Self {
             size: None,
-            size_limits: Limits::NONE.min_height(1).min_width(1).max_width(300).max_height(1080),
+            size_limits: Limits::NONE
+                .min_height(1)
+                .min_width(1)
+                .max_width(300)
+                .max_height(1080),
             anchor_rect: Rectangle {
                 x: 0,
                 y: 0,
@@ -121,7 +125,7 @@ pub enum Action<T> {
         width: u32,
         /// height
         height: u32,
-    }
+    },
 }
 
 impl<T> Action<T> {
@@ -140,7 +144,9 @@ impl<T> Action<T> {
             },
             Action::Destroy { id } => Action::Destroy { id },
             Action::Grab { id } => Action::Grab { id },
-            Action::Size { id, width, height } => Action::Size { id, width, height },
+            Action::Size { id, width, height } => {
+                Action::Size { id, width, height }
+            }
         }
     }
 }
