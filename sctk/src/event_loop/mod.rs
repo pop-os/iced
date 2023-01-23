@@ -453,7 +453,9 @@ where
                 match event {
                     Event::SctkEvent(event) => {
                         match event {
-                            IcedSctkEvent::RedrawRequested(id) => {pending_redraws.push(id);},
+                            IcedSctkEvent::RedrawRequested(id) => {
+                                pending_redraws.push(id);
+                            },
                             e => sticky_exit_callback(
                                 e,
                                 &self.state,
@@ -489,8 +491,10 @@ where
                             if let Some(layer_surface) = self.state.layer_surfaces.iter_mut().find(|l| l.id == id) {
                                 layer_surface.requested_size = (width, height);
                                 layer_surface.surface.set_size(width.unwrap_or_default(), height.unwrap_or_default());
-                                to_commit.insert(id, layer_surface.surface.wl_surface().clone());
+
+                                pending_redraws.push(layer_surface.surface.wl_surface().id());
                             }
+                            
                         },
                         platform_specific::wayland::layer_surface::Action::Destroy(id) => {
                             if let Some(i) = self.state.layer_surfaces.iter().position(|l| &l.id == &id) {
@@ -570,8 +574,9 @@ where
                             if let Some(window) = self.state.windows.iter_mut().find(|w| w.id == id) {
                                 window.requested_size = Some((width, height));
                                 window.window.xdg_surface().set_window_geometry(0, 0, width.max(1) as i32, height.max(1) as i32);
-                                to_commit.insert(id, window.window.wl_surface().clone());
                                 // TODO Ashley maybe don't force window size?
+                                pending_redraws.push(window.window.wl_surface().id());
+
                                 if let Some(mut prev_configure) = window.last_configure.clone() {
                                     prev_configure.new_size = Some((width, height));
                                     sticky_exit_callback(
@@ -773,6 +778,8 @@ where
                                 self.state.token_ctr += 1;
                                 sctk_popup.data.positioner.set_size(width as i32, height as i32);
                                 sctk_popup.popup.reposition(&sctk_popup.data.positioner, self.state.token_ctr);
+                                pending_redraws.push(sctk_popup.popup.wl_surface().id());
+
                                 sticky_exit_callback(IcedSctkEvent::SctkEvent(SctkEvent::PopupEvent {
                                     variant: PopupEventVariant::Size(width, height),
                                     toplevel_id: sctk_popup.data.toplevel.clone(),
@@ -807,7 +814,21 @@ where
                     &self.state,
                     &mut control_flow,
                     &mut callback,
-                )
+                );
+                let wl_suface = self
+                    .state
+                    .windows
+                    .iter()
+                    .map(|w| w.window.wl_surface())
+                    .chain(
+                        self.state
+                            .layer_surfaces
+                            .iter()
+                            .map(|l| l.surface.wl_surface()),
+                    )
+                    .find(|s| s.id() == id)
+                    .unwrap();
+                wl_suface.commit();
             }
 
             // commit changes made via actions
