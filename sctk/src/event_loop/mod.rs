@@ -815,20 +815,6 @@ where
                     &mut control_flow,
                     &mut callback,
                 );
-                let wl_suface = self
-                    .state
-                    .windows
-                    .iter()
-                    .map(|w| w.window.wl_surface())
-                    .chain(
-                        self.state
-                            .layer_surfaces
-                            .iter()
-                            .map(|l| l.surface.wl_surface()),
-                    )
-                    .find(|s| s.id() == id)
-                    .unwrap();
-                wl_suface.commit();
             }
 
             // commit changes made via actions
