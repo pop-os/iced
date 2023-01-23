@@ -14,8 +14,8 @@ use iced::wayland::window::get_window;
 use iced::wayland::InitialSurface;
 use iced::wayland::SurfaceIdWrapper;
 use iced::widget::{
-    self, button, checkbox, column, container, row, scrollable, text,
-    text_input, Column, Row, Text,
+    self, button, checkbox, column, container, horizontal_space, row,
+    scrollable, text, text_input, Column, Row, Text,
 };
 use iced::Rectangle;
 use iced::{window, Application, Element};
@@ -52,7 +52,7 @@ impl Application for Todos {
     fn new(_flags: ()) -> (Todos, Command<Message>) {
         (
             Todos {
-                size: 5,
+                size: 1,
                 id_ctr: 2,
                 ..Default::default()
             },
@@ -67,9 +67,9 @@ impl Application for Todos {
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
             Message::Tick => {
-                self.size = (self.size - 1) % 10;
+                self.size = (self.size - 1) % 3;
                 if self.size == 0 {
-                    self.size = 10;
+                    self.size = 3;
                 }
             }
             Message::Popup => {
@@ -110,11 +110,12 @@ impl Application for Todos {
                             Row::with_children(
                                 (0..self.size)
                                     .map(|i| {
-                                        button(Text::new(format!(
-                                            "{}: {}",
-                                            i, i
+                                        button(horizontal_space(Length::Units(
+                                            20,
                                         )))
                                         .on_press(Message::Popup)
+                                        .width(Length::Units(20))
+                                        .height(Length::Units(20))
                                         .into()
                                     })
                                     .collect(),
