@@ -13,8 +13,7 @@ lazy_static = "1.4"
 log = "0.4"
 raw-window-handle = "0.5"
 raqote = { version = "0.8", default-features = false }
-softbuffer = { git = "https://github.com/pop-os/softbuffer", rev = "68240f56b" } 
-
+softbuffer = { git = "https://github.com/pop-os/softbuffer", rev = "8dcb6438b" } 
 [dependencies.iced_native]
 path = "../native"
 
