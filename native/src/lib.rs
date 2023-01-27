@@ -67,7 +67,6 @@ mod element;
 mod hasher;
 mod runtime;
 mod shell;
-
 // We disable debug capabilities on release builds unless the `debug` feature
 // is explicitly enabled.
 #[cfg(feature = "debug")]

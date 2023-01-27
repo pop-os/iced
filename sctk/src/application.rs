@@ -1,3 +1,5 @@
+#[cfg(feature = "a11y")]
+use crate::sctk_event::ActionRequestEvent;
 use crate::{
     clipboard::Clipboard,
     commands::{layer_surface::get_layer_surface, window::get_window},
@@ -20,6 +22,7 @@ use iced_native::{
     },
     event::Status,
     layout::Limits,
+    layout::Limits,
     mouse::{self, Interaction},
     widget::{self, operation, Tree},
     Element, Renderer, Widget,
@@ -40,17 +43,17 @@ use iced_graphics::{
 };
 use iced_native::user_interface::{self, UserInterface};
 use iced_native::window::Id as SurfaceId;
+use itertools::Itertools;
 use raw_window_handle::{
     HasRawDisplayHandle, HasRawWindowHandle, RawDisplayHandle, RawWindowHandle,
     WaylandDisplayHandle, WaylandWindowHandle,
 };
 use std::mem::ManuallyDrop;
+
 #[derive(Debug)]
 pub enum Event<Message> {
     /// A normal sctk event
-    SctkEvent(IcedSctkEvent<Message>),
     /// TODO
-    // Create a wrapper variant of `window::Event` type instead
     // (maybe we should also allow users to listen/react to those internal messages?)
 
     /// layer surface requests from the client
@@ -353,8 +356,20 @@ where
     runtime.track(application.subscription().map(subscription_map::<A, E, C>));
 
     let _mouse_interaction = mouse::Interaction::default();
-    let mut events: Vec<SctkEvent> = Vec::new();
+    let mut sctk_events: Vec<SctkEvent> = Vec::new();
+    #[cfg(feature = "a11y")]
+    let mut a11y_events: Vec<crate::sctk_event::ActionRequestEvent> =
+        Vec::new();
+    #[cfg(feature = "a11y")]
+    let mut a11y_enabled = false;
+    #[cfg(feature = "a11y")]
+    let mut adapters: HashMap<
+        SurfaceId,
+        crate::event_loop::adapter::IcedSctkAdapter,
+    > = HashMap::new();
+
     let mut messages: Vec<A::Message> = Vec::new();
+    let mut commands: Vec<Command<A::Message>> = Vec::new();
     debug.startup_finished();
 
     // let mut current_context_window = init_id_inner;
@@ -372,7 +387,7 @@ where
                 messages.push(message);
             }
             IcedSctkEvent::SctkEvent(event) => {
-                events.push(event.clone());
+                sctk_events.push(event.clone());
                 match event {
                     SctkEvent::SeatEvent { .. } => {} // TODO Ashley: handle later possibly if multiseat support is wanted
                     SctkEvent::PointerEvent {
@@ -475,6 +490,7 @@ where
                                         user_interface::Cache::default(),
                                         &mut renderer,
                                         state.logical_size(),
+                                        &state.title,
                                         &mut debug,
                                         *id,
                                         &mut auto_size_surfaces,
@@ -532,6 +548,7 @@ where
                                         user_interface::Cache::default(),
                                         &mut renderer,
                                         state.logical_size(),
+                                        &state.title,
                                         &mut debug,
                                         *id,
                                         &mut auto_size_surfaces,
@@ -555,8 +572,8 @@ where
                         parent_id: _,
                         id,
                     } => match variant {
-                        PopupEventVariant::Created(_, native_id) => {
-                            surface_ids.insert(id.id(), SurfaceIdWrapper::Popup(native_id));
+                        PopupEventVariant::Created(id, native_id) => {
+                            surface_ids.insert(id, SurfaceIdWrapper::Popup(native_id));
                         }
                         PopupEventVariant::Done => {
                             if let Some(surface_id) = surface_ids.remove(&id.id()) {
@@ -588,6 +605,7 @@ where
                                         user_interface::Cache::default(),
                                         &mut renderer,
                                         state.logical_size(),
+                                        &state.title,
                                         &mut debug,
                                         *id,
                                         &mut auto_size_surfaces,
@@ -819,6 +837,7 @@ where
                         break 'main;
                     }
                 } else {
+                    // TODO ensure that the surface_ids are
                     let mut needs_redraw = false;
                     for (object_id, surface_id) in &surface_ids {
                         if matches!(surface_id, SurfaceIdWrapper::Dnd(_)) {
@@ -840,7 +859,7 @@ where
                                 i += 1;
                             }
                         }
-                        let has_events = !filtered.is_empty();
+                        let mut has_events = !sctk_events.is_empty();
 
                         let cursor_position =
                             match states.get(&surface_id.inner()) {
@@ -848,7 +867,7 @@ where
                                 None => continue,
                             };
                         debug.event_processing_started();
-                        let native_events: Vec<_> = filtered
+                        let mut native_events: Vec<_> = filtered_sctk
                             .into_iter()
                             .flat_map(|e| {
                                 e.to_native(
@@ -858,6 +877,30 @@ where
                                 )
                             })
                             .collect();
+
+                        #[cfg(feature = "a11y")]
+                        {
+                            let mut filtered_a11y =
+                                Vec::with_capacity(a11y_events.len());
+                            while i < a11y_events.len() {
+                                if a11y_events[i].surface_id == *object_id {
+                                    filtered_a11y.push(a11y_events.remove(i));
+                                } else {
+                                    i += 1;
+                                }
+                            }
+                            native_events.extend(
+                                filtered_a11y.into_iter().map(|e| {
+                                    iced_native::event::Event::A11y(
+                                        e.request.target.into(),
+                                        e.request,
+                                    )
+                                }),
+                            );
+                        }
+                        let has_events =
+                            has_events || !native_events.is_empty();
+
                         let (interface_state, statuses) = {
                             let user_interface = interfaces
                                 .get_mut(&surface_id.inner())
@@ -963,7 +1006,7 @@ where
                         ));
                     }
                 }
-                events.clear();
+                sctk_events.clear();
                 // clear the destroyed surfaces after they have been handled
                 destroyed_surface_ids.clear();
             }
@@ -983,6 +1026,38 @@ where
                     Some((*id, surface, interface, state))
                 }) {
                     debug.render_started();
+                    #[cfg(feature = "a11y")]
+                    if let Some(Some(adapter)) = a11y_enabled
+                        .then(|| adapters.get_mut(&native_id.inner()))
+                    {
+                        use accesskit::{Node, Role, Tree, TreeUpdate};
+                        // TODO send a11y tree
+                        let (window_children, mut nodes) =
+                            user_interface.a11y_nodes();
+                        let root_node = Node {
+                            role: Role::Window,
+                            children: window_children
+                                .iter()
+                                .map(|(id, _)| id)
+                                .cloned()
+                                .collect(),
+                            name: Some(state.title.clone().into_boxed_str()),
+                            ..Default::default()
+                        };
+                        let tree = Tree::new(adapter.id.clone());
+                        nodes.extend(window_children);
+                        nodes.push((adapter.id, root_node.clone().into()));
+                        nodes.reverse();
+                        // TODO Ashley get proper focus
+                        let fcs = user_interface
+                            .keyboard_focus()
+                            .map(|fcs| fcs.node_id());
+                        adapter.adapter.update(TreeUpdate {
+                            nodes: nodes,
+                            tree: None,
+                            focus: fcs,
+                        })
+                    }
                     let comp_surface = match wrapper.comp_surface.as_mut() {
                         Some(s) => s,
                         None => continue,
@@ -1054,6 +1129,54 @@ where
                 // TODO
             }
             IcedSctkEvent::LoopDestroyed => todo!(),
+            #[cfg(feature = "a11y")]
+            IcedSctkEvent::A11yEvent(ActionRequestEvent {
+                surface_id,
+                request,
+            }) => {
+                match request.action {
+                    accesskit::Action::Default => {
+                        // TODO default operation?
+                        // messages.push(focus(request.target.into()));
+                        a11y_events.push(ActionRequestEvent { surface_id, request });
+                    },
+                    accesskit::Action::Focus => {
+                        commands.push(Command::widget(focus(request.target.into())));
+                    },
+                    accesskit::Action::Blur => todo!(),
+                    accesskit::Action::Collapse => todo!(),
+                    accesskit::Action::Expand => todo!(),
+                    accesskit::Action::CustomAction => todo!(),
+                    accesskit::Action::Decrement => todo!(),
+                    accesskit::Action::Increment => todo!(),
+                    accesskit::Action::HideTooltip => todo!(),
+                    accesskit::Action::ShowTooltip => todo!(),
+                    accesskit::Action::InvalidateTree => todo!(),
+                    accesskit::Action::LoadInlineTextBoxes => todo!(),
+                    accesskit::Action::ReplaceSelectedText => todo!(),
+                    accesskit::Action::ScrollBackward => todo!(),
+                    accesskit::Action::ScrollDown => todo!(),
+                    accesskit::Action::ScrollForward => todo!(),
+                    accesskit::Action::ScrollLeft => todo!(),
+                    accesskit::Action::ScrollRight => todo!(),
+                    accesskit::Action::ScrollUp => todo!(),
+                    accesskit::Action::ScrollIntoView => todo!(),
+                    accesskit::Action::ScrollToPoint => todo!(),
+                    accesskit::Action::SetScrollOffset => todo!(),
+                    accesskit::Action::SetTextSelection => todo!(),
+                    accesskit::Action::SetSequentialFocusNavigationStartingPoint => todo!(),
+                    accesskit::Action::SetValue => todo!(),
+                    accesskit::Action::ShowContextMenu => todo!(),
+                }
+            }
+            #[cfg(feature = "a11y")]
+            IcedSctkEvent::A11yEnabled => {
+                a11y_enabled = true;
+            }
+            #[cfg(feature = "a11y")]
+            IcedSctkEvent::A11ySurfaceCreated(surface_id, adapter) => {
+                adapters.insert(surface_id.inner(), adapter);
+            }
         }
     }
 
@@ -1086,6 +1209,7 @@ pub fn build_user_interface<'a, A: Application>(
     cache: user_interface::Cache,
     renderer: &mut A::Renderer,
     size: Size,
+    title: &str,
     debug: &mut Debug,
     id: SurfaceIdWrapper,
     auto_size_surfaces: &mut HashMap<
@@ -1414,6 +1538,7 @@ fn run_command<A, E>(
                     current_cache,
                     renderer,
                     state.logical_size(),
+                    &state.title,
                     debug,
                     id.clone(), // TODO: run the operation on every widget tree ?
                     auto_size_surfaces,
@@ -1538,9 +1663,13 @@ where
     A: Application + 'static,
     <A::Renderer as crate::Renderer>::Theme: StyleSheet,
 {
+    iced_native::widget::Id::reset();
+
     let mut interfaces = HashMap::new();
 
-    for (id, pure_state) in pure_states.drain() {
+    // TODO ASHLEY make sure Ids are iterated in the same order every time for a11y
+    for (id, pure_state) in pure_states.drain().sorted_by(|a, b| a.0.cmp(&b.0))
+    {
         let state = &states.get(&id).unwrap();
 
         let user_interface = build_user_interface(
@@ -1548,6 +1677,7 @@ where
             pure_state,
             renderer,
             state.logical_size(),
+            &state.title,
             debug,
             state.id,
             auto_size_surfaces,

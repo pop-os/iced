@@ -1,12 +1,12 @@
 [package]
-name = "autosize_layer"
+name = "sctk_window"
 version = "0.1.0"
 authors = ["Héctor Ramón Jiménez <hector0193@gmail.com>"]
 edition = "2021"
 publish = false
 
 [dependencies]
-iced = { path = "../..", default-features=false, features = ["async-std", "wayland", "debug", "softbuffer", "a11y"] }
+iced = { path = "../..", default-features=false, features = ["async-std", "wayland", "debug", "dyrend", "a11y"] }
 sctk = { package = "smithay-client-toolkit", git = "https://github.com/Smithay/client-toolkit", rev = "a257bf7" }
 iced_native = { path = "../../native" }
 iced_style = { path = "../../style" }

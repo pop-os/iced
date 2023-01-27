@@ -58,7 +58,7 @@ where
     Renderer: crate::Renderer,
     Renderer::Theme: StyleSheet,
 {
-    id: Option<Id>,
+    id: Id,
     content: Element<'a, Message, Renderer>,
     on_press: Option<Message>,
     width: Length,
@@ -75,7 +75,7 @@ where
     /// Creates a new [`Button`] with the given content.
     pub fn new(content: impl Into<Element<'a, Message, Renderer>>) -> Self {
         Button {
-            id: None,
+            id: Id::unique(),
             content: content.into(),
             on_press: None,
             width: Length::Shrink,
@@ -113,7 +113,7 @@ where
 
     /// Sets the [`Id`] of the [`Button`].
     pub fn id(mut self, id: Id) -> Self {
-        self.id = Some(id);
+        self.id = id;
         self
     }
 
@@ -134,6 +134,10 @@ where
     Renderer: 'a + crate::Renderer,
     Renderer::Theme: StyleSheet,
 {
+    fn name(&self) -> String {
+        self.id.0.to_string()
+    }
+
     fn tag(&self) -> tree::Tag {
         tree::Tag::of::<State>()
     }
@@ -156,6 +160,55 @@ where
 
     fn height(&self) -> Length {
         self.height
+    }
+
+    #[cfg(feature = "a11y")]
+    /// get the a11y nodes for the widget
+    fn a11y_nodes(
+        &self,
+        layout: Layout<'_>,
+    ) -> (
+        Vec<(accesskit::NodeId, std::sync::Arc<accesskit::Node>)>,
+        Vec<(accesskit::NodeId, std::sync::Arc<accesskit::Node>)>,
+    ) {
+        use std::sync::Arc;
+
+        use accesskit::{kurbo::Rect, DefaultActionVerb};
+        use enumset::enum_set;
+        let child_layout = layout.children().next().unwrap();
+        let (my_children, childrens_children) =
+            self.content.as_widget().a11y_nodes(child_layout);
+
+        let Rectangle {
+            x,
+            y,
+            width,
+            height,
+        } = layout.bounds();
+        let bounds = Some(Rect::new(
+            x as f64,
+            y as f64,
+            (x + width) as f64,
+            (y + height) as f64,
+        ));
+        let node = accesskit::Node {
+            role: accesskit::Role::Button,
+            actions: enum_set!(
+                accesskit::Action::Focus | accesskit::Action::Default
+            ),
+            bounds,
+            name: Some(self.name().into_boxed_str()),
+            focusable: true,
+            default_action_verb: Some(DefaultActionVerb::Click),
+            children: my_children.iter().map(|c| c.0).collect(),
+            ..Default::default()
+        };
+        let callers_children = vec![(self.id.0.node_id(), Arc::new(node))];
+        let my_children = my_children
+            .into_iter()
+            .chain(childrens_children.into_iter())
+            .collect();
+        (callers_children, my_children)
     }
 
     fn layout(
@@ -190,7 +243,7 @@ where
         });
 
         let state = tree.state.downcast_mut::<State>();
-        operation.focusable(state, self.id.as_ref().map(|id| &id.0));
+        operation.focusable(state, Some(&self.id.0));
     }
 
     fn on_event(
@@ -216,6 +269,7 @@ where
         }
 
         update(
+            self.id.clone(),
             event,
             layout,
             cursor_position,
@@ -285,6 +339,20 @@ where
             renderer,
         )
     }
+
+    fn child_elements(&self) -> Vec<&Element<'a, Message, Renderer>> {
+        vec![&self.content]
+    }
+
+    fn is_focused(&self, tree: &Tree) -> bool {
+        let state = tree.state.downcast_ref::<State>();
+        state.is_focused
+    }
+
+    // TODO each accessible widget really should always have Id, so maybe this doesn't need to be an option
+    fn id(&self) -> Option<widget::Id> {
+        Some(self.id.0.clone())
+    }
 }
 
 impl<'a, Message, Renderer> From<Button<'a, Message, Renderer>>
@@ -331,6 +399,7 @@ impl State {
 /// Processes the given [`Event`] and updates the [`State`] of a [`Button`]
 /// accordingly.
 pub fn update<'a, Message: Clone>(
+    id: Id,
     event: Event,
     layout: Layout<'_>,
     cursor_position: Point,
@@ -386,6 +455,18 @@ pub fn update<'a, Message: Clone>(
             let state = state();
 
             state.is_pressed = false;
+        }
+        #[cfg(feature = "a11y")]
+        Event::A11y(event_id, accesskit::ActionRequest { action, .. }) => {
+            let state = state();
+            if let Some(Some(on_press)) = (id.0 == event_id
+                && matches!(action, accesskit::Action::Default))
+            .then(|| on_press.clone())
+            {
+                state.is_pressed = false;
+                shell.publish(on_press);
+            }
+            return event::Status::Captured;
         }
         _ => {}
     }
@@ -495,7 +576,7 @@ pub fn mouse_interaction(
 }
 
 /// The identifier of a [`Button`].
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Id(widget::Id);
 
 impl Id {

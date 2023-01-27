@@ -31,6 +31,7 @@ where
     Renderer: text::Renderer,
     Renderer::Theme: StyleSheet,
 {
+    id: crate::widget::Id,
     content: Cow<'a, str>,
     size: Option<u16>,
     width: Length,
@@ -49,6 +50,7 @@ where
     /// Create a new fragment of [`Text`] with the given contents.
     pub fn new(content: impl Into<Cow<'a, str>>) -> Self {
         Text {
+            id: crate::widget::Id::unique(),
             content: content.into(),
             size: None,
             font: Default::default(),
@@ -168,6 +170,24 @@ where
             self.vertical_alignment,
         );
     }
+
+    #[cfg(feature = "a11y")]
+    fn a11y_nodes(
+        &self,
+        _layout: Layout<'_>,
+    ) -> (
+        Vec<(accesskit::NodeId, std::sync::Arc<accesskit::Node>)>,
+        Vec<(accesskit::NodeId, std::sync::Arc<accesskit::Node>)>,
+    ) {
+        use std::sync::Arc;
+        let node = Arc::new(accesskit::Node {
+            role: accesskit::Role::StaticText,
+            name: Some(self.content.to_string().into_boxed_str()),
+            live: Some(accesskit::Live::Polite),
+            ..Default::default()
+        });
+        (vec![(self.id.node_id(), node)], Vec::new())
+    }
 }
 
 /// Draws text using the same logic as the [`Text`] widget.
@@ -236,6 +256,7 @@ where
 {
     fn clone(&self) -> Self {
         Self {
+            id: crate::widget::Id::unique(),
             content: self.content.clone(),
             size: self.size,
             width: self.width,

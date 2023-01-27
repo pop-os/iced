@@ -38,11 +38,12 @@ impl Tree {
         Renderer: crate::Renderer,
     {
         let widget = widget.borrow();
+        let children = widget.children();
 
         Self {
             tag: widget.tag(),
             state: widget.state(),
-            children: widget.children(),
+            children,
         }
     }
 

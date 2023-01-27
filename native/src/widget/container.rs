@@ -15,6 +15,8 @@ use std::u32;
 
 pub use iced_style::container::{Appearance, StyleSheet};
 
+use super::Id;
+
 /// An element decorating some content.
 ///
 /// It is normally used for alignment purposes.
@@ -24,6 +26,7 @@ where
     Renderer: crate::Renderer,
     Renderer::Theme: StyleSheet,
 {
+    id: Id,
     padding: Padding,
     width: Length,
     height: Length,
@@ -46,6 +49,7 @@ where
         T: Into<Element<'a, Message, Renderer>>,
     {
         Container {
+            id: Id::unique(),
             padding: Padding::ZERO,
             width: Length::Shrink,
             height: Length::Shrink,
@@ -165,6 +169,23 @@ where
         )
     }
 
+    fn name(&self) -> String {
+        self.id.to_string()
+    }
+
+    #[cfg(feature = "a11y")]
+    /// get the a11y nodes for the widget
+    fn a11y_nodes(
+        &self,
+        layout: Layout<'_>,
+    ) -> (
+        Vec<(accesskit::NodeId, std::sync::Arc<accesskit::Node>)>,
+        Vec<(accesskit::NodeId, std::sync::Arc<accesskit::Node>)>,
+    ) {
+        let c_layout = layout.children().next().unwrap();
+        self.content.as_widget().a11y_nodes(c_layout)
+    }
+
     fn operate(
         &self,
         tree: &mut Tree,
@@ -259,6 +280,10 @@ where
             layout.children().next().unwrap(),
             renderer,
         )
+    }
+
+    fn child_elements(&self) -> Vec<&Element<'a, Message, Renderer>> {
+        vec![&self.content]
     }
 }
 

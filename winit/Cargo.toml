@@ -19,6 +19,7 @@ application = []
 window_clipboard = "0.2"
 log = "0.4"
 thiserror = "1.0"
+accesskit = { version = "0.8.1", optional = true }
 
 [dependencies.winit]
 git = "https://github.com/pop-os/winit.git"

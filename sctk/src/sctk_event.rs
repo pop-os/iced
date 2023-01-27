@@ -52,8 +52,23 @@ pub enum IcedSctkEvent<T> {
 
     /// Any user event from iced
     UserEvent(T),
+
     /// An event produced by sctk
     SctkEvent(SctkEvent),
+
+    #[cfg(feature = "a11y")]
+    A11ySurfaceCreated(
+        SurfaceIdWrapper,
+        crate::event_loop::adapter::IcedSctkAdapter,
+    ),
+
+    /// emitted after first accessibility tree is requested
+    #[cfg(feature = "a11y")]
+    A11yEnabled,
+
+    /// accessibility event
+    #[cfg(feature = "a11y")]
+    A11yEvent(ActionRequestEvent),
 
     /// Emitted when all of the event loop's input events have been processed and redraw processing
     /// is about to begin.
@@ -239,6 +254,13 @@ pub enum DndOfferEvent {
     },
     SourceActions(DndAction),
     SelectedAction(DndAction),
+}
+
+#[cfg(feature = "a11y")]
+#[derive(Debug, Clone)]
+pub struct ActionRequestEvent {
+    pub surface_id: ObjectId,
+    pub request: accesskit::ActionRequest,
 }
 
 #[derive(Debug, Clone)]

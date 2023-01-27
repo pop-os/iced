@@ -35,3 +35,7 @@ features = ["application"]
 version = "0.5"
 path = "../graphics"
 features = ["opengl"]
+
+[dependencies.accesskit]
+version = "0.8.1"
+optional = true

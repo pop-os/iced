@@ -2,6 +2,7 @@
 use crate::keyboard;
 use crate::mouse;
 use crate::touch;
+use crate::widget;
 use crate::window;
 
 #[cfg(feature = "wayland")]
@@ -26,6 +27,10 @@ pub enum Event {
 
     /// A touch event
     Touch(touch::Event),
+
+    #[cfg(feature = "a11y")]
+    /// An Accesskit event for a specific Accesskit Node in an accessible widget
+    A11y(widget::Id, accesskit::ActionRequest),
 
     /// A platform specific event
     PlatformSpecific(PlatformSpecific),

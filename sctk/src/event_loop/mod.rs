@@ -1,9 +1,17 @@
 pub mod control_flow;
 pub mod proxy;
 pub mod state;
+#[cfg(feature = "a11y")]
+pub mod adapter;
+use std::{
+    collections::HashMap,
+    fmt::Debug,
+    time::{Duration, Instant},
+    sync::{Arc, Mutex}
+};
 
 use crate::{
-    application::Event,
+    application::{Event, SurfaceIdWrapper},
     sctk_event::{
         DndOfferEvent, IcedSctkEvent,
         LayerSurfaceEventVariant, PopupEventVariant, SctkEvent,
@@ -54,24 +62,11 @@ use self::{
     state::{Dnd, LayerSurfaceCreationError, SctkCopyPasteSource, SctkState},
 };
 
-// impl SctkSurface {
-//     pub fn hash(&self) -> u64 {
-//         let hasher = DefaultHasher::new();
-//         match self {
-//             SctkSurface::LayerSurface(s) => s.wl_surface().id().hash(.hash(&mut hasher)),
-//             SctkSurface::Window(s) => s.wl_surface().id().hash(.hash(&mut hasher)),
-//             SctkSurface::Popup(s) => s.wl_surface().id().hash(.hash(&mut hasher)),
-//         };
-//         hasher.finish()
-//     }
-// }
-
 #[derive(Debug, Default, Clone, Copy)]
 pub struct Features {
     // TODO
 }
 
-#[derive(Debug)]
 pub struct SctkEventLoop<T> {
     // TODO after merged
     // pub data_device_manager_state: DataDeviceManagerState,
@@ -84,6 +79,10 @@ pub struct SctkEventLoop<T> {
     /// A sender for submitting user events in the event loop
     pub user_events_sender: calloop::channel::Sender<Event<T>>,
     pub(crate) state: SctkState<T>,
+
+    #[cfg(feature = "a11y")]
+    pub(crate) a11y_events:
+        Arc<Mutex<Vec<adapter::A11yWrapper>>>,
 }
 
 impl<T> SctkEventLoop<T>
@@ -181,6 +180,8 @@ where
             features: Default::default(),
             event_loop_awakener: ping,
             user_events_sender,
+            #[cfg(feature = "a11y")]
+            a11y_events: Arc::new(Mutex::new(Vec::new())),
         })
     }
 
@@ -193,14 +194,48 @@ where
         layer_surface: SctkLayerSurfaceSettings,
     ) -> Result<(iced_native::window::Id, WlSurface), LayerSurfaceCreationError>
     {
-        self.state.get_layer_surface(layer_surface)
+        let ret = self.state.get_layer_surface(layer_surface);
+        ret
     }
 
     pub fn get_window(
         &mut self,
         settings: SctkWindowSettings,
     ) -> (iced_native::window::Id, WlSurface) {
-        self.state.get_window(settings)
+        let ret = self.state.get_window(settings);
+
+        ret
+    }
+
+    // TODO Ashley provide users a reasonable method of setting the role for the surface
+    #[cfg(feature = "a11y")]
+    pub fn init_a11y_adapter(&mut self, surface: &WlSurface, app_id: Option<String>, surface_title: Option<String>, role: accesskit::Role) -> adapter::IcedSctkAdapter {
+        use accesskit_unix::Adapter;
+        let node_id = iced_native::widget::window_node_id();
+        let node_id_clone = node_id.clone();
+        let event_list = self.a11y_events.clone();
+        adapter::IcedSctkAdapter {
+            adapter: accesskit_unix::Adapter::new(app_id.unwrap_or_else(|| String::from("None")), "Iced".to_string(), env!("CARGO_PKG_VERSION").to_string(), move || {
+                event_list.lock().unwrap().push(adapter::A11yWrapper::Enabled);
+                accesskit::TreeUpdate {
+                    nodes: vec![(
+                        node_id,
+                        Arc::new(accesskit::Node {
+                            role: accesskit::Role::Window,
+                            name: surface_title.map(|s| s.into_boxed_str()),
+                            ..Default::default()
+                        }),
+                    )],
+                    tree: Some(accesskit::Tree::new(node_id)),
+                    focus: None,
+                }
+            }, Box::new(adapter::IcedSctkActionHandler {
+                wl_surface: surface.clone(),
+                event_list: self.a11y_events.clone(),
+            })).unwrap(),
+            id: node_id_clone
+        }
+        
     }
 
     pub fn run_return<F>(&mut self, mut callback: F) -> i32
@@ -215,7 +250,7 @@ where
             &mut control_flow,
         );
 
-        let mut event_sink_back_buffer = Vec::new();
+        let mut sctk_event_sink_back_buffer = Vec::new();
 
         // NOTE We break on errors from dispatches, since if we've got protocol error
         // libwayland-client/wayland-rs will inform us anyway, but crashing downstream is not
@@ -351,12 +386,32 @@ where
             // we're doing callback to the user, since we can double borrow if the user decides
             // to create a window in one of those callbacks.
             std::mem::swap(
-                &mut event_sink_back_buffer,
+                &mut sctk_event_sink_back_buffer,
                 &mut self.state.sctk_events,
             );
-
+            
+            // handle a11y events
+            #[cfg(feature = "a11y")]
+            if let Ok(mut events) = self.a11y_events.lock() {
+                for event in events.drain(..) {
+                    match event {
+                        adapter::A11yWrapper::Enabled => sticky_exit_callback(
+                            IcedSctkEvent::A11yEnabled,
+                            &self.state,
+                            &mut control_flow,
+                            &mut callback,
+                        ),
+                        adapter::A11yWrapper::Event(event) => sticky_exit_callback(
+                            IcedSctkEvent::A11yEvent(event),
+                            &self.state,
+                            &mut control_flow,
+                            &mut callback,
+                        ),
+                    }
+                }
+            }
             // Handle pending sctk events.
-            for event in event_sink_back_buffer.drain(..) {
+            for event in sctk_event_sink_back_buffer.drain(..) {
                 match event {
                     SctkEvent::Frame(id) => sticky_exit_callback(
                         IcedSctkEvent::SctkEvent(SctkEvent::Frame(id)),
@@ -483,6 +538,7 @@ where
                             // TODO ASHLEY: error handling
                             if let Ok((id, wl_surface)) = self.state.get_layer_surface(builder) {
                                 let object_id = wl_surface.id();
+                                // TODO Ashley: all surfaces should probably have an optional title for a11y if nothing else
                                 sticky_exit_callback(
                                     IcedSctkEvent::SctkEvent(SctkEvent::LayerSurfaceEvent {
                                         variant: LayerSurfaceEventVariant::Created(object_id.clone(), id),
@@ -492,6 +548,17 @@ where
                                     &mut control_flow,
                                     &mut callback,
                                 );
+                                #[cfg(feature = "a11y")]
+                                {
+                                    let adapter = self.init_a11y_adapter(&wl_surface, None, None, accesskit::Role::Window);
+
+                                    sticky_exit_callback(
+                                        IcedSctkEvent::A11ySurfaceCreated(SurfaceIdWrapper::LayerSurface(id), adapter),
+                                        &self.state,
+                                        &mut control_flow,
+                                        &mut callback,
+                                    );
+                                }
                             }
                         }
                         platform_specific::wayland::layer_surface::Action::Size {
@@ -571,14 +638,30 @@ where
                     }
                     Event::Window(action) => match action {
                         platform_specific::wayland::window::Action::Window { builder, _phantom } => {
+                            let app_id = builder.app_id.clone();
+                            let title = builder.title.clone();
                             let (id, wl_surface) = self.state.get_window(builder);
                             let object_id = wl_surface.id();
                             sticky_exit_callback(
-                                IcedSctkEvent::SctkEvent(SctkEvent::WindowEvent { variant: WindowEventVariant::Created(object_id.clone(), id), id: wl_surface.clone() }),
+                                IcedSctkEvent::SctkEvent(SctkEvent::WindowEvent { 
+                                    variant: WindowEventVariant::Created(object_id.clone(), id),
+                                    id: wl_surface.clone() }),
                                 &self.state,
                                 &mut control_flow,
                                 &mut callback,
                             );
+
+                            #[cfg(feature = "a11y")]
+                            {
+                                let adapter = self.init_a11y_adapter(&wl_surface, app_id, title, accesskit::Role::Window);
+
+                                sticky_exit_callback(
+                                    IcedSctkEvent::A11ySurfaceCreated(SurfaceIdWrapper::LayerSurface(id), adapter),
+                                    &self.state,
+                                    &mut control_flow,
+                                    &mut callback,
+                                );
+                            }
                         },
                         platform_specific::wayland::window::Action::Size { id, width, height } => {
                             if let Some(window) = self.state.windows.iter_mut().find(|w| w.id == id) {
@@ -728,11 +811,25 @@ where
                             if let Ok((id, parent_id, toplevel_id, wl_surface)) = self.state.get_popup(popup) {
                                 let object_id = wl_surface.id();
                                 sticky_exit_callback(
-                                    IcedSctkEvent::SctkEvent(SctkEvent::PopupEvent { variant: crate::sctk_event::PopupEventVariant::Created(object_id.clone(), id), toplevel_id, parent_id, id: wl_surface.clone() }),
+                                    IcedSctkEvent::SctkEvent(SctkEvent::PopupEvent {
+                                        variant: crate::sctk_event::PopupEventVariant::Created(object_id.clone(), id),
+                                        toplevel_id, parent_id, id: wl_surface.clone() }),
                                     &self.state,
                                     &mut control_flow,
                                     &mut callback,
                                 );
+
+                                #[cfg(feature = "a11y")]
+                                {
+                                let adapter = self.init_a11y_adapter(&wl_surface, None, None, accesskit::Role::Window);
+
+                                sticky_exit_callback(
+                                    IcedSctkEvent::A11ySurfaceCreated(SurfaceIdWrapper::LayerSurface(id), adapter),
+                                    &self.state,
+                                    &mut control_flow,
+                                    &mut callback,
+                                );
+                            }
                             }
                         },
                         // XXX popup destruction must be done carefully

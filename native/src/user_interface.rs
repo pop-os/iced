@@ -1,4 +1,6 @@
 //! Implement your own event loop to drive a user interface.
+use std::collections::VecDeque;
+
 use crate::application;
 use crate::event::{self, Event};
 use crate::layout;
@@ -111,6 +113,26 @@ where
         }
     }
 
+    /// Returns the current widget with keyboard focus
+    pub fn keyboard_focus(&self) -> Option<widget::Id> {
+        // is there a better way to do this?
+        let mut pending_check = VecDeque::from([(&self.root, &self.state)]);
+        while let Some((el, tree)) = pending_check.pop_front() {
+            let cur_widget = el.as_widget();
+            if cur_widget.is_focused(tree) {
+                return cur_widget.id();
+            }
+            for child in cur_widget
+                .child_elements()
+                .into_iter()
+                .zip(tree.children.iter())
+            {
+                pending_check.push_back(child);
+            }
+        }
+        None
+    }
+
     /// Updates the [`UserInterface`] by processing each provided [`Event`].
     ///
     /// It returns __messages__ that may have been produced as a result of user
@@ -133,7 +155,7 @@ where
     /// #
     /// # pub struct Counter;
     /// #
-    /// # impl Counter {
+    /// # impl Counter {~
     /// #     pub fn new() -> Self { Counter }
     /// #     pub fn view(&self) -> Column<(), Renderer> {
     /// #         Column::new()
@@ -307,6 +329,17 @@ where
             .collect();
 
         (state, event_statuses)
+    }
+
+    /// get a11y nodes
+    #[cfg(feature = "a11y")]
+    pub fn a11y_nodes(
+        &self,
+    ) -> (
+        Vec<(accesskit::NodeId, std::sync::Arc<accesskit::Node>)>,
+        Vec<(accesskit::NodeId, std::sync::Arc<accesskit::Node>)>,
+    ) {
+        self.root.as_widget().a11y_nodes(Layout::new(&self.base))
     }
 
     /// Draws the [`UserInterface`] with the provided [`Renderer`].

@@ -97,6 +97,7 @@ pub use tree::Tree;
 pub use vertical_slider::VerticalSlider;
 
 pub use action::Action;
+pub use id::window_node_id;
 pub use id::Id;
 pub use operation::Operation;
 
@@ -105,7 +106,9 @@ use crate::layout;
 use crate::mouse;
 use crate::overlay;
 use crate::renderer;
+use crate::Element;
 use crate::{Clipboard, Layout, Length, Point, Rectangle, Shell};
+use std::sync::Arc;
 
 /// A component that displays information and allows interaction.
 ///
@@ -160,6 +163,20 @@ where
         cursor_position: Point,
         viewport: &Rectangle,
     );
+
+    #[cfg(feature = "a11y")]
+    /// get the a11y nodes for the widget and its children
+    /// this will return a tuple of vectors containing nodes that the caller should parent and the nodes that the callee should parent respectively
+    /// perfaps this could benefit from a data structure
+    fn a11y_nodes(
+        &self,
+        _layout: Layout<'_>,
+    ) -> (
+        Vec<(accesskit::NodeId, Arc<accesskit::Node>)>,
+        Vec<(accesskit::NodeId, Arc<accesskit::Node>)>,
+    ) {
+        (Vec::new(), Vec::new())
+    }
 
     /// Returns the [`Tag`] of the [`Widget`].
     ///
@@ -230,5 +247,25 @@ where
         _renderer: &Renderer,
     ) -> Option<overlay::Element<'a, Message, Renderer>> {
         None
+    }
+
+    /// Name of the widget if there is any
+    fn name(&self) -> String {
+        String::new()
+    }
+
+    /// Returns true if the widget has keyboard focus
+    fn is_focused(&self, _tree: &Tree) -> bool {
+        false
+    }
+
+    /// Returns the id of the widget
+    fn id(&self) -> Option<Id> {
+        None
+    }
+
+    /// Returns the child elements of the widget
+    fn child_elements<'a>(&'a self) -> Vec<&Element<'a, Message, Renderer>> {
+        Vec::new()
     }
 }

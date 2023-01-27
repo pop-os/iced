@@ -13,6 +13,7 @@ use crate::{
 /// A container that distributes its contents horizontally.
 #[allow(missing_debug_implementations)]
 pub struct Row<'a, Message, Renderer> {
+    id: super::Id,
     spacing: u16,
     padding: Padding,
     width: Length,
@@ -32,6 +33,7 @@ impl<'a, Message, Renderer> Row<'a, Message, Renderer> {
         children: Vec<Element<'a, Message, Renderer>>,
     ) -> Self {
         Row {
+            id: super::Id::unique(),
             spacing: 0,
             padding: Padding::ZERO,
             width: Length::Shrink,
@@ -110,6 +112,33 @@ where
 
     fn height(&self) -> Length {
         self.height
+    }
+
+    fn name(&self) -> String {
+        self.id.to_string()
+    }
+
+    #[cfg(feature = "a11y")]
+    /// get the a11y nodes for the widget
+    fn a11y_nodes(
+        &self,
+        layout: Layout<'_>,
+    ) -> (
+        Vec<(accesskit::NodeId, std::sync::Arc<accesskit::Node>)>,
+        Vec<(accesskit::NodeId, std::sync::Arc<accesskit::Node>)>,
+    ) {
+        self.children
+            .iter()
+            .zip(layout.children())
+            .map(|(c, c_layout)| c.as_widget().a11y_nodes(c_layout))
+            .fold(
+                (Vec::new(), Vec::new()),
+                |mut acc, (parent_children, child_children)| {
+                    acc.0.extend(parent_children);
+                    acc.1.extend(child_children);
+                    acc
+                },
+            )
     }
 
     fn layout(
@@ -235,6 +264,10 @@ where
         renderer: &Renderer,
     ) -> Option<overlay::Element<'b, Message, Renderer>> {
         overlay::from_children(&self.children, tree, layout, renderer)
+    }
+
+    fn child_elements(&self) -> Vec<&Element<'a, Message, Renderer>> {
+        self.children.iter().collect()
     }
 }
 

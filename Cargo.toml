@@ -12,7 +12,7 @@ keywords = ["gui", "ui", "graphics", "interface", "widgets"]
 categories = ["gui"]
 
 [features]
-default = ["dyrend", "winit"]
+default = ["softbuffer", "wayland", "a11y"]
 # Enables the `Image` widget
 image = ["iced_wgpu?/image", "iced_glow?/image", "iced_softbuffer?/image", "iced_dyrend?/image", "image_rs"]
 # Enables the `Svg` widget
@@ -51,6 +51,8 @@ glutin = ["iced_glutin", "iced_glow"]
 wayland = ["iced_sctk"]
 # Enables the winit shell. Conflicts with `wayland` and `glutin`.
 winit = ["iced_winit"]
+# Enables the `accesskit` accessibility library
+a11y = ["accesskit", "iced_native/a11y", "iced_sctk?/a11y", "iced_winit?/accesskit", "iced_glutin?/accesskit"]
 
 [badges]
 maintenance = { status = "actively-developed" }
@@ -84,6 +86,7 @@ iced_glutin = { version = "0.5", path = "glutin", optional = true }
 iced_glow = { version = "0.5", path = "glow", optional = true }
 iced_sctk = { path = "./sctk", optional = true }
 iced_softbuffer = { version = "0.1", path = "softbuffer", optional = true }
+accesskit = { version = "0.8.1", optional = true }
 thiserror = "1.0"
 
 [dependencies.image_rs]

@@ -1,4 +1,8 @@
-use std::{collections::HashMap, fmt::{Debug, Formatter}};
+use std::{
+    collections::HashMap,
+    fmt::Debug,
+    sync::{Arc, Mutex},
+};
 
 use crate::{
     application::Event,
@@ -10,9 +14,10 @@ use iced_native::{
     command::platform_specific::{
         self,
         wayland::{
+            data_device::DataFromMimeType,
             layer_surface::{IcedMargin, IcedOutput, SctkLayerSurfaceSettings},
             popup::SctkPopupSettings,
-            window::SctkWindowSettings, data_device::DataFromMimeType,
+            window::SctkWindowSettings,
         },
     },
     keyboard::Modifiers,
@@ -194,7 +199,6 @@ impl Debug for SctkCopyPasteSource {
 }
 
 /// Wrapper to carry sctk state.
-#[derive(Debug)]
 pub struct SctkState<T> {
     /// the cursor wl_surface
     pub(crate) cursor_surface: Option<wl_surface::WlSurface>,
