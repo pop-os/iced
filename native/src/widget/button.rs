@@ -18,6 +18,8 @@ use crate::{
 
 pub use iced_style::button::{Appearance, StyleSheet};
 
+use super::operation::OperationOutputWrapper;
+
 /// A generic widget that produces a message when pressed.
 ///
 /// ```
@@ -232,7 +234,7 @@ where
         &self,
         tree: &mut Tree,
         layout: Layout<'_>,
-        operation: &mut dyn Operation<Message>,
+        operation: &mut dyn Operation<OperationOutputWrapper<Message>>,
     ) {
         operation.container(None, &mut |operation| {
             self.content.as_widget().operate(
@@ -338,15 +340,6 @@ where
             layout.children().next().unwrap(),
             renderer,
         )
-    }
-
-    fn child_elements(&self) -> Vec<&Element<'a, Message, Renderer>> {
-        vec![&self.content]
-    }
-
-    fn is_focused(&self, tree: &Tree) -> bool {
-        let state = tree.state.downcast_ref::<State>();
-        state.is_focused
     }
 
     // TODO each accessible widget really should always have Id, so maybe this doesn't need to be an option

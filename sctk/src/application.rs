@@ -24,8 +24,8 @@ use iced_native::{
     layout::Limits,
     layout::Limits,
     mouse::{self, Interaction},
-    widget::{self, operation, Tree},
-    Element, Renderer, Widget,
+    widget::{operation::{self, focusable::{focus, find_focused}}, Tree},
+    Element, Renderer, Widget, layout::Limits,
 };
 use log::error;
 
@@ -44,11 +44,15 @@ use iced_graphics::{
 use iced_native::user_interface::{self, UserInterface};
 use iced_native::window::Id as SurfaceId;
 use itertools::Itertools;
+use iced_native::widget::Operation;
+use std::mem::ManuallyDrop;
 use raw_window_handle::{
     HasRawDisplayHandle, HasRawWindowHandle, RawDisplayHandle, RawWindowHandle,
     WaylandDisplayHandle, WaylandWindowHandle,
 };
 use std::mem::ManuallyDrop;
+use iced_native::widget::operation::{MapOperation, OperationWrapper};
+use itertools::Itertools;
 
 #[derive(Debug)]
 pub enum Event<Message> {
@@ -1048,15 +1052,31 @@ where
                         nodes.extend(window_children);
                         nodes.push((adapter.id, root_node.clone().into()));
                         nodes.reverse();
-                        // TODO Ashley get proper focus
-                        let fcs = user_interface
-                            .keyboard_focus()
-                            .map(|fcs| fcs.node_id());
-                        adapter.adapter.update(TreeUpdate {
-                            nodes: nodes,
-                            tree: None,
-                            focus: fcs,
-                        })
+                        let mut current_operation = Some(Box::new(OperationWrapper::Id(Box::new(find_focused()))));
+                        let mut focus = None;
+                        while let Some(mut operation) = current_operation.take() {
+                            user_interface.operate(&renderer, operation.as_mut());
+        
+                            match operation.finish() {
+                                operation::Outcome::None => {
+                                }
+                                operation::Outcome::Some(message) => {
+                                    match message {
+                                        operation::OperationOutputWrapper::Message(m) => {
+                                            unimplemented!();
+                                        }
+                                        operation::OperationOutputWrapper::Id(id) => {
+                                            focus = Some(id.node_id());
+                                        },
+                                    }
+                                   
+                                }
+                                operation::Outcome::Chain(mut next) => {
+                                    current_operation = Some(Box::new(OperationWrapper::Wrapper(next)));
+                                }
+                            }
+                        }
+                        adapter.adapter.update(TreeUpdate { nodes: nodes, tree: None, focus})
                     }
                     let comp_surface = match wrapper.comp_surface.as_mut() {
                         Some(s) => s,
@@ -1531,7 +1551,8 @@ fn run_command<A, E>(
                 let id = &state.id;
 
                 let mut current_cache = std::mem::take(cache);
-                let mut current_operation = Some(action.into_operation());
+                let mut current_operation = Some(Box::new(OperationWrapper::Message(action.into_operation())));
+
 
                 let mut user_interface = build_user_interface(
                     application,
@@ -1551,12 +1572,20 @@ fn run_command<A, E>(
                     match operation.finish() {
                         operation::Outcome::None => {}
                         operation::Outcome::Some(message) => {
-                            proxy.send_event(Event::SctkEvent(
-                                IcedSctkEvent::UserEvent(message),
-                            ));
+                            match message {
+                                operation::OperationOutputWrapper::Message(m) => {
+                                    proxy.send_event(Event::SctkEvent(
+                                        IcedSctkEvent::UserEvent(m),
+                                    ));
+                                },
+                                operation::OperationOutputWrapper::Id(_) => {
+                                    // should not happen
+                                },
+                            }
+                           
                         }
-                        operation::Outcome::Chain(next) => {
-                            current_operation = Some(next);
+                        operation::Outcome::Chain(mut next) => {
+                            current_operation = Some(Box::new(OperationWrapper::Wrapper(next)));
                         }
                     }
                 }

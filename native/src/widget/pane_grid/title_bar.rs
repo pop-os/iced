@@ -3,8 +3,9 @@ use crate::layout;
 use crate::mouse;
 use crate::overlay;
 use crate::renderer;
-use crate::widget::container;
-use crate::widget::{self, Tree};
+use crate::widget::operation::OperationOutputWrapper;
+use crate::widget::Tree;
+use crate::widget::{container, Operation};
 use crate::{
     Clipboard, Element, Layout, Padding, Point, Rectangle, Shell, Size,
 };
@@ -262,7 +263,7 @@ where
         &self,
         tree: &mut Tree,
         layout: Layout<'_>,
-        operation: &mut dyn widget::Operation<Message>,
+        operation: &mut dyn Operation<OperationOutputWrapper<Message>>,
     ) {
         let mut children = layout.children();
         let padded = children.next().unwrap();

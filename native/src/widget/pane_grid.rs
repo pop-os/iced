@@ -38,13 +38,15 @@ use crate::mouse;
 use crate::overlay;
 use crate::renderer;
 use crate::touch;
-use crate::widget;
 use crate::widget::container;
 use crate::widget::tree::{self, Tree};
 use crate::{
     Clipboard, Color, Element, Layout, Length, Point, Rectangle, Shell, Size,
     Vector, Widget,
 };
+
+use super::operation::OperationOutputWrapper;
+use super::Operation;
 
 /// A collection of panes distributed using either vertical or horizontal splits
 /// to completely fill the space available.
@@ -294,7 +296,7 @@ where
         &self,
         tree: &mut Tree,
         layout: Layout<'_>,
-        operation: &mut dyn widget::Operation<Message>,
+        operation: &mut dyn Operation<OperationOutputWrapper<Message>>,
     ) {
         operation.container(None, &mut |operation| {
             self.contents

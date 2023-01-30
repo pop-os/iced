@@ -10,7 +10,8 @@ use crate::event::{self, Event};
 use crate::layout;
 use crate::mouse;
 use crate::renderer;
-use crate::widget;
+use crate::widget::operation::OperationOutputWrapper;
+use crate::widget::Operation;
 use crate::widget::Tree;
 use crate::{Clipboard, Layout, Point, Rectangle, Shell, Size};
 
@@ -46,7 +47,7 @@ where
     fn operate(
         &mut self,
         _layout: Layout<'_>,
-        _operation: &mut dyn widget::Operation<Message>,
+        _operation: &mut dyn Operation<OperationOutputWrapper<Message>>,
     ) {
     }
 

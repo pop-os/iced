@@ -3,8 +3,9 @@ use iced_native::layout::{self, Layout};
 use iced_native::mouse;
 use iced_native::overlay;
 use iced_native::renderer;
+use iced_native::widget::operation::OperationOutputWrapper;
 use iced_native::widget::tree::{self, Tree};
-use iced_native::widget::{self, Widget};
+use iced_native::widget::{Operation, Widget};
 use iced_native::Element;
 use iced_native::{Clipboard, Hasher, Length, Point, Rectangle, Shell, Size};
 
@@ -130,7 +131,7 @@ where
         &self,
         tree: &mut Tree,
         layout: Layout<'_>,
-        operation: &mut dyn widget::Operation<Message>,
+        operation: &mut dyn Operation<OperationOutputWrapper<Message>>,
     ) {
         self.with_element(|element| {
             element.as_widget().operate(

@@ -106,9 +106,10 @@ use crate::layout;
 use crate::mouse;
 use crate::overlay;
 use crate::renderer;
-use crate::Element;
 use crate::{Clipboard, Layout, Length, Point, Rectangle, Shell};
 use std::sync::Arc;
+
+use self::operation::OperationOutputWrapper;
 
 /// A component that displays information and allows interaction.
 ///
@@ -205,7 +206,7 @@ where
         &self,
         _state: &mut Tree,
         _layout: Layout<'_>,
-        _operation: &mut dyn Operation<Message>,
+        _operation: &mut dyn Operation<OperationOutputWrapper<Message>>,
     ) {
     }
 
@@ -254,18 +255,8 @@ where
         String::new()
     }
 
-    /// Returns true if the widget has keyboard focus
-    fn is_focused(&self, _tree: &Tree) -> bool {
-        false
-    }
-
     /// Returns the id of the widget
     fn id(&self) -> Option<Id> {
         None
-    }
-
-    /// Returns the child elements of the widget
-    fn child_elements<'a>(&'a self) -> Vec<&Element<'a, Message, Renderer>> {
-        Vec::new()
     }
 }

@@ -17,6 +17,8 @@ use std::{f32, u32};
 
 pub use iced_style::scrollable::StyleSheet;
 
+use super::operation::OperationOutputWrapper;
+
 pub mod style {
     //! The styles of a [`Scrollable`].
     //!
@@ -164,7 +166,7 @@ where
         &self,
         tree: &mut Tree,
         layout: Layout<'_>,
-        operation: &mut dyn Operation<Message>,
+        operation: &mut dyn Operation<OperationOutputWrapper<Message>>,
     ) {
         let state = tree.state.downcast_mut::<State>();
 

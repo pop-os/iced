@@ -12,6 +12,8 @@ use crate::{
 
 use std::u32;
 
+use super::operation::OperationOutputWrapper;
+
 /// A container that distributes its contents vertically.
 #[allow(missing_debug_implementations)]
 pub struct Column<'a, Message, Renderer> {
@@ -176,7 +178,7 @@ where
         &self,
         tree: &mut Tree,
         layout: Layout<'_>,
-        operation: &mut dyn Operation<Message>,
+        operation: &mut dyn Operation<OperationOutputWrapper<Message>>,
     ) {
         operation.container(None, &mut |operation| {
             self.children
@@ -277,10 +279,6 @@ where
         renderer: &Renderer,
     ) -> Option<overlay::Element<'b, Message, Renderer>> {
         overlay::from_children(&self.children, tree, layout, renderer)
-    }
-
-    fn child_elements(&self) -> Vec<&Element<'a, Message, Renderer>> {
-        self.children.iter().collect()
     }
 }
 

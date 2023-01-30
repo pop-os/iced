@@ -1,12 +1,11 @@
 //! Implement your own event loop to drive a user interface.
-use std::collections::VecDeque;
-
 use crate::application;
 use crate::event::{self, Event};
 use crate::layout;
 use crate::mouse;
 use crate::renderer;
-use crate::widget;
+use crate::widget::operation::OperationOutputWrapper;
+use crate::widget::{self, Operation};
 use crate::{Clipboard, Element, Layout, Point, Rectangle, Shell, Size};
 
 /// A set of interactive graphical elements with a specific [`Layout`].
@@ -111,26 +110,6 @@ where
             overlay: None,
             bounds,
         }
-    }
-
-    /// Returns the current widget with keyboard focus
-    pub fn keyboard_focus(&self) -> Option<widget::Id> {
-        // is there a better way to do this?
-        let mut pending_check = VecDeque::from([(&self.root, &self.state)]);
-        while let Some((el, tree)) = pending_check.pop_front() {
-            let cur_widget = el.as_widget();
-            if cur_widget.is_focused(tree) {
-                return cur_widget.id();
-            }
-            for child in cur_widget
-                .child_elements()
-                .into_iter()
-                .zip(tree.children.iter())
-            {
-                pending_check.push_back(child);
-            }
-        }
-        None
     }
 
     /// Updates the [`UserInterface`] by processing each provided [`Event`].
@@ -521,7 +500,7 @@ where
     pub fn operate(
         &mut self,
         renderer: &Renderer,
-        operation: &mut dyn widget::Operation<Message>,
+        operation: &mut dyn Operation<OperationOutputWrapper<Message>>,
     ) {
         self.root.as_widget().operate(
             &mut self.state,

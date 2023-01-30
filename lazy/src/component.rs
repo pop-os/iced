@@ -4,8 +4,9 @@ use iced_native::layout::{self, Layout};
 use iced_native::mouse;
 use iced_native::overlay;
 use iced_native::renderer;
-use iced_native::widget;
+use iced_native::widget::operation::{MapOperation, OperationOutputWrapper};
 use iced_native::widget::tree::{self, Tree};
+use iced_native::widget::Operation;
 use iced_native::{
     Clipboard, Element, Length, Point, Rectangle, Shell, Size, Widget,
 };
@@ -234,47 +235,13 @@ where
         &self,
         tree: &mut Tree,
         layout: Layout<'_>,
-        operation: &mut dyn widget::Operation<Message>,
+        operation: &mut dyn Operation<OperationOutputWrapper<Message>>,
     ) {
-        struct MapOperation<'a, B> {
-            operation: &'a mut dyn widget::Operation<B>,
-        }
-
-        impl<'a, T, B> widget::Operation<T> for MapOperation<'a, B> {
-            fn container(
-                &mut self,
-                id: Option<&widget::Id>,
-                operate_on_children: &mut dyn FnMut(
-                    &mut dyn widget::Operation<T>,
-                ),
-            ) {
-                self.operation.container(id, &mut |operation| {
-                    operate_on_children(&mut MapOperation { operation });
-                });
-            }
-
-            fn focusable(
-                &mut self,
-                state: &mut dyn widget::operation::Focusable,
-                id: Option<&widget::Id>,
-            ) {
-                self.operation.focusable(state, id);
-            }
-
-            fn text_input(
-                &mut self,
-                state: &mut dyn widget::operation::TextInput,
-                id: Option<&widget::Id>,
-            ) {
-                self.operation.text_input(state, id);
-            }
-        }
-
         self.with_element(|element| {
             element.as_widget().operate(
                 &mut tree.children[0],
                 layout,
-                &mut MapOperation { operation },
+                &mut MapOperation::new(operation),
             );
         });
     }

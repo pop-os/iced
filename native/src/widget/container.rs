@@ -15,6 +15,7 @@ use std::u32;
 
 pub use iced_style::container::{Appearance, StyleSheet};
 
+use super::operation::OperationOutputWrapper;
 use super::Id;
 
 /// An element decorating some content.
@@ -190,7 +191,7 @@ where
         &self,
         tree: &mut Tree,
         layout: Layout<'_>,
-        operation: &mut dyn Operation<Message>,
+        operation: &mut dyn Operation<OperationOutputWrapper<Message>>,
     ) {
         operation.container(None, &mut |operation| {
             self.content.as_widget().operate(
@@ -280,10 +281,6 @@ where
             layout.children().next().unwrap(),
             renderer,
         )
-    }
-
-    fn child_elements(&self) -> Vec<&Element<'a, Message, Renderer>> {
-        vec![&self.content]
     }
 }
 

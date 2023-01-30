@@ -3,9 +3,10 @@ use crate::layout;
 use crate::mouse;
 use crate::overlay;
 use crate::renderer;
-use crate::widget::container;
+use crate::widget::operation::OperationOutputWrapper;
 use crate::widget::pane_grid::{Draggable, TitleBar};
-use crate::widget::{self, Tree};
+use crate::widget::Tree;
+use crate::widget::{container, Operation};
 use crate::{Clipboard, Element, Layout, Point, Rectangle, Shell, Size};
 
 /// The content of a [`Pane`].
@@ -187,7 +188,7 @@ where
         &self,
         tree: &mut Tree,
         layout: Layout<'_>,
-        operation: &mut dyn widget::Operation<Message>,
+        operation: &mut dyn Operation<OperationOutputWrapper<Message>>,
     ) {
         let body_layout = if let Some(title_bar) = &self.title_bar {
             let mut children = layout.children();

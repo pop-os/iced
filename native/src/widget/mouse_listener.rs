@@ -13,6 +13,8 @@ use crate::{
 
 use std::u32;
 
+use super::operation::OperationOutputWrapper;
+
 /// Emit messages on mouse events.
 #[allow(missing_debug_implementations)]
 pub struct MouseListener<'a, Message, Renderer> {
@@ -196,7 +198,7 @@ where
         &self,
         tree: &mut Tree,
         layout: Layout<'_>,
-        operation: &mut dyn Operation<Message>,
+        operation: &mut dyn Operation<OperationOutputWrapper<Message>>,
     ) {
         operation.container(None, &mut |operation| {
             self.content.as_widget().operate(

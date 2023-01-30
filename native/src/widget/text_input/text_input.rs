@@ -22,6 +22,8 @@ use crate::{
 
 pub use iced_style::text_input::{Appearance, StyleSheet};
 
+use super::operation::OperationOutputWrapper;
+
 /// A field that can be filled with text.
 ///
 /// # Example
@@ -221,7 +223,7 @@ where
         &self,
         tree: &mut Tree,
         _layout: Layout<'_>,
-        operation: &mut dyn Operation<Message>,
+        operation: &mut dyn Operation<OperationOutputWrapper<Message>>,
     ) {
         let state = tree.state.downcast_mut::<State>();
 
