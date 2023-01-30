@@ -166,20 +166,18 @@ where
 
     #[cfg(feature = "a11y")]
     /// get the a11y nodes for the widget
-    fn a11y_nodes(
-        &self,
-        layout: Layout<'_>,
-    ) -> (
-        Vec<(accesskit::NodeId, std::sync::Arc<accesskit::Node>)>,
-        Vec<(accesskit::NodeId, std::sync::Arc<accesskit::Node>)>,
-    ) {
+    fn a11y_nodes(&self, layout: Layout<'_>) -> widget::A11yTree {
         use std::sync::Arc;
 
         use accesskit::{kurbo::Rect, DefaultActionVerb};
         use enumset::enum_set;
+
+        use super::A11yTree;
         let child_layout = layout.children().next().unwrap();
-        let (my_children, childrens_children) =
-            self.content.as_widget().a11y_nodes(child_layout);
+        let A11yTree {
+            root: my_children,
+            children: childrens_children,
+        } = self.content.as_widget().a11y_nodes(child_layout);
 
         let Rectangle {
             x,
@@ -210,7 +208,10 @@ where
             .into_iter()
             .chain(childrens_children.into_iter())
             .collect();
-        (callers_children, my_children)
+        A11yTree {
+            root: callers_children,
+            children: my_children,
+        }
     }
 
     fn layout(

@@ -176,13 +176,7 @@ where
 
     #[cfg(feature = "a11y")]
     /// get the a11y nodes for the widget
-    fn a11y_nodes(
-        &self,
-        layout: Layout<'_>,
-    ) -> (
-        Vec<(accesskit::NodeId, std::sync::Arc<accesskit::Node>)>,
-        Vec<(accesskit::NodeId, std::sync::Arc<accesskit::Node>)>,
-    ) {
+    fn a11y_nodes(&self, layout: Layout<'_>) -> crate::widget::A11yTree {
         let c_layout = layout.children().next().unwrap();
         self.content.as_widget().a11y_nodes(c_layout)
     }

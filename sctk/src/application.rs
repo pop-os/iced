@@ -1031,23 +1031,12 @@ where
                 }) {
                     debug.render_started();
                     #[cfg(feature = "a11y")]
-                    if let Some(Some(adapter)) = a11y_enabled
-                        .then(|| adapters.get_mut(&native_id.inner()))
-                    {
-                        use accesskit::{Node, Role, Tree, TreeUpdate};
+                    if let Some(Some(adapter)) = a11y_enabled.then(|| adapters.get_mut(&native_id.inner())) {
+                        use iced_native::widget::A11yTree;
+                        use accesskit::{TreeUpdate, Tree, Node, Role};
                         // TODO send a11y tree
-                        let (window_children, mut nodes) =
-                            user_interface.a11y_nodes();
-                        let root_node = Node {
-                            role: Role::Window,
-                            children: window_children
-                                .iter()
-                                .map(|(id, _)| id)
-                                .cloned()
-                                .collect(),
-                            name: Some(state.title.clone().into_boxed_str()),
-                            ..Default::default()
-                        };
+                        let A11yTree {root: window_children, children: mut nodes} = user_interface.a11y_nodes();
+                        let root_node = Node {role: Role::Window, children: window_children.iter().map(|(id, _)| id).cloned().collect(), name: Some(state.title.clone().into_boxed_str()), ..Default::default()};
                         let tree = Tree::new(adapter.id.clone());
                         nodes.extend(window_children);
                         nodes.push((adapter.id, root_node.clone().into()));
@@ -1076,6 +1065,7 @@ where
                                 }
                             }
                         }
+                        log::debug!("focus: {:?}\nnodes: {:?}", &focus, nodes.iter().map(|(id, node)| (id, node.role, &node.children)).collect::<Vec<_>>());
                         adapter.adapter.update(TreeUpdate { nodes: nodes, tree: None, focus})
                     }
                     let comp_surface = match wrapper.comp_surface.as_mut() {

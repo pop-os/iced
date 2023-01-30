@@ -312,12 +312,7 @@ where
 
     /// get a11y nodes
     #[cfg(feature = "a11y")]
-    pub fn a11y_nodes(
-        &self,
-    ) -> (
-        Vec<(accesskit::NodeId, std::sync::Arc<accesskit::Node>)>,
-        Vec<(accesskit::NodeId, std::sync::Arc<accesskit::Node>)>,
-    ) {
+    pub fn a11y_nodes(&self) -> crate::widget::A11yTree {
         self.root.as_widget().a11y_nodes(Layout::new(&self.base))
     }
 

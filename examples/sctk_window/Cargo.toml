@@ -11,3 +11,5 @@ sctk = { package = "smithay-client-toolkit", git = "https://github.com/Smithay/c
 iced_native = { path = "../../native" }
 iced_style = { path = "../../style" }
 
+log = "0.4.17"
+env_logger = "0.10.0"

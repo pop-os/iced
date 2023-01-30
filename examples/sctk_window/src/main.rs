@@ -1,3 +1,4 @@
+use env_logger::Env;
 use iced::alignment::{self, Alignment};
 use iced::event::{self, Event};
 use iced::keyboard;
@@ -25,6 +26,11 @@ use iced_native::layout::Limits;
 use iced_style::application;
 
 pub fn main() -> iced::Result {
+    let env = Env::default()
+        .filter_or("MY_LOG_LEVEL", "debug")
+        .write_style_or("MY_LOG_STYLE", "always");
+
+    env_logger::init_from_env(env);
     Window::run(Settings {
         initial_surface: InitialSurface::XdgWindow(SctkWindowSettings {
             app_id: Some("com.system76.SctkWindow".into()),
