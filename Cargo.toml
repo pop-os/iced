@@ -52,13 +52,14 @@ wayland = ["iced_sctk"]
 # Enables the winit shell. Conflicts with `wayland` and `glutin`.
 winit = ["iced_winit"]
 # Enables the `accesskit` accessibility library
-a11y = ["accesskit", "iced_native/a11y", "iced_sctk?/a11y", "iced_winit?/accesskit", "iced_glutin?/accesskit"]
+a11y = ["iced_accessibility", "iced_native/a11y", "iced_sctk?/a11y", "iced_winit?/a11y", "iced_glutin?/a11y"]
 
 [badges]
 maintenance = { status = "actively-developed" }
 
 [workspace]
 members = [
+    "accessibility",
     "core",
     "dyrend",
     "futures",
@@ -86,6 +87,7 @@ iced_glutin = { version = "0.5", path = "glutin", optional = true }
 iced_glow = { version = "0.5", path = "glow", optional = true }
 iced_sctk = { path = "./sctk", optional = true }
 iced_softbuffer = { version = "0.1", path = "softbuffer", optional = true }
+iced_accessibility = { version = "0.1", path = "accessibility", optional = true }
 accesskit = { version = "0.8.1", optional = true }
 thiserror = "1.0"
 

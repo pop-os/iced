@@ -41,7 +41,6 @@ pub mod tree;
 pub mod vertical_slider;
 
 mod action;
-mod id;
 
 #[doc(no_inline)]
 pub use button::Button;
@@ -97,8 +96,8 @@ pub use tree::Tree;
 pub use vertical_slider::VerticalSlider;
 
 pub use action::Action;
-pub use id::window_node_id;
-pub use id::Id;
+pub use iced_core::window_node_id;
+pub use iced_core::Id;
 pub use operation::Operation;
 
 use crate::event::{self, Event};
@@ -107,19 +106,9 @@ use crate::mouse;
 use crate::overlay;
 use crate::renderer;
 use crate::{Clipboard, Layout, Length, Point, Rectangle, Shell};
-use std::sync::Arc;
 
 use self::operation::OperationOutputWrapper;
 
-#[cfg(feature = "a11y")]
-#[derive(Debug, Clone, Default)]
-/// Accessible tree of nodes
-pub struct A11yTree {
-    /// The children of a widget and its children
-    pub children: Vec<(accesskit::NodeId, Arc<accesskit::Node>)>,
-    /// The root of the current widget, children of the parent widget or the Window if there is no parent widget
-    pub root: Vec<(accesskit::NodeId, Arc<accesskit::Node>)>,
-}
 /// A component that displays information and allows interaction.
 ///
 /// If you want to build your own widgets, you will need to implement this
@@ -178,8 +167,8 @@ where
     /// get the a11y nodes for the widget and its children
     /// this will return a tuple of vectors containing nodes that the caller should parent and the nodes that the callee should parent respectively
     /// perfaps this could benefit from a data structure
-    fn a11y_nodes(&self, _layout: Layout<'_>) -> A11yTree {
-        A11yTree::default()
+    fn a11y_nodes(&self, _layout: Layout<'_>) -> iced_accessibility::A11yTree {
+        iced_accessibility::A11yTree::default()
     }
 
     /// Returns the [`Tag`] of the [`Widget`].

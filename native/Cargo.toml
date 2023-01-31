@@ -11,7 +11,7 @@ repository = "https://github.com/iced-rs/iced"
 default = []
 wayland = ["sctk"]
 debug = []
-a11y = ["accesskit", "enumset"]
+a11y = ["iced_accessibility", "enumset", "iced_core/a11y"]
 
 [dependencies]
 twox-hash = { version = "1.5", default-features = false }
@@ -33,3 +33,8 @@ features = ["thread-pool"]
 [dependencies.iced_style]
 version = "0.5.1"
 path = "../style"
+
+[dependencies.iced_accessibility]
+version = "0.1.0"
+path = "../accessibility"
+optional = true

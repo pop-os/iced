@@ -7,6 +7,9 @@ description = "The essential concepts of Iced"
 license = "MIT"
 repository = "https://github.com/iced-rs/iced"
 
+[features]
+a11y = []
+
 [dependencies]
 bitflags = "1.2"
 

@@ -312,7 +312,7 @@ where
 
     /// get a11y nodes
     #[cfg(feature = "a11y")]
-    pub fn a11y_nodes(&self) -> crate::widget::A11yTree {
+    pub fn a11y_nodes(&self) -> iced_accessibility::A11yTree {
         self.root.as_widget().a11y_nodes(Layout::new(&self.base))
     }
 

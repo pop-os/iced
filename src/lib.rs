@@ -196,6 +196,9 @@ pub mod touch;
 pub mod widget;
 pub mod window;
 
+#[cfg(feature = "a11y")]
+use iced_accessibility as accessibility;
+
 #[cfg(all(
     not(feature = "glow"),
     any(feature = "wgpu", feature = "softbuffer", feature = "dyrend",),

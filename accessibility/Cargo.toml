@@ -1,0 +1,17 @@
+[package]
+name = "iced_accessibility"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+# TODO Ashley re-export more platform adapters
+
+[dependencies]
+accesskit = { version = "0.8.1" }
+enumset = { version = "1.0" }
+accesskit_unix = { version = "0.1.1", optional = true }
+
+[dependencies.iced_core]
+version = "0.6"
+path = "../core"
+features = ["a11y"]

@@ -172,20 +172,16 @@ where
     }
 
     #[cfg(feature = "a11y")]
-    fn a11y_nodes(&self, _layout: Layout<'_>) -> crate::widget::A11yTree {
-        use std::sync::Arc;
+    fn a11y_nodes(&self, _layout: Layout<'_>) -> iced_accessibility::A11yTree {
+        use iced_accessibility::{accesskit, A11yNode, A11yTree};
 
-        use crate::widget::A11yTree;
-        let node = Arc::new(accesskit::Node {
+        let node = accesskit::Node {
             role: accesskit::Role::StaticText,
             name: Some(self.content.to_string().into_boxed_str()),
             live: Some(accesskit::Live::Polite),
             ..Default::default()
-        });
-        A11yTree {
-            root: vec![(self.id.node_id(), node)],
-            children: Vec::new(),
-        }
+        };
+        A11yTree::new(vec![A11yNode::new(node, self.id.clone())], Vec::new())
     }
 }
 

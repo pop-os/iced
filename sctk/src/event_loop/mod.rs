@@ -209,31 +209,33 @@ where
 
     // TODO Ashley provide users a reasonable method of setting the role for the surface
     #[cfg(feature = "a11y")]
-    pub fn init_a11y_adapter(&mut self, surface: &WlSurface, app_id: Option<String>, surface_title: Option<String>, role: accesskit::Role) -> adapter::IcedSctkAdapter {
-        use accesskit_unix::Adapter;
+    pub fn init_a11y_adapter(&mut self, surface: &WlSurface, app_id: Option<String>, surface_title: Option<String>, role: iced_accessibility::accesskit::Role) -> adapter::IcedSctkAdapter {
+        use iced_accessibility::{accesskit_unix::Adapter, accesskit::{Node, Tree, TreeUpdate, Role, NodeId}};
         let node_id = iced_native::widget::window_node_id();
-        let node_id_clone = node_id.clone();
+        // let node_id_clone = node_id.clone();
         let event_list = self.a11y_events.clone();
         adapter::IcedSctkAdapter {
-            adapter: accesskit_unix::Adapter::new(app_id.unwrap_or_else(|| String::from("None")), "Iced".to_string(), env!("CARGO_PKG_VERSION").to_string(), move || {
+            adapter: Adapter::new(app_id.unwrap_or_else(|| String::from("None")), "Iced".to_string(), env!("CARGO_PKG_VERSION").to_string(), move || {
                 event_list.lock().unwrap().push(adapter::A11yWrapper::Enabled);
-                accesskit::TreeUpdate {
+                
+                TreeUpdate {
                     nodes: vec![(
-                        node_id,
-                        Arc::new(accesskit::Node {
-                            role: accesskit::Role::Window,
+                        NodeId(node_id),
+                        Arc::new(
+                            Node {
+                            role: Role::Window,
                             name: surface_title.map(|s| s.into_boxed_str()),
                             ..Default::default()
                         }),
                     )],
-                    tree: Some(accesskit::Tree::new(node_id)),
+                    tree: Some(Tree::new(NodeId(node_id))),
                     focus: None,
                 }
             }, Box::new(adapter::IcedSctkActionHandler {
                 wl_surface: surface.clone(),
                 event_list: self.a11y_events.clone(),
             })).unwrap(),
-            id: node_id_clone
+            id: node_id
         }
         
     }
@@ -550,7 +552,7 @@ where
                                 );
                                 #[cfg(feature = "a11y")]
                                 {
-                                    let adapter = self.init_a11y_adapter(&wl_surface, None, None, accesskit::Role::Window);
+                                    let adapter = self.init_a11y_adapter(&wl_surface, None, None, iced_accessibility::accesskit::Role::Window);
 
                                     sticky_exit_callback(
                                         IcedSctkEvent::A11ySurfaceCreated(SurfaceIdWrapper::LayerSurface(id), adapter),
@@ -653,7 +655,7 @@ where
 
                             #[cfg(feature = "a11y")]
                             {
-                                let adapter = self.init_a11y_adapter(&wl_surface, app_id, title, accesskit::Role::Window);
+                                let adapter = self.init_a11y_adapter(&wl_surface, app_id, title, iced_accessibility::accesskit::Role::Window);
 
                                 sticky_exit_callback(
                                     IcedSctkEvent::A11ySurfaceCreated(SurfaceIdWrapper::LayerSurface(id), adapter),
@@ -821,7 +823,7 @@ where
 
                                 #[cfg(feature = "a11y")]
                                 {
-                                let adapter = self.init_a11y_adapter(&wl_surface, None, None, accesskit::Role::Window);
+                                let adapter = self.init_a11y_adapter(&wl_surface, None, None, iced_accessibility::accesskit::Role::Window);
 
                                 sticky_exit_callback(
                                     IcedSctkEvent::A11ySurfaceCreated(SurfaceIdWrapper::LayerSurface(id), adapter),

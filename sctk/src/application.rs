@@ -13,6 +13,7 @@ use crate::{
 };
 use float_cmp::approx_eq;
 use futures::{channel::mpsc, task, Future, FutureExt, StreamExt};
+use iced_accessibility::{A11yId, accesskit::NodeId, A11yNode};
 use iced_native::{
     application::{self, StyleSheet},
     clipboard,
@@ -892,15 +893,10 @@ where
                                 } else {
                                     i += 1;
                                 }
-                            }
-                            native_events.extend(
-                                filtered_a11y.into_iter().map(|e| {
-                                    iced_native::event::Event::A11y(
-                                        e.request.target.into(),
-                                        e.request,
-                                    )
-                                }),
-                            );
+                            }                        
+                            native_events.extend(filtered_a11y.into_iter().map(|e| {
+                                iced_native::event::Event::A11y(iced_native::widget::Id::from(u128::from(e.request.target.0) as u64), e.request)
+                            }));
                         }
                         let has_events =
                             has_events || !native_events.is_empty();
@@ -1032,15 +1028,12 @@ where
                     debug.render_started();
                     #[cfg(feature = "a11y")]
                     if let Some(Some(adapter)) = a11y_enabled.then(|| adapters.get_mut(&native_id.inner())) {
-                        use iced_native::widget::A11yTree;
-                        use accesskit::{TreeUpdate, Tree, Node, Role};
+                        use iced_accessibility::{A11yTree, accesskit::{TreeUpdate, Tree, Node, Role}};
                         // TODO send a11y tree
-                        let A11yTree {root: window_children, children: mut nodes} = user_interface.a11y_nodes();
-                        let root_node = Node {role: Role::Window, children: window_children.iter().map(|(id, _)| id).cloned().collect(), name: Some(state.title.clone().into_boxed_str()), ..Default::default()};
-                        let tree = Tree::new(adapter.id.clone());
-                        nodes.extend(window_children);
-                        nodes.push((adapter.id, root_node.clone().into()));
-                        nodes.reverse();
+                        let child_tree = user_interface.a11y_nodes();
+                        let root = Node {role: Role::Window, name: Some(state.title.clone().into_boxed_str()), ..Default::default()};
+                        let window_tree = A11yTree::node_with_child_tree(A11yNode::new(root, adapter.id), child_tree);
+                        let tree = Tree::new(NodeId(adapter.id));
                         let mut current_operation = Some(Box::new(OperationWrapper::Id(Box::new(find_focused()))));
                         let mut focus = None;
                         while let Some(mut operation) = current_operation.take() {
@@ -1055,7 +1048,7 @@ where
                                             unimplemented!();
                                         }
                                         operation::OperationOutputWrapper::Id(id) => {
-                                            focus = Some(id.node_id());
+                                            focus = Some(A11yId::from(id));
                                         },
                                     }
                                    
@@ -1065,8 +1058,8 @@ where
                                 }
                             }
                         }
-                        log::debug!("focus: {:?}\nnodes: {:?}", &focus, nodes.iter().map(|(id, node)| (id, node.role, &node.children)).collect::<Vec<_>>());
-                        adapter.adapter.update(TreeUpdate { nodes: nodes, tree: None, focus})
+                        log::debug!("focus: {:?}\ntree root: {:?}\n children: {:?}", &focus, window_tree.root().iter().map(|n| (n.node().role, n.id())).collect::<Vec<_>>(), window_tree.children().iter().map(|n| (n.node().role, n.id())).collect::<Vec<_>>());
+                        adapter.adapter.update(TreeUpdate { nodes: window_tree.into(), tree: None, focus: focus.map(|id| id.into()) });
                     }
                     let comp_surface = match wrapper.comp_surface.as_mut() {
                         Some(s) => s,
@@ -1145,38 +1138,38 @@ where
                 request,
             }) => {
                 match request.action {
-                    accesskit::Action::Default => {
+                    Action::Default => {
                         // TODO default operation?
                         // messages.push(focus(request.target.into()));
                         a11y_events.push(ActionRequestEvent { surface_id, request });
                     },
-                    accesskit::Action::Focus => {
-                        commands.push(Command::widget(focus(request.target.into())));
+                    Action::Focus => {
+                        commands.push(Command::widget(focus(iced_native::widget::Id::from(u128::from(request.target.0) as u64))));
                     },
-                    accesskit::Action::Blur => todo!(),
-                    accesskit::Action::Collapse => todo!(),
-                    accesskit::Action::Expand => todo!(),
-                    accesskit::Action::CustomAction => todo!(),
-                    accesskit::Action::Decrement => todo!(),
-                    accesskit::Action::Increment => todo!(),
-                    accesskit::Action::HideTooltip => todo!(),
-                    accesskit::Action::ShowTooltip => todo!(),
-                    accesskit::Action::InvalidateTree => todo!(),
-                    accesskit::Action::LoadInlineTextBoxes => todo!(),
-                    accesskit::Action::ReplaceSelectedText => todo!(),
-                    accesskit::Action::ScrollBackward => todo!(),
-                    accesskit::Action::ScrollDown => todo!(),
-                    accesskit::Action::ScrollForward => todo!(),
-                    accesskit::Action::ScrollLeft => todo!(),
-                    accesskit::Action::ScrollRight => todo!(),
-                    accesskit::Action::ScrollUp => todo!(),
-                    accesskit::Action::ScrollIntoView => todo!(),
-                    accesskit::Action::ScrollToPoint => todo!(),
-                    accesskit::Action::SetScrollOffset => todo!(),
-                    accesskit::Action::SetTextSelection => todo!(),
-                    accesskit::Action::SetSequentialFocusNavigationStartingPoint => todo!(),
-                    accesskit::Action::SetValue => todo!(),
-                    accesskit::Action::ShowContextMenu => todo!(),
+                    Action::Blur => todo!(),
+                    Action::Collapse => todo!(),
+                    Action::Expand => todo!(),
+                    Action::CustomAction => todo!(),
+                    Action::Decrement => todo!(),
+                    Action::Increment => todo!(),
+                    Action::HideTooltip => todo!(),
+                    Action::ShowTooltip => todo!(),
+                    Action::InvalidateTree => todo!(),
+                    Action::LoadInlineTextBoxes => todo!(),
+                    Action::ReplaceSelectedText => todo!(),
+                    Action::ScrollBackward => todo!(),
+                    Action::ScrollDown => todo!(),
+                    Action::ScrollForward => todo!(),
+                    Action::ScrollLeft => todo!(),
+                    Action::ScrollRight => todo!(),
+                    Action::ScrollUp => todo!(),
+                    Action::ScrollIntoView => todo!(),
+                    Action::ScrollToPoint => todo!(),
+                    Action::SetScrollOffset => todo!(),
+                    Action::SetTextSelection => todo!(),
+                    Action::SetSequentialFocusNavigationStartingPoint => todo!(),
+                    Action::SetValue => todo!(),
+                    Action::ShowContextMenu => todo!(),
                 }
             }
             #[cfg(feature = "a11y")]

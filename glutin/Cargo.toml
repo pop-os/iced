@@ -13,6 +13,7 @@ categories = ["gui"]
 [features]
 debug = ["iced_winit/debug"]
 system = ["iced_winit/system"]
+a11y = ["iced_accessibility"]
 
 [dependencies.log]
 version = "0.4"
@@ -36,6 +37,7 @@ version = "0.5"
 path = "../graphics"
 features = ["opengl"]
 
-[dependencies.accesskit]
-version = "0.8.1"
+[dependencies.iced_accessibility]
+version = "0.1.0"
+path = "../accessibility"
 optional = true

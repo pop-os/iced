@@ -1,6 +1,7 @@
 //! Display information and interactive controls in your application.
 pub use iced_native::widget::helpers::*;
 
+pub use iced_core::Id;
 pub use iced_native::{column, row};
 
 /// A container that distributes its contents vertically.

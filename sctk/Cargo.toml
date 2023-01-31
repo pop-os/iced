@@ -10,7 +10,7 @@ debug = ["iced_native/debug"]
 system = ["sysinfo"]
 application = []
 multi_window = []
-a11y = ["accesskit", "accesskit_unix"]
+a11y = ["iced_accessibility", "iced_native/a11y"]
 
 [dependencies]
 log = "0.4"
@@ -41,3 +41,9 @@ path = "../futures"
 [dependencies.sysinfo]
 version = "0.26"
 optional = true
+
+[dependencies.iced_accessibility]
+version = "0.1.0"
+path = "../accessibility"
+optional = true
+features = ["accesskit_unix"]

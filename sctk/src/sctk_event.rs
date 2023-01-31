@@ -260,7 +260,7 @@ pub enum DndOfferEvent {
 #[derive(Debug, Clone)]
 pub struct ActionRequestEvent {
     pub surface_id: ObjectId,
-    pub request: accesskit::ActionRequest,
+    pub request: iced_accessibility::accesskit::ActionRequest,
 }
 
 #[derive(Debug, Clone)]

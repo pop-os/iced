@@ -1,7 +1,11 @@
 use crate::sctk_event::ActionRequestEvent;
+use iced_accessibility::{accesskit, accesskit_unix};
 use sctk::reexports::client::protocol::wl_surface::WlSurface;
 use sctk::reexports::client::Proxy;
-use std::sync::{Arc, Mutex};
+use std::{
+    num::NonZeroU128,
+    sync::{Arc, Mutex},
+};
 
 pub enum A11yWrapper {
     Enabled,
@@ -9,7 +13,7 @@ pub enum A11yWrapper {
 }
 
 pub struct IcedSctkAdapter {
-    pub(crate) id: accesskit::NodeId,
+    pub(crate) id: NonZeroU128,
     pub(crate) adapter: accesskit_unix::Adapter,
 }
 

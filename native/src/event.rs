@@ -30,7 +30,7 @@ pub enum Event {
 
     #[cfg(feature = "a11y")]
     /// An Accesskit event for a specific Accesskit Node in an accessible widget
-    A11y(widget::Id, accesskit::ActionRequest),
+    A11y(widget::Id, iced_accessibility::accesskit::ActionRequest),
 
     /// A platform specific event
     PlatformSpecific(PlatformSpecific),

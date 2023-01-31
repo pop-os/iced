@@ -166,18 +166,17 @@ where
 
     #[cfg(feature = "a11y")]
     /// get the a11y nodes for the widget
-    fn a11y_nodes(&self, layout: Layout<'_>) -> widget::A11yTree {
+    fn a11y_nodes(&self, layout: Layout<'_>) -> iced_accessibility::A11yTree {
         use std::sync::Arc;
 
-        use accesskit::{kurbo::Rect, DefaultActionVerb};
         use enumset::enum_set;
+        use iced_accessibility::{
+            accesskit::{kurbo::Rect, Action, DefaultActionVerb, Node, Role},
+            A11yId, A11yNode, A11yTree,
+        };
 
-        use super::A11yTree;
         let child_layout = layout.children().next().unwrap();
-        let A11yTree {
-            root: my_children,
-            children: childrens_children,
-        } = self.content.as_widget().a11y_nodes(child_layout);
+        let child_tree = self.content.as_widget().a11y_nodes(child_layout);
 
         let Rectangle {
             x,
@@ -191,27 +190,19 @@ where
             (x + width) as f64,
             (y + height) as f64,
         ));
-        let node = accesskit::Node {
-            role: accesskit::Role::Button,
-            actions: enum_set!(
-                accesskit::Action::Focus | accesskit::Action::Default
-            ),
+        let node = Node {
+            role: Role::Button,
+            actions: enum_set!(Action::Focus | Action::Default),
             bounds,
             name: Some(self.name().into_boxed_str()),
             focusable: true,
             default_action_verb: Some(DefaultActionVerb::Click),
-            children: my_children.iter().map(|c| c.0).collect(),
             ..Default::default()
         };
-        let callers_children = vec![(self.id.0.node_id(), Arc::new(node))];
-        let my_children = my_children
-            .into_iter()
-            .chain(childrens_children.into_iter())
-            .collect();
-        A11yTree {
-            root: callers_children,
-            children: my_children,
-        }
+        A11yTree::node_with_child_tree(
+            A11yNode::new(node, self.id.0.clone()),
+            child_tree,
+        )
     }
 
     fn layout(
@@ -451,10 +442,16 @@ pub fn update<'a, Message: Clone>(
             state.is_pressed = false;
         }
         #[cfg(feature = "a11y")]
-        Event::A11y(event_id, accesskit::ActionRequest { action, .. }) => {
+        Event::A11y(
+            event_id,
+            iced_accessibility::accesskit::ActionRequest { action, .. },
+        ) => {
             let state = state();
             if let Some(Some(on_press)) = (id.0 == event_id
-                && matches!(action, accesskit::Action::Default))
+                && matches!(
+                    action,
+                    iced_accessibility::accesskit::Action::Default
+                ))
             .then(|| on_press.clone())
             {
                 state.is_pressed = false;
