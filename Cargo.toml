@@ -28,7 +28,7 @@ wgpu = ["iced_wgpu"]
 # Enables the `iced_softbuffer` renderer. Conflicts with `iced_wgpu` and `iced_glow`
 softbuffer = ["iced_softbuffer"]
 # Enables the `iced_glow` renderer. Conflicts with `iced_wgpu` and `iced_softbuffer`
-glow = ["iced_glow"]
+glow = ["iced_glow", "iced_glutin"]
 # Enables using system fonts
 default_system_font = ["iced_wgpu?/default_system_font", "iced_glow?/default_system_font"]
 # Enables a debug view in native platforms (press F12)
