@@ -19,9 +19,11 @@ use iced_native::{
     application::{self, StyleSheet},
     clipboard::{self, Null},
     command::platform_specific::{self, wayland::popup},
+    event::Status,
+    layout::Limits,
     mouse::{self, Interaction},
     widget::{operation, Tree},
-    Element, Renderer, Widget, layout::Limits,
+    Element, Renderer, Widget,
 };
 
 use sctk::{
@@ -654,55 +656,43 @@ where
                         break 'main;
                     }
                 } else {
-                    let mut needs_redraw = false;
-                    for (object_id, surface_id) in &surface_ids {
-                        // returns (remove, copy)
-                        let filter_events = |e: &SctkEvent| match e {
-                            SctkEvent::SeatEvent { id, .. } => {
-                                (&id.id() == object_id, false)
-                            }
-                            SctkEvent::PointerEvent { variant, .. } => {
-                                (&variant.surface.id() == object_id, false)
-                            }
-                            SctkEvent::KeyboardEvent { variant, .. } => {
-                                match variant {
-                                    KeyboardEventVariant::Leave(id) => {
-                                        (&id.id() == object_id, false)
-                                    }
-                                    _ => (
-                                        kbd_surface_id.as_ref()
-                                            == Some(&object_id),
-                                        false,
-                                    ),
-                                }
-                            }
-                            SctkEvent::WindowEvent { id, .. } => {
-                                (&id.id() == object_id, false)
-                            }
-                            SctkEvent::LayerSurfaceEvent { id, .. } => {
-                                (&id.id() == object_id, false)
-                            }
-                            SctkEvent::PopupEvent { id, .. } => {
-                                (&id.id() == object_id, false)
-                            }
-                            SctkEvent::Frame(_) => (false, false),
+                    let mut i = 0;
+                    while i < events.len() {
+                        let remove = match &events[i] {
                             SctkEvent::NewOutput { .. }
                             | SctkEvent::UpdateOutput { .. }
-                            | SctkEvent::RemovedOutput(_) => (false, true),
-                            SctkEvent::ScaleFactorChanged { id, .. } => {
-                                (&id.id() == object_id, false)
-                            }
+                            | SctkEvent::RemovedOutput(_) => true,
+                            _ => false,
                         };
-                        let mut filtered = Vec::with_capacity(events.len());
-                        let mut i = 0;
+                        if remove {
+                            let event = events.remove(i);
+                            for native_event in event.to_native(
+                                &mut mods,
+                                &surface_ids,
+                                &destroyed_surface_ids,
+                            ) {
+                                runtime
+                                    .broadcast((native_event, Status::Ignored));
+                            }
+                        } else {
+                            i += 1;
+                        }
+                    }
 
+                    let mut needs_redraw = false;
+                    for (object_id, surface_id) in &surface_ids {
+                        let mut filtered = Vec::with_capacity(events.len());
+
+                        let mut i = 0;
                         while i < events.len() {
-                            let (remove, copy) = filter_events(&mut events[i]);
-                            if remove {
+                            let has_kbd_focus =
+                                kbd_surface_id.as_ref() == Some(object_id);
+                            if event_is_for_surface(
+                                &events[i],
+                                object_id,
+                                has_kbd_focus,
+                            ) {
                                 filtered.push(events.remove(i));
-                            } else if copy {
-                                filtered.push(events[i].clone());
-                                i += 1;
                             } else {
                                 i += 1;
                             }
@@ -1399,4 +1389,30 @@ where
     }
 
     interfaces
+}
+
+// Determine if `SctkEvent` is for surface with given object id.
+fn event_is_for_surface(
+    evt: &SctkEvent,
+    object_id: &ObjectId,
+    has_kbd_focus: bool,
+) -> bool {
+    match evt {
+        SctkEvent::SeatEvent { id, .. } => &id.id() == object_id,
+        SctkEvent::PointerEvent { variant, .. } => {
+            &variant.surface.id() == object_id
+        }
+        SctkEvent::KeyboardEvent { variant, .. } => match variant {
+            KeyboardEventVariant::Leave(id) => &id.id() == object_id,
+            _ => has_kbd_focus,
+        },
+        SctkEvent::WindowEvent { id, .. } => &id.id() == object_id,
+        SctkEvent::LayerSurfaceEvent { id, .. } => &id.id() == object_id,
+        SctkEvent::PopupEvent { id, .. } => &id.id() == object_id,
+        SctkEvent::Frame(_)
+        | SctkEvent::NewOutput { .. }
+        | SctkEvent::UpdateOutput { .. }
+        | SctkEvent::RemovedOutput(_) => false,
+        SctkEvent::ScaleFactorChanged { id, .. } => &id.id() == object_id,
+    }
 }
