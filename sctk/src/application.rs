@@ -620,6 +620,29 @@ where
                 }
             }
             IcedSctkEvent::MainEventsCleared => {
+                let mut i = 0;
+                while i < events.len() {
+                    let remove = match &events[i] {
+                        SctkEvent::NewOutput { .. }
+                        | SctkEvent::UpdateOutput { .. }
+                        | SctkEvent::RemovedOutput(_) => true,
+                        _ => false,
+                    };
+                    if remove {
+                        let event = events.remove(i);
+                        for native_event in event.to_native(
+                            &mut mods,
+                            &surface_ids,
+                            &destroyed_surface_ids,
+                        ) {
+                            runtime
+                                .broadcast((native_event, Status::Ignored));
+                        }
+                    } else {
+                        i += 1;
+                    }
+                }
+
                 if surface_ids.is_empty() && !messages.is_empty() {
                     // Update application
                     let pure_states: HashMap<_, _> =
@@ -656,29 +679,6 @@ where
                         break 'main;
                     }
                 } else {
-                    let mut i = 0;
-                    while i < events.len() {
-                        let remove = match &events[i] {
-                            SctkEvent::NewOutput { .. }
-                            | SctkEvent::UpdateOutput { .. }
-                            | SctkEvent::RemovedOutput(_) => true,
-                            _ => false,
-                        };
-                        if remove {
-                            let event = events.remove(i);
-                            for native_event in event.to_native(
-                                &mut mods,
-                                &surface_ids,
-                                &destroyed_surface_ids,
-                            ) {
-                                runtime
-                                    .broadcast((native_event, Status::Ignored));
-                            }
-                        } else {
-                            i += 1;
-                        }
-                    }
-
                     let mut needs_redraw = false;
                     for (object_id, surface_id) in &surface_ids {
                         let mut filtered = Vec::with_capacity(events.len());
