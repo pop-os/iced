@@ -144,11 +144,26 @@ pub trait Application: Sized {
             ..crate::renderer::Settings::from_env()
         };
 
-        Ok(crate::runtime::run::<
-            Instance<Self>,
-            Self::Executor,
-            crate::renderer::window::Compositor<Self::Theme>,
-        >(settings.into(), renderer_settings)?)
+        #[cfg(feature = "glow")]
+        {
+            let renderer_settings = iced_glutin::Settings {
+                gl_settings: renderer_settings,
+                try_opengles_first: settings.try_opengles_first
+            };
+            Ok(crate::runtime::run::<
+                Instance<Self>,
+                Self::Executor,
+                iced_glutin::Compositor<crate::renderer::window::Compositor<Self::Theme>>,
+            >(settings.into(), renderer_settings)?)
+        }
+        #[cfg(not(feature = "glow"))]
+        {
+            Ok(crate::runtime::run::<
+                Instance<Self>,
+                Self::Executor,
+                crate::renderer::window::Compositor<Self::Theme>,
+            >(settings.into(), renderer_settings)?)
+        }
     }
 }
 

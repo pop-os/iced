@@ -23,6 +23,12 @@ path = "../glow"
 default-features = false
 optional = true
 
+[dependencies.iced_glutin]
+path = "../glutin"
+default-features = false
+optional = true
+
+
 [dependencies.iced_softbuffer]
 path = "../softbuffer"
 default-features = false
@@ -37,8 +43,7 @@ optional = true
 default = ["softbuffer"]
 image = ["iced_graphics/image", "iced_glow?/image", "iced_softbuffer?/image", "iced_wgpu?/image"]
 svg = ["iced_graphics/svg", "iced_glow?/svg", "iced_softbuffer?/svg", "iced_wgpu?/svg"]
-#TODO: implement Compositor for glow Backend
-#glow = ["iced_glow"]
+glow = ["iced_glow", "iced_glutin"]
 softbuffer = ["iced_softbuffer"]
 wgpu = ["iced_wgpu"]
 

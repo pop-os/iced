@@ -1,5 +1,7 @@
 #[cfg(feature = "glow")]
 use iced_glow::window::Compositor as GlowCompositor;
+#[cfg(feature = "glow")]
+use iced_glutin::Compositor as GlutinCompositor;
 use iced_graphics::{
     compositor::{self, Compositor as _, Information, SurfaceError},
     Color, Error, Viewport,
@@ -16,7 +18,7 @@ use crate::Renderer;
 /// A window graphics backend for iced powered by `glow`.
 pub enum Compositor<Theme> {
     #[cfg(feature = "glow")]
-    Glow(GlowCompositor<Theme>),
+    Glow(GlutinCompositor<GlowCompositor<Theme>>),
     #[cfg(feature = "softbuffer")]
     softbuffer(softbufferCompositor<Theme>),
     #[cfg(feature = "wgpu")]
@@ -25,7 +27,7 @@ pub enum Compositor<Theme> {
 
 pub enum Surface<Theme> {
     #[cfg(feature = "glow")]
-    Glow(<GlowCompositor<Theme> as compositor::Compositor>::Surface),
+    Glow(<GlutinCompositor<GlowCompositor<Theme>> as compositor::Compositor>::Surface),
     #[cfg(feature = "softbuffer")]
     softbuffer(
         <softbufferCompositor<Theme> as compositor::Compositor>::Surface,
@@ -40,13 +42,16 @@ impl<Theme> Compositor<Theme> {
         settings: crate::Settings,
         compatible_window: Option<&W>,
     ) -> Result<(Self, Renderer<Theme>), Error> {
-        match GlowCompositor::new(
-            iced_glow::Settings {
-                default_font: settings.default_font,
-                default_text_size: settings.default_text_size,
-                text_multithreading: settings.text_multithreading,
-                antialiasing: settings.antialiasing,
-                ..iced_glow::Settings::from_env()
+        match GlutinCompositor::new(
+            iced_glutin::Settings {
+                gl_settings: iced_glow::Settings {
+                    default_font: settings.default_font,
+                    default_text_size: settings.default_text_size,
+                    text_multithreading: settings.text_multithreading,
+                    antialiasing: settings.antialiasing,
+                    ..iced_glow::Settings::from_env()
+                },
+                try_opengles_first: false, // XXX
             },
             compatible_window,
         ) {
