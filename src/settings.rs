@@ -75,6 +75,7 @@ impl<Flags> Settings<Flags> {
         Self {
             flags,
             id: default_settings.id,
+            fonts: default_settings.fonts,
             default_font: default_settings.default_font,
             default_text_size: default_settings.default_text_size,
             antialiasing: default_settings.antialiasing,
@@ -93,7 +94,8 @@ where
             id: None,
             flags: Default::default(),
             default_font: Default::default(),
-            default_text_size: 14.0,
+            default_text_size: iced_core::Pixels(14.0),
+            fonts: Vec::new(),
             antialiasing: false,
             exit_on_close_request: true,
         }
