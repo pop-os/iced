@@ -9,7 +9,7 @@ use crate::core::renderer;
 use crate::core::widget;
 use crate::core::window;
 use crate::core::{Clipboard, Point, Rectangle, Size};
-use crate::core::{Element, Layout, Overlay, Shell};
+use crate::core::{Element, Layout, Shell};
 
 /// A set of interactive graphical elements with a specific [`Layout`].
 ///
@@ -262,22 +262,23 @@ where
                 }
             }
 
-            let base_cursor = manual_overlay
-                .as_ref()
-                .filter(|overlay| {
-                    cursor
-                        .position()
-                        .map(|cursor_position| {
-                            overlay.is_over(
-                                Layout::new(&layout),
-                                renderer,
-                                cursor_position,
-                            )
-                        })
-                        .unwrap_or_default()
+            let base_cursor = if manual_overlay
+                .as_mut()
+                .and_then(|overlay| {
+                    cursor.position().map(|cursor_position| {
+                        overlay.is_over(
+                            Layout::new(&layout),
+                            renderer,
+                            cursor_position,
+                        )
+                    })
                 })
-                .map(|_| mouse::Cursor::Unavailable)
-                .unwrap_or(cursor);
+                .unwrap_or_default()
+            {
+                mouse::Cursor::Unavailable
+            } else {
+                cursor
+            };
 
             self.overlay = Some(layout);
 
@@ -435,7 +436,7 @@ where
 
         let viewport = Rectangle::with_size(self.bounds);
 
-        let base_cursor = if let Some(overlay) = self
+        let base_cursor = if let Some(mut overlay) = self
             .root
             .as_widget_mut()
             .overlay(&mut self.state, Layout::new(&self.base), renderer)
@@ -504,7 +505,7 @@ where
                 root.as_widget_mut()
                     .overlay(&mut self.state, Layout::new(base), renderer)
                     .map(overlay::Nested::new)
-                    .map(|overlay| {
+                    .map(|mut overlay| {
                         let overlay_interaction = overlay.mouse_interaction(
                             Layout::new(layout),
                             cursor,
