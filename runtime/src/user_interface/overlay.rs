@@ -54,7 +54,7 @@ where
             renderer: &Renderer,
             bounds: Size,
             position: Point,
-        ) -> Vec<layout::Node>
+        ) -> layout::Node
         where
             Renderer: renderer::Renderer,
         {
@@ -62,23 +62,23 @@ where
 
             let node = element.layout(renderer, bounds, translation);
 
-            if let Some(mut overlay) =
+            if let Some(mut nested) =
                 element.overlay(Layout::new(&node), renderer)
             {
-                vec![node]
-                    .into_iter()
-                    .chain(recurse(&mut overlay, renderer, bounds, position))
-                    .collect()
+                layout::Node::with_children(
+                    node.size(),
+                    vec![
+                        node,
+                        recurse(&mut nested, renderer, bounds, position),
+                    ],
+                )
             } else {
-                vec![node]
+                layout::Node::with_children(node.size(), vec![node])
             }
         }
 
         self.overlay.with_element_mut(|element| {
-            layout::Node::with_children(
-                bounds,
-                recurse(element, renderer, bounds, position),
-            )
+            recurse(element, renderer, bounds, position)
         })
     }
 
@@ -90,9 +90,9 @@ where
         layout: Layout<'_>,
         cursor: mouse::Cursor,
     ) {
-        fn recurse<'a, Message, Renderer>(
+        fn recurse<Message, Renderer>(
             element: &mut overlay::Element<'_, Message, Renderer>,
-            mut layouts: impl Iterator<Item = Layout<'a>>,
+            layout: Layout<'_>,
             renderer: &mut Renderer,
             theme: &<Renderer as renderer::Renderer>::Theme,
             style: &renderer::Style,
@@ -100,19 +100,44 @@ where
         ) where
             Renderer: renderer::Renderer,
         {
-            let layout = layouts.next().unwrap();
+            let mut layouts = layout.children();
+
+            if let Some(layout) = layouts.next() {
+                let nested_layout = layouts.next();
+
+                let is_over = cursor
+                    .position()
+                    .zip(nested_layout)
+                    .and_then(|(cursor_position, nested_layout)| {
+                        element.overlay(layout, renderer).map(|nested| {
+                            nested.is_over(
+                                nested_layout,
+                                renderer,
+                                cursor_position,
+                            )
+                        })
+                    })
+                    .unwrap_or_default();
 
             element.draw(renderer, theme, style, layout, cursor);
 
-            if let Some(mut overlay) = element.overlay(layout, renderer) {
-                recurse(&mut overlay, layouts, renderer, theme, style, cursor);
+                if let Some((mut nested, nested_layout)) =
+                    element.overlay(layout, renderer).zip(nested_layout)
+                {
+                    recurse(
+                        &mut nested,
+                        nested_layout,
+                        renderer,
+                        theme,
+                        style,
+                        cursor,
+                    );
+                }
             }
         }
 
         self.overlay.with_element_mut(|element| {
-            let layouts = layout.children();
-
-            recurse(element, layouts, renderer, theme, style, cursor);
+            recurse(element, layout, renderer, theme, style, cursor);
         })
     }
 
@@ -124,9 +149,9 @@ where
             widget::OperationOutputWrapper<Message>,
         >,
     ) {
-        fn recurse<'a, Message, Renderer>(
+        fn recurse<Message, Renderer>(
             element: &mut overlay::Element<'_, Message, Renderer>,
-            mut layouts: impl Iterator<Item = Layout<'a>>,
+            layout: Layout<'_>,
             renderer: &Renderer,
             operation: &mut dyn widget::Operation<
                 widget::OperationOutputWrapper<Message>,
@@ -134,18 +159,20 @@ where
         ) where
             Renderer: renderer::Renderer,
         {
-            let layout = layouts.next().unwrap();
+            let mut layouts = layout.children();
 
-            element.operate(layout, renderer, operation);
+            if let Some(layout) = layouts.next() {
+                element.operate(layout, renderer, operation);
 
-            if let Some(mut overlay) = element.overlay(layout, renderer) {
-                recurse(&mut overlay, layouts, renderer, operation);
+                if let Some((mut nested, nested_layout)) =
+                    element.overlay(layout, renderer).zip(layouts.next())
+                {
+                    recurse(&mut nested, nested_layout, renderer, operation);
+                }
             }
         }
 
-        let layouts = layout.children();
-
-        recurse(self.overlay.0.get_mut(), layouts, renderer, operation)
+        recurse(self.overlay.0.get_mut(), layout, renderer, operation)
     }
 
     fn on_event(
@@ -157,9 +184,9 @@ where
         clipboard: &mut dyn Clipboard,
         shell: &mut Shell<'_, Message>,
     ) -> event::Status {
-        fn recurse<'a, Message, Renderer>(
+        fn recurse<Message, Renderer>(
             element: &mut overlay::Element<'_, Message, Renderer>,
-            mut layouts: impl Iterator<Item = Layout<'a>>,
+            layout: Layout<'_>,
             event: Event,
             cursor: mouse::Cursor,
             renderer: &Renderer,
@@ -169,13 +196,15 @@ where
         where
             Renderer: renderer::Renderer,
         {
-            let layout = layouts.next().unwrap();
+            let mut layouts = layout.children();
 
-            let status =
-                if let Some(mut overlay) = element.overlay(layout, renderer) {
+            if let Some(layout) = layouts.next() {
+                let status = if let Some((mut nested, nested_layout)) =
+                    element.overlay(layout, renderer).zip(layouts.next())
+                {
                     recurse(
-                        &mut overlay,
-                        layouts,
+                        &mut nested,
+                        nested_layout,
                         event.clone(),
                         cursor,
                         renderer,
@@ -194,11 +223,9 @@ where
             }
         }
 
-        let layouts = layout.children();
-
         recurse(
             self.overlay.0.get_mut(),
-            layouts,
+            layout,
             event,
             cursor,
             renderer,
@@ -214,9 +241,9 @@ where
         viewport: &Rectangle,
         renderer: &Renderer,
     ) -> mouse::Interaction {
-        fn recurse<'a, Message, Renderer>(
+        fn recurse<Message, Renderer>(
             element: &mut overlay::Element<'_, Message, Renderer>,
-            mut layouts: impl Iterator<Item = Layout<'a>>,
+            layout: Layout<'_>,
             cursor: mouse::Cursor,
             viewport: &Rectangle,
             renderer: &Renderer,
@@ -224,7 +251,10 @@ where
         where
             Renderer: renderer::Renderer,
         {
-            let layout = layouts.next().unwrap();
+            let mut layouts = layout.children();
+
+            let layout = layouts.next()?;
+            let cursor_position = cursor.position()?;
 
             let interaction =
                 if let Some(mut overlay) = element.overlay(layout, renderer) {
@@ -233,16 +263,32 @@ where
                     mouse::Interaction::default()
                 };
 
-            element
-                .mouse_interaction(layout, cursor, viewport, renderer)
-                .max(interaction)
+            Some(
+                element
+                    .overlay(layout, renderer)
+                    .zip(layouts.next())
+                    .and_then(|(mut overlay, layout)| {
+                        recurse(
+                            &mut overlay,
+                            layout,
+                            cursor,
+                            viewport,
+                            renderer,
+                        )
+                    })
+                    .unwrap_or_else(|| {
+                        element.mouse_interaction(
+                            layout, cursor, viewport, renderer,
+                        )
+                    }),
+            )
         }
 
-        self.overlay.with_element_mut(|element| {
-            let layouts = layout.children();
-
-            recurse(element, layouts, cursor, viewport, renderer)
-        })
+        self.overlay
+            .with_element_mut(|element| {
+                recurse(element, layout, cursor, viewport, renderer)
+            })
+            .unwrap_or_default()
     }
 
     fn is_over(
@@ -251,34 +297,41 @@ where
         renderer: &Renderer,
         cursor_position: Point,
     ) -> bool {
-        fn recurse<'a, Message, Renderer>(
+        fn recurse<Message, Renderer>(
             element: &mut overlay::Element<'_, Message, Renderer>,
-            mut layouts: impl Iterator<Item = Layout<'a>>,
+            layout: Layout<'_>,
             renderer: &Renderer,
             cursor_position: Point,
         ) -> bool
         where
             Renderer: renderer::Renderer,
         {
-            let layout = layouts.next().unwrap();
+            let mut layouts = layout.children();
 
-            let is_over = element.is_over(layout, renderer, cursor_position);
+            if let Some(layout) = layouts.next() {
+                if element.is_over(layout, renderer, cursor_position) {
+                    return true;
+                }
 
-            if is_over {
-                return true;
-            }
-
-            if let Some(mut overlay) = element.overlay(layout, renderer) {
-                recurse(&mut overlay, layouts, renderer, cursor_position)
+                if let Some((mut nested, nested_layout)) =
+                    element.overlay(layout, renderer).zip(layouts.next())
+                {
+                    recurse(
+                        &mut nested,
+                        nested_layout,
+                        renderer,
+                        cursor_position,
+                    )
+                } else {
+                    false
+                }
             } else {
                 false
             }
         }
 
         self.overlay.with_element_mut(|element| {
-            let layouts = layout.children();
-
-            recurse(element, layouts, renderer, cursor_position)
+            recurse(element, layout, renderer, cursor_position)
         })
     }
 
