@@ -37,7 +37,7 @@ use sctk::{
         Capability,
     },
     shell::{
-        layer::LayerSurfaceConfigure,
+        wlr_layer::LayerSurfaceConfigure,
         xdg::{popup::PopupConfigure, window::WindowConfigure},
     },
 };

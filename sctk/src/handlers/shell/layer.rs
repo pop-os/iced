@@ -6,7 +6,10 @@ use crate::{
 use sctk::{
     delegate_layer,
     reexports::client::Proxy,
-    shell::layer::{Anchor, KeyboardInteractivity, LayerShellHandler},
+    shell::{
+        wlr_layer::{Anchor, KeyboardInteractivity, LayerShellHandler},
+        WaylandSurface,
+    },
 };
 use std::fmt::Debug;
 
@@ -15,7 +18,7 @@ impl<T: Debug> LayerShellHandler for SctkState<T> {
         &mut self,
         _conn: &sctk::reexports::client::Connection,
         _qh: &sctk::reexports::client::QueueHandle<Self>,
-        layer: &sctk::shell::layer::LayerSurface,
+        layer: &sctk::shell::wlr_layer::LayerSurface,
     ) {
         let layer = match self.layer_surfaces.iter().position(|s| {
             s.surface.wl_surface().id() == layer.wl_surface().id()
@@ -35,8 +38,8 @@ impl<T: Debug> LayerShellHandler for SctkState<T> {
         &mut self,
         _conn: &sctk::reexports::client::Connection,
         _qh: &sctk::reexports::client::QueueHandle<Self>,
-        layer: &sctk::shell::layer::LayerSurface,
-        mut configure: sctk::shell::layer::LayerSurfaceConfigure,
+        layer: &sctk::shell::wlr_layer::LayerSurface,
+        mut configure: sctk::shell::wlr_layer::LayerSurfaceConfigure,
         _serial: u32,
     ) {
         let layer =

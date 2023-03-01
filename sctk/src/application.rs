@@ -1,4 +1,5 @@
 use crate::{
+    commands::{layer_surface::get_layer_surface, window::get_window},
     error::{self, Error},
     event_loop::{
         self,
@@ -11,7 +12,7 @@ use crate::{
         IcedSctkEvent, KeyboardEventVariant, LayerSurfaceEventVariant,
         PopupEventVariant, SctkEvent,
     },
-    settings, Command, Debug, Executor, Runtime, Size, Subscription, commands::{layer_surface::get_layer_surface, window::get_window},
+    settings, Command, Debug, Executor, Runtime, Size, Subscription,
 };
 use float_cmp::approx_eq;
 use futures::{channel::mpsc, task, Future, FutureExt, StreamExt};
@@ -27,22 +28,24 @@ use iced_native::{
 };
 
 use sctk::{
-    reexports::client::{Proxy, protocol::wl_surface::WlSurface},
+    reexports::client::{protocol::wl_surface::WlSurface, Proxy},
     seat::{keyboard::Modifiers, pointer::PointerEventKind},
 };
-use std::{
-    collections::HashMap, fmt, marker::PhantomData, hash::Hash,
-};
+use std::{collections::HashMap, fmt, hash::Hash, marker::PhantomData};
 use wayland_backend::client::ObjectId;
 
-use iced_graphics::{compositor, renderer, window::{self, Compositor}, Color, Point, Viewport};
+use iced_graphics::{
+    compositor, renderer,
+    window::{self, Compositor},
+    Color, Point, Viewport,
+};
 use iced_native::user_interface::{self, UserInterface};
 use iced_native::window::Id as SurfaceId;
-use std::mem::ManuallyDrop;
 use raw_window_handle::{
     HasRawDisplayHandle, HasRawWindowHandle, RawDisplayHandle, RawWindowHandle,
-    WaylandDisplayHandle, WaylandWindowHandle
+    WaylandDisplayHandle, WaylandWindowHandle,
 };
+use std::mem::ManuallyDrop;
 #[derive(Debug)]
 pub enum Event<Message> {
     /// A normal sctk event
@@ -208,7 +211,7 @@ where
 
     let flags = settings.flags.clone();
     let exit_on_close_request = settings.exit_on_close_request;
-    
+
     let mut event_loop = SctkEventLoop::<A::Message>::new(&settings)
         .expect("Failed to initialize the event loop");
 
@@ -226,22 +229,33 @@ where
     };
 
     let init_command = match settings.surface {
-        settings::InitialSurface::LayerSurface(b) => Command::batch(vec![init_command, get_layer_surface(b)]),
-        settings::InitialSurface::XdgWindow(b) => Command::batch(vec![init_command, get_window(b)]),
+        settings::InitialSurface::LayerSurface(b) => {
+            Command::batch(vec![init_command, get_layer_surface(b)])
+        }
+        settings::InitialSurface::XdgWindow(b) => {
+            Command::batch(vec![init_command, get_window(b)])
+        }
         settings::InitialSurface::None => init_command,
     };
-    let wl_surface = event_loop.state.compositor_state.create_surface(&event_loop.state.queue_handle);
+    let wl_surface = event_loop
+        .state
+        .compositor_state
+        .create_surface(&event_loop.state.queue_handle);
 
     // let (display, context, config, surface) = init_egl(&wl_surface, 100, 100);
     let backend = event_loop.state.connection.backend();
-    let wrapper = SurfaceDisplayWrapper::<C> { comp_surface: None, backend: backend.clone(), wl_surface };
+    let wrapper = SurfaceDisplayWrapper::<C> {
+        comp_surface: None,
+        backend: backend.clone(),
+        wl_surface,
+    };
 
-    
     #[allow(unsafe_code)]
-    let (compositor, renderer) = C::new(compositor_settings, Some(&wrapper)).unwrap();
+    let (compositor, renderer) =
+        C::new(compositor_settings, Some(&wrapper)).unwrap();
 
     let auto_size_surfaces = HashMap::new();
-    
+
     let surface_ids = Default::default();
 
     let (mut sender, receiver) = mpsc::unbounded::<IcedSctkEvent<A::Message>>();
@@ -305,10 +319,7 @@ async fn run_instance<A, E, C>(
     mut ev_proxy: proxy::Proxy<Event<A::Message>>,
     mut debug: Debug,
     mut receiver: mpsc::UnboundedReceiver<IcedSctkEvent<A::Message>>,
-    mut compositor_surfaces: HashMap<
-        SurfaceId,
-        SurfaceDisplayWrapper<C>,
-    >,
+    mut compositor_surfaces: HashMap<SurfaceId, SurfaceDisplayWrapper<C>>,
     mut surface_ids: HashMap<ObjectId, SurfaceIdWrapper>,
     mut auto_size_surfaces: HashMap<SurfaceIdWrapper, (u32, u32, Limits, bool)>,
     backend: wayland_backend::client::Backend,
@@ -635,8 +646,7 @@ where
                             &surface_ids,
                             &destroyed_surface_ids,
                         ) {
-                            runtime
-                                .broadcast((native_event, Status::Ignored));
+                            runtime.broadcast((native_event, Status::Ignored));
                         }
                     } else {
                         i += 1;
@@ -672,7 +682,7 @@ where
                         &states,
                         pure_states,
                         &mut auto_size_surfaces,
-                        &mut ev_proxy
+                        &mut ev_proxy,
                     ));
 
                     if application.should_exit() {
@@ -734,20 +744,26 @@ where
                             runtime.broadcast(event);
                         }
 
-                        if let Some((w, h, limits, dirty)) = auto_size_surfaces.remove(&surface_id) {
+                        if let Some((w, h, limits, dirty)) =
+                            auto_size_surfaces.remove(&surface_id)
+                        {
                             if dirty {
                                 let state =
-                                match states.get_mut(&surface_id.inner()) {
-                                    Some(s) => s,
-                                    None => continue,
-                                };
+                                    match states.get_mut(&surface_id.inner()) {
+                                        Some(s) => s,
+                                        None => continue,
+                                    };
                                 state.set_logical_size(w as f64, h as f64);
                             }
-                            auto_size_surfaces.insert(surface_id.clone(), (w, h, limits, false));
+                            auto_size_surfaces.insert(
+                                surface_id.clone(),
+                                (w, h, limits, false),
+                            );
                         }
 
                         // TODO ASHLEY if event is a configure which isn't a new size and has no other changes, don't redraw
-                        if has_events || !messages.is_empty()
+                        if has_events
+                            || !messages.is_empty()
                             || matches!(
                                 interface_state,
                                 user_interface::State::Outdated
@@ -761,7 +777,7 @@ where
                             ));
                         }
                     }
-                    if needs_redraw { 
+                    if needs_redraw {
                         let mut pure_states: HashMap<_, _> =
                             ManuallyDrop::into_inner(interfaces)
                                 .drain()
@@ -769,19 +785,18 @@ where
                                     (id, interface.into_cache())
                                 })
                                 .collect();
-                        
+
                         for (_object_id, surface_id) in &surface_ids {
                             let state =
                                 match states.get_mut(&surface_id.inner()) {
                                     Some(s) => s,
                                     None => continue,
                                 };
-                            let mut cache = match pure_states
-                                .remove(&surface_id.inner())
-                            {
-                                Some(cache) => cache,
-                                None => user_interface::Cache::default(),
-                            };
+                            let mut cache =
+                                match pure_states.remove(&surface_id.inner()) {
+                                    Some(cache) => cache,
+                                    None => user_interface::Cache::default(),
+                                };
 
                             // Update application
                             update::<A, E, C>(
@@ -813,7 +828,7 @@ where
                             &states,
                             pure_states,
                             &mut auto_size_surfaces,
-                            &mut ev_proxy
+                            &mut ev_proxy,
                         ));
                     }
                 }
@@ -833,7 +848,6 @@ where
                     let state = states.get_mut(&id.inner());
                     (*id, surface, interface, state)
                 }) {
-                    
                     debug.render_started();
                     let comp_surface = match wrapper.comp_surface.as_mut() {
                         Some(s) => s,
@@ -843,12 +857,17 @@ where
                     if state.viewport_changed() {
                         let physical_size = state.physical_size();
                         let logical_size = state.logical_size();
-                        compositor.configure_surface(comp_surface, physical_size.width, physical_size.height);
+                        compositor.configure_surface(
+                            comp_surface,
+                            physical_size.width,
+                            physical_size.height,
+                        );
 
                         debug.layout_started();
-                        user_interface = user_interface.relayout(logical_size, &mut renderer);
+                        user_interface = user_interface
+                            .relayout(logical_size, &mut renderer);
                         debug.layout_finished();
-                        
+
                         debug.draw_started();
                         let new_mouse_interaction = user_interface.draw(
                             &mut renderer,
@@ -931,7 +950,10 @@ pub fn build_user_interface<'a, A: Application>(
     size: Size,
     debug: &mut Debug,
     id: SurfaceIdWrapper,
-    auto_size_surfaces: &mut HashMap<SurfaceIdWrapper, (u32, u32, Limits, bool)>,
+    auto_size_surfaces: &mut HashMap<
+        SurfaceIdWrapper,
+        (u32, u32, Limits, bool),
+    >,
     ev_proxy: &mut proxy::Proxy<Event<A::Message>>,
 ) -> UserInterface<'a, A::Message, A::Renderer>
 where
@@ -941,7 +963,9 @@ where
     let view = application.view(id);
     debug.view_finished();
 
-    let size = if let Some((prev_w, prev_h, limits, dirty)) = auto_size_surfaces.remove(&id) {
+    let size = if let Some((prev_w, prev_h, limits, dirty)) =
+        auto_size_surfaces.remove(&id)
+    {
         let view = view.as_widget();
         let _state = view.state();
         // TODO would it be ok to diff against the current cache?
@@ -958,24 +982,24 @@ where
                             iced_native::command::platform_specific::wayland::layer_surface::Action::Size { id: inner.clone(), width: Some(w), height: Some(h) },
                         )
                     );
-                },
+                }
                 SurfaceIdWrapper::Window(inner) => {
                     ev_proxy.send_event(
                         Event::Window(
                             iced_native::command::platform_specific::wayland::window::Action::Size { id: inner.clone(), width: w, height: h },
                         )
                     );
-                },
+                }
                 SurfaceIdWrapper::Popup(inner) => {
                     ev_proxy.send_event(
                         Event::Popup(
                             iced_native::command::platform_specific::wayland::popup::Action::Size { id: inner.clone(), width: w, height: h },
                         )
                     );
-                },
+                }
             };
         }
-        
+
         Size::new(w as f32, h as f32)
     } else {
         size
@@ -1056,7 +1080,9 @@ where
     /// Sets the logical [`Size`] of the [`Viewport`] of the [`State`].
     pub fn set_logical_size(&mut self, w: f64, h: f64) {
         let old_size = self.viewport.logical_size();
-        if !approx_eq!(f32, w as f32, old_size.width, ulps = 2) || !approx_eq!(f32, h as f32, old_size.height, ulps = 2) {
+        if !approx_eq!(f32, w as f32, old_size.width, ulps = 2)
+            || !approx_eq!(f32, h as f32, old_size.height, ulps = 2)
+        {
             self.viewport_changed = true;
             self.viewport = Viewport::with_physical_size(
                 Size {
@@ -1074,7 +1100,7 @@ where
     }
 
     pub fn set_scale_factor(&mut self, scale_factor: f64) {
-        if approx_eq!(f64, scale_factor, self.scale_factor , ulps = 2) {
+        if approx_eq!(f64, scale_factor, self.scale_factor, ulps = 2) {
             self.viewport_changed = true;
             let logical_size = self.viewport.logical_size();
             self.viewport = Viewport::with_physical_size(
@@ -1140,7 +1166,10 @@ pub(crate) fn update<A, E, C>(
     debug: &mut Debug,
     messages: &mut Vec<A::Message>,
     graphics_info: impl FnOnce() -> compositor::Information + Copy,
-    auto_size_surfaces: &mut HashMap<SurfaceIdWrapper, (u32, u32, Limits, bool)>,
+    auto_size_surfaces: &mut HashMap<
+        SurfaceIdWrapper,
+        (u32, u32, Limits, bool),
+    >,
 ) where
     A: Application + 'static,
     E: Executor + 'static,
@@ -1186,8 +1215,10 @@ fn run_command<A, E>(
     proxy: &mut proxy::Proxy<Event<A::Message>>,
     debug: &mut Debug,
     _graphics_info: impl FnOnce() -> compositor::Information + Copy,
-    auto_size_surfaces: &mut HashMap<SurfaceIdWrapper, (u32, u32, Limits, bool)>,
-
+    auto_size_surfaces: &mut HashMap<
+        SurfaceIdWrapper,
+        (u32, u32, Limits, bool),
+    >,
 ) where
     A: Application,
     E: Executor,
@@ -1355,7 +1386,10 @@ pub fn build_user_interfaces<'a, A>(
     debug: &mut Debug,
     states: &HashMap<SurfaceId, State<A>>,
     mut pure_states: HashMap<SurfaceId, user_interface::Cache>,
-    auto_size_surfaces: &mut HashMap<SurfaceIdWrapper, (u32, u32, Limits, bool)>,
+    auto_size_surfaces: &mut HashMap<
+        SurfaceIdWrapper,
+        (u32, u32, Limits, bool),
+    >,
     ev_proxy: &mut proxy::Proxy<Event<A::Message>>,
 ) -> HashMap<
     SurfaceId,

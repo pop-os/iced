@@ -14,7 +14,7 @@ multi_window = []
 [dependencies]
 log = "0.4"
 thiserror = "1.0"
-sctk = { package = "smithay-client-toolkit", git = "https://github.com/Smithay/client-toolkit", rev = "3776d4a"  }
+sctk = { package = "smithay-client-toolkit", git = "https://github.com/Smithay/client-toolkit", rev = "69bffe5", features = ["calloop"] }
 raw-window-handle = "0.5.0"
 enum-repr = "0.2.6"
 futures = "0.3"

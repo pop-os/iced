@@ -25,23 +25,22 @@ use iced_native::command::platform_specific::{
 };
 use sctk::{
     compositor::CompositorState,
-    event_loop::WaylandSource,
     output::OutputState,
     reexports::{
         calloop::{self, EventLoop},
         client::{
-            globals::registry_queue_init,
-            protocol::wl_surface::WlSurface, ConnectError, Connection,
-            DispatchError, Proxy,
+            globals::registry_queue_init, protocol::wl_surface::WlSurface,
+            ConnectError, Connection, DispatchError, Proxy, WaylandSource,
         },
     },
     registry::RegistryState,
     seat::SeatState,
     shell::{
-        layer::LayerShell,
-        xdg::{window::XdgWindowState, XdgShellState},
+        wlr_layer::LayerShell,
+        xdg::{XdgShell, XdgSurface},
+        WaylandSurface,
     },
-    shm::ShmState,
+    shm::Shm,
 };
 use wayland_backend::client::WaylandError;
 
@@ -141,11 +140,10 @@ where
                 output_state: OutputState::new(&globals, &qh),
                 compositor_state: CompositorState::bind(&globals, &qh)
                     .expect("wl_compositor is not available"),
-                shm_state: ShmState::bind(&globals, &qh)
+                shm_state: Shm::bind(&globals, &qh)
                     .expect("wl_shm is not available"),
-                xdg_shell_state: XdgShellState::bind(&globals, &qh)
+                xdg_shell_state: XdgShell::bind(&globals, &qh)
                     .expect("xdg shell is not available"),
-                xdg_window_state: XdgWindowState::bind(&globals, &qh),
                 layer_shell: LayerShell::bind(&globals, &qh).ok(),
 
                 // data_device_manager_state: DataDeviceManagerState::new(),
@@ -608,7 +606,7 @@ where
                         },
                         platform_specific::wayland::window::Action::Minimize { id } => {
                             if let Some(window) = self.state.windows.iter_mut().find(|w| w.id == id) {
-                                window.window.set_mimimized();
+                                window.window.set_minimized();
                                 to_commit.insert(id, window.window.wl_surface().clone());
                             }
                         },
@@ -687,7 +685,7 @@ where
                                         window.window.set_fullscreen(None);
                                     },
                                     iced_native::window::Mode::Hidden => {
-                                        window.window.set_mimimized();
+                                        window.window.set_minimized();
                                     },
                                 }
                                 to_commit.insert(id, window.window.wl_surface().clone());
