@@ -5,7 +5,7 @@ use std::{collections::hash_map::DefaultHasher, fmt};
 use iced_futures::MaybeSend;
 use sctk::{
     reexports::client::protocol::wl_output::WlOutput,
-    shell::layer::{Anchor, KeyboardInteractivity, Layer},
+    shell::wlr_layer::{Anchor, KeyboardInteractivity, Layer},
 };
 
 use crate::layout::Limits;

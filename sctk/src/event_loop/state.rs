@@ -42,19 +42,18 @@ use sctk::{
     registry::RegistryState,
     seat::{keyboard::KeyEvent, SeatState},
     shell::{
-        layer::{
+        wlr_layer::{
             Anchor, KeyboardInteractivity, Layer, LayerShell, LayerSurface,
             LayerSurfaceConfigure,
         },
         xdg::{
             popup::{Popup, PopupConfigure},
-            window::{
-                Window, WindowConfigure, WindowDecorations, XdgWindowState,
-            },
-            XdgPositioner, XdgShellState, XdgShellSurface,
+            window::{Window, WindowConfigure, WindowDecorations},
+            XdgPositioner, XdgShell, XdgShellSurface, XdgSurface,
         },
+        WaylandSurface,
     },
-    shm::{multi::MultiPool, ShmState},
+    shm::{multi::MultiPool, Shm},
 };
 
 #[derive(Debug, Clone)]
@@ -187,9 +186,8 @@ pub struct SctkState<T> {
     pub(crate) seat_state: SeatState,
     pub(crate) output_state: OutputState,
     pub(crate) compositor_state: CompositorState,
-    pub(crate) shm_state: ShmState,
-    pub(crate) xdg_shell_state: XdgShellState,
-    pub(crate) xdg_window_state: XdgWindowState,
+    pub(crate) shm_state: Shm,
+    pub(crate) xdg_shell_state: XdgShell,
     pub(crate) layer_shell: Option<LayerShell>,
 
     pub(crate) connection: Connection,
@@ -427,45 +425,28 @@ where
         // TODO Ashley: decorations
         let wl_surface =
             self.compositor_state.create_surface(&self.queue_handle);
-        let mut builder = if let Some(app_id) = app_id {
-            Window::builder().app_id(app_id)
+        let decorations = if decorations {
+            WindowDecorations::RequestServer
         } else {
-            Window::builder()
+            WindowDecorations::RequestClient
         };
-        builder = if let Some(min_size) = min_size {
-            builder.min_size(min_size)
-        } else {
-            builder
-        };
-        builder = if let Some(max_size) = max_size {
-            builder.max_size(max_size)
-        } else {
-            builder
-        };
-        builder = if let Some(title) = title {
-            builder.title(title)
-        } else {
-            builder
-        };
-
-        // builder = if let Some(parent) = parent.and_then(|p| self.windows.iter().find(|w| w.window.wl_surface().id() == p)) {
-        //     builder.parent(&parent.window)
-        // } else {
-        //     builder
-        // };
-        let window = builder
-            .decorations(if decorations {
-                WindowDecorations::RequestServer
-            } else {
-                WindowDecorations::RequestClient
-            })
-            .map(
-                &self.queue_handle,
-                &self.xdg_shell_state,
-                &mut self.xdg_window_state,
-                wl_surface.clone(),
-            )
-            .expect("failed to create window");
+        let window = self.xdg_shell_state.create_window(
+            wl_surface.clone(),
+            decorations,
+            &self.queue_handle,
+        );
+        if let Some(app_id) = app_id {
+            window.set_app_id(app_id);
+        }
+        window.set_min_size(min_size);
+        window.set_max_size(max_size);
+        if let Some(title) = title {
+            window.set_title(title);
+        }
+        // if let Some(parent) = parent.and_then(|p| self.windows.iter().find(|w| w.window.wl_surface().id() == p)) {
+        //     window.set_parent(Some(&parent.window));
+        // }
+        window.commit();
         window.xdg_surface().set_window_geometry(
             0,
             0,
@@ -519,21 +500,25 @@ where
         if anchor.contains(Anchor::LEFT.union(Anchor::RIGHT)) {
             size.0 = None;
         }
-        let mut builder = LayerSurface::builder()
-            .anchor(anchor)
-            .keyboard_interactivity(keyboard_interactivity)
-            .margin(margin.top, margin.right, margin.bottom, margin.left)
-            .size((size.0.unwrap_or_default(), size.1.unwrap_or_default()))
-            .namespace(namespace)
-            .exclusive_zone(exclusive_zone);
-        if let Some(wl_output) = wl_output {
-            builder = builder.output(&wl_output);
-        }
-        let layer_surface = builder
-            .map(&self.queue_handle, layer_shell, wl_surface.clone(), layer)
-            .map_err(|g_err| {
-                LayerSurfaceCreationError::LayerSurfaceCreationFailed(g_err)
-            })?;
+        let mut layer_surface = layer_shell.create_layer_surface(
+            &self.queue_handle,
+            wl_surface.clone(),
+            layer,
+            Some(namespace),
+            wl_output.as_ref(),
+        );
+        layer_surface.set_anchor(anchor);
+        layer_surface.set_keyboard_interactivity(keyboard_interactivity);
+        layer_surface.set_margin(
+            margin.top,
+            margin.right,
+            margin.bottom,
+            margin.left,
+        );
+        layer_surface
+            .set_size(size.0.unwrap_or_default(), size.1.unwrap_or_default());
+        layer_surface.set_exclusive_zone(exclusive_zone);
+        layer_surface.commit();
         self.layer_surfaces.push(SctkLayerSurface {
             id,
             surface: layer_surface,

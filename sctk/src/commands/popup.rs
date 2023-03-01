@@ -3,10 +3,7 @@ use iced_native::command::{
     self,
     platform_specific::{
         self,
-        wayland::{
-            self,
-            popup::SctkPopupSettings,
-        },
+        wayland::{self, popup::SctkPopupSettings},
     },
 };
 use iced_native::window::Id as SurfaceId;

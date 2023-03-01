@@ -3,7 +3,8 @@ use crate::{
     sctk_event::{SctkEvent, WindowEventVariant},
 };
 use sctk::{
-    delegate_xdg_shell, delegate_xdg_window, shell::xdg::window::WindowHandler,
+    delegate_xdg_shell, delegate_xdg_window,
+    shell::{xdg::window::WindowHandler, WaylandSurface},
 };
 use std::fmt::Debug;
 

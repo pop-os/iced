@@ -11,14 +11,14 @@ use sctk::{
     registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
     seat::SeatState,
-    shm::{ShmHandler, ShmState},
+    shm::{Shm, ShmHandler},
 };
 use std::fmt::Debug;
 
 use crate::event_loop::state::SctkState;
 
 impl<T: Debug> ShmHandler for SctkState<T> {
-    fn shm_state(&mut self) -> &mut ShmState {
+    fn shm_state(&mut self) -> &mut Shm {
         &mut self.shm_state
     }
 }

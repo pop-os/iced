@@ -3,6 +3,7 @@ use sctk::{
     compositor::CompositorHandler,
     delegate_compositor,
     reexports::client::{protocol::wl_surface, Connection, Proxy, QueueHandle},
+    shell::WaylandSurface,
 };
 use std::fmt::Debug;
 
