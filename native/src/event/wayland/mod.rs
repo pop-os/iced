@@ -3,6 +3,7 @@ mod output;
 mod popup;
 mod seat;
 mod window;
+mod data_device;
 
 use crate::window::Id;
 use sctk::reexports::client::protocol::{
@@ -14,6 +15,7 @@ pub use output::*;
 pub use popup::*;
 pub use seat::*;
 pub use window::*;
+pub use data_device::*;
 
 /// wayland events
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -28,4 +30,10 @@ pub enum Event {
     Window(WindowEvent, WlSurface, Id),
     /// Seat Event
     Seat(SeatEvent, WlSeat),
+    /// Data Device event
+    DataSource(DataSourceEvent),
+    /// Dnd Offer events
+    DndOffer(DndOfferEvent),
+    /// Selection Offer events
+    SelectionOffer(SelectionOfferEvent),
 }

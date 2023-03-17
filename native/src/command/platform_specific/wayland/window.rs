@@ -36,7 +36,11 @@ impl Default for SctkWindowSettings {
             title: Default::default(),
             parent: Default::default(),
             autosize: Default::default(),
-            size_limits: Limits::NONE.min_height(1).min_width(1).max_width(1920).max_height(1080),
+            size_limits: Limits::NONE
+                .min_height(1)
+                .min_width(1)
+                .max_width(1920)
+                .max_height(1080),
         }
     }
 }

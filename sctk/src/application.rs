@@ -1,13 +1,7 @@
 use crate::{
     commands::{layer_surface::get_layer_surface, window::get_window},
     error::{self, Error},
-    event_loop::{
-        self,
-        control_flow::ControlFlow,
-        proxy,
-        state::{SctkState, SctkWindow},
-        SctkEventLoop,
-    },
+    event_loop::{control_flow::ControlFlow, proxy, SctkEventLoop},
     sctk_event::{
         IcedSctkEvent, KeyboardEventVariant, LayerSurfaceEventVariant,
         PopupEventVariant, SctkEvent,
@@ -31,7 +25,7 @@ use sctk::{
     reexports::client::{protocol::wl_surface::WlSurface, Proxy},
     seat::{keyboard::Modifiers, pointer::PointerEventKind},
 };
-use std::{collections::HashMap, fmt, hash::Hash, marker::PhantomData};
+use std::{collections::HashMap, hash::Hash, marker::PhantomData};
 use wayland_backend::client::ObjectId;
 
 use iced_graphics::{
@@ -60,6 +54,8 @@ pub enum Event<Message> {
     Window(platform_specific::wayland::window::Action<Message>),
     /// popup requests from the client
     Popup(platform_specific::wayland::popup::Action<Message>),
+    /// data device requests from the client
+    DataDevice(platform_specific::wayland::data_device::Action<Message>),
     /// request sctk to set the cursor of the active pointer
     SetCursor(Interaction),
 }
@@ -103,10 +99,8 @@ where
     /// Returns the widgets to display in the [`Application`].
     ///
     /// These widgets can produce __messages__ based on user interaction.
-    fn view(
-        &self,
-        id: SurfaceIdWrapper,
-    ) -> Element<'_, Self::Message, Self::Renderer>;
+    fn view(&self, id: SurfaceId)
+        -> Element<'_, Self::Message, Self::Renderer>;
 
     /// Initializes the [`Application`] with the flags provided to
     /// [`run`] as part of the [`Settings`].
@@ -168,7 +162,7 @@ where
     }
 
     /// TODO
-    fn close_requested(&self, id: SurfaceIdWrapper) -> Self::Message;
+    fn close_requested(&self, id: SurfaceId) -> Self::Message;
 }
 
 pub struct SurfaceDisplayWrapper<C: Compositor> {
@@ -420,7 +414,7 @@ where
                         KeyboardEventVariant::Modifiers(mods) => {
                             if let Some(state) = kbd_surface_id
                                 .as_ref()
-                                .and_then(|id| surface_ids.get(&id))
+                                .and_then(|id| surface_ids.get(id))
                                 .and_then(|id| states.get_mut(&id.inner()))
                             {
                                 state.modifiers = mods;
@@ -436,7 +430,7 @@ where
                                 // drop(compositor_surfaces.remove(&surface_id.inner()));
                                 interfaces.remove(&surface_id.inner());
                                 states.remove(&surface_id.inner());
-                                messages.push(application.close_requested(surface_id));
+                                messages.push(application.close_requested(surface_id.inner()));
                                 destroyed_surface_ids.insert(id.id(), surface_id);
                                 // if exit_on_close_request && surface_id == init_id {
                                 //     break 'main;
@@ -453,16 +447,16 @@ where
                             if let Some(id) = surface_ids.get(&id.id()) {
                                 let new_size = configure.new_size.unwrap();
 
-                                if !compositor_surfaces.contains_key(&id.inner()) {
-                                    let mut wrapper = SurfaceDisplayWrapper {
-                                        comp_surface: None,
-                                        backend: backend.clone(),
-                                        wl_surface
-                                    };
-                                    let c_surface = compositor.create_surface(&wrapper);
-                                    wrapper.comp_surface.replace(c_surface);
-                                    compositor_surfaces.insert(id.inner(), wrapper);
-                                }
+                                compositor_surfaces.entry(id.inner()).or_insert_with(|| {
+                                     let mut wrapper = SurfaceDisplayWrapper {
+                                         comp_surface: None,
+                                         backend: backend.clone(),
+                                         wl_surface
+                                     };
+                                     let c_surface = compositor.create_surface(&wrapper);
+                                     wrapper.comp_surface.replace(c_surface);
+                                     wrapper
+                                 });
                                 if first {
                                     let state = State::new(&application, *id);
 
@@ -494,7 +488,7 @@ where
                                 drop(compositor_surfaces.remove(&surface_id.inner()));
                                 interfaces.remove(&surface_id.inner());
                                 states.remove(&surface_id.inner());
-                                messages.push(application.close_requested(surface_id));
+                                messages.push(application.close_requested(surface_id.inner()));
                                 destroyed_surface_ids.insert(id.id(), surface_id);
                                 // if exit_on_close_request && surface_id == init_id {
                                 //     break 'main;
@@ -503,17 +497,17 @@ where
                         }
                         LayerSurfaceEventVariant::Configure(configure, wl_surface, first) => {
                             if let Some(id) = surface_ids.get(&id.id()) {
-                                if !compositor_surfaces.contains_key(&id.inner()) {
-                                    let mut wrapper = SurfaceDisplayWrapper {
-                                        comp_surface: None,
-                                        backend: backend.clone(),
-                                        wl_surface
-                                    };
-                                    let mut c_surface = compositor.create_surface(&wrapper);
-                                    compositor.configure_surface(&mut c_surface, configure.new_size.0, configure.new_size.1);
-                                    wrapper.comp_surface.replace(c_surface);
-                                    compositor_surfaces.insert(id.inner(), wrapper);
-                                }
+                                compositor_surfaces.entry(id.inner()).or_insert_with(|| {
+                                     let mut wrapper = SurfaceDisplayWrapper {
+                                         comp_surface: None,
+                                         backend: backend.clone(),
+                                         wl_surface
+                                     };
+                                     let mut c_surface = compositor.create_surface(&wrapper);
+                                     compositor.configure_surface(&mut c_surface, configure.new_size.0, configure.new_size.1);
+                                     wrapper.comp_surface.replace(c_surface);
+                                     wrapper
+                                });
                                 if first {
                                     let state = State::new(&application, *id);
 
@@ -553,23 +547,23 @@ where
                                 drop(compositor_surfaces.remove(&surface_id.inner()));
                                 interfaces.remove(&surface_id.inner());
                                 states.remove(&surface_id.inner());
-                                messages.push(application.close_requested(surface_id));
+                                messages.push(application.close_requested(surface_id.inner()));
                                 destroyed_surface_ids.insert(id.id(), surface_id);
                             }
                         }
                         PopupEventVariant::WmCapabilities(_) => {}
                         PopupEventVariant::Configure(configure, wl_surface, first) => {
                             if let Some(id) = surface_ids.get(&id.id()) {
-                                if !compositor_surfaces.contains_key(&id.inner()) {
-                                    let mut wrapper = SurfaceDisplayWrapper {
-                                        comp_surface: None,
-                                        backend: backend.clone(),
-                                        wl_surface
-                                    };
-                                    let c_surface = compositor.create_surface(&wrapper);
-                                    wrapper.comp_surface.replace(c_surface);
-                                    compositor_surfaces.insert(id.inner(), wrapper);
-                                }
+                               compositor_surfaces.entry(id.inner()).or_insert_with(|| {
+                                     let mut wrapper = SurfaceDisplayWrapper {
+                                         comp_surface: None,
+                                         backend: backend.clone(),
+                                         wl_surface
+                                     };
+                                     let c_surface = compositor.create_surface(&wrapper);
+                                     wrapper.comp_surface.replace(c_surface);
+                                     wrapper
+                                });
                                 if first {
                                     let state = State::new(&application, *id);
 
@@ -628,17 +622,18 @@ where
                             state.set_scale_factor(factor);
                         }
                     }
+                    _ => {}
                 }
             }
             IcedSctkEvent::MainEventsCleared => {
                 let mut i = 0;
                 while i < events.len() {
-                    let remove = match &events[i] {
+                    let remove = matches!(
+                        events[i],
                         SctkEvent::NewOutput { .. }
-                        | SctkEvent::UpdateOutput { .. }
-                        | SctkEvent::RemovedOutput(_) => true,
-                        _ => false,
-                    };
+                            | SctkEvent::UpdateOutput { .. }
+                            | SctkEvent::RemovedOutput(_)
+                    );
                     if remove {
                         let event = events.remove(i);
                         for native_event in event.to_native(
@@ -745,7 +740,7 @@ where
                         }
 
                         if let Some((w, h, limits, dirty)) =
-                            auto_size_surfaces.remove(&surface_id)
+                            auto_size_surfaces.remove(surface_id)
                         {
                             if dirty {
                                 let state =
@@ -755,10 +750,8 @@ where
                                     };
                                 state.set_logical_size(w as f64, h as f64);
                             }
-                            auto_size_surfaces.insert(
-                                surface_id.clone(),
-                                (w, h, limits, false),
-                            );
+                            auto_size_surfaces
+                                .insert(*surface_id, (w, h, limits, false));
                         }
 
                         // TODO ASHLEY if event is a configure which isn't a new size and has no other changes, don't redraw
@@ -786,7 +779,7 @@ where
                                 })
                                 .collect();
 
-                        for (_object_id, surface_id) in &surface_ids {
+                        for surface_id in surface_ids.values() {
                             let state =
                                 match states.get_mut(&surface_id.inner()) {
                                     Some(s) => s,
@@ -962,7 +955,7 @@ where
     <A::Renderer as crate::Renderer>::Theme: StyleSheet,
 {
     debug.view_started();
-    let view = application.view(id);
+    let view = application.view(id.inner());
     debug.view_finished();
 
     let size = if let Some((prev_w, prev_h, limits, dirty)) =
@@ -971,7 +964,7 @@ where
         let view = view.as_widget();
         let _state = view.state();
         // TODO would it be ok to diff against the current cache?
-        let _ = view.diff(&mut Tree::empty());
+        view.diff(&mut Tree::empty());
         let bounds = view.layout(renderer, &limits).bounds().size();
         let (w, h) = (bounds.width.ceil() as u32, bounds.height.ceil() as u32);
         let dirty = dirty || w != prev_w || h != prev_h;
@@ -981,21 +974,21 @@ where
                 SurfaceIdWrapper::LayerSurface(inner) => {
                     ev_proxy.send_event(
                         Event::LayerSurface(
-                            iced_native::command::platform_specific::wayland::layer_surface::Action::Size { id: inner.clone(), width: Some(w), height: Some(h) },
+                            iced_native::command::platform_specific::wayland::layer_surface::Action::Size { id: inner, width: Some(w), height: Some(h) },
                         )
                     );
                 }
                 SurfaceIdWrapper::Window(inner) => {
                     ev_proxy.send_event(
                         Event::Window(
-                            iced_native::command::platform_specific::wayland::window::Action::Size { id: inner.clone(), width: w, height: h },
+                            iced_native::command::platform_specific::wayland::window::Action::Size { id: inner, width: w, height: h },
                         )
                     );
                 }
                 SurfaceIdWrapper::Popup(inner) => {
                     ev_proxy.send_event(
                         Event::Popup(
-                            iced_native::command::platform_specific::wayland::popup::Action::Size { id: inner.clone(), width: w, height: h },
+                            iced_native::command::platform_specific::wayland::popup::Action::Size { id: inner, width: w, height: h },
                         )
                     );
                 }
@@ -1159,11 +1152,7 @@ pub(crate) fn update<A, E, C>(
     cache: &mut user_interface::Cache,
     state: Option<&State<A>>,
     renderer: &mut A::Renderer,
-    runtime: &mut Runtime<
-        E,
-        proxy::Proxy<Event<A::Message>>,
-        Event<A::Message>,
-    >,
+    runtime: MyRuntime<E, A::Message>,
     proxy: &mut proxy::Proxy<Event<A::Message>>,
     debug: &mut Debug,
     messages: &mut Vec<A::Message>,
@@ -1202,6 +1191,8 @@ pub(crate) fn update<A, E, C>(
     runtime.track(application.subscription().map(subscription_map::<A, E, C>));
 }
 
+type MyRuntime<'a, E, M> = &'a mut Runtime<E, proxy::Proxy<Event<M>>, Event<M>>;
+
 /// Runs the actions of a [`Command`].
 fn run_command<A, E>(
     application: &A,
@@ -1209,11 +1200,7 @@ fn run_command<A, E>(
     state: Option<&State<A>>,
     renderer: &mut A::Renderer,
     command: Command<A::Message>,
-    runtime: &mut Runtime<
-        E,
-        proxy::Proxy<Event<A::Message>>,
-        Event<A::Message>,
-    >,
+    runtime: MyRuntime<E, A::Message>,
     proxy: &mut proxy::Proxy<Event<A::Message>>,
     debug: &mut Debug,
     _graphics_info: impl FnOnce() -> compositor::Information + Copy,
@@ -1317,7 +1304,7 @@ fn run_command<A, E>(
             ) => {
                 if let platform_specific::wayland::layer_surface::Action::LayerSurface{ mut builder, _phantom } = layer_surface_action {
                     if builder.size.is_none() {
-                        let e = application.view(SurfaceIdWrapper::LayerSurface(builder.id));
+                        let e = application.view(builder.id);
                         let _state = Widget::state(e.as_widget());
                         e.as_widget().diff(&mut Tree::empty());
                         let node = Widget::layout(e.as_widget(), renderer, &builder.size_limits);
@@ -1340,7 +1327,7 @@ fn run_command<A, E>(
             ) => {
                 if let platform_specific::wayland::window::Action::Window{ mut builder, _phantom } = window_action {
                     if builder.autosize {
-                        let e = application.view(SurfaceIdWrapper::Window(builder.window_id));
+                        let e = application.view(builder.window_id);
                         let _state = Widget::state(e.as_widget());
                         e.as_widget().diff(&mut Tree::empty());
                         let node = Widget::layout(e.as_widget(), renderer, &builder.size_limits);
@@ -1362,7 +1349,7 @@ fn run_command<A, E>(
             ) => {
                 if let popup::Action::Popup { mut popup, _phantom } = popup_action {
                     if popup.positioner.size.is_none() {
-                        let e = application.view(SurfaceIdWrapper::Popup(popup.id));
+                        let e = application.view(popup.id);
                         let _state = Widget::state(e.as_widget());
                         e.as_widget().diff(&mut Tree::empty());
                         let node = Widget::layout(e.as_widget(), renderer, &popup.positioner.size_limits);
@@ -1450,5 +1437,8 @@ fn event_is_for_surface(
         | SctkEvent::UpdateOutput { .. }
         | SctkEvent::RemovedOutput(_) => false,
         SctkEvent::ScaleFactorChanged { id, .. } => &id.id() == object_id,
+        SctkEvent::DndOffer { surface, .. } => &surface.id() == object_id,
+        SctkEvent::SelectionOffer(_) => true,
+        SctkEvent::DataSource(_) => true,
     }
 }

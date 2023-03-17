@@ -10,12 +10,13 @@ use raqote::{
     SolidSource, Source, StrokeStyle, Transform, Vector,
 };
 use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
-use softbuffer::GraphicsContext;
+use softbuffer::Context;
 use std::cmp;
 
 // A software rendering surface
 pub struct Surface {
-    context: GraphicsContext,
+    context: Context,
+    surface: softbuffer::Surface,
     width: u32,
     height: u32,
     buffer: Vec<u32>,
@@ -25,11 +26,13 @@ impl Surface {
     pub(crate) fn new<W: HasRawWindowHandle + HasRawDisplayHandle>(
         window: &W,
     ) -> Self {
-        let context = match unsafe { GraphicsContext::new(window, window) } {
+        let context = match unsafe { Context::new(window) } {
             Ok(ok) => ok,
             Err(err) => panic!("failed to create softbuffer context: {}", err),
         };
         Surface {
+            surface: unsafe { softbuffer::Surface::new(&context, window) }
+                .expect("failed to create softbuffer surface"),
             context,
             width: 0,
             height: 0,
@@ -93,7 +96,7 @@ impl Surface {
             draw_target.pop_clip();
         }
 
-        self.context.set_buffer(
+        self.surface.set_buffer(
             &self.buffer,
             self.width as u16,
             self.height as u16,

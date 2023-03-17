@@ -1,4 +1,5 @@
 use crate::{Command, Element, Executor, Settings, Subscription};
+use iced_native::window::Id;
 
 /// wayland sandbox
 pub mod sandbox;
@@ -7,6 +8,7 @@ pub use iced_native::command::platform_specific::wayland as actions;
 pub use iced_sctk::{
     application::SurfaceIdWrapper, command::*, commands::*, settings::*,
 };
+
 
 /// A pure version of [`Application`].
 ///
@@ -92,7 +94,7 @@ pub trait Application: Sized {
     /// These widgets can produce __messages__ based on user interaction.
     fn view(
         &self,
-        id: SurfaceIdWrapper,
+        id: Id,
     ) -> Element<'_, Self::Message, crate::Renderer<Self::Theme>>;
 
     /// Returns the scale factor of the [`Application`].
@@ -116,7 +118,7 @@ pub trait Application: Sized {
     }
 
     /// window was requested to close
-    fn close_requested(&self, id: SurfaceIdWrapper) -> Self::Message;
+    fn close_requested(&self, id: Id) -> Self::Message;
 
     /// Runs the [`Application`].
     ///
@@ -178,7 +180,7 @@ where
 
     fn view(
         &self,
-        id: SurfaceIdWrapper,
+        id: Id,
     ) -> Element<'_, Self::Message, Self::Renderer> {
         self.0.view(id)
     }
@@ -203,7 +205,7 @@ where
         self.0.should_exit()
     }
 
-    fn close_requested(&self, id: SurfaceIdWrapper) -> Self::Message {
+    fn close_requested(&self, id: Id) -> Self::Message {
         self.0.close_requested(id)
     }
 }

@@ -174,20 +174,31 @@ impl iced_graphics::backend::Text for Backend {
 
         let mut width = 0.0;
         let mut height = 0.0;
-        for layout_line in layout.iter() {
-            for glyph in layout_line.glyphs.iter() {
-                let max_x = if glyph.level.is_rtl() {
-                    glyph.x - glyph.w
-                } else {
-                    glyph.x + glyph.w
-                };
-                if max_x + 1.0 > width {
-                    width = max_x + 1.0;
-                }
-            }
+        for line in content.lines() {
+            let mut buffer_line = BufferLine::new(line, AttrsList::new(attrs));
+            let layout = buffer_line.layout(
+                &mut FONT_SYSTEM.lock().unwrap(),
+                metrics.font_size,
+                bounds.width,
+                Wrap::Word,
+            );
 
-            height += metrics.line_height as f32;
+            for layout_line in layout.iter() {
+                for glyph in layout_line.glyphs.iter() {
+                    let max_x = if glyph.level.is_rtl() {
+                        glyph.x - glyph.w
+                    } else {
+                        glyph.x + glyph.w
+                    };
+                    if max_x + 1.0 > width {
+                        width = max_x + 1.0;
+                    }
+                }
+
+                height += metrics.line_height as f32;
+            }
         }
+
         (width, height)
     }
 

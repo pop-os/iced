@@ -8,6 +8,8 @@ pub mod layer_surface;
 pub mod popup;
 /// window actions
 pub mod window;
+/// data device Actions
+pub mod data_device;
 
 #[derive(Clone)]
 /// Platform specific actions defined for wayland
@@ -18,6 +20,8 @@ pub enum Action<T> {
     Window(window::Action<T>),
     /// popup
     Popup(popup::Action<T>),
+    /// data device
+    DataDevice(data_device::Action<T>),
 }
 
 impl<T> Action<T> {
@@ -34,6 +38,7 @@ impl<T> Action<T> {
             Action::LayerSurface(a) => Action::LayerSurface(a.map(f)),
             Action::Window(a) => Action::Window(a.map(f)),
             Action::Popup(a) => Action::Popup(a.map(f)),
+            Action::DataDevice(a) => Action::DataDevice(a.map(f)),
         }
     }
 }
@@ -46,6 +51,9 @@ impl<T> Debug for Action<T> {
             }
             Self::Window(arg0) => f.debug_tuple("Window").field(arg0).finish(),
             Self::Popup(arg0) => f.debug_tuple("Popup").field(arg0).finish(),
+            Self::DataDevice(arg0) => {
+                f.debug_tuple("DataDevice").field(arg0).finish()
+            }
         }
     }
 }

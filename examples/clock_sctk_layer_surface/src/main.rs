@@ -108,11 +108,11 @@ impl Application for Clock {
         &self,
         _id: SurfaceIdWrapper,
     ) -> Element<'_, Self::Message, iced::Renderer<Self::Theme>> {
-        let canvas = canvas(self as &Self).height(Length::Units(200)).width(Length::Units(200));
+        let canvas = canvas(self as &Self)
+            .height(Length::Units(200))
+            .width(Length::Units(200));
 
-        container(canvas)
-            .padding(20)
-            .into()
+        container(canvas).padding(20).into()
     }
 
     fn close_requested(&self, _id: SurfaceIdWrapper) -> Self::Message {

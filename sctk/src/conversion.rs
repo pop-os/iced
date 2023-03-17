@@ -20,9 +20,9 @@ pub fn pointer_button_to_native(button: u32) -> Option<mouse::Button> {
     } else if button == BTN_RIGHT {
         Some(mouse::Button::Right)
     } else if button == BTN_MIDDLE {
-        Some(mouse::Button::Right)
+        Some(mouse::Button::Middle)
     } else {
-        button.try_into().ok().map(|b| mouse::Button::Other(b))
+        button.try_into().ok().map(mouse::Button::Other)
     }
 }
 
@@ -36,12 +36,10 @@ pub fn pointer_axis_to_native(
             x: horizontal.discrete as f32,
             y: vertical.discrete as f32,
         },
-        AxisSource::Finger | AxisSource::Continuous | _ => {
-            ScrollDelta::Pixels {
-                x: horizontal.absolute as f32,
-                y: vertical.absolute as f32,
-            }
-        }
+        _ => ScrollDelta::Pixels {
+            x: horizontal.absolute as f32,
+            y: vertical.absolute as f32,
+        },
     })
 }
 
