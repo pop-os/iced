@@ -1,26 +1,38 @@
-use sctk::{data_device_manager::{data_offer::DragOffer, ReadPipe}, reexports::client::protocol::wl_data_device_manager::DndAction};
-use std::{sync::{Arc}, os::fd::{OwnedFd, RawFd}};
 use iced_futures::futures::lock::Mutex;
-
+use sctk::{
+    data_device_manager::{data_offer::DragOffer, ReadPipe},
+    reexports::client::protocol::wl_data_device_manager::DndAction,
+};
+use std::{
+    os::fd::{OwnedFd, RawFd},
+    sync::Arc,
+};
 
 /// Dnd Offer events
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum DndOfferEvent {
     /// A DnD offer has been introduced with the given mime types.
-    Enter(Vec<String>),
+    Enter {
+        /// x coordinate of the offer
+        x: f64,
+        /// y coordinate of the offer
+        y: f64,
+        /// The offered mime types
+        mime_types: Vec<String>,
+    },
     /// The DnD device has left.
     Leave,
     /// Drag and Drop Motion event.
     Motion {
         /// x coordinate of the pointer
-        x: i32,
+        x: f64,
         /// y coordinate of the pointer
-        y: i32,
-        /// time of the event
-        time: u32,
+        y: f64,
     },
+    /// The selected DnD action
+    SelectedAction(DndAction),
     /// The offered actions for the current DnD offer
-    Actions(DndAction),
+    SourceActions(DndAction),
     /// Dnd Drop event
     DropPerformed,
     /// Read the Selection data
@@ -53,7 +65,11 @@ pub struct ReadData {
 
 impl ReadData {
     /// Create a new ReadData
-    pub fn new(mime_type: String, raw_fd: RawFd, fd: Arc<Mutex<ReadPipe>>) -> Self {
+    pub fn new(
+        mime_type: String,
+        raw_fd: RawFd,
+        fd: Arc<Mutex<ReadPipe>>,
+    ) -> Self {
         Self {
             raw_fd,
             mime_type,
@@ -61,7 +77,6 @@ impl ReadData {
         }
     }
 }
-
 
 /// Data Source events
 /// Includes drag and drop events and clipboard events
@@ -98,7 +113,11 @@ pub struct WriteData {
 
 impl WriteData {
     /// Create a new WriteData
-    pub fn new(mime_type: String, raw_fd: RawFd, fd: Arc<Mutex<OwnedFd>>) -> Self {
+    pub fn new(
+        mime_type: String,
+        raw_fd: RawFd,
+        fd: Arc<Mutex<OwnedFd>>,
+    ) -> Self {
         Self {
             raw_fd,
             mime_type,
@@ -122,4 +141,3 @@ impl PartialEq for ReadData {
 }
 
 impl Eq for ReadData {}
-

@@ -18,7 +18,7 @@ pub use window::*;
 pub use data_device::*;
 
 /// wayland events
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Event {
     /// layer surface event
     Layer(LayerEvent, WlSurface, Id),

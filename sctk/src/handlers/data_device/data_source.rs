@@ -1,4 +1,5 @@
 use crate::event_loop::state::SctkState;
+use crate::sctk_event::{DataSourceEvent, SctkEvent};
 use futures::lock::Mutex;
 use sctk::{
     data_device_manager::data_source::DataSourceHandler,
@@ -10,8 +11,7 @@ use sctk::{
         Connection, QueueHandle,
     },
 };
-use crate::sctk_event::{SctkEvent, DataSourceEvent};
-use std::{fmt::Debug, sync::Arc, os::unix::io::AsRawFd};
+use std::{fmt::Debug, os::unix::io::AsRawFd, sync::Arc};
 
 impl<T> DataSourceHandler for SctkState<T> {
     fn accept_mime(
@@ -21,7 +21,8 @@ impl<T> DataSourceHandler for SctkState<T> {
         _source: &WlDataSource,
         mime: Option<String>,
     ) {
-        self.sctk_events.push(SctkEvent::DataSource(DataSourceEvent::MimeAccepted(mime)));
+        self.sctk_events
+            .push(SctkEvent::DataSource(DataSourceEvent::MimeAccepted(mime)));
     }
 
     fn send_request(
@@ -35,11 +36,13 @@ impl<T> DataSourceHandler for SctkState<T> {
         let raw_fd = fd.as_raw_fd();
         let fd = Arc::new(Mutex::new(fd));
         // XXX: the user should send a Finish action when they are done sending the data.
-        self.sctk_events.push(SctkEvent::DataSource(DataSourceEvent::SendDndData {
-            raw_fd,
-            mime_type: mime,
-            fd,
-        }));
+        self.sctk_events.push(SctkEvent::DataSource(
+            DataSourceEvent::SendDndData {
+                raw_fd,
+                mime_type: mime,
+                fd,
+            },
+        ));
     }
 
     fn cancelled(
@@ -48,38 +51,41 @@ impl<T> DataSourceHandler for SctkState<T> {
         _qh: &QueueHandle<Self>,
         _source: &WlDataSource,
     ) {
-        self.sctk_events.push(SctkEvent::DataSource(DataSourceEvent::DndCancelled));
+        self.sctk_events
+            .push(SctkEvent::DataSource(DataSourceEvent::DndCancelled));
     }
 
     fn dnd_dropped(
         &mut self,
         _conn: &Connection,
         _qh: &QueueHandle<Self>,
-        source: &WlDataSource,
+        _source: &WlDataSource,
     ) {
-        self.sctk_events.push(SctkEvent::DataSource(DataSourceEvent::DndDropPerformed));
+        self.sctk_events
+            .push(SctkEvent::DataSource(DataSourceEvent::DndDropPerformed));
     }
 
     fn dnd_finished(
         &mut self,
         _conn: &Connection,
         _qh: &QueueHandle<Self>,
-        source: &WlDataSource,
+        _source: &WlDataSource,
     ) {
-        // self.copy_paste_sources.iter().position(|s| s.inner() == source).map(|pos| {
-        //     self.copy_paste_sources.remove(pos);
-        // });
-        // source.destroy();
+        self.sctk_events
+            .push(SctkEvent::DataSource(DataSourceEvent::DndFinished));
     }
 
     fn action(
         &mut self,
         _conn: &Connection,
         _qh: &QueueHandle<Self>,
-        source: &WlDataSource,
+        _source: &WlDataSource,
         action: DndAction,
     ) {
-        self.sctk_events.push(crate::sctk_event::SctkEvent::DataSource(DataSourceEvent::DndActionAccepted(action)));
+        self.sctk_events
+            .push(crate::sctk_event::SctkEvent::DataSource(
+                DataSourceEvent::DndActionAccepted(action),
+            ));
     }
 }
 
