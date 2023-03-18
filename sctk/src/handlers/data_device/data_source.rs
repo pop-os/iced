@@ -10,8 +10,8 @@ use sctk::{
         Connection, QueueHandle,
     },
 };
-use crate::sctk_event::{SctkEvent, DataOfferEvent};
-use std::{fmt::Debug, sync::Arc};
+use crate::sctk_event::{SctkEvent, DataSourceEvent};
+use std::{fmt::Debug, sync::Arc, os::unix::io::AsRawFd};
 
 impl<T> DataSourceHandler for SctkState<T> {
     fn accept_mime(
@@ -21,7 +21,7 @@ impl<T> DataSourceHandler for SctkState<T> {
         _source: &WlDataSource,
         mime: Option<String>,
     ) {
-        self.sctk_events.push(SctkEvent::DataSource(DataSourceEvent::DataSource(DataSourceEvent::MimeAccepted(mime))));
+        self.sctk_events.push(SctkEvent::DataSource(DataSourceEvent::MimeAccepted(mime)));
     }
 
     fn send_request(
@@ -32,9 +32,11 @@ impl<T> DataSourceHandler for SctkState<T> {
         mime: String,
         fd: wayland_backend::io_lifetimes::OwnedFd,
     ) {
+        let raw_fd = fd.as_raw_fd();
         let fd = Arc::new(Mutex::new(fd));
         // XXX: the user should send a Finish action when they are done sending the data.
         self.sctk_events.push(SctkEvent::DataSource(DataSourceEvent::SendDndData {
+            raw_fd,
             mime_type: mime,
             fd,
         }));
@@ -55,7 +57,7 @@ impl<T> DataSourceHandler for SctkState<T> {
         _qh: &QueueHandle<Self>,
         source: &WlDataSource,
     ) {
-        self.sctk_events.push(SctkEvent::DataSource(DataSourceEvent::DndDropPerformed { mime_type: (), action: () }
+        self.sctk_events.push(SctkEvent::DataSource(DataSourceEvent::DndDropPerformed));
     }
 
     fn dnd_finished(
@@ -77,7 +79,7 @@ impl<T> DataSourceHandler for SctkState<T> {
         source: &WlDataSource,
         action: DndAction,
     ) {
-        self.sctk_events.push(crate::sctk_event::SctkEvent::DataSource(DataSourceEvent::DndActionAccepted(action));
+        self.sctk_events.push(crate::sctk_event::SctkEvent::DataSource(DataSourceEvent::DndActionAccepted(action)));
     }
 }
 

@@ -1,5 +1,5 @@
 use sctk::{data_device_manager::{data_offer::DragOffer, ReadPipe}, reexports::client::protocol::wl_data_device_manager::DndAction};
-use std::{sync::{Arc}, os::{fd::{OwnedFd, RawFd, AsRawFd}}};
+use std::{sync::{Arc}, os::fd::{OwnedFd, RawFd}};
 use iced_futures::futures::lock::Mutex;
 
 
@@ -21,8 +21,6 @@ pub enum DndOfferEvent {
     },
     /// The offered actions for the current DnD offer
     Actions(DndAction),
-    /// New mime types for the current DnD offer
-    MimeTypes(Vec<String>),
     /// Dnd Drop event
     DropPerformed,
     /// Read the Selection data
@@ -39,8 +37,6 @@ pub enum DndOfferEvent {
 pub enum SelectionOfferEvent {
     /// a selection offer has been introduced with the given mime types.
     Offer(Vec<String>),
-    /// New mime types for the current selection offer
-    MimeTypes(Vec<String>),
     /// Read the Selection data
     ReadData(ReadData),
 }

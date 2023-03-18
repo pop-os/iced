@@ -189,6 +189,8 @@ pub enum DataSourceEvent {
     DndDropPerformed,
     /// Send the selection data to the clipboard.
     SendSelectionData {
+        /// the raw file descriptor used for checking equality without accessing the Mutex
+        raw_fd: RawFd,
         /// The mime type of the data
         mime_type: String,
         /// The pipe to write the data to
@@ -196,6 +198,8 @@ pub enum DataSourceEvent {
     },
     /// Send the DnD data to the destination.
     SendDndData {
+         /// the raw file descriptor used for checking equality without accessing the mutex
+        raw_fd: RawFd,
         /// The mime type of the data
         mime_type: String,
         /// The pipe to write the data to
@@ -206,17 +210,15 @@ pub enum DataSourceEvent {
 #[derive(Debug, Clone)]
 pub enum SelectionOfferEvent {
     /// A Selection offer has been introduced with the given mime types.
-    Offer {
-        /// mime types offered by the source
-        mime_types: Vec<String>,
-    },
+    Offer(Vec<String>),
      /// Read the selection data from the clipboard.
     ReadData {
+        /// the raw file descriptor used for checking equality without accessing the mutex
         raw_fd: RawFd,
-        /// The id of the widget that is receiving the data.
-        id: Option<widget::Id>,
         /// The pipe to read the data from
         read_pipe: Arc<Mutex<ReadPipe>>,
+        /// mime type of the data to read
+        mime_type: String,
     },
  
 }
@@ -224,10 +226,7 @@ pub enum SelectionOfferEvent {
 #[derive(Debug, Clone)]
 pub enum DndOfferEvent {
     /// A DnD offer has been introduced with the given mime types.
-    Enter {
-        /// mime types offered by the source
-        mime_types: Vec<String>,
-    },
+    Enter(Vec<String>),
     /// The DnD device has left.
     Leave,
     /// Drag and Drop Motion event.
@@ -243,11 +242,12 @@ pub enum DndOfferEvent {
     DropPerformed,
    /// Read the DnD data
     ReadData {
+        /// the raw file descriptor used for checking equality without accessing the mutex
         raw_fd: RawFd,
-        /// The id of the widget that the DnD data is being dropped on.
-        id: Option<widget::Id>,
         /// The pipe to read the data from
         read_pipe: Arc<Mutex<ReadPipe>>,
+        /// mime type of the data to read
+        mime_type: String,
     },
  
 }
@@ -724,93 +724,129 @@ impl SctkEvent {
                 id,
                 inner_size,
             } => Default::default(),
-            SctkEvent::DndOffer { offer, .. } => match do {
-                DndOfferEvent::Enter ( mime_types ) => Some(iced_native::Event::PlatformSpecific(
-                    PlatformSpecific::Wayland(wayland::Event::DataOffer(
-                        wayland::DataOfferEvent::DndEnter ( mime_types  ),
-                    )),
-                )),
-                DndOfferEvent::Leave => Some(iced_native::Event::PlatformSpecific(
-                    PlatformSpecific::Wayland(wayland::Event::DataOffer(
-                        wayland::DataOfferEvent::DndLeave,
-                    )),
-                )),
-                DndOfferEvent::Motion { x, y, time } => Some(iced_native::Event::PlatformSpecific(
-                    PlatformSpecific::Wayland(wayland::Event::DataOffer(
-                        wayland::DataOfferEvent::DndMotion{x, y, time}
-                    )),
-                )),
-                
-               DndOfferEvent::Data { mime_type, fd, raw_fd } => {
-                    Some(iced_native::Event::PlatformSpecific(
-                        PlatformSpecific::Wayland(wayland::Event::DataOffer(
-                            wayland::DataOfferEvent::ReadDndData(ReadData::new(mime_type, raw_fd, fd)) 
+            SctkEvent::DndOffer { event, .. } => match event {
+                DndOfferEvent::Enter(mime_types) => Some(
+                    iced_native::Event::PlatformSpecific(
+                        PlatformSpecific::Wayland(wayland::Event::DndOffer(
+                            wayland::DndOfferEvent::Enter (
+                               mime_types
+                                    .iter()
+                                    .map(|m| m.to_string())
+                                    .collect(),
+                            ),
                         )),
-                    ))
-                    .into_iter()
-                    .collect()
-                }
-                
-            },
-            SctkEvent::SelectionOffer(so) => {
-                        }
-            SctkEvent::DataSourceEvent(source) => match source {
-                DataSourceEvent::Target { mime_type } => {
-                    Some(iced_native::Event::PlatformSpecific(
-                        PlatformSpecific::Wayland(wayland::Event::DataSource(
-                            wayland::DataSourceEvent::Target {
-                                mime_type: mime_type.to_string(),
+                    ),
+                ).into_iter().collect(),
+                DndOfferEvent::Motion { x, y, time } => Some(
+                    iced_native::Event::PlatformSpecific(
+                        PlatformSpecific::Wayland(wayland::Event::DndOffer(
+                            wayland::DndOfferEvent::Motion {
+                                x,
+                                y,
+                                time,
                             },
                         )),
-                    ))
-                    .into_iter()
-                    .collect()
-                }
-                DataSourceEvent::Send { mime_type, fd, raw_fd } => {
+                    ),
+                ).into_iter().collect(),
+                DndOfferEvent::DropPerformed => Some(
+                    iced_native::Event::PlatformSpecific(
+                        PlatformSpecific::Wayland(wayland::Event::DndOffer(
+                            wayland::DndOfferEvent::DropPerformed,
+                        )),
+                    ),
+                ).into_iter().collect(),
+                DndOfferEvent::Leave => Some(
+                    iced_native::Event::PlatformSpecific(
+                        PlatformSpecific::Wayland(wayland::Event::DndOffer(
+                            wayland::DndOfferEvent::Leave,
+                        )),
+                    ),
+                ).into_iter().collect(),
+                DndOfferEvent::ReadData { raw_fd, mime_type, read_pipe } => {
                     Some(iced_native::Event::PlatformSpecific(
-                        PlatformSpecific::Wayland(wayland::Event::DataSource(
-                            wayland::DataSourceEvent::SendSelectionData::new(mime_type, raw_fd, fd)
+                        PlatformSpecific::Wayland(wayland::Event::DndOffer(
+                            wayland::DndOfferEvent::ReadData(wayland::ReadData::new(mime_type, raw_fd, read_pipe))
                         )),
                     ))
                     .into_iter()
                     .collect()
                 }
-                DataSourceEvent::Cancelled => {
-                    Some(iced_native::Event::PlatformSpecific(
-                        PlatformSpecific::Wayland(wayland::Event::DataSource(
-                            wayland::DataSourceEvent::Cancelled,
-                        )),
-                    ))
-                    .into_iter()
-                    .collect()
+            },
+            SctkEvent::SelectionOffer(so) => {
+                match so {
+                    SelectionOfferEvent::Offer(mime_types) => Some(
+                        iced_native::Event::PlatformSpecific(
+                            PlatformSpecific::Wayland(wayland::Event::SelectionOffer(
+                                wayland::SelectionOfferEvent::Offer (
+                                   mime_types
+                                        .iter()
+                                        .map(|m| m.to_string())
+                                        .collect(),
+                                ),
+                            )),
+                        ),
+                    ).into_iter().collect(),
+                    SelectionOfferEvent::ReadData { raw_fd, mime_type, read_pipe } => {
+                        Some(iced_native::Event::PlatformSpecific(
+                            PlatformSpecific::Wayland(wayland::Event::SelectionOffer(
+                                wayland::SelectionOfferEvent::ReadData(wayland::ReadData::new(mime_type, raw_fd, read_pipe))
+                            )),
+                        ))
+                        .into_iter()
+                        .collect()
+                    },
                 }
-                DataSourceEvent::DndDropPerformed => {
-                    Some(iced_native::Event::PlatformSpecific(
+            }
+            SctkEvent::DataSource(event) => match event {
+                DataSourceEvent::DndDropPerformed => Some(
+                    iced_native::Event::PlatformSpecific(
                         PlatformSpecific::Wayland(wayland::Event::DataSource(
                             wayland::DataSourceEvent::DndDropPerformed,
                         )),
-                    ))
-                    .into_iter()
-                    .collect()
-                }
-                DataSourceEvent::DndFinished => {
-                    Some(iced_native::Event::PlatformSpecific(
+                    ),
+                ).into_iter().collect(),
+                DataSourceEvent::DndFinished => Some(
+                    iced_native::Event::PlatformSpecific(
                         PlatformSpecific::Wayland(wayland::Event::DataSource(
                             wayland::DataSourceEvent::DndFinished,
                         )),
-                    ))
-                    .into_iter()
-                    .collect()
-                }
-                DataSourceEvent::Action(action) => {
-                    Some(iced_native::Event::PlatformSpecific(
+                    ),
+                ).into_iter().collect(),
+                DataSourceEvent::DndCancelled => Some(
+                    iced_native::Event::PlatformSpecific(
                         PlatformSpecific::Wayland(wayland::Event::DataSource(
-                            wayland::DataSourceEvent::Action(action),
+                            wayland::DataSourceEvent::Cancelled,
                         )),
-                    ))
-                    .into_iter()
-                    .collect()
-                }
+                    ),
+                ).into_iter().collect(),
+                DataSourceEvent::MimeAccepted(mime_type) => Some(
+                    iced_native::Event::PlatformSpecific(
+                        PlatformSpecific::Wayland(wayland::Event::DataSource(
+                            wayland::DataSourceEvent::MimeAccepted(mime_type),
+                        )),
+                    ),
+                ).into_iter().collect(),
+                DataSourceEvent::DndActionAccepted(action) => Some(
+                    iced_native::Event::PlatformSpecific(
+                        PlatformSpecific::Wayland(wayland::Event::DataSource(
+                            wayland::DataSourceEvent::DndActionAccepted(action),
+                        )),
+                    ),
+                ).into_iter().collect(),
+                DataSourceEvent::SendDndData { mime_type, fd , raw_fd } => Some(
+                    iced_native::Event::PlatformSpecific(
+                        PlatformSpecific::Wayland(wayland::Event::DataSource(
+                            wayland::DataSourceEvent::SendDndData(wayland::WriteData::new(mime_type, raw_fd, fd)),
+                        )),
+                    ),
+                ).into_iter().collect(),
+                DataSourceEvent::SendSelectionData { mime_type, fd, raw_fd } => Some(
+                    iced_native::Event::PlatformSpecific(
+                        PlatformSpecific::Wayland(wayland::Event::DataSource(
+                            wayland::DataSourceEvent::SendSelectionData(wayland::WriteData::new(mime_type, raw_fd, fd)),
+                        )),
+                    ),
+                ).into_iter().collect(),
             }
         }
     }
