@@ -8,12 +8,13 @@ license = "MIT AND OFL-1.1"
 repository = "https://github.com/iced-rs/iced"
 
 [dependencies]
-cosmic-text = "0.6"
+cosmic-text = { git = "https://github.com/pop-os/cosmic-text", rev = "e788c175" }
 lazy_static = "1.4"
 log = "0.4"
 raw-window-handle = "0.5"
 raqote = { version = "0.8", default-features = false }
 softbuffer = { git = "https://github.com/pop-os/softbuffer", rev = "8dcb6438b" } 
+
 [dependencies.iced_native]
 path = "../native"
 

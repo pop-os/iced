@@ -1,5 +1,5 @@
 use cosmic_text::{
-    Attrs, AttrsList, BufferLine, FontSystem, Metrics, SwashCache, Weight,
+    Attrs, AttrsList, BufferLine, FontSystem, Metrics, SwashCache, Weight, Wrap,
 };
 #[cfg(feature = "image")]
 use iced_graphics::image::raster;
@@ -14,9 +14,10 @@ use iced_native::text;
 use iced_native::{Font, Point, Size};
 use std::cell::RefCell;
 use std::fmt;
+use std::sync::Mutex;
 
 lazy_static::lazy_static! {
-    pub(crate) static ref FONT_SYSTEM: FontSystem = FontSystem::new();
+    pub(crate) static ref FONT_SYSTEM: Mutex<FontSystem> = Mutex::new(FontSystem::new());
 }
 
 /// An entry in some [`Storage`],
@@ -81,7 +82,7 @@ impl storage::Storage for CpuStorage {
 }
 
 pub struct Backend {
-    pub(crate) swash_cache: SwashCache<'static>,
+    pub(crate) swash_cache: SwashCache,
     #[cfg(feature = "image")]
     pub(crate) raster_cache: RefCell<raster::Cache<CpuStorage>>,
     #[cfg(feature = "svg")]
@@ -91,7 +92,7 @@ pub struct Backend {
 impl Backend {
     pub fn new() -> Self {
         Self {
-            swash_cache: SwashCache::new(&FONT_SYSTEM),
+            swash_cache: SwashCache::new(),
             #[cfg(feature = "image")]
             raster_cache: RefCell::new(raster::Cache::default()),
             #[cfg(feature = "svg")]
@@ -124,7 +125,7 @@ impl Backend {
             },
         };
 
-        (Metrics::new(font_size, line_height), attrs)
+        (Metrics::new(font_size as f32, line_height as f32), attrs)
     }
 }
 
@@ -156,9 +157,10 @@ impl iced_graphics::backend::Text for Backend {
         //TODO: improve implementation
         let mut buffer_line = BufferLine::new(content, AttrsList::new(attrs));
         let layout = buffer_line.layout(
-            &FONT_SYSTEM,
+            &mut FONT_SYSTEM.lock().unwrap(),
             metrics.font_size,
-            bounds.width as i32,
+            bounds.width,
+            Wrap::Word,
         );
 
         let mut width = 0.0;
@@ -194,9 +196,10 @@ impl iced_graphics::backend::Text for Backend {
         //TODO: improve implementation
         let mut buffer_line = BufferLine::new(content, AttrsList::new(attrs));
         let layout = buffer_line.layout(
-            &FONT_SYSTEM,
+            &mut FONT_SYSTEM.lock().unwrap(),
             metrics.font_size,
-            bounds.width as i32,
+            bounds.width,
+            Wrap::Word,
         );
 
         // Find exact hit

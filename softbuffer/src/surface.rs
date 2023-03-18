@@ -1,6 +1,6 @@
 use crate::backend::{Backend, CpuStorage, FONT_SYSTEM};
 
-use cosmic_text::{AttrsList, BufferLine, Metrics, SwashContent};
+use cosmic_text::{AttrsList, BufferLine, Metrics, SwashContent, Wrap};
 use iced_graphics::alignment::{Horizontal, Vertical};
 #[cfg(feature = "svg")]
 use iced_graphics::image::vector;
@@ -158,8 +158,8 @@ pub fn draw_primitive(
             // Scale metrics separately to avoid errors
             //TODO: fix this by knowing correct scale when measuring text and doing hit test
             let metrics = Metrics::new(
-                ((metrics_unscaled.font_size as f32) * scale_factor) as i32,
-                ((metrics_unscaled.line_height as f32) * scale_factor) as i32,
+                (metrics_unscaled.font_size as f32) * scale_factor,
+                (metrics_unscaled.line_height as f32) * scale_factor,
             );
 
             /*
@@ -183,22 +183,23 @@ pub fn draw_primitive(
             let mut buffer_line =
                 BufferLine::new(content, AttrsList::new(attrs));
             let layout = buffer_line.layout(
-                &FONT_SYSTEM,
+                &mut FONT_SYSTEM.lock().unwrap(),
                 metrics.font_size,
-                bounds.width as i32,
+                bounds.width,
+                Wrap::Word,
             );
 
             let mut line_y = match vertical_alignment {
-                Vertical::Top => bounds.y as i32 + metrics.font_size,
+                Vertical::Top => bounds.y + metrics.font_size,
                 Vertical::Center => {
                     //TODO: why is this so weird?
-                    bounds.y as i32 + metrics.font_size
-                        - metrics.line_height * layout.len() as i32 / 2
+                    bounds.y + metrics.font_size
+                        - metrics.line_height * layout.len() as f32 / 2.0
                 }
                 Vertical::Bottom => {
                     //TODO: why is this so weird?
-                    bounds.y as i32 + metrics.font_size
-                        - metrics.line_height * layout.len() as i32
+                    bounds.y + metrics.font_size
+                        - metrics.line_height * layout.len() as f32
                 }
             };
 
@@ -280,11 +281,12 @@ pub fn draw_primitive(
                         None => cosmic_color,
                     };
 
-                    if let Some(image) =
-                        backend.swash_cache.get_image(cache_key)
+                    if let Some(image) = backend
+                        .swash_cache
+                        .get_image(&mut FONT_SYSTEM.lock().unwrap(), cache_key)
                     {
-                        let x = line_x + x_int + image.placement.left;
-                        let y = line_y + y_int + -image.placement.top;
+                        let x = line_x as i32 + x_int + image.placement.left;
+                        let y = line_y as i32 + y_int + -image.placement.top;
 
                         /*
                         // Debug glyph placement in red
