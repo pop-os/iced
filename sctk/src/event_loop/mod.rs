@@ -6,13 +6,16 @@ use std::{
     collections::HashMap,
     fmt::Debug,
     time::{Duration, Instant},
+    os::fd::AsRawFd,
+    sync::Arc,
 };
 
+use iced_futures::futures::lock::Mutex;
 use crate::{
     application::Event,
     sctk_event::{
         IcedSctkEvent, LayerSurfaceEventVariant, PopupEventVariant, SctkEvent,
-        StartCause, WindowEventVariant,
+        StartCause, WindowEventVariant, DndOfferEvent, SelectionOfferEvent
     },
     settings,
 };
@@ -905,10 +908,22 @@ where
                                 self.state.dnd_offer = None;
                             },
                             platform_specific::wayland::data_device::Action::RequestDndData { id, mime_type, action } => {
-                                todo!();
+                                if let Some(dnd_offer) = self.state.dnd_offer.as_ref() {
+                                    let read_pipe = match dnd_offer.receive(mime_type.clone()) {
+                                        Ok(p) => p,
+                                        Err(_) => continue, // TODO error handling
+                                    };
+                                    self.state.sctk_events.push(SctkEvent::DndOffer { event: DndOfferEvent::ReadData { raw_fd: read_pipe.as_raw_fd(), read_pipe: Arc::new(Mutex::new(read_pipe)), mime_type: mime_type }, surface: dnd_offer.surface.clone() });
+                                }
                             }
                             platform_specific::wayland::data_device::Action::RequestSelection { id, mime_type } => {
-                                todo!();
+                                if let Some(selection_offer) = self.state.selection_offer.as_ref() {
+                                    let read_pipe = match selection_offer.receive(mime_type.clone()) {
+                                        Ok(p) => p,
+                                        Err(_) => continue, // TODO error handling
+                                    };
+                                    self.state.sctk_events.push(SctkEvent::SelectionOffer(SelectionOfferEvent::ReadData { raw_fd: read_pipe.as_raw_fd(), read_pipe: Arc::new(Mutex::new(read_pipe)), mime_type }));
+                                }
                             }
                             platform_specific::wayland::data_device::Action::SetSelection { mime_types, _phantom } => {
                                 let qh = &self.state.queue_handle.clone();
@@ -931,7 +946,6 @@ where
                                 self.state.selection = Some(source);
                             }
                             platform_specific::wayland::data_device::Action::UnsetSelection => {
-                                let qh = &self.state.queue_handle.clone();
                                 let seat = match self.state.seats.get(0) {
                                     Some(s) => s,
                                     None => continue,
@@ -942,7 +956,6 @@ where
                                 };
                                 self.state.selection = None;
                                 seat.data_device.unset_selection(serial);
-                               
                             }
                             platform_specific::wayland::data_device::Action::SetActions { preferred, accepted } => {
                                 if let Some(offer) = self.state.dnd_offer.as_ref() {
