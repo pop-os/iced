@@ -1,4 +1,8 @@
-use std::{collections::HashMap, fmt::Debug};
+use std::{
+    collections::HashMap,
+    fmt::Debug,
+    sync::{Arc, Mutex},
+};
 
 use crate::{
     application::Event,
@@ -29,7 +33,7 @@ use sctk::{
     error::GlobalError,
     output::OutputState,
     reexports::{
-        calloop::{LoopHandle, RegistrationToken},
+        calloop::LoopHandle,
         client::{
             backend::ObjectId,
             protocol::{
@@ -154,7 +158,6 @@ pub struct SctkCopyPasteSource {
     pub accepted_mime_types: Vec<String>,
     pub source: CopyPasteSource,
 }
-
 
 /// Wrapper to carry sctk state.
 #[derive(Debug)]

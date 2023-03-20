@@ -1,11 +1,10 @@
-use iced_futures::futures::lock::Mutex;
 use sctk::{
     data_device_manager::{data_offer::DragOffer, ReadPipe},
     reexports::client::protocol::wl_data_device_manager::DndAction,
 };
 use std::{
-    os::fd::{OwnedFd, RawFd},
-    sync::Arc,
+    os::fd::{OwnedFd, RawFd, AsRawFd},
+    sync::{Arc, Mutex},
 };
 
 /// Dnd Offer events
@@ -56,7 +55,6 @@ pub enum SelectionOfferEvent {
 /// A ReadPipe and the mime type of the data.
 #[derive(Debug, Clone)]
 pub struct ReadData {
-    raw_fd: RawFd,
     /// mime type of the data
     pub mime_type: String,
     /// The pipe to read the data from
@@ -67,11 +65,9 @@ impl ReadData {
     /// Create a new ReadData
     pub fn new(
         mime_type: String,
-        raw_fd: RawFd,
         fd: Arc<Mutex<ReadPipe>>,
     ) -> Self {
         Self {
-            raw_fd,
             mime_type,
             fd,
         }
@@ -104,7 +100,6 @@ pub enum DataSourceEvent {
 /// A WriteData and the mime type of the data to be written.
 #[derive(Debug, Clone)]
 pub struct WriteData {
-    raw_fd: RawFd,
     /// mime type of the data
     pub mime_type: String,
     /// The fd to write the data to
@@ -115,11 +110,9 @@ impl WriteData {
     /// Create a new WriteData
     pub fn new(
         mime_type: String,
-        raw_fd: RawFd,
         fd: Arc<Mutex<OwnedFd>>,
     ) -> Self {
         Self {
-            raw_fd,
             mime_type,
             fd,
         }
@@ -128,7 +121,7 @@ impl WriteData {
 
 impl PartialEq for WriteData {
     fn eq(&self, other: &Self) -> bool {
-        self.raw_fd == other.raw_fd
+        self.fd.lock().unwrap().as_raw_fd() == other.fd.lock().unwrap().as_raw_fd()
     }
 }
 
@@ -136,7 +129,7 @@ impl Eq for WriteData {}
 
 impl PartialEq for ReadData {
     fn eq(&self, other: &Self) -> bool {
-        self.raw_fd == other.raw_fd
+        self.fd.lock().unwrap().as_raw_fd() == other.fd.lock().unwrap().as_raw_fd()
     }
 }
 

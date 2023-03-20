@@ -6,11 +6,10 @@ use std::{
     collections::HashMap,
     fmt::Debug,
     time::{Duration, Instant},
-    os::fd::AsRawFd,
-    sync::Arc,
+    sync::{Arc, Mutex},
+    io::prelude::*,
 };
 
-use iced_futures::futures::lock::Mutex;
 use crate::{
     application::Event,
     sctk_event::{
@@ -45,7 +44,7 @@ use sctk::{
     },
     shm::Shm, data_device_manager::DataDeviceManagerState,
 };
-use wayland_backend::client::WaylandError;
+use wayland_backend::{client::WaylandError, io_lifetimes::AsFd};
 
 use self::{
     control_flow::ControlFlow,
@@ -913,7 +912,7 @@ where
                                         Ok(p) => p,
                                         Err(_) => continue, // TODO error handling
                                     };
-                                    self.state.sctk_events.push(SctkEvent::DndOffer { event: DndOfferEvent::ReadData { raw_fd: read_pipe.as_raw_fd(), read_pipe: Arc::new(Mutex::new(read_pipe)), mime_type: mime_type }, surface: dnd_offer.surface.clone() });
+                                    self.state.sctk_events.push(SctkEvent::DndOffer { event: DndOfferEvent::ReadData { read_pipe: Arc::new(Mutex::new(read_pipe)), mime_type: mime_type }, surface: dnd_offer.surface.clone() });
                                 }
                             }
                             platform_specific::wayland::data_device::Action::RequestSelection { id, mime_type } => {
@@ -922,7 +921,7 @@ where
                                         Ok(p) => p,
                                         Err(_) => continue, // TODO error handling
                                     };
-                                    self.state.sctk_events.push(SctkEvent::SelectionOffer(SelectionOfferEvent::ReadData { raw_fd: read_pipe.as_raw_fd(), read_pipe: Arc::new(Mutex::new(read_pipe)), mime_type }));
+                                    self.state.sctk_events.push(SctkEvent::SelectionOffer(SelectionOfferEvent::ReadData {read_pipe: Arc::new(Mutex::new(read_pipe)), mime_type }));
                                 }
                             }
                             platform_specific::wayland::data_device::Action::SetSelection { mime_types, _phantom } => {

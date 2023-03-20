@@ -6,7 +6,7 @@ use crate::{
         IcedSctkEvent, KeyboardEventVariant, LayerSurfaceEventVariant,
         PopupEventVariant, SctkEvent,
     },
-    settings, Command, Debug, Executor, Runtime, Size, Subscription,
+    settings, Command, Debug, Executor, Runtime, Size, Subscription, clipboard::Clipboard,
 };
 use float_cmp::approx_eq;
 use futures::{channel::mpsc, task, Future, FutureExt, StreamExt};
@@ -25,7 +25,7 @@ use sctk::{
     reexports::client::{protocol::wl_surface::WlSurface, Proxy},
     seat::{keyboard::Modifiers, pointer::PointerEventKind},
 };
-use std::{collections::HashMap, hash::Hash, marker::PhantomData};
+use std::{collections::HashMap, hash::Hash, marker::PhantomData, ffi::c_void};
 use wayland_backend::client::ObjectId;
 
 use iced_graphics::{
@@ -358,6 +358,7 @@ where
     let mut mods = Modifiers::default();
     let mut destroyed_surface_ids: HashMap<ObjectId, SurfaceIdWrapper> =
         Default::default();
+    let mut simple_clipboard = Clipboard::unconnected();
 
     'main: while let Some(event) = receiver.next().await {
         match event {
@@ -453,6 +454,12 @@ where
                                          backend: backend.clone(),
                                          wl_surface
                                      };
+                                     if matches!(simple_clipboard.state,  crate::clipboard::State::Unavailable) {
+                                        if let RawDisplayHandle::Wayland(handle) = wrapper.raw_display_handle() {
+                                            assert!(!handle.display.is_null());
+                                            simple_clipboard = unsafe { Clipboard::connect(handle.display as *mut c_void) };
+                                        }
+                                     }
                                      let c_surface = compositor.create_surface(&wrapper);
                                      wrapper.comp_surface.replace(c_surface);
                                      wrapper
@@ -503,6 +510,12 @@ where
                                          backend: backend.clone(),
                                          wl_surface
                                      };
+                                     if matches!(simple_clipboard.state,  crate::clipboard::State::Unavailable) {
+                                        if let RawDisplayHandle::Wayland(handle) = wrapper.raw_display_handle() {
+                                            assert!(!handle.display.is_null());
+                                            simple_clipboard = unsafe { Clipboard::connect(handle.display as *mut c_void) };
+                                        }
+                                     }
                                      let mut c_surface = compositor.create_surface(&wrapper);
                                      compositor.configure_surface(&mut c_surface, configure.new_size.0, configure.new_size.1);
                                      wrapper.comp_surface.replace(c_surface);
@@ -728,7 +741,7 @@ where
                                 native_events.as_slice(),
                                 cursor_position,
                                 &mut renderer,
-                                &mut Null,
+                                &mut simple_clipboard,
                                 &mut messages,
                             )
                         };

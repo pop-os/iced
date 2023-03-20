@@ -1,6 +1,6 @@
 use crate::event_loop::state::SctkState;
 use crate::sctk_event::{DataSourceEvent, SctkEvent};
-use futures::lock::Mutex;
+use sctk::data_device_manager::data_source::DataSourceDataExt;
 use sctk::{
     data_device_manager::data_source::DataSourceHandler,
     delegate_data_source,
@@ -11,7 +11,7 @@ use sctk::{
         Connection, QueueHandle,
     },
 };
-use std::{fmt::Debug, os::unix::io::AsRawFd, sync::Arc};
+use std::{fmt::Debug, os::unix::io::AsRawFd, sync::{Arc, Mutex}};
 
 impl<T> DataSourceHandler for SctkState<T> {
     fn accept_mime(
@@ -29,20 +29,27 @@ impl<T> DataSourceHandler for SctkState<T> {
         &mut self,
         _conn: &Connection,
         _qh: &QueueHandle<Self>,
-        _source: &WlDataSource,
+        source: &WlDataSource,
         mime: String,
         fd: wayland_backend::io_lifetimes::OwnedFd,
     ) {
-        let raw_fd = fd.as_raw_fd();
         let fd = Arc::new(Mutex::new(fd));
         // XXX: the user should send a Finish action when they are done sending the data.
-        self.sctk_events.push(SctkEvent::DataSource(
-            DataSourceEvent::SendDndData {
-                raw_fd,
-                mime_type: mime,
-                fd,
-            },
-        ));
+        if self.selection_source.as_ref().map(|s| s.inner() == source).unwrap_or(false) {
+            self.sctk_events.push(SctkEvent::DataSource(
+                DataSourceEvent::SendSelectionData {
+                    mime_type: mime,
+                    fd,
+                },
+            ));
+        } else if self.dnd.as_ref().and_then(|o| o.source.as_ref()).map(|s| s.inner() == source).unwrap_or(false) {
+            self.sctk_events.push(SctkEvent::DataSource(
+                DataSourceEvent::SendDndData {
+                    mime_type: mime,
+                    fd,
+                },
+            ));
+        }
     }
 
     fn cancelled(
