@@ -35,6 +35,8 @@ pub mod toggler;
 pub mod tooltip;
 pub mod tree;
 pub mod vertical_slider;
+#[cfg(feature = "wayland")]
+pub mod dnd_listener;
 
 mod action;
 mod id;
@@ -53,6 +55,9 @@ pub use helpers::*;
 pub use image::Image;
 #[doc(no_inline)]
 pub use mouse_listener::MouseListener;
+#[doc(no_inline)]
+#[cfg(feature = "wayland")]
+pub use dnd_listener::DndListener;
 #[doc(no_inline)]
 pub use pane_grid::PaneGrid;
 #[doc(no_inline)]
