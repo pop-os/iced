@@ -4,7 +4,7 @@ use crate::{
     event_loop::{control_flow::ControlFlow, proxy, SctkEventLoop},
     sctk_event::{
         IcedSctkEvent, KeyboardEventVariant, LayerSurfaceEventVariant,
-        PopupEventVariant, SctkEvent,
+        PopupEventVariant, SctkEvent, DataSourceEvent,
     },
     settings, Command, Debug, Executor, Runtime, Size, Subscription, clipboard::Clipboard,
 };
@@ -635,6 +635,58 @@ where
                             state.set_scale_factor(factor);
                         }
                     }
+                    SctkEvent::DataSource(DataSourceEvent::DndFinished) | SctkEvent::DataSource(DataSourceEvent::DndCancelled)=> {
+                        surface_ids.retain(|id, surface_id| {
+                            match surface_id {
+                                SurfaceIdWrapper::Dnd(inner) => {
+                                    drop(compositor_surfaces.remove(&inner));
+                                    interfaces.remove(inner);
+                                    states.remove(inner);
+                                    destroyed_surface_ids.insert(id.clone(), *surface_id);
+                                    false
+                                },
+                                _ => true,
+                            }
+                        })
+                    }
+                    SctkEvent::DataSource(DataSourceEvent::DndSurfaceCreated(wl_surface, native_id)) => {
+                        let id = wl_surface.id();
+                        let e = application.view(native_id);
+                        let _state = Widget::state(e.as_widget());
+                        e.as_widget().diff(&mut Tree::empty());
+                        let node = Widget::layout(e.as_widget(), &renderer, &Limits::NONE);
+                        let bounds = node.bounds();
+                        let w = bounds.width.ceil() as u32;
+                        let h = bounds.height.ceil() as u32;
+                        auto_size_surfaces.insert(SurfaceIdWrapper::LayerSurface(native_id), (w, h, Limits::NONE, false));
+
+                        surface_ids.insert(id, SurfaceIdWrapper::Dnd(native_id));
+                        compositor_surfaces.entry(native_id).or_insert_with(|| {
+                                 let mut wrapper = SurfaceDisplayWrapper {
+                                     comp_surface: None,
+                                     backend: backend.clone(),
+                                     wl_surface
+                                 };
+                                 let c_surface = compositor.create_surface(&wrapper);
+                                 wrapper.comp_surface.replace(c_surface);
+                                 wrapper
+                            });
+                        let mut state = State::new(&application, SurfaceIdWrapper::Dnd(native_id));
+                        state.set_logical_size(w as f64, h as f64);
+                        let user_interface = build_user_interface(
+                            &application,
+                            user_interface::Cache::default(),
+                            &mut renderer,
+                            state.logical_size(),
+                            &mut debug,
+                            SurfaceIdWrapper::Dnd(native_id),
+                            &mut auto_size_surfaces,
+                            &mut ev_proxy
+                        );
+                        states.insert(native_id, state);
+                        interfaces.insert(native_id, user_interface);
+
+                    }
                     _ => {}
                 }
             }
@@ -937,6 +989,7 @@ pub enum SurfaceIdWrapper {
     LayerSurface(SurfaceId),
     Window(SurfaceId),
     Popup(SurfaceId),
+    Dnd(SurfaceId)
 }
 
 impl SurfaceIdWrapper {
@@ -945,6 +998,7 @@ impl SurfaceIdWrapper {
             SurfaceIdWrapper::LayerSurface(id) => *id,
             SurfaceIdWrapper::Window(id) => *id,
             SurfaceIdWrapper::Popup(id) => *id,
+            SurfaceIdWrapper::Dnd(id) => *id,
         }
     }
 }
@@ -1005,6 +1059,7 @@ where
                         )
                     );
                 }
+                SurfaceIdWrapper::Dnd(_) => {}
             };
         }
 

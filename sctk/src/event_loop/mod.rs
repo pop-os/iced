@@ -14,7 +14,7 @@ use crate::{
     application::Event,
     sctk_event::{
         IcedSctkEvent, LayerSurfaceEventVariant, PopupEventVariant, SctkEvent,
-        StartCause, WindowEventVariant, DndOfferEvent, SelectionOfferEvent
+        StartCause, WindowEventVariant, DndOfferEvent, SelectionOfferEvent, DataSourceEvent
     },
     settings,
 };
@@ -884,6 +884,11 @@ where
                                 let icon_surface =  if let Some(icon_id) = icon_id{
                                     let wl_surface = self.state.compositor_state.create_surface(qh);
                                     source.start_drag(device, &origin, Some(&wl_surface), serial);
+                                    sticky_exit_callback(IcedSctkEvent::SctkEvent(SctkEvent::DataSource(DataSourceEvent::DndSurfaceCreated(wl_surface.clone(), icon_id))),
+                                        &self.state,
+                                        &mut control_flow,
+                                        &mut callback,
+                                    );
                                     Some((wl_surface, icon_id))
                                 } else {
                                     source.start_drag(device, &origin, None, serial);
@@ -901,10 +906,20 @@ where
                             platform_specific::wayland::data_device::Action::DndFinished => {
                                 if let Some(offer) = self.state.dnd_offer.take() {
                                     offer.finish();
+                                    sticky_exit_callback(IcedSctkEvent::SctkEvent(SctkEvent::DataSource(DataSourceEvent::DndFinished)),
+                                        &self.state,
+                                        &mut control_flow,
+                                        &mut callback,
+                                    );
                                 }
                             },
                             platform_specific::wayland::data_device::Action::DndCancelled => {
                                 self.state.dnd_offer = None;
+                                sticky_exit_callback(IcedSctkEvent::SctkEvent(SctkEvent::DataSource(DataSourceEvent::DndCancelled)),
+                                    &self.state,
+                                    &mut control_flow,
+                                    &mut callback,
+                                );
                             },
                             platform_specific::wayland::data_device::Action::RequestDndData { id, mime_type, action } => {
                                 if let Some(dnd_offer) = self.state.dnd_offer.as_ref() {

@@ -202,6 +202,8 @@ pub enum DataSourceEvent {
         /// The pipe to write the data to
         fd: Arc<Mutex<OwnedFd>>,
     },
+    /// Dnd source created with an icon surface.
+    DndSurfaceCreated(WlSurface, SurfaceId),
 }
 
 #[derive(Debug, Clone)]
@@ -433,9 +435,9 @@ impl SctkEvent {
             } => match variant {
                 KeyboardEventVariant::Leave(surface) => surface_ids
                     .get(&surface.id())
-                    .map(|id| match id {
+                    .and_then(|id| match id {
                         SurfaceIdWrapper::LayerSurface(_id) => {
-                            iced_native::Event::PlatformSpecific(
+                            Some(iced_native::Event::PlatformSpecific(
                                 PlatformSpecific::Wayland(
                                     wayland::Event::Layer(
                                         LayerEvent::Unfocused,
@@ -443,16 +445,16 @@ impl SctkEvent {
                                         id.inner(),
                                     ),
                                 ),
-                            )
+                            ))
                         }
                         SurfaceIdWrapper::Window(id) => {
-                            iced_native::Event::Window(
+                            Some(iced_native::Event::Window(
                                 *id,
                                 window::Event::Unfocused,
-                            )
+                            ))
                         }
                         SurfaceIdWrapper::Popup(_id) => {
-                            iced_native::Event::PlatformSpecific(
+                            Some(iced_native::Event::PlatformSpecific(
                                 PlatformSpecific::Wayland(
                                     wayland::Event::Popup(
                                         PopupEvent::Unfocused,
@@ -460,8 +462,9 @@ impl SctkEvent {
                                         id.inner(),
                                     ),
                                 ),
-                            )
+                            ))
                         }
+                        SurfaceIdWrapper::Dnd(_) => None 
                     })
                     .into_iter()
                     .chain([iced_native::Event::PlatformSpecific(
@@ -473,9 +476,9 @@ impl SctkEvent {
                     .collect(),
                 KeyboardEventVariant::Enter(surface) => surface_ids
                     .get(&surface.id())
-                    .map(|id| match id {
+                    .and_then(|id| match id {
                         SurfaceIdWrapper::LayerSurface(_id) => {
-                            iced_native::Event::PlatformSpecific(
+                            Some(iced_native::Event::PlatformSpecific(
                                 PlatformSpecific::Wayland(
                                     wayland::Event::Layer(
                                         LayerEvent::Focused,
@@ -483,16 +486,16 @@ impl SctkEvent {
                                         id.inner(),
                                     ),
                                 ),
-                            )
+                            ))
                         }
                         SurfaceIdWrapper::Window(id) => {
-                            iced_native::Event::Window(
+                            Some(iced_native::Event::Window(
                                 *id,
                                 window::Event::Focused,
-                            )
+                            ))
                         }
                         SurfaceIdWrapper::Popup(_id) => {
-                            iced_native::Event::PlatformSpecific(
+                            Some(iced_native::Event::PlatformSpecific(
                                 PlatformSpecific::Wayland(
                                     wayland::Event::Popup(
                                         PopupEvent::Focused,
@@ -500,8 +503,9 @@ impl SctkEvent {
                                         id.inner(),
                                     ),
                                 ),
-                            )
+                            ))
                         }
+                        SurfaceIdWrapper::Dnd(_) => None
                     })
                     .into_iter()
                     .chain([iced_native::Event::PlatformSpecific(
@@ -885,6 +889,8 @@ impl SctkEvent {
                     .into_iter()
                     .collect()
                 }
+                DataSourceEvent::DndSurfaceCreated(_, _) => Default::default()
+                
             },
         }
     }
