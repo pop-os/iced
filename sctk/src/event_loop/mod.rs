@@ -6,8 +6,8 @@ use std::{
     collections::HashMap,
     fmt::Debug,
     time::{Duration, Instant},
+    num::NonZeroU32,
     sync::{Arc, Mutex},
-    io::prelude::*,
 };
 
 use crate::{
@@ -578,13 +578,14 @@ where
                         },
                         platform_specific::wayland::window::Action::Size { id, width, height } => {
                             if let Some(window) = self.state.windows.iter_mut().find(|w| w.id == id) {
-                                window.requested_size = Some((width, height));
-                                window.window.xdg_surface().set_window_geometry(0, 0, width.max(1) as i32, height.max(1) as i32);
+                                let (width, height) = (NonZeroU32::new(width).unwrap_or(NonZeroU32::new(1).unwrap()), NonZeroU32::new(height).unwrap_or(NonZeroU32::new(1).unwrap()));
+                                window.requested_size = Some((width.get(), height.get()));
+                                window.window.xdg_surface().set_window_geometry(0, 0, width.get() as i32, height.get() as i32);
                                 // TODO Ashley maybe don't force window size?
                                 pending_redraws.push(window.window.wl_surface().id());
 
                                 if let Some(mut prev_configure) = window.last_configure.clone() {
-                                    prev_configure.new_size = Some((width, height));
+                                    prev_configure.new_size = (Some(width), Some(height));
                                     sticky_exit_callback(
                                         IcedSctkEvent::SctkEvent(SctkEvent::WindowEvent { variant: WindowEventVariant::Configure(prev_configure, window.window.wl_surface().clone(), false), id: window.window.wl_surface().clone()}),
                                         &self.state,
@@ -884,24 +885,12 @@ where
                                 let icon_surface =  if let Some(icon_id) = icon_id{
                                     let wl_surface = self.state.compositor_state.create_surface(qh);
                                     source.start_drag(device, &origin, Some(&wl_surface), serial);
-                                    sticky_exit_callback(IcedSctkEvent::SctkEvent(SctkEvent::DataSource(DataSourceEvent::DndSurfaceCreated(wl_surface.clone(), icon_id))),
-                                        &self.state,
-                                        &mut control_flow,
-                                        &mut callback,
-                                    );
-                                    Some((wl_surface, icon_id))
+                                    // sticky_exit_callback(IcedSctkEvent::SctkEvent(SctkEvent::DataSource(DataSourceEvent::DndSurfaceCreated(wl_surface.clone(), icon_id))),
+                                        // &self.stateand_then,
                                 } else {
-                                    source.start_drag(device, &origin, None, serial);
-                                    None
+                                    todo!()
                                 };
-
-                                self.state.dnd = Some(Dnd {
-                                    origin_id,
-                                    icon_surface,
-                                    origin,
-                                    source: Some(source),
-                                    pending_requests: Vec::new(),
-                                });
+                                 
                             },
                             platform_specific::wayland::data_device::Action::DndFinished => {
                                 if let Some(offer) = self.state.dnd_offer.take() {

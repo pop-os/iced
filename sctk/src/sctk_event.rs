@@ -621,15 +621,14 @@ impl SctkEvent {
                 }
                 WindowEventVariant::Configure(configure, surface, _) => {
                     if configure.is_resizing() {
-                        let new_size = configure.new_size.unwrap();
                         surface_ids
                             .get(&surface.id())
                             .map(|id| {
                                 iced_native::Event::Window(
                                     id.inner(),
                                     window::Event::Resized {
-                                        width: new_size.0,
-                                        height: new_size.1,
+                                        width: configure.new_size.0.unwrap().get(),
+                                        height: configure.new_size.1.unwrap().get(),
                                     },
                                 )
                             })

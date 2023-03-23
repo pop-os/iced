@@ -446,8 +446,6 @@ where
                             first,
                         ) => {
                             if let Some(id) = surface_ids.get(&id.id()) {
-                                let new_size = configure.new_size.unwrap();
-
                                 compositor_surfaces.entry(id.inner()).or_insert_with(|| {
                                      let mut wrapper = SurfaceDisplayWrapper {
                                          comp_surface: None,
@@ -481,7 +479,7 @@ where
                                     interfaces.insert(id.inner(), user_interface);
                                 }
                                 if let Some(state) = states.get_mut(&id.inner()) {
-                                    state.set_logical_size(new_size.0 as f64, new_size.1 as f64);
+                                    state.set_logical_size(configure.new_size.0.unwrap().get() as f64 , configure.new_size.1.unwrap().get() as f64);
                                 }
                             }
                         }
