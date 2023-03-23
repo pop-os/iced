@@ -21,7 +21,8 @@ pub struct DndListener<'a, Message, Renderer> {
     content: Element<'a, Message, Renderer>,
 
     /// Sets the message to emit on a drag enter.
-    on_enter: Option<Box<dyn Fn(DndAction, Vec<String>, (f32, f32)) -> Message>>,
+    on_enter:
+        Option<Box<dyn Fn(DndAction, Vec<String>, (f32, f32)) -> Message>>,
 
     /// Sets the message to emit on a drag motion.
     /// x and y are the coordinates of the pointer relative to the widget in the range (0.0, 1.0)
@@ -49,7 +50,10 @@ pub struct DndListener<'a, Message, Renderer> {
 impl<'a, Message, Renderer> DndListener<'a, Message, Renderer> {
     /// The message to emit on a drag enter.
     #[must_use]
-    pub fn on_enter(mut self, message: Box<dyn Fn(DndAction, Vec<String>, (f32, f32)) -> Message>) -> Self {
+    pub fn on_enter(
+        mut self,
+        message: Box<dyn Fn(DndAction, Vec<String>, (f32, f32)) -> Message>,
+    ) -> Self {
         self.on_enter = Some(message);
         self
     }
@@ -70,14 +74,20 @@ impl<'a, Message, Renderer> DndListener<'a, Message, Renderer> {
 
     /// The message to emit on a drag mime type event.
     #[must_use]
-    pub fn on_mime_type(mut self, message: Box<dyn Fn(String) -> Message>) -> Self {
+    pub fn on_mime_type(
+        mut self,
+        message: Box<dyn Fn(String) -> Message>,
+    ) -> Self {
         self.on_mime_type = Some(message);
         self
     }
 
     /// The message to emit on a drag action event.
     #[must_use]
-    pub fn on_action(mut self, message: Box<dyn Fn(DndAction) -> Message>) -> Self {
+    pub fn on_action(
+        mut self,
+        message: Box<dyn Fn(DndAction) -> Message>,
+    ) -> Self {
         self.on_source_actions = Some(message);
         self
     }
@@ -276,24 +286,41 @@ fn update<Message: Clone, Renderer>(
     state: &mut State,
 ) -> event::Status {
     match event {
-        Event::PlatformSpecific(PlatformSpecific::Wayland(event::wayland::Event::DndOffer(DndOfferEvent::Enter { x, y, mime_types }))) => {
+        Event::PlatformSpecific(PlatformSpecific::Wayland(
+            event::wayland::Event::DndOffer(DndOfferEvent::Enter {
+                x,
+                y,
+                mime_types,
+            }),
+        )) => {
             state.dnd = Some((DndAction::empty(), mime_types.clone()));
             let bounds = layout.bounds();
-            let p = Point { x: *x as f32, y: *y as f32 };
+            let p = Point {
+                x: *x as f32,
+                y: *y as f32,
+            };
             if layout.bounds().contains(p) {
                 state.hovered = true;
                 if let Some(message) = widget.on_enter.as_ref() {
                     let normalized_x: f32 = (p.x - bounds.x) / bounds.width;
                     let normalized_y: f32 = (p.y - bounds.y) / bounds.height;
-                    shell.publish(message(DndAction::empty(), mime_types.clone(), (normalized_x, normalized_y)));
+                    shell.publish(message(
+                        DndAction::empty(),
+                        mime_types.clone(),
+                        (normalized_x, normalized_y),
+                    ));
                     return event::Status::Captured;
                 }
             }
-    
         }
-        Event::PlatformSpecific(PlatformSpecific::Wayland(event::wayland::Event::DndOffer(DndOfferEvent::Motion { x, y }))) => {
+        Event::PlatformSpecific(PlatformSpecific::Wayland(
+            event::wayland::Event::DndOffer(DndOfferEvent::Motion { x, y }),
+        )) => {
             let bounds = layout.bounds();
-            let p = Point { x: *x as f32, y: *y as f32 };
+            let p = Point {
+                x: *x as f32,
+                y: *y as f32,
+            };
             // motion can trigger an enter, motion or leave event on the widget
             if state.hovered && !layout.bounds().contains(p) {
                 state.hovered = false;
@@ -317,14 +344,20 @@ fn update<Message: Clone, Renderer>(
                 if let Some(message) = widget.on_enter.as_ref() {
                     let normalized_x: f32 = (p.x - bounds.x) / bounds.width;
                     let normalized_y: f32 = (p.y - bounds.y) / bounds.height;
-                    shell.publish(message(*action, mime_types.clone(), (normalized_x, normalized_y)));
+                    shell.publish(message(
+                        *action,
+                        mime_types.clone(),
+                        (normalized_x, normalized_y),
+                    ));
                     return event::Status::Captured;
                 }
             } else {
                 state.hovered = false;
             }
         }
-        Event::PlatformSpecific(PlatformSpecific::Wayland(event::wayland::Event::DndOffer(DndOfferEvent::Leave))) => {
+        Event::PlatformSpecific(PlatformSpecific::Wayland(
+            event::wayland::Event::DndOffer(DndOfferEvent::Leave),
+        )) => {
             state.hovered = false;
             state.dnd = None;
             if let Some(message) = widget.on_exit.clone() {
@@ -332,7 +365,9 @@ fn update<Message: Clone, Renderer>(
                 return event::Status::Captured;
             }
         }
-        Event::PlatformSpecific(PlatformSpecific::Wayland(event::wayland::Event::DndOffer(DndOfferEvent::DropPerformed))) => {
+        Event::PlatformSpecific(PlatformSpecific::Wayland(
+            event::wayland::Event::DndOffer(DndOfferEvent::DropPerformed),
+        )) => {
             state.hovered = false;
             state.dnd = None;
             if let Some(message) = widget.on_drop.clone() {
@@ -340,13 +375,19 @@ fn update<Message: Clone, Renderer>(
                 return event::Status::Captured;
             }
         }
-        Event::PlatformSpecific(PlatformSpecific::Wayland(event::wayland::Event::DndOffer(DndOfferEvent::ReadData(read_data)))) => {
+        Event::PlatformSpecific(PlatformSpecific::Wayland(
+            event::wayland::Event::DndOffer(DndOfferEvent::ReadData(read_data)),
+        )) => {
             if let Some(message) = widget.on_read_data.as_ref() {
                 shell.publish(message(read_data.clone()));
                 return event::Status::Captured;
             }
         }
-        Event::PlatformSpecific(PlatformSpecific::Wayland(event::wayland::Event::DndOffer(DndOfferEvent::SourceActions(actions)))) => {
+        Event::PlatformSpecific(PlatformSpecific::Wayland(
+            event::wayland::Event::DndOffer(DndOfferEvent::SourceActions(
+                actions,
+            )),
+        )) => {
             match state.dnd.as_mut() {
                 Some((action, _)) => *action = *actions,
                 None => state.dnd = Some((*actions, vec![])),
@@ -356,7 +397,11 @@ fn update<Message: Clone, Renderer>(
                 return event::Status::Captured;
             }
         }
-        Event::PlatformSpecific(PlatformSpecific::Wayland(event::wayland::Event::DndOffer(DndOfferEvent::SelectedAction(action)))) => {
+        Event::PlatformSpecific(PlatformSpecific::Wayland(
+            event::wayland::Event::DndOffer(DndOfferEvent::SelectedAction(
+                action,
+            )),
+        )) => {
             match state.dnd.as_mut() {
                 Some((dnd_action, _)) => *dnd_action = *action,
                 None => state.dnd = Some((*action, vec![])),
@@ -366,7 +411,7 @@ fn update<Message: Clone, Renderer>(
                 return event::Status::Captured;
             }
         }
-        _ => {} 
+        _ => {}
     };
     event::Status::Ignored
 }

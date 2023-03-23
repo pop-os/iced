@@ -64,9 +64,10 @@ impl Application for Todos {
     fn new(_flags: ()) -> (Todos, Command<Message>) {
         (
             Todos::Loading,
-            Command::batch(vec![
-                Command::perform(SavedState::load(), Message::Loaded),
-            ]),
+            Command::batch(vec![Command::perform(
+                SavedState::load(),
+                Message::Loaded,
+            )]),
         )
     }
 

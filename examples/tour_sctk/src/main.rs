@@ -7,7 +7,7 @@ use iced::widget::{
     scrollable, slider, text, text_input, toggler, vertical_space,
 };
 use iced::widget::{Button, Column, Container, Slider};
-use iced::{Color, Element, Length, Renderer, Sandbox, Settings, window};
+use iced::{window, Color, Element, Length, Renderer, Sandbox, Settings};
 
 pub fn main() -> iced::Result {
     env_logger::init();

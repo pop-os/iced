@@ -8,6 +8,7 @@ use crate::{
 };
 use iced_graphics::Point;
 use iced_native::{
+    command::platform_specific::wayland::data_device::DndIcon,
     event::{
         wayland::{self, LayerEvent, PopupEvent, ReadData},
         PlatformSpecific,
@@ -45,7 +46,7 @@ use std::{
     time::Instant,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum IcedSctkEvent<T> {
     /// Emitted when new events arrive from the OS to be processed.
     ///
@@ -103,6 +104,9 @@ pub enum IcedSctkEvent<T> {
     /// This is irreversible - if this event is emitted, it is guaranteed to be the last event that
     /// gets emitted. You generally want to treat this as an "do on quit" event.
     LoopDestroyed,
+
+    /// Dnd source created with an icon surface.
+    DndSurfaceCreated(WlSurface, DndIcon),
 }
 
 #[derive(Debug, Clone)]
@@ -202,8 +206,6 @@ pub enum DataSourceEvent {
         /// The pipe to write the data to
         fd: Arc<Mutex<OwnedFd>>,
     },
-    /// Dnd source created with an icon surface.
-    DndSurfaceCreated(WlSurface, SurfaceId),
 }
 
 #[derive(Debug, Clone)]
@@ -464,7 +466,7 @@ impl SctkEvent {
                                 ),
                             ))
                         }
-                        SurfaceIdWrapper::Dnd(_) => None 
+                        SurfaceIdWrapper::Dnd(_) => None,
                     })
                     .into_iter()
                     .chain([iced_native::Event::PlatformSpecific(
@@ -505,7 +507,7 @@ impl SctkEvent {
                                 ),
                             ))
                         }
-                        SurfaceIdWrapper::Dnd(_) => None
+                        SurfaceIdWrapper::Dnd(_) => None,
                     })
                     .into_iter()
                     .chain([iced_native::Event::PlatformSpecific(
@@ -627,8 +629,16 @@ impl SctkEvent {
                                 iced_native::Event::Window(
                                     id.inner(),
                                     window::Event::Resized {
-                                        width: configure.new_size.0.unwrap().get(),
-                                        height: configure.new_size.1.unwrap().get(),
+                                        width: configure
+                                            .new_size
+                                            .0
+                                            .unwrap()
+                                            .get(),
+                                        height: configure
+                                            .new_size
+                                            .1
+                                            .unwrap()
+                                            .get(),
                                     },
                                 )
                             })
@@ -888,8 +898,6 @@ impl SctkEvent {
                     .into_iter()
                     .collect()
                 }
-                DataSourceEvent::DndSurfaceCreated(_, _) => Default::default()
-                
             },
         }
     }

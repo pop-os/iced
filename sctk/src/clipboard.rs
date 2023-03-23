@@ -1,9 +1,7 @@
 //! Access the clipboard.
 pub use iced_native::clipboard::Action;
 
-use crate::{
-    command::{self, Command},
-};
+use crate::command::{self, Command};
 use std::error::Error;
 use std::ffi::c_void;
 use std::sync::{Arc, Mutex};
@@ -54,7 +52,7 @@ impl Clipboard {
     pub fn write(&mut self, contents: String) {
         match &mut self.state {
             State::Connected(clipboard) => {
-                clipboard.lock().unwrap().store(contents)                
+                clipboard.lock().unwrap().store(contents)
             }
             State::Unavailable => {}
         }

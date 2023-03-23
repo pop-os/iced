@@ -1,7 +1,9 @@
-use iced::{Application, Subscription, Element, widget, wayland::{InitialSurface}, Theme, Command, window};
+use iced::{
+    wayland::InitialSurface, widget, window, Application, Command, Element,
+    Subscription, Theme,
+};
 
-fn main() {
-}
+fn main() {}
 
 #[derive(Debug, Clone)]
 pub struct DndTest {
@@ -52,8 +54,7 @@ impl Application for DndTest {
     }
 
     fn view(&self, _: window::Id) -> Element<Self::Message> {
-        widget::Text::new(&self.current_text)
-            .into()
+        widget::Text::new(&self.current_text).into()
     }
 
     fn close_requested(&self, id: window::Id) -> Self::Message {

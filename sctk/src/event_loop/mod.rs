@@ -5,28 +5,31 @@ pub mod state;
 use std::{
     collections::HashMap,
     fmt::Debug,
-    time::{Duration, Instant},
     num::NonZeroU32,
     sync::{Arc, Mutex},
+    time::{Duration, Instant},
 };
 
 use crate::{
     application::Event,
     sctk_event::{
-        IcedSctkEvent, LayerSurfaceEventVariant, PopupEventVariant, SctkEvent,
-        StartCause, WindowEventVariant, DndOfferEvent, SelectionOfferEvent, DataSourceEvent
+        DataSourceEvent, DndOfferEvent, IcedSctkEvent,
+        LayerSurfaceEventVariant, PopupEventVariant, SctkEvent,
+        SelectionOfferEvent, StartCause, WindowEventVariant,
     },
     settings,
 };
-use sctk::data_device_manager::data_source::DragSource;
-use iced_native::{command::platform_specific::{
+use iced_native::command::platform_specific::{
     self,
     wayland::{
-        layer_surface::SctkLayerSurfaceSettings, window::SctkWindowSettings,
+        data_device::DndIcon, layer_surface::SctkLayerSurfaceSettings,
+        window::SctkWindowSettings,
     },
-}};
+};
+use sctk::data_device_manager::data_source::DragSource;
 use sctk::{
     compositor::CompositorState,
+    data_device_manager::DataDeviceManagerState,
     output::OutputState,
     reexports::{
         calloop::{self, EventLoop},
@@ -42,13 +45,13 @@ use sctk::{
         xdg::{XdgShell, XdgSurface},
         WaylandSurface,
     },
-    shm::Shm, data_device_manager::DataDeviceManagerState,
+    shm::Shm,
 };
 use wayland_backend::{client::WaylandError, io_lifetimes::AsFd};
 
 use self::{
     control_flow::ControlFlow,
-    state::{LayerSurfaceCreationError, SctkState, Dnd},
+    state::{Dnd, LayerSurfaceCreationError, SctkState},
 };
 
 // impl SctkSurface {
@@ -147,7 +150,10 @@ where
                 xdg_shell_state: XdgShell::bind(&globals, &qh)
                     .expect("xdg shell is not available"),
                 layer_shell: LayerShell::bind(&globals, &qh).ok(),
-                data_device_manager_state: DataDeviceManagerState::bind(&globals, &qh).expect("data device manager is not available"),
+                data_device_manager_state: DataDeviceManagerState::bind(
+                    &globals, &qh,
+                )
+                .expect("data device manager is not available"),
 
                 queue_handle: qh,
                 loop_handle,
@@ -500,7 +506,6 @@ where
 
                                 pending_redraws.push(layer_surface.surface.wl_surface().id());
                             }
-                            
                         },
                         platform_specific::wayland::layer_surface::Action::Destroy(id) => {
                             if let Some(i) = self.state.layer_surfaces.iter().position(|l| l.id == id) {
@@ -827,12 +832,10 @@ where
                                     Some(s) => s.clone(),
                                     None => continue,
                                 };
-
-                                
                                 let device = match self.state.seats.get(0) {
                                     Some(s) => &s.data_device,
                                     None => continue,
-                                }; 
+                                };
                                 let icon_surface =  if let Some(icon_id) = icon_id{
                                     let wl_surface = self.state.compositor_state.create_surface(qh);
                                     DragSource::start_internal_drag(device, &origin, Some(&wl_surface), serial);
@@ -841,7 +844,6 @@ where
                                     DragSource::start_internal_drag(device, &origin, None, serial);
                                     None
                                 };
-
                                 self.state.dnd = Some(Dnd {
                                     origin_id,
                                     icon_surface,
@@ -849,7 +851,6 @@ where
                                     source: None,
                                     pending_requests: Vec::new(),
                                 });
- 
                             }
                             platform_specific::wayland::data_device::Action::StartDnd { mime_types, actions, origin_id, icon_id } => {
                                 let qh = &self.state.queue_handle.clone();
@@ -873,24 +874,36 @@ where
                                 .unwrap_or_else(|| self.state.popups.iter().find(|p| p.data.id == origin_id).map(|p| p.popup.wl_surface()))) {
                                     Some(s) => s.clone(),
                                     None => continue,
-                                    
-                                    };
-
-                                
+                                };
                                 let device = match self.state.seats.get(0) {
                                     Some(s) => &s.data_device,
                                     None => continue,
-                                }; 
+                                };
                                 let source = self.state.data_device_manager_state.create_drag_and_drop_source(qh, mime_types.iter().map(|s| s.as_str()).collect::<Vec<_>>(), actions);
                                 let icon_surface =  if let Some(icon_id) = icon_id{
+                                    let icon_native_id = match &icon_id {
+                                        DndIcon::Custom(icon_id) => icon_id.clone(),
+                                        DndIcon::Widget(icon_id, _) => icon_id.clone(),
+                                    };
                                     let wl_surface = self.state.compositor_state.create_surface(qh);
                                     source.start_drag(device, &origin, Some(&wl_surface), serial);
+                                    sticky_exit_callback(
+                                        IcedSctkEvent::DndSurfaceCreated(
+                                                    wl_surface.clone(),
+                                                    icon_id)
+                                                ,
+                                            &self.state,
+                                            &mut control_flow,
+                                            &mut callback
+                                    );
+                                   Some((wl_surface, icon_native_id))
                                     // sticky_exit_callback(IcedSctkEvent::SctkEvent(SctkEvent::DataSource(DataSourceEvent::DndSurfaceCreated(wl_surface.clone(), icon_id))),
                                         // &self.stateand_then,
                                 } else {
-                                    todo!()
+                                    source.start_drag(device, &origin, None, serial);
+                                    None
                                 };
-                                 
+                                self.state.dnd = Some(Dnd { origin_id, origin, source: Some(source), icon_surface, pending_requests: Vec::new() });
                             },
                             platform_specific::wayland::data_device::Action::DndFinished => {
                                 if let Some(offer) = self.state.dnd_offer.take() {

@@ -3,7 +3,7 @@ use sctk::{
     reexports::client::protocol::wl_data_device_manager::DndAction,
 };
 use std::{
-    os::fd::{OwnedFd, RawFd, AsRawFd},
+    os::fd::{AsRawFd, OwnedFd, RawFd},
     sync::{Arc, Mutex},
 };
 
@@ -63,14 +63,8 @@ pub struct ReadData {
 
 impl ReadData {
     /// Create a new ReadData
-    pub fn new(
-        mime_type: String,
-        fd: Arc<Mutex<ReadPipe>>,
-    ) -> Self {
-        Self {
-            mime_type,
-            fd,
-        }
+    pub fn new(mime_type: String, fd: Arc<Mutex<ReadPipe>>) -> Self {
+        Self { mime_type, fd }
     }
 }
 
@@ -108,20 +102,15 @@ pub struct WriteData {
 
 impl WriteData {
     /// Create a new WriteData
-    pub fn new(
-        mime_type: String,
-        fd: Arc<Mutex<OwnedFd>>,
-    ) -> Self {
-        Self {
-            mime_type,
-            fd,
-        }
+    pub fn new(mime_type: String, fd: Arc<Mutex<OwnedFd>>) -> Self {
+        Self { mime_type, fd }
     }
 }
 
 impl PartialEq for WriteData {
     fn eq(&self, other: &Self) -> bool {
-        self.fd.lock().unwrap().as_raw_fd() == other.fd.lock().unwrap().as_raw_fd()
+        self.fd.lock().unwrap().as_raw_fd()
+            == other.fd.lock().unwrap().as_raw_fd()
     }
 }
 
@@ -129,7 +118,8 @@ impl Eq for WriteData {}
 
 impl PartialEq for ReadData {
     fn eq(&self, other: &Self) -> bool {
-        self.fd.lock().unwrap().as_raw_fd() == other.fd.lock().unwrap().as_raw_fd()
+        self.fd.lock().unwrap().as_raw_fd()
+            == other.fd.lock().unwrap().as_raw_fd()
     }
 }
 

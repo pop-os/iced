@@ -64,7 +64,8 @@ where
     padding: Padding,
     size: Option<u16>,
     on_change: Box<dyn Fn(String) -> Message + 'a>,
-    on_paste: Option<Box<dyn Fn(String) -> Message + 'a>>,
+    on_start_dnd: Option<Box<dyn Fn(State) -> Message + 'a>>,
+    dnd_icon: bool,
     on_submit: Option<Message>,
     style: <Renderer::Theme as StyleSheet>::Style,
 }
@@ -94,8 +95,9 @@ where
             width: Length::Fill,
             padding: Padding::new(5),
             size: None,
+            dnd_icon: false,
             on_change: Box::new(on_change),
-            on_paste: None,
+            on_start_dnd: None,
             on_submit: None,
             style: Default::default(),
         }
@@ -113,13 +115,13 @@ where
         self
     }
 
-    /// Sets the message that should be produced when some text is pasted into
-    /// the [`TextInput`].
-    pub fn on_paste(
+    /// Sets the on_start_dnd handler of the [`TextInput`].
+    pub fn on_start_dnd(
         mut self,
-        on_paste: impl Fn(String) -> Message + 'a,
-    ) -> Self {
-        self.on_paste = Some(Box::new(on_paste));
+        on_start_dnd: impl Fn(State) -> Message + 'a,
+    ) -> Self
+where {
+        self.on_start_dnd = Some(Box::new(on_start_dnd));
         self
     }
 
@@ -161,6 +163,12 @@ where
         style: impl Into<<Renderer::Theme as StyleSheet>::Style>,
     ) -> Self {
         self.style = style.into();
+        self
+    }
+
+    /// Sets the mode of this [`TextInput`] to be a drag and drop icon.
+    pub fn dnd_icon(mut self, dnd_icon: bool) -> Self {
+        self.dnd_icon = dnd_icon;
         self
     }
 
@@ -258,7 +266,7 @@ where
             &self.font,
             self.is_secure,
             self.on_change.as_ref(),
-            self.on_paste.as_deref(),
+            self.on_start_dnd.as_deref(),
             &self.on_submit,
             || tree.state.downcast_mut::<State>(),
         )
@@ -410,7 +418,7 @@ pub fn update<'a, Message, Renderer>(
     font: &Renderer::Font,
     is_secure: bool,
     on_change: &dyn Fn(String) -> Message,
-    on_paste: Option<&dyn Fn(String) -> Message>,
+    on_start_dnd: Option<&dyn Fn(State) -> Message>,
     on_submit: &Option<Message>,
     state: impl FnOnce() -> &'a mut State,
 ) -> event::Status
@@ -694,11 +702,7 @@ where
 
                             editor.paste(content.clone());
 
-                            let message = if let Some(paste) = &on_paste {
-                                (paste)(editor.contents())
-                            } else {
-                                (on_change)(editor.contents())
-                            };
+                            let message = (on_change)(editor.contents());
                             shell.publish(message);
 
                             state.is_pasting = Some(content);

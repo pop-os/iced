@@ -28,7 +28,8 @@ where
             variant: SeatEventVariant::New,
             id: seat.clone(),
         });
-        let data_device = self.data_device_manager_state.get_data_device(qh, &seat);
+        let data_device =
+            self.data_device_manager_state.get_data_device(qh, &seat);
         self.seats.push(SctkSeat {
             seat,
             kbd: None,
@@ -58,7 +59,9 @@ where
                     kbd: None,
                     ptr: None,
                     touch: None,
-                    data_device: self.data_device_manager_state.get_data_device(qh, &seat),
+                    data_device: self
+                        .data_device_manager_state
+                        .get_data_device(qh, &seat),
                     modifiers: Modifiers::default(),
                     kbd_focus: None,
                     ptr_focus: None,

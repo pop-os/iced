@@ -1,23 +1,27 @@
 use crate::{
+    clipboard::Clipboard,
     commands::{layer_surface::get_layer_surface, window::get_window},
     error::{self, Error},
     event_loop::{control_flow::ControlFlow, proxy, SctkEventLoop},
     sctk_event::{
-        IcedSctkEvent, KeyboardEventVariant, LayerSurfaceEventVariant,
-        PopupEventVariant, SctkEvent, DataSourceEvent,
+        DataSourceEvent, IcedSctkEvent, KeyboardEventVariant,
+        LayerSurfaceEventVariant, PopupEventVariant, SctkEvent,
     },
-    settings, Command, Debug, Executor, Runtime, Size, Subscription, clipboard::Clipboard,
+    settings, Command, Debug, Executor, Runtime, Size, Subscription,
 };
 use float_cmp::approx_eq;
 use futures::{channel::mpsc, task, Future, FutureExt, StreamExt};
 use iced_native::{
     application::{self, StyleSheet},
     clipboard::{self, Null},
-    command::platform_specific::{self, wayland::popup},
+    command::platform_specific::{
+        self,
+        wayland::{data_device::DndIcon, popup},
+    },
     event::Status,
     layout::Limits,
     mouse::{self, Interaction},
-    widget::{operation, Tree},
+    widget::{self, operation, Tree},
     Element, Renderer, Widget,
 };
 
@@ -25,7 +29,7 @@ use sctk::{
     reexports::client::{protocol::wl_surface::WlSurface, Proxy},
     seat::{keyboard::Modifiers, pointer::PointerEventKind},
 };
-use std::{collections::HashMap, hash::Hash, marker::PhantomData, ffi::c_void};
+use std::{collections::HashMap, ffi::c_void, hash::Hash, marker::PhantomData};
 use wayland_backend::client::ObjectId;
 
 use iced_graphics::{
@@ -647,46 +651,86 @@ where
                             }
                         })
                     }
-                    SctkEvent::DataSource(DataSourceEvent::DndSurfaceCreated(wl_surface, native_id)) => {
-                        let id = wl_surface.id();
-                        let e = application.view(native_id);
-                        let _state = Widget::state(e.as_widget());
-                        e.as_widget().diff(&mut Tree::empty());
-                        let node = Widget::layout(e.as_widget(), &renderer, &Limits::NONE);
-                        let bounds = node.bounds();
-                        let w = bounds.width.ceil() as u32;
-                        let h = bounds.height.ceil() as u32;
-                        auto_size_surfaces.insert(SurfaceIdWrapper::LayerSurface(native_id), (w, h, Limits::NONE, false));
-
-                        surface_ids.insert(id, SurfaceIdWrapper::Dnd(native_id));
-                        compositor_surfaces.entry(native_id).or_insert_with(|| {
-                                 let mut wrapper = SurfaceDisplayWrapper {
-                                     comp_surface: None,
-                                     backend: backend.clone(),
-                                     wl_surface
-                                 };
-                                 let c_surface = compositor.create_surface(&wrapper);
-                                 wrapper.comp_surface.replace(c_surface);
-                                 wrapper
-                            });
-                        let mut state = State::new(&application, SurfaceIdWrapper::Dnd(native_id));
-                        state.set_logical_size(w as f64, h as f64);
-                        let user_interface = build_user_interface(
-                            &application,
-                            user_interface::Cache::default(),
-                            &mut renderer,
-                            state.logical_size(),
-                            &mut debug,
-                            SurfaceIdWrapper::Dnd(native_id),
-                            &mut auto_size_surfaces,
-                            &mut ev_proxy
-                        );
-                        states.insert(native_id, state);
-                        interfaces.insert(native_id, user_interface);
-
-                    }
                     _ => {}
                 }
+            }
+            IcedSctkEvent::DndSurfaceCreated(wl_surface, dnd_icon) => {
+                // if the surface is meant to be drawn as a custom widget by the
+                // application, we should treat it like any other surfaces
+                //
+                // if the surface is meant to be drawn by a widget that implements
+                // draw_dnd_icon, we should mark it and not pass it to the view method
+                // of the Application
+                //
+                // Dnd Surfaces are only drawn once
+
+                let id = wl_surface.id();
+                let (native_id, e) = match dnd_icon {
+                    DndIcon::Custom(id) => {
+                        let e = application.view(id);
+                        (id, e)
+                    }
+                    DndIcon::Widget(id, widget_state) => {
+                        let e = application.view(id);
+                        let mut tree = Tree {
+                            tag: e.as_widget().tag(),
+                            state: widget::tree::State::Some(widget_state),
+                            children: vec![], // TODO somehow include the child state
+                                              // eventually? They are not guaranteed to be Send though :/
+                        };
+                        (id, e)
+                    }
+                };
+                e.as_widget().diff(&mut tree);
+                let node =
+                    Widget::layout(e.as_widget(), &renderer, &Limits::NONE);
+                let bounds = node.bounds();
+                let w = bounds.width.ceil() as u32;
+                let h = bounds.height.ceil() as u32;
+
+                let mut wrapper = SurfaceDisplayWrapper {
+                    comp_surface: None,
+                    backend: backend.clone(),
+                    wl_surface,
+                };
+                let mut c_surface = compositor.create_surface(&wrapper);
+                let mut state =
+                    State::new(&application, SurfaceIdWrapper::Dnd(native_id));
+                state.set_logical_size(w as f64, h as f64);
+                let mut user_interface = build_user_interface(
+                    &application,
+                    user_interface::Cache::default(),
+                    &mut renderer,
+                    state.logical_size(),
+                    &mut debug,
+                    SurfaceIdWrapper::Dnd(native_id),
+                    &mut auto_size_surfaces,
+                    &mut ev_proxy,
+                );
+
+                // just draw here immediately and never again for dnd icons
+                let new_mouse_interaction = user_interface.draw(
+                    &mut renderer,
+                    state.theme(),
+                    &renderer::Style {
+                        text_color: state.text_color(),
+                    },
+                    state.cursor_position(),
+                );
+                let _ = compositor.present(
+                    &mut renderer,
+                    &mut c_surface,
+                    state.viewport(),
+                    state.background_color(),
+                    &debug.overlay(),
+                );
+                wrapper.comp_surface.replace(c_surface);
+                surface_ids.insert(id, SurfaceIdWrapper::Dnd(native_id));
+                compositor_surfaces
+                    .entry(native_id)
+                    .or_insert_with(move || wrapper);
+                states.insert(native_id, state);
+                interfaces.insert(native_id, user_interface);
             }
             IcedSctkEvent::MainEventsCleared => {
                 let mut i = 0;
@@ -749,6 +793,9 @@ where
                 } else {
                     let mut needs_redraw = false;
                     for (object_id, surface_id) in &surface_ids {
+                        if matches!(surface_id, SurfaceIdWrapper::Dnd(_)) {
+                            continue;
+                        }
                         let mut filtered = Vec::with_capacity(events.len());
 
                         let mut i = 0;
@@ -898,11 +945,14 @@ where
                     Some(wrapper),
                     Some(mut user_interface),
                     Some(state),
-                )) = surface_ids.get(&object_id).map(|id| {
+                )) = surface_ids.get(&object_id).and_then(|id| {
+                    if matches!(id, SurfaceIdWrapper::Dnd(_)) {
+                        return None;
+                    }
                     let surface = compositor_surfaces.get_mut(&id.inner());
                     let interface = interfaces.remove(&id.inner());
                     let state = states.get_mut(&id.inner());
-                    (*id, surface, interface, state)
+                    Some((*id, surface, interface, state))
                 }) {
                     debug.render_started();
                     let comp_surface = match wrapper.comp_surface.as_mut() {
@@ -987,7 +1037,7 @@ pub enum SurfaceIdWrapper {
     LayerSurface(SurfaceId),
     Window(SurfaceId),
     Popup(SurfaceId),
-    Dnd(SurfaceId)
+    Dnd(SurfaceId),
 }
 
 impl SurfaceIdWrapper {
@@ -1379,7 +1429,6 @@ fn run_command<A, E>(
                         let h = bounds.height.ceil() as u32;
                         auto_size_surfaces.insert(SurfaceIdWrapper::LayerSurface(builder.id), (w, h, builder.size_limits, false));
                         builder.size = Some((Some(bounds.width as u32), Some(bounds.height as u32)));
-
                     }
                     proxy.send_event(Event::LayerSurface(platform_specific::wayland::layer_surface::Action::LayerSurface {builder, _phantom}));
                 } else {

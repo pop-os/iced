@@ -3,9 +3,12 @@
 use iced_native::{
     command::{
         self,
-        platform_specific::{self, wayland},
+        platform_specific::{
+            self,
+            wayland::{self, data_device::DndIcon},
+        },
     },
-    widget, Command, window
+    widget, window, Command,
 };
 use sctk::reexports::client::protocol::wl_data_device_manager::DndAction;
 
@@ -69,7 +72,7 @@ pub fn start_drag<Message>(
     mime_types: Vec<String>,
     actions: DndAction,
     origin_id: window::Id,
-    icon_id: Option<window::Id>,
+    icon_id: Option<DndIcon>,
 ) -> Command<Message> {
     Command::single(command::Action::PlatformSpecific(
         platform_specific::Action::Wayland(wayland::Action::DataDevice(

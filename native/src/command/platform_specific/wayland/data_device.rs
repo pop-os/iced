@@ -1,10 +1,12 @@
-use crate::{widget, window};
+use crate::{
+    widget::{self, tree::State, Tree},
+    window, Element,
+};
 use core::fmt;
 use iced_futures::MaybeSend;
 use sctk::reexports::client::protocol::wl_data_device_manager::DndAction;
-use std::marker::PhantomData;
+use std::{any::Any, marker::PhantomData};
 
-#[derive(Clone)]
 /// DataDevice Action
 pub enum Action<T> {
     /// Indicate that you are setting the selection and will respond to events
@@ -42,7 +44,7 @@ pub enum Action<T> {
         /// The window id of the window that is the source of the drag.
         origin_id: window::Id,
         /// An optional window id for the cursor icon surface.
-        icon_id: Option<window::Id>,
+        icon_id: Option<DndIcon>,
     },
     /// Set accepted and preferred drag and drop actions.
     SetActions {
@@ -66,6 +68,15 @@ pub enum Action<T> {
     DndCancelled,
 }
 
+/// DndIcon
+#[derive(Debug)]
+pub enum DndIcon {
+    /// The id of the widget which will draw the dnd icon.
+    Widget(window::Id, Box<dyn Send + Any>),
+    /// A custom icon.
+    Custom(window::Id),
+}
+
 impl<T> Action<T> {
     /// Maps the output of a window [`Action`] using the provided closure.
     pub fn map<A>(
@@ -87,13 +98,9 @@ impl<T> Action<T> {
             Action::RequestSelection { id, mime_type } => {
                 Action::RequestSelection { id, mime_type }
             }
-            Action::StartInternalDnd {
-                origin_id,
-                icon_id,
-            } => Action::StartInternalDnd {
-                origin_id,
-                icon_id,
-            },
+            Action::StartInternalDnd { origin_id, icon_id } => {
+                Action::StartInternalDnd { origin_id, icon_id }
+            }
             Action::StartDnd {
                 mime_types,
                 actions,
@@ -134,13 +141,12 @@ impl<T> fmt::Debug for Action<T> {
                 f.debug_tuple("SetSelection").field(mime_types).finish()
             }
             Self::UnsetSelection => f.debug_tuple("UnsetSelection").finish(),
-            Self::RequestSelection { mime_type, id } => {
-                f.debug_tuple("RequestSelection").field(mime_type).field(id).finish()
-            }
-            Self::StartInternalDnd {
-                origin_id,
-                icon_id,
-            } => f
+            Self::RequestSelection { mime_type, id } => f
+                .debug_tuple("RequestSelection")
+                .field(mime_type)
+                .field(id)
+                .finish(),
+            Self::StartInternalDnd { origin_id, icon_id } => f
                 .debug_tuple("StartInternalDnd")
                 .field(origin_id)
                 .field(icon_id)
@@ -149,7 +155,7 @@ impl<T> fmt::Debug for Action<T> {
                 mime_types,
                 actions,
                 origin_id,
-                icon_id
+                icon_id,
             } => f
                 .debug_tuple("StartDnd")
                 .field(mime_types)

@@ -2,16 +2,15 @@ use std::fmt::Debug;
 
 use iced_futures::MaybeSend;
 
+/// data device Actions
+pub mod data_device;
 /// layer surface actions
 pub mod layer_surface;
 /// popup actions
 pub mod popup;
 /// window actions
 pub mod window;
-/// data device Actions
-pub mod data_device;
 
-#[derive(Clone)]
 /// Platform specific actions defined for wayland
 pub enum Action<T> {
     /// LayerSurface Actions

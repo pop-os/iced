@@ -11,7 +11,11 @@ use sctk::{
         Connection, QueueHandle,
     },
 };
-use std::{fmt::Debug, os::unix::io::AsRawFd, sync::{Arc, Mutex}};
+use std::{
+    fmt::Debug,
+    os::unix::io::AsRawFd,
+    sync::{Arc, Mutex},
+};
 
 impl<T> DataSourceHandler for SctkState<T> {
     fn accept_mime(
@@ -35,14 +39,25 @@ impl<T> DataSourceHandler for SctkState<T> {
     ) {
         let fd = Arc::new(Mutex::new(fd));
         // XXX: the user should send a Finish action when they are done sending the data.
-        if self.selection_source.as_ref().map(|s| s.inner() == source).unwrap_or(false) {
+        if self
+            .selection_source
+            .as_ref()
+            .map(|s| s.inner() == source)
+            .unwrap_or(false)
+        {
             self.sctk_events.push(SctkEvent::DataSource(
                 DataSourceEvent::SendSelectionData {
                     mime_type: mime,
                     fd,
                 },
             ));
-        } else if self.dnd.as_ref().and_then(|o| o.source.as_ref()).map(|s| s.inner() == source).unwrap_or(false) {
+        } else if self
+            .dnd
+            .as_ref()
+            .and_then(|o| o.source.as_ref())
+            .map(|s| s.inner() == source)
+            .unwrap_or(false)
+        {
             self.sctk_events.push(SctkEvent::DataSource(
                 DataSourceEvent::SendDndData {
                     mime_type: mime,

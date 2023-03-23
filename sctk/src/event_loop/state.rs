@@ -14,6 +14,7 @@ use iced_native::{
     command::platform_specific::{
         self,
         wayland::{
+            data_device::DndIcon,
             layer_surface::{IcedMargin, IcedOutput, SctkLayerSurfaceSettings},
             popup::SctkPopupSettings,
             window::SctkWindowSettings,
@@ -139,7 +140,7 @@ pub struct Dnd<T> {
     pub(crate) origin_id: iced_native::window::Id,
     pub(crate) origin: WlSurface,
     pub(crate) source: Option<DragSource>,
-    pub(crate) icon_surface: Option<(WlSurface, iced_native::window::Id)>,
+    pub(crate) icon_surface: Option<(WlSurface, window::Id)>,
     pub(crate) pending_requests:
         Vec<platform_specific::wayland::data_device::Action<T>>,
 }

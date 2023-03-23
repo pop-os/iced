@@ -1,21 +1,21 @@
+mod data_device;
 mod layer;
 mod output;
 mod popup;
 mod seat;
 mod window;
-mod data_device;
 
 use crate::window::Id;
 use sctk::reexports::client::protocol::{
     wl_output::WlOutput, wl_seat::WlSeat, wl_surface::WlSurface,
 };
 
+pub use data_device::*;
 pub use layer::*;
 pub use output::*;
 pub use popup::*;
 pub use seat::*;
 pub use window::*;
-pub use data_device::*;
 
 /// wayland events
 #[derive(Debug, Clone, PartialEq)]
