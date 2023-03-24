@@ -258,11 +258,14 @@ where
 
             let bounds = limits.max();
 
-            let (width, height) =
-                renderer.measure(&self.value.to_string(), size, self.font.clone(), bounds);
+            let (width, height) = renderer.measure(
+                &self.value.to_string(),
+                size,
+                self.font.clone(),
+                bounds,
+            );
 
             let size = limits.resolve(Size::new(width, height));
-            dbg!(size);
             layout::Node::with_children(size, vec![layout::Node::new(size)])
         } else {
             layout(renderer, limits, self.width, self.padding, self.size)
@@ -305,6 +308,8 @@ where
             self.on_change.as_ref(),
             #[cfg(feature = "wayland")]
             self.on_start_dnd.as_deref(),
+            #[cfg(feature = "wayland")]
+            self.dnd_icon,
             &self.on_submit,
             || tree.state.downcast_mut::<State>(),
         )
@@ -460,6 +465,7 @@ pub fn update<'a, Message, Renderer>(
     #[cfg(feature = "wayland")] on_start_dnd: Option<
         &dyn Fn(State, Vec<String>, DndAction) -> Message,
     >,
+    #[cfg(feature = "wayland")] dnd_icon: bool,
     on_submit: &Option<Message>,
     state: impl FnOnce() -> &'a mut State,
 ) -> event::Status
@@ -467,6 +473,11 @@ where
     Message: Clone,
     Renderer: text::Renderer,
 {
+    // Dnd Icon version of the widget does not handle any events.
+    // TODO maybe the TextInputDndIcon could be a separate widget altogether?
+    if dnd_icon {
+        return event::Status::Ignored;
+    }
     match event {
         Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left))
         | Event::Touch(touch::Event::FingerPressed { .. }) => {
@@ -538,7 +549,9 @@ where
                             };
 
                             if selection_bounds.contains(cursor_position) {
-                                state.dragging_state = Some(DraggingState::Dnd);
+                                state.dragging_state = Some(
+                                    DraggingState::Dnd(DndAction::empty()),
+                                );
                                 shell.publish(on_start_dnd(
                                     state.clone(),
                                     SUPPORTED_MIME_TYPES
@@ -577,7 +590,7 @@ where
                             state.dragging_state = None;
                         }
                     }
-                    (Some(DraggingState::Dnd), _, _) => {
+                    (Some(DraggingState::Dnd(_)), _, _) => {
                         // TODO: should we cancel if this happens?
                         state.dragging_state = None;
                     }
@@ -871,7 +884,7 @@ where
                         state.is_focused = false;
                         state.dragging_state = None;
                         match state.dragging_state.as_ref() {
-                            Some(DraggingState::Dnd) => {
+                            Some(DraggingState::Dnd(_)) => {
                                 // TODO should Dnd be canceled? And should it be canceled in
                                 // iced-sctk instead?
                             }
@@ -928,19 +941,30 @@ where
             )),
         )) => {
             let state = state();
-            if matches!(state.dragging_state, Some(DraggingState::Dnd))
-                && SUPPORTED_MIME_TYPES.contains(&mime_type.as_str())
-            {
-                if let Some(fd) =
-                    fd.lock().ok().and_then(|fd| fd.try_clone().ok())
+            if let Some(DraggingState::Dnd(action)) = state.dragging_state {
+                dbg!(action);
+                if !action.is_empty()
+                    && SUPPORTED_MIME_TYPES.contains(&mime_type.as_str())
                 {
-                    let mut f = File::from(fd);
-                    let _ = f.write_all(
-                        state
-                            .selected_text(value.to_string().as_str())
-                            .unwrap_or_default()
-                            .as_bytes(),
-                    );
+                    if let Some(fd) =
+                        fd.lock().ok().and_then(|fd| fd.try_clone().ok())
+                    {
+                        let mut f = File::from(fd);
+                        let _ = f.write_all(
+                            state
+                                .selected_text(value.to_string().as_str())
+                                .unwrap_or_default()
+                                .as_bytes(),
+                        );
+                        if action.contains(DndAction::Move) {
+                            let mut editor =
+                                Editor::new(value, &mut state.cursor);
+                            editor.delete();
+
+                            let message = (on_change)(editor.contents());
+                            shell.publish(message);
+                        }
+                    }
                 }
             }
         }
@@ -948,8 +972,26 @@ where
             wayland::Event::DataSource(wayland::DataSourceEvent::DndFinished),
         )) => {
             let state = state();
-            if matches!(state.dragging_state, Some(DraggingState::Dnd)) {
+            if matches!(state.dragging_state, Some(DraggingState::Dnd(_))) {
                 state.dragging_state = None;
+            }
+        }
+        Event::PlatformSpecific(PlatformSpecific::Wayland(
+            wayland::Event::DataSource(wayland::DataSourceEvent::Cancelled),
+        )) => {
+            let state = state();
+            if matches!(state.dragging_state, Some(DraggingState::Dnd(_))) {
+                state.dragging_state = None;
+            }
+        }
+        Event::PlatformSpecific(PlatformSpecific::Wayland(
+            wayland::Event::DataSource(
+                wayland::DataSourceEvent::DndActionAccepted(action),
+            ),
+        )) => {
+            let state = state();
+            if let Some(DraggingState::Dnd(_)) = state.dragging_state {
+                state.dragging_state = Some(DraggingState::Dnd(action));
             }
         }
         _ => {}
@@ -960,7 +1002,7 @@ where
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum DraggingState {
     Selection,
-    Dnd,
+    Dnd(DndAction),
 }
 
 /// Draws the [`TextInput`] with the given [`Renderer`], overriding its
@@ -1000,15 +1042,15 @@ pub fn draw<Renderer>(
         theme.active(style)
     };
 
-        renderer.fill_quad(
-            renderer::Quad {
-                bounds,
-                border_radius: appearance.border_radius.into(),
-                border_width: appearance.border_width,
-                border_color: appearance.border_color,
-            },
-            appearance.background,
-        );
+    renderer.fill_quad(
+        renderer::Quad {
+            bounds,
+            border_radius: appearance.border_radius.into(),
+            border_width: appearance.border_width,
+            border_color: appearance.border_color,
+        },
+        appearance.background,
+    );
 
     let mut text = value.to_string();
     let size = size.unwrap_or_else(|| renderer.default_size());

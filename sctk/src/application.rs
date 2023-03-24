@@ -719,7 +719,6 @@ where
                     },
                     state.cursor_position(),
                 );
-                dbg!(state.viewport());
                 let _ = compositor.present(
                     &mut renderer,
                     &mut c_surface,
