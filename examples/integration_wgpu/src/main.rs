@@ -188,7 +188,10 @@ pub fn main() {
                         ),
                         &mut renderer,
                         &iced_wgpu::Theme::Dark,
-                        &renderer::Style { text_color: Color::WHITE },
+                        &renderer::Style {
+                            text_color: Color::WHITE,
+                            scale_factor: 1.0,
+                        },
                         &mut clipboard,
                         &mut debug,
                     );

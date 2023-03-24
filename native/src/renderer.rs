@@ -66,12 +66,15 @@ pub struct Quad {
 pub struct Style {
     /// The text color
     pub text_color: Color,
+    /// The scale factor
+    pub scale_factor: f64,
 }
 
 impl Default for Style {
     fn default() -> Self {
         Style {
             text_color: Color::BLACK,
+            scale_factor: 1.0,
         }
     }
 }

@@ -128,6 +128,7 @@ pub fn main() {
                         &iced_glow::Theme::Dark,
                         &renderer::Style {
                             text_color: Color::WHITE,
+                            scale_factor: 1.0,
                         },
                         &mut clipboard,
                         &mut debug,
