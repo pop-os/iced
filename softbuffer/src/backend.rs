@@ -127,6 +127,15 @@ impl Backend {
 
         (Metrics::new(font_size as f32, line_height as f32), attrs)
     }
+
+    #[cfg(any(feature = "image", feature = "svg"))]
+    pub(crate) fn trim_cache(&self) {
+        #[cfg(feature = "image")]
+        self.raster_cache.borrow_mut().trim(&mut CpuStorage, &mut ());
+
+        #[cfg(feature = "svg")]
+        self.vector_cache.borrow_mut().trim(&mut CpuStorage, &mut ());
+    }
 }
 
 impl iced_graphics::backend::Backend for Backend {

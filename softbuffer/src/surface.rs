@@ -85,6 +85,9 @@ impl Surface {
                         primitive,
                     );
                 }
+                
+                #[cfg(any(feature = "image", feature = "svg"))]
+                backend.trim_cache();
             });
 
             draw_target.pop_clip();
