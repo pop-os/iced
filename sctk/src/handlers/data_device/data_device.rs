@@ -25,6 +25,7 @@ impl<T> DataDeviceHandler for SctkState<T> {
     ) {
         let mime_types = data_device.drag_mime_types();
         let drag_offer = data_device.drag_offer().unwrap();
+        self.dnd_offer = Some(drag_offer.clone());
         self.sctk_events.push(SctkEvent::DndOffer {
             event: DndOfferEvent::Enter {
                 mime_types,
@@ -39,12 +40,12 @@ impl<T> DataDeviceHandler for SctkState<T> {
         &mut self,
         _conn: &Connection,
         _qh: &QueueHandle<Self>,
-        data_device: DataDevice,
+        _data_device: DataDevice,
     ) {
-        let drag_offer = data_device.drag_offer().unwrap();
+        let surface = self.dnd_offer.take().unwrap().surface.clone();
         self.sctk_events.push(SctkEvent::DndOffer {
             event: DndOfferEvent::Leave,
-            surface: drag_offer.surface.clone(),
+            surface
         });
     }
 

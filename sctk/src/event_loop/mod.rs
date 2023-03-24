@@ -853,6 +853,7 @@ where
                                 });
                             }
                             platform_specific::wayland::data_device::Action::StartDnd { mime_types, actions, origin_id, icon_id } => {
+                                println!("start dnd in iced-sctk");
                                 let qh = &self.state.queue_handle.clone();
                                 let seat = match self.state.seats.get(0) {
                                     Some(s) => s,
@@ -887,6 +888,7 @@ where
                                     };
                                     let wl_surface = self.state.compositor_state.create_surface(qh);
                                     source.start_drag(device, &origin, Some(&wl_surface), serial);
+                                    dbg!("sending dnd created event");
                                     sticky_exit_callback(
                                         IcedSctkEvent::DndSurfaceCreated(
                                                     wl_surface.clone(),

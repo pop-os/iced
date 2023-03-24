@@ -688,13 +688,13 @@ where
                 let bounds = node.bounds();
                 let w = bounds.width.ceil() as u32;
                 let h = bounds.height.ceil() as u32;
-
                 let mut wrapper = SurfaceDisplayWrapper {
                     comp_surface: None,
                     backend: backend.clone(),
                     wl_surface,
                 };
                 let mut c_surface = compositor.create_surface(&wrapper);
+                compositor.configure_surface(&mut c_surface, w, h);
                 let mut state =
                     State::new(&application, SurfaceIdWrapper::Dnd(native_id));
                 state.set_logical_size(w as f64, h as f64);
@@ -708,6 +708,7 @@ where
                     &mut auto_size_surfaces,
                     &mut ev_proxy,
                 );
+                state.synchronize(&application);
 
                 // just draw here immediately and never again for dnd icons
                 let new_mouse_interaction = user_interface.draw(
@@ -718,11 +719,12 @@ where
                     },
                     state.cursor_position(),
                 );
+                dbg!(state.viewport());
                 let _ = compositor.present(
                     &mut renderer,
                     &mut c_surface,
                     state.viewport(),
-                    state.background_color(),
+                    Color::WHITE,
                     &debug.overlay(),
                 );
                 wrapper.comp_surface.replace(c_surface);
@@ -1479,6 +1481,9 @@ fn run_command<A, E>(
                 } else {
                     proxy.send_event(Event::Popup(popup_action));
                 }
+            }
+            command::Action::PlatformSpecific(platform_specific::Action::Wayland(platform_specific::wayland::Action::DataDevice(data_device_action))) => {
+                proxy.send_event(Event::DataDevice(data_device_action));
             }
             _ => {}
         }

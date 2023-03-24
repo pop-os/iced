@@ -3,11 +3,13 @@ use iced::event::{self, Event};
 use iced::keyboard;
 use iced::subscription;
 use iced::theme::{self, Theme};
+use iced::wayland::actions::data_device::{self, DndIcon};
 use iced::wayland::actions::popup::SctkPopupSettings;
 use iced::wayland::actions::window::SctkWindowSettings;
+use iced::wayland::data_device::start_drag;
 use iced::wayland::popup::get_popup;
 use iced::wayland::window::get_window;
-use iced::wayland::InitialSurface;
+use iced::wayland::{platform_specific, InitialSurface};
 use iced::widget::{
     self, button, checkbox, column, container, row, scrollable, text,
     text_input, Text,
@@ -17,6 +19,7 @@ use iced::{Color, Command, Font, Length, Settings, Subscription};
 use iced_style::application;
 
 use once_cell::sync::Lazy;
+use sctk::reexports::client::protocol::wl_data_device_manager::DndAction;
 use serde::{Deserialize, Serialize};
 
 static INPUT_ID: Lazy<text_input::Id> = Lazy::new(text_input::Id::unique);
@@ -34,14 +37,23 @@ enum Todos {
     Loaded(State),
 }
 
+#[derive(Debug, Default, Clone)]
+enum DndState {
+    #[default]
+    None,
+    // hold onto text input state and the id of the window being dragged
+    Dragging(text_input::State, window::Id),
+}
+
 #[derive(Debug, Default)]
 struct State {
+    window_id_ctr: u64,
     input_value: String,
     filter: Filter,
     tasks: Vec<Task>,
     dirty: bool,
     saving: bool,
-    drag_state: Option<text_input::State>,
+    dnd_state: DndState,
 }
 
 #[derive(Debug, Clone)]
@@ -54,7 +66,7 @@ enum Message {
     TaskMessage(usize, TaskMessage),
     TabPressed { shift: bool },
     CloseRequested(window::Id),
-    TextInputDragged(text_input::State),
+    TextInputDragged(text_input::State, Vec<String>, DndAction),
 }
 
 impl Application for Todos {
@@ -174,6 +186,27 @@ impl Application for Todos {
                         dbg!(s);
                         std::process::exit(0);
                     }
+                    Message::TextInputDragged(
+                        text_input_state,
+                        mime_types,
+                        actions,
+                    ) => {
+                        println!("Starting drag!");
+                        state.window_id_ctr += 1;
+                        let icon_id = window::Id::new(state.window_id_ctr);
+                        
+                        state.dnd_state =
+                            DndState::Dragging(text_input_state.clone(), icon_id);
+                        start_drag(
+                            mime_types,
+                            actions,
+                            window::Id::new(0),
+                            Some(DndIcon::Widget(
+                                icon_id,
+                                Box::new(text_input_state),
+                            )),
+                        )
+                    }
                     _ => Command::none(),
                 };
 
@@ -210,8 +243,27 @@ impl Application for Todos {
                 input_value,
                 filter,
                 tasks,
+                dnd_state,
                 ..
             }) => {
+                let dnd_id = match dnd_state {
+                    DndState::None => None,
+                    DndState::Dragging(_, id) => Some(id.clone()),
+                };
+                if dnd_id == Some(id) {
+                    println!("drawing the icon");
+                    return text_input(
+                        "What needs to be done?",
+                        input_value,
+                        Message::InputChanged,
+                    )
+                    .id(INPUT_ID.clone())
+                    .padding(15)
+                    .dnd_icon(true)
+                    .size(30)
+                    .width(Length::Units(300))
+                    .into();
+                }
                 let title = text("todos")
                     .width(Length::Fill)
                     .size(100)
@@ -226,7 +278,10 @@ impl Application for Todos {
                 .id(INPUT_ID.clone())
                 .padding(15)
                 .size(30)
-                .on_submit(Message::CreateTask);
+                .on_submit(Message::CreateTask)
+                .on_start_dnd(|state, mime_types, actions| {
+                    Message::TextInputDragged(state, mime_types, actions)
+                });
 
                 let controls = view_controls(tasks, *filter);
                 let filtered_tasks =
