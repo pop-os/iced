@@ -41,6 +41,7 @@ struct State {
     tasks: Vec<Task>,
     dirty: bool,
     saving: bool,
+    drag_state: Option<text_input::State>,
 }
 
 #[derive(Debug, Clone)]
@@ -53,6 +54,7 @@ enum Message {
     TaskMessage(usize, TaskMessage),
     TabPressed { shift: bool },
     CloseRequested(window::Id),
+    TextInputDragged(text_input::State),
 }
 
 impl Application for Todos {

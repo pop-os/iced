@@ -13,6 +13,8 @@ use editor::Editor;
 
 use crate::alignment;
 use crate::event::{self, Event};
+#[cfg(feature = "wayland")]
+use crate::event::{wayland, PlatformSpecific};
 use crate::keyboard;
 use crate::layout;
 use crate::mouse::{self, click};
@@ -64,6 +66,7 @@ where
     padding: Padding,
     size: Option<u16>,
     on_change: Box<dyn Fn(String) -> Message + 'a>,
+    // TODO maybe feature gate this?
     on_start_dnd: Option<Box<dyn Fn(State) -> Message + 'a>>,
     dnd_icon: bool,
     on_submit: Option<Message>,
@@ -115,12 +118,12 @@ where
         self
     }
 
+    #[cfg(feature = "wayland")]
     /// Sets the on_start_dnd handler of the [`TextInput`].
     pub fn on_start_dnd(
         mut self,
         on_start_dnd: impl Fn(State) -> Message + 'a,
-    ) -> Self
-where {
+    ) -> Self {
         self.on_start_dnd = Some(Box::new(on_start_dnd));
         self
     }
@@ -166,6 +169,7 @@ where {
         self
     }
 
+    #[cfg(feature = "wayland")]
     /// Sets the mode of this [`TextInput`] to be a drag and drop icon.
     pub fn dnd_icon(mut self, dnd_icon: bool) -> Self {
         self.dnd_icon = dnd_icon;
@@ -196,6 +200,7 @@ where {
             self.size,
             &self.font,
             self.is_secure,
+            self.dnd_icon,
             &self.style,
         )
     }
@@ -229,7 +234,11 @@ where
         renderer: &Renderer,
         limits: &layout::Limits,
     ) -> layout::Node {
-        layout(renderer, limits, self.width, self.padding, self.size)
+        if self.dnd_icon {
+            layout(renderer, limits, Length::Shrink, Padding::ZERO, self.size)
+        } else {
+            layout(renderer, limits, self.width, self.padding, self.size)
+        }
     }
 
     fn operate(
@@ -293,8 +302,9 @@ where
             self.size,
             &self.font,
             self.is_secure,
+            self.dnd_icon,
             &self.style,
-        )
+        );
     }
 
     fn mouse_interaction(
@@ -430,7 +440,8 @@ where
         Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left))
         | Event::Touch(touch::Event::FingerPressed { .. }) => {
             let state = state();
-            let is_clicked = layout.bounds().contains(cursor_position);
+            let bounds = layout.bounds();
+            let is_clicked = bounds.contains(cursor_position);
 
             state.is_focused = is_clicked;
 
@@ -441,8 +452,84 @@ where
                 let click =
                     mouse::Click::new(cursor_position, state.last_click);
 
-                match click.kind() {
-                    click::Kind::Single => {
+                match (&state.dragging_state, click.kind()) {
+                    (Some(DraggingState::Selection), click::Kind::Single) => {
+                        // if something is already selected, we can start a drag and drop for a
+                        // single click that is on top of the selected text
+
+                        // is the click on selected text?
+                        match state.cursor().state(value) {
+                            cursor::State::Selection { start, end } => {
+                                if let Some(on_start_dnd) = on_start_dnd {
+                                    let secure_value =
+                                        is_secure.then(|| value.secure());
+                                    let value =
+                                        secure_value.as_ref().unwrap_or(value);
+
+                                    let text_bounds = layout
+                                        .children()
+                                        .next()
+                                        .unwrap()
+                                        .bounds();
+                                    let size = size.unwrap_or_else(|| {
+                                        renderer.default_size()
+                                    });
+
+                                    let left = start.min(end);
+                                    let right = end.max(start);
+
+                                    let (left_position, _left_offset) =
+                                        measure_cursor_and_scroll_offset(
+                                            renderer,
+                                            text_bounds,
+                                            value,
+                                            size,
+                                            left,
+                                            font.clone(),
+                                        );
+
+                                    let (right_position, _right_offset) =
+                                        measure_cursor_and_scroll_offset(
+                                            renderer,
+                                            text_bounds,
+                                            value,
+                                            size,
+                                            right,
+                                            font.clone(),
+                                        );
+
+                                    let width = right_position - left_position;
+                                    let selection_bounds = Rectangle {
+                                        x: text_bounds.x + left_position,
+                                        y: text_bounds.y,
+                                        width,
+                                        height: text_bounds.height,
+                                    };
+
+                                    if selection_bounds
+                                        .contains(cursor_position)
+                                    {
+                                        state.dragging_state =
+                                            Some(DraggingState::Dnd);
+                                        shell.publish(on_start_dnd(
+                                            state.clone(),
+                                        ));
+                                    }
+                                } else {
+                                    state.dragging_state = None;
+                                }
+                            }
+                            _ => {
+                                // TODO what to do here
+                            }
+                        }
+                    }
+                    (Some(DraggingState::Dnd), _) => {
+                        // TODO: should we cancel if this happens?
+                        state.dragging_state = None;
+                    }
+                    (None, click::Kind::Single) => {
+                        // existing logic for setting the selection
                         let position = if target > 0.0 {
                             let value = if is_secure {
                                 value.secure()
@@ -464,9 +551,10 @@ where
                         };
 
                         state.cursor.move_to(position.unwrap_or(0));
-                        state.is_dragging = true;
+                        state.dragging_state = Some(DraggingState::Selection);
                     }
-                    click::Kind::Double => {
+                    (None, click::Kind::Double)
+                    | (Some(DraggingState::Selection), click::Kind::Double) => {
                         if is_secure {
                             state.cursor.select_all(value);
                         } else {
@@ -486,12 +574,12 @@ where
                                 value.next_end_of_word(position),
                             );
                         }
-
-                        state.is_dragging = false;
+                        state.dragging_state = Some(DraggingState::Selection);
                     }
-                    click::Kind::Triple => {
+                    (None, click::Kind::Triple)
+                    | (Some(DraggingState::Selection), click::Kind::Triple) => {
                         state.cursor.select_all(value);
-                        state.is_dragging = false;
+                        state.dragging_state = Some(DraggingState::Selection);
                     }
                 }
 
@@ -503,13 +591,13 @@ where
         Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left))
         | Event::Touch(touch::Event::FingerLifted { .. })
         | Event::Touch(touch::Event::FingerLost { .. }) => {
-            state().is_dragging = false;
+            let state = state();
+            state.dragging_state  = None;
         }
         Event::Mouse(mouse::Event::CursorMoved { position })
         | Event::Touch(touch::Event::FingerMoved { position, .. }) => {
             let state = state();
-
-            if state.is_dragging {
+            if matches!(state.dragging_state, Some(DraggingState::Selection)) {
                 let text_layout = layout.children().next().unwrap();
                 let target = position.x - text_layout.bounds().x;
 
@@ -717,7 +805,17 @@ where
                     }
                     keyboard::KeyCode::Escape => {
                         state.is_focused = false;
-                        state.is_dragging = false;
+                        state.dragging_state = None;
+                        match state.dragging_state.as_ref() {
+                            Some(DraggingState::Dnd) => {
+                                // TODO should Dnd be canceled? And should it be canceled in
+                                // iced-sctk instead?
+                            }
+                            Some(DraggingState::Selection) => {
+                                state.dragging_state = None;
+                            }
+                            None => {}
+                        }
                         state.is_pasting = None;
 
                         state.keyboard_modifiers =
@@ -766,6 +864,12 @@ where
     event::Status::Ignored
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum DraggingState {
+    Selection,
+    Dnd,
+}
+
 /// Draws the [`TextInput`] with the given [`Renderer`], overriding its
 /// [`Value`] if provided.
 ///
@@ -781,6 +885,7 @@ pub fn draw<Renderer>(
     size: Option<u16>,
     font: &Renderer::Font,
     is_secure: bool,
+    dnd_icon: bool,
     style: &<Renderer::Theme as StyleSheet>::Style,
 ) where
     Renderer: text::Renderer,
@@ -802,17 +907,19 @@ pub fn draw<Renderer>(
         theme.active(style)
     };
 
-    renderer.fill_quad(
-        renderer::Quad {
-            bounds,
-            border_radius: appearance.border_radius.into(),
-            border_width: appearance.border_width,
-            border_color: appearance.border_color,
-        },
-        appearance.background,
-    );
+    if !dnd_icon {
+        renderer.fill_quad(
+            renderer::Quad {
+                bounds,
+                border_radius: appearance.border_radius.into(),
+                border_width: appearance.border_width,
+                border_color: appearance.border_color,
+            },
+            appearance.background,
+        );
+    }
 
-    let text = value.to_string();
+    let mut text = value.to_string();
     let size = size.unwrap_or_else(|| renderer.default_size());
 
     let (cursor, offset) = if state.is_focused() {
@@ -827,24 +934,27 @@ pub fn draw<Renderer>(
                         position,
                         font.clone(),
                     );
-
-                (
-                    Some((
-                        renderer::Quad {
-                            bounds: Rectangle {
-                                x: text_bounds.x + text_value_width,
-                                y: text_bounds.y,
-                                width: 1.0,
-                                height: text_bounds.height,
+                if !dnd_icon {
+                    (
+                        Some((
+                            renderer::Quad {
+                                bounds: Rectangle {
+                                    x: text_bounds.x + text_value_width,
+                                    y: text_bounds.y,
+                                    width: 1.0,
+                                    height: text_bounds.height,
+                                },
+                                border_radius: 0.0.into(),
+                                border_width: 0.0,
+                                border_color: Color::TRANSPARENT,
                             },
-                            border_radius: 0.0.into(),
-                            border_width: 0.0,
-                            border_color: Color::TRANSPARENT,
-                        },
-                        theme.value_color(style),
-                    )),
-                    offset,
-                )
+                            theme.value_color(style),
+                        )),
+                        offset,
+                    )
+                } else {
+                    (None, 0.0)
+                }
             }
             cursor::State::Selection { start, end } => {
                 let left = start.min(end);
@@ -871,28 +981,32 @@ pub fn draw<Renderer>(
                     );
 
                 let width = right_position - left_position;
-
-                (
-                    Some((
-                        renderer::Quad {
-                            bounds: Rectangle {
-                                x: text_bounds.x + left_position,
-                                y: text_bounds.y,
-                                width,
-                                height: text_bounds.height,
+                if !dnd_icon {
+                    (
+                        Some((
+                            renderer::Quad {
+                                bounds: Rectangle {
+                                    x: text_bounds.x + left_position,
+                                    y: text_bounds.y,
+                                    width,
+                                    height: text_bounds.height,
+                                },
+                                border_radius: 0.0.into(),
+                                border_width: 0.0,
+                                border_color: Color::TRANSPARENT,
                             },
-                            border_radius: 0.0.into(),
-                            border_width: 0.0,
-                            border_color: Color::TRANSPARENT,
+                            theme.selection_color(style),
+                        )),
+                        if end == right {
+                            right_offset
+                        } else {
+                            left_offset
                         },
-                        theme.selection_color(style),
-                    )),
-                    if end == right {
-                        right_offset
-                    } else {
-                        left_offset
-                    },
-                )
+                    )
+                } else {
+                    text = text[left..right].to_string();
+                    (None, 0.0)
+                }
             }
         }
     } else {
@@ -907,7 +1021,9 @@ pub fn draw<Renderer>(
 
     let render = |renderer: &mut Renderer| {
         if let Some((cursor, color)) = cursor {
-            renderer.fill_quad(cursor, color);
+            if !dnd_icon {
+                renderer.fill_quad(cursor, color);
+            }
         }
 
         renderer.fill_text(Text {
@@ -915,7 +1031,9 @@ pub fn draw<Renderer>(
             color: if text.is_empty() {
                 theme.placeholder_color(style)
             } else {
-                theme.value_color(style)
+                let mut c = theme.value_color(style);
+                c.a = 0.5;
+                c
             },
             font: font.clone(),
             bounds: Rectangle {
@@ -954,7 +1072,7 @@ pub fn mouse_interaction(
 #[derive(Debug, Default, Clone)]
 pub struct State {
     is_focused: bool,
-    is_dragging: bool,
+    dragging_state: Option<DraggingState>,
     is_pasting: Option<Value>,
     last_click: Option<mouse::Click>,
     cursor: Cursor,
@@ -968,11 +1086,24 @@ impl State {
         Self::default()
     }
 
+    /// Returns the current value of the selected text in the [`TextInput`].
+    pub fn selected_text(&self, text: &str) -> Option<String> {
+        let value = Value::new(text);
+        match self.cursor.state(&value) {
+            cursor::State::Index(_) => None,
+            cursor::State::Selection { start, end } => {
+                let left = start.min(end);
+                let right = end.max(start);
+                Some(text[left..right].to_string())
+            }
+        }
+    }
+
     /// Creates a new [`State`], representing a focused [`TextInput`].
     pub fn focused() -> Self {
         Self {
             is_focused: true,
-            is_dragging: false,
+            dragging_state: None,
             is_pasting: None,
             last_click: None,
             cursor: Cursor::default(),

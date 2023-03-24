@@ -668,6 +668,7 @@ where
                 let (native_id, e) = match dnd_icon {
                     DndIcon::Custom(id) => {
                         let e = application.view(id);
+                        e.as_widget().diff(&mut Tree::empty());
                         (id, e)
                     }
                     DndIcon::Widget(id, widget_state) => {
@@ -678,10 +679,10 @@ where
                             children: vec![], // TODO somehow include the child state
                                               // eventually? They are not guaranteed to be Send though :/
                         };
+                        e.as_widget().diff(&mut tree);
                         (id, e)
                     }
                 };
-                e.as_widget().diff(&mut tree);
                 let node =
                     Widget::layout(e.as_widget(), &renderer, &Limits::NONE);
                 let bounds = node.bounds();
