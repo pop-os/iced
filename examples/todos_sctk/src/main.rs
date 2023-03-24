@@ -67,6 +67,7 @@ enum Message {
     TabPressed { shift: bool },
     CloseRequested(window::Id),
     TextInputDragged(text_input::State, Vec<String>, DndAction),
+    Ignore,
 }
 
 impl Application for Todos {
@@ -191,12 +192,13 @@ impl Application for Todos {
                         mime_types,
                         actions,
                     ) => {
-                        println!("Starting drag!");
                         state.window_id_ctr += 1;
                         let icon_id = window::Id::new(state.window_id_ctr);
-                        
-                        state.dnd_state =
-                            DndState::Dragging(text_input_state.clone(), icon_id);
+
+                        state.dnd_state = DndState::Dragging(
+                            text_input_state.clone(),
+                            icon_id,
+                        );
                         start_drag(
                             mime_types,
                             actions,
@@ -246,24 +248,20 @@ impl Application for Todos {
                 dnd_state,
                 ..
             }) => {
-                let dnd_id = match dnd_state {
-                    DndState::None => None,
-                    DndState::Dragging(_, id) => Some(id.clone()),
+                match dnd_state {
+                    DndState::Dragging(state, drag_id) if *drag_id ==  id => {
+                        return text_input(
+                            "What needs to be done?",
+                            &state.selected_text(&input_value).unwrap_or_default(),
+                            |_| Message::Ignore,
+                        )
+                        .dnd_icon(true)
+                        .size(30)
+                        .into();
+                    }
+                    _ => {}
                 };
-                if dnd_id == Some(id) {
-                    println!("drawing the icon");
-                    return text_input(
-                        "What needs to be done?",
-                        input_value,
-                        Message::InputChanged,
-                    )
-                    .id(INPUT_ID.clone())
-                    .padding(15)
-                    .dnd_icon(true)
-                    .size(30)
-                    .width(Length::Units(300))
-                    .into();
-                }
+
                 let title = text("todos")
                     .width(Length::Fill)
                     .size(100)

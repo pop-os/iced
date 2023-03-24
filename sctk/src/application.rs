@@ -724,7 +724,7 @@ where
                     &mut renderer,
                     &mut c_surface,
                     state.viewport(),
-                    Color::WHITE,
+                    Color::TRANSPARENT,
                     &debug.overlay(),
                 );
                 wrapper.comp_surface.replace(c_surface);

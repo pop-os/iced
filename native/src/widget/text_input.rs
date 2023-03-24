@@ -252,7 +252,18 @@ where
         limits: &layout::Limits,
     ) -> layout::Node {
         if self.dnd_icon {
-            layout(renderer, limits, self.width, Padding::ZERO, self.size)
+            let limits = limits.width(Length::Shrink).height(Length::Shrink);
+
+            let size = self.size.unwrap_or_else(|| renderer.default_size());
+
+            let bounds = limits.max();
+
+            let (width, height) =
+                renderer.measure(&self.value.to_string(), size, self.font.clone(), bounds);
+
+            let size = limits.resolve(Size::new(width, height));
+            dbg!(size);
+            layout::Node::with_children(size, vec![layout::Node::new(size)])
         } else {
             layout(renderer, limits, self.width, self.padding, self.size)
         }
@@ -916,15 +927,13 @@ where
                 wayland::WriteData { mime_type, fd },
             )),
         )) => {
-
-                    let state = state();
+            let state = state();
             if matches!(state.dragging_state, Some(DraggingState::Dnd))
                 && SUPPORTED_MIME_TYPES.contains(&mime_type.as_str())
             {
                 if let Some(fd) =
                     fd.lock().ok().and_then(|fd| fd.try_clone().ok())
                 {
-
                     let mut f = File::from(fd);
                     let _ = f.write_all(
                         state
@@ -991,7 +1000,6 @@ pub fn draw<Renderer>(
         theme.active(style)
     };
 
-    if !dnd_icon {
         renderer.fill_quad(
             renderer::Quad {
                 bounds,
@@ -1001,7 +1009,6 @@ pub fn draw<Renderer>(
             },
             appearance.background,
         );
-    }
 
     let mut text = value.to_string();
     let size = size.unwrap_or_else(|| renderer.default_size());
@@ -1088,7 +1095,6 @@ pub fn draw<Renderer>(
                         },
                     )
                 } else {
-                    text = text[left..right].to_string();
                     (None, 0.0)
                 }
             }
