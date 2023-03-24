@@ -461,7 +461,7 @@ where
                                     };
                                     let c_surface = compositor.create_surface(&wrapper);
                                     wrapper.comp_surface.replace(c_surface);
-                                    compositor_surfaces.insert(id.inner(), wrapper);  
+                                    compositor_surfaces.insert(id.inner(), wrapper);
                                 }
                                 if first {
                                     let state = State::new(&application, *id);
@@ -874,6 +874,7 @@ where
                             state.theme(),
                             &renderer::Style {
                                 text_color: state.text_color(),
+                                scale_factor: state.scale_factor(),
                             },
                             state.cursor_position(),
                         );
@@ -893,6 +894,7 @@ where
                             state.theme(),
                             &renderer::Style {
                                 text_color: state.text_color(),
+                                scale_factor: state.scale_factor(),
                             },
                             state.cursor_position(),
                         );
@@ -1324,7 +1326,7 @@ fn run_command<A, E>(
                         let h = bounds.height.ceil() as u32;
                         auto_size_surfaces.insert(SurfaceIdWrapper::LayerSurface(builder.id), (w, h, builder.size_limits, false));
                         builder.size = Some((Some(bounds.width as u32), Some(bounds.height as u32)));
-                        
+
                     }
                     proxy.send_event(Event::LayerSurface(platform_specific::wayland::layer_surface::Action::LayerSurface {builder, _phantom}));
                 } else {

@@ -230,7 +230,7 @@ where
         tree: &Tree,
         renderer: &mut Renderer,
         theme: &Renderer::Theme,
-        _style: &renderer::Style,
+        renderer_style: &renderer::Style,
         layout: Layout<'_>,
         cursor_position: Point,
         _viewport: &Rectangle,
@@ -254,6 +254,7 @@ where
             theme,
             &renderer::Style {
                 text_color: styling.text_color,
+                scale_factor: renderer_style.scale_factor,
             },
             content_layout,
             cursor_position,
