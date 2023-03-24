@@ -6,6 +6,9 @@ mod value;
 
 pub mod cursor;
 
+use std::fs::File;
+use std::io::Write;
+
 pub use cursor::Cursor;
 #[cfg(feature = "wayland")]
 use sctk::reexports::client::protocol::wl_data_device_manager::DndAction;
@@ -559,7 +562,6 @@ where
                                 state.dragging_state =
                                     Some(DraggingState::Selection);
                             }
-     
                         } else {
                             state.dragging_state = None;
                         }
@@ -908,6 +910,38 @@ where
             let state = state();
 
             state.keyboard_modifiers = modifiers;
+        }
+        Event::PlatformSpecific(PlatformSpecific::Wayland(
+            wayland::Event::DataSource(wayland::DataSourceEvent::SendDndData(
+                wayland::WriteData { mime_type, fd },
+            )),
+        )) => {
+
+                    let state = state();
+            if matches!(state.dragging_state, Some(DraggingState::Dnd))
+                && SUPPORTED_MIME_TYPES.contains(&mime_type.as_str())
+            {
+                if let Some(fd) =
+                    fd.lock().ok().and_then(|fd| fd.try_clone().ok())
+                {
+
+                    let mut f = File::from(fd);
+                    let _ = f.write_all(
+                        state
+                            .selected_text(value.to_string().as_str())
+                            .unwrap_or_default()
+                            .as_bytes(),
+                    );
+                }
+            }
+        }
+        Event::PlatformSpecific(PlatformSpecific::Wayland(
+            wayland::Event::DataSource(wayland::DataSourceEvent::DndFinished),
+        )) => {
+            let state = state();
+            if matches!(state.dragging_state, Some(DraggingState::Dnd)) {
+                state.dragging_state = None;
+            }
         }
         _ => {}
     }
