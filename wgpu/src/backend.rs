@@ -7,6 +7,7 @@ use crate::primitive::{self, Primitive};
 use crate::quad;
 use crate::text;
 use crate::triangle;
+use crate::{core, offscreen};
 use crate::{Layer, Settings};
 
 #[cfg(feature = "tracing")]
