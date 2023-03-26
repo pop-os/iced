@@ -1,6 +1,6 @@
 use crate::event_loop::state::SctkState;
 use crate::sctk_event::{DataSourceEvent, SctkEvent};
-use sctk::data_device_manager::data_source::DataSourceDataExt;
+use sctk::data_device_manager::WritePipe;
 use sctk::{
     data_device_manager::data_source::DataSourceHandler,
     delegate_data_source,
@@ -13,7 +13,6 @@ use sctk::{
 };
 use std::{
     fmt::Debug,
-    os::unix::io::AsRawFd,
     sync::{Arc, Mutex},
 };
 
@@ -35,34 +34,26 @@ impl<T> DataSourceHandler for SctkState<T> {
         _qh: &QueueHandle<Self>,
         source: &WlDataSource,
         mime: String,
-        fd: wayland_backend::io_lifetimes::OwnedFd,
+        pipe: WritePipe,
     ) {
-        let fd = Arc::new(Mutex::new(fd));
-        // XXX: the user should send a Finish action when they are done sending the data.
-        if self
+        if let Some(source) = self
             .selection_source
-            .as_ref()
-            .map(|s| s.inner() == source)
-            .unwrap_or(false)
+            .as_mut()
+            .filter(|s| s.source.inner() == source)
         {
+            source.pipe = Some(pipe);
             self.sctk_events.push(SctkEvent::DataSource(
-                DataSourceEvent::SendSelectionData {
-                    mime_type: mime,
-                    fd,
-                },
+                DataSourceEvent::SendSelectionData { mime_type: mime },
             ));
-        } else if self
-            .dnd
-            .as_ref()
-            .and_then(|o| o.source.as_ref())
-            .map(|s| s.inner() == source)
-            .unwrap_or(false)
-        {
+        } else if let Some(source) = self.dnd_source.as_mut().filter(|s| {
+            s.source
+                .as_ref()
+                .map(|s| (s.inner() == source))
+                .unwrap_or(false)
+        }) {
+            source.pipe = Some(pipe);
             self.sctk_events.push(SctkEvent::DataSource(
-                DataSourceEvent::SendDndData {
-                    mime_type: mime,
-                    fd,
-                },
+                DataSourceEvent::SendDndData { mime_type: mime },
             ));
         }
     }

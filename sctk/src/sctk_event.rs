@@ -10,15 +10,14 @@ use iced_graphics::Point;
 use iced_native::{
     command::platform_specific::wayland::data_device::DndIcon,
     event::{
-        wayland::{self, LayerEvent, PopupEvent, ReadData},
+        wayland::{self, LayerEvent, PopupEvent},
         PlatformSpecific,
     },
     keyboard::{self, KeyCode},
-    mouse, widget,
+    mouse,
     window::{self, Id as SurfaceId},
 };
 use sctk::{
-    data_device_manager::ReadPipe,
     output::OutputInfo,
     reexports::client::{
         backend::ObjectId,
@@ -39,12 +38,7 @@ use sctk::{
         xdg::{popup::PopupConfigure, window::WindowConfigure},
     },
 };
-use std::{
-    collections::HashMap,
-    os::fd::{OwnedFd, RawFd},
-    sync::{Arc, Mutex},
-    time::Instant,
-};
+use std::{collections::HashMap, time::Instant};
 
 #[derive(Debug)]
 pub enum IcedSctkEvent<T> {
@@ -194,17 +188,13 @@ pub enum DataSourceEvent {
     DndDropPerformed,
     /// Send the selection data to the clipboard.
     SendSelectionData {
-        /// The mime type of the data
+        /// The mime type of the data to be sent
         mime_type: String,
-        /// The pipe to write the data to
-        fd: Arc<Mutex<OwnedFd>>,
     },
     /// Send the DnD data to the destination.
     SendDndData {
-        /// The mime type of the data
+        /// The mime type of the data to be sent
         mime_type: String,
-        /// The pipe to write the data to
-        fd: Arc<Mutex<OwnedFd>>,
     },
 }
 
@@ -213,9 +203,9 @@ pub enum SelectionOfferEvent {
     /// A Selection offer has been introduced with the given mime types.
     Offer(Vec<String>),
     /// Read the selection data from the clipboard.
-    ReadData {
-        /// The pipe to read the data from
-        read_pipe: Arc<Mutex<ReadPipe>>,
+    Data {
+        /// The raww data
+        data: Vec<u8>,
         /// mime type of the data to read
         mime_type: String,
     },
@@ -241,9 +231,9 @@ pub enum DndOfferEvent {
     /// A drop has been performed.
     DropPerformed,
     /// Read the DnD data
-    ReadData {
-        /// The pipe to read the data from
-        read_pipe: Arc<Mutex<ReadPipe>>,
+    Data {
+        /// The raw data
+        data: Vec<u8>,
         /// mime type of the data to read
         mime_type: String,
     },
@@ -769,18 +759,15 @@ impl SctkEvent {
                     .into_iter()
                     .collect()
                 }
-                DndOfferEvent::ReadData {
-                    mime_type,
-                    read_pipe,
-                } => Some(iced_native::Event::PlatformSpecific(
-                    PlatformSpecific::Wayland(wayland::Event::DndOffer(
-                        wayland::DndOfferEvent::ReadData(
-                            wayland::ReadData::new(mime_type, read_pipe),
-                        ),
-                    )),
-                ))
-                .into_iter()
-                .collect(),
+                DndOfferEvent::Data { mime_type, data } => {
+                    Some(iced_native::Event::PlatformSpecific(
+                        PlatformSpecific::Wayland(wayland::Event::DndOffer(
+                            wayland::DndOfferEvent::DndData { data, mime_type },
+                        )),
+                    ))
+                    .into_iter()
+                    .collect()
+                }
                 DndOfferEvent::SourceActions(actions) => {
                     Some(iced_native::Event::PlatformSpecific(
                         PlatformSpecific::Wayland(wayland::Event::DndOffer(
@@ -817,18 +804,20 @@ impl SctkEvent {
                     .into_iter()
                     .collect()
                 }
-                SelectionOfferEvent::ReadData {
-                    mime_type,
-                    read_pipe,
-                } => Some(iced_native::Event::PlatformSpecific(
-                    PlatformSpecific::Wayland(wayland::Event::SelectionOffer(
-                        wayland::SelectionOfferEvent::ReadData(
-                            wayland::ReadData::new(mime_type, read_pipe),
+                SelectionOfferEvent::Data { mime_type, data } => {
+                    Some(iced_native::Event::PlatformSpecific(
+                        PlatformSpecific::Wayland(
+                            wayland::Event::SelectionOffer(
+                                wayland::SelectionOfferEvent::Data {
+                                    data,
+                                    mime_type,
+                                },
+                            ),
                         ),
-                    )),
-                ))
-                .into_iter()
-                .collect(),
+                    ))
+                    .into_iter()
+                    .collect()
+                }
             },
             SctkEvent::DataSource(event) => match event {
                 DataSourceEvent::DndDropPerformed => {
@@ -876,22 +865,20 @@ impl SctkEvent {
                     .into_iter()
                     .collect()
                 }
-                DataSourceEvent::SendDndData { mime_type, fd } => {
+                DataSourceEvent::SendDndData { mime_type } => {
                     Some(iced_native::Event::PlatformSpecific(
                         PlatformSpecific::Wayland(wayland::Event::DataSource(
-                            wayland::DataSourceEvent::SendDndData(
-                                wayland::WriteData::new(mime_type, fd),
-                            ),
+                            wayland::DataSourceEvent::SendDndData(mime_type),
                         )),
                     ))
                     .into_iter()
                     .collect()
                 }
-                DataSourceEvent::SendSelectionData { mime_type, fd } => {
+                DataSourceEvent::SendSelectionData { mime_type } => {
                     Some(iced_native::Event::PlatformSpecific(
                         PlatformSpecific::Wayland(wayland::Event::DataSource(
                             wayland::DataSourceEvent::SendSelectionData(
-                                wayland::WriteData::new(mime_type, fd),
+                                mime_type,
                             ),
                         )),
                     ))

@@ -1,7 +1,4 @@
-use crate::{
-    widget::{self, tree::State, Tree},
-    window, Element,
-};
+use crate::{widget, window};
 use core::fmt;
 use iced_futures::MaybeSend;
 use sctk::reexports::client::protocol::wl_data_device_manager::DndAction;
@@ -19,10 +16,13 @@ pub enum Action<T> {
     },
     /// Unset the selection.
     UnsetSelection,
+    /// Send the selection data.
+    SendSelectionData {
+        /// The data to send.
+        data: Vec<u8>,
+    },
     /// Request the selection data from the clipboard.
-    RequestSelection {
-        /// id of the widget that is requesting the selection
-        id: Option<widget::Id>,
+    RequestSelectionData {
         /// The mime type that the selection should be converted to.
         mime_type: String,
     },
@@ -62,6 +62,11 @@ pub enum Action<T> {
         /// The action that the client supports.
         action: DndAction,
     },
+    /// Send the drag and drop data.
+    SendDndData {
+        /// The data to send.
+        data: Vec<u8>,
+    },
     /// The drag and drop operation has finished.
     DndFinished,
     /// The drag and drop operation has been cancelled.
@@ -95,8 +100,11 @@ impl<T> Action<T> {
                 mime_types,
                 _phantom: PhantomData,
             },
-            Action::RequestSelection { id, mime_type } => {
-                Action::RequestSelection { id, mime_type }
+            Action::RequestSelectionData { mime_type } => {
+                Action::RequestSelectionData { mime_type }
+            }
+            Action::SendSelectionData { data } => {
+                Action::SendSelectionData { data }
             }
             Action::StartInternalDnd { origin_id, icon_id } => {
                 Action::StartInternalDnd { origin_id, icon_id }
@@ -128,6 +136,7 @@ impl<T> Action<T> {
                 mime_type,
                 action,
             },
+            Action::SendDndData { data } => Action::SendDndData { data },
             Action::DndFinished => Action::DndFinished,
             Action::DndCancelled => Action::DndCancelled,
         }
@@ -141,11 +150,12 @@ impl<T> fmt::Debug for Action<T> {
                 f.debug_tuple("SetSelection").field(mime_types).finish()
             }
             Self::UnsetSelection => f.debug_tuple("UnsetSelection").finish(),
-            Self::RequestSelection { mime_type, id } => f
-                .debug_tuple("RequestSelection")
-                .field(mime_type)
-                .field(id)
-                .finish(),
+            Self::RequestSelectionData { mime_type } => {
+                f.debug_tuple("RequestSelection").field(mime_type).finish()
+            }
+            Self::SendSelectionData { data } => {
+                f.debug_tuple("SendSelectionData").field(data).finish()
+            }
             Self::StartInternalDnd { origin_id, icon_id } => f
                 .debug_tuple("StartInternalDnd")
                 .field(origin_id)
@@ -181,6 +191,9 @@ impl<T> fmt::Debug for Action<T> {
                 .field(action)
                 .field(id)
                 .finish(),
+            Self::SendDndData { data } => {
+                f.debug_tuple("SendDndData").field(data).finish()
+            }
             Self::DndFinished => f.debug_tuple("DndFinished").finish(),
             Self::DndCancelled => f.debug_tuple("DndCancelled").finish(),
         }

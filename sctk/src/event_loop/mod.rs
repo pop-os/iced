@@ -2,14 +2,6 @@ pub mod control_flow;
 pub mod proxy;
 pub mod state;
 
-use std::{
-    collections::HashMap,
-    fmt::Debug,
-    num::NonZeroU32,
-    sync::{Arc, Mutex},
-    time::{Duration, Instant},
-};
-
 use crate::{
     application::Event,
     sctk_event::{
@@ -26,6 +18,7 @@ use iced_native::command::platform_specific::{
         window::SctkWindowSettings,
     },
 };
+use log::error;
 use sctk::data_device_manager::data_source::DragSource;
 use sctk::{
     compositor::CompositorState,
@@ -47,11 +40,18 @@ use sctk::{
     },
     shm::Shm,
 };
-use wayland_backend::{client::WaylandError, io_lifetimes::AsFd};
+use std::{
+    collections::HashMap,
+    fmt::Debug,
+    io::{BufRead, BufReader, BufWriter, Write},
+    num::NonZeroU32,
+    time::{Duration, Instant},
+};
+use wayland_backend::client::WaylandError;
 
 use self::{
     control_flow::ControlFlow,
-    state::{Dnd, LayerSurfaceCreationError, SctkState},
+    state::{Dnd, LayerSurfaceCreationError, SctkCopyPasteSource, SctkState},
 };
 
 // impl SctkSurface {
@@ -165,7 +165,7 @@ where
                 windows: Vec::new(),
                 layer_surfaces: Vec::new(),
                 popups: Vec::new(),
-                dnd: None,
+                dnd_source: None,
                 kbd_focus: None,
                 window_compositor_updates: HashMap::new(),
                 sctk_events: Vec::new(),
@@ -173,7 +173,6 @@ where
                 layer_surface_compositor_updates: Default::default(),
                 pending_user_events: Vec::new(),
                 token_ctr: 0,
-                selection: None,
                 selection_source: None,
                 accept_counter: 0,
                 dnd_offer: None,
@@ -844,12 +843,14 @@ where
                                     DragSource::start_internal_drag(device, &origin, None, serial);
                                     None
                                 };
-                                self.state.dnd = Some(Dnd {
+                                self.state.dnd_source = Some(Dnd {
                                     origin_id,
                                     icon_surface,
                                     origin,
                                     source: None,
                                     pending_requests: Vec::new(),
+                                    pipe: None,
+                                    cur_write: None,
                                 });
                             }
                             platform_specific::wayland::data_device::Action::StartDnd { mime_types, actions, origin_id, icon_id } => {
@@ -903,11 +904,11 @@ where
                                     source.start_drag(device, &origin, None, serial);
                                     None
                                 };
-                                self.state.dnd = Some(Dnd { origin_id, origin, source: Some(source), icon_surface, pending_requests: Vec::new() });
+                                self.state.dnd_source = Some(Dnd { origin_id, origin, source: Some(source), icon_surface, pending_requests: Vec::new(), pipe: None, cur_write: None });
                             },
                             platform_specific::wayland::data_device::Action::DndFinished => {
                                 if let Some(offer) = self.state.dnd_offer.take() {
-                                    offer.finish();
+                                    offer.offer.finish();
                                     sticky_exit_callback(IcedSctkEvent::SctkEvent(SctkEvent::DataSource(DataSourceEvent::DndFinished)),
                                         &self.state,
                                         &mut control_flow,
@@ -923,22 +924,190 @@ where
                                     &mut callback,
                                 );
                             },
-                            platform_specific::wayland::data_device::Action::RequestDndData { id, mime_type, action } => {
-                                if let Some(dnd_offer) = self.state.dnd_offer.as_ref() {
-                                    let read_pipe = match dnd_offer.receive(mime_type.clone()) {
-                                        Ok(p) => p,
-                                        Err(_) => continue, // TODO error handling
+                            platform_specific::wayland::data_device::Action::SendSelectionData { data } => {
+                                if let Some(selection_source) = self.state.selection_source.as_mut() {
+                                    let pipe = match selection_source.pipe.take() {
+                                        Some(fd) => fd,
+                                        None => continue, // TODO error handling
                                     };
-                                    self.state.sctk_events.push(SctkEvent::DndOffer { event: DndOfferEvent::ReadData { read_pipe: Arc::new(Mutex::new(read_pipe)), mime_type: mime_type }, surface: dnd_offer.surface.clone() });
+                                    let loop_handle = self.event_loop.handle();
+                                    match self.event_loop.handle().insert_source(pipe, move |_, f, state| {
+                                        let selection_source = match state.selection_source.as_mut() {
+                                            Some(s) => s,
+                                            None => return,
+                                        };
+                                        let (data, mut cur_index, token) = match selection_source.cur_write.take() {
+                                            Some(s) => s,
+                                            None => return,
+                                        };
+                                        let mut writer = BufWriter::new(f);
+                                        let slice = &data.as_slice()[cur_index..(cur_index + writer.capacity()).min(data.len())];
+                                        match writer.write(slice) {
+                                            Ok(num_written) => {
+                                                cur_index += num_written;
+                                                if cur_index == data.len() {
+                                                    loop_handle.remove(token);
+                                                } else {
+                                                    selection_source.cur_write = Some((data, cur_index, token));
+                                                }
+                                                writer.flush().unwrap();
+                                            }
+                                            Err(e) if matches!(e.kind(), std::io::ErrorKind::Interrupted) => {
+                                                selection_source.cur_write = Some((data, cur_index, token));
+                                            }
+                                            Err(_) => {
+                                                error!("Failed to write to pipe");
+                                            }
+                                        };
+                                    }) {
+                                        Ok(s) => {
+                                            selection_source.cur_write = Some((data, 0, s));
+                                        }
+                                        Err(_) => {
+                                            error!("Failed to insert source");
+                                        }
+                                    }
                                 }
                             }
-                            platform_specific::wayland::data_device::Action::RequestSelection { id, mime_type } => {
-                                if let Some(selection_offer) = self.state.selection_offer.as_ref() {
-                                    let read_pipe = match selection_offer.receive(mime_type.clone()) {
+                            platform_specific::wayland::data_device::Action::SendDndData { data } => {
+                                if let Some(dnd_source) = self.state.dnd_source.as_mut() {
+                                    let pipe = match dnd_source.pipe.take() {
+                                        Some(fd) => fd,
+                                        None => continue, // TODO error handling
+                                    };
+                                    let loop_handle = self.event_loop.handle();
+                                    match self.event_loop.handle().insert_source(pipe, move |_, f, state| {
+                                        let dnd_source = match state.dnd_source.as_mut() {
+                                            Some(s) => s,
+                                            None => return,
+                                        };
+                                        let (data, mut cur_index, token) = match dnd_source.cur_write.take() {
+                                            Some(s) => s,
+                                            None => return,
+                                        };
+                                        let mut writer = BufWriter::new(f);
+                                        let slice = &data.as_slice()[cur_index..(cur_index + writer.capacity()).min(data.len())];
+                                        match writer.write(slice) {
+                                            Ok(num_written) => {
+                                                cur_index += num_written;
+                                                if cur_index == data.len() {
+                                                    loop_handle.remove(token);
+                                                } else {
+                                                    dnd_source.cur_write = Some((data, cur_index, token));
+                                                }
+                                                writer.flush().unwrap();
+                                            }
+                                            Err(e) if matches!(e.kind(), std::io::ErrorKind::Interrupted) => {
+                                                dnd_source.cur_write = Some((data, cur_index, token));
+                                            }
+                                            Err(_) => {
+                                                error!("Failed to write to pipe");
+                                            }
+                                        };
+                                    }) {
+                                        Ok(s) => {
+                                            dnd_source.cur_write = Some((data, 0, s));
+                                        }
+                                        Err(_) => {
+                                            error!("Failed to insert source");
+                                        }
+                                    }
+                                }
+                            }
+                            platform_specific::wayland::data_device::Action::RequestDndData { id, mime_type, action } => {
+                                if let Some(dnd_offer) = self.state.dnd_offer.as_mut() {
+                                    let read_pipe = match dnd_offer.offer.receive(mime_type.clone()) {
                                         Ok(p) => p,
                                         Err(_) => continue, // TODO error handling
                                     };
-                                    self.state.sctk_events.push(SctkEvent::SelectionOffer(SelectionOfferEvent::ReadData {read_pipe: Arc::new(Mutex::new(read_pipe)), mime_type }));
+                                    let loop_handle = self.event_loop.handle();
+                                    match self.event_loop.handle().insert_source(read_pipe, move |_, f, state| {
+                                        let dnd_offer = match state.dnd_offer.as_mut() {
+                                            Some(s) => s,
+                                            None => return,
+                                        };
+                                        let (mime_type, data, token) = match dnd_offer.cur_read.take() {
+                                            Some(s) => s,
+                                            None => return,
+                                        };
+                                        let mut reader = BufReader::new(f);
+                                        let consumed = match reader.fill_buf() {
+                                            Ok(buf) => {
+                                                if buf.is_empty() {
+                                                    loop_handle.remove(token);
+                                                    state.sctk_events.push(SctkEvent::DndOffer { event: DndOfferEvent::Data { data, mime_type }, surface: dnd_offer.offer.surface.clone() });
+                                                } else {
+                                                    let mut data = data;
+                                                    data.extend_from_slice(buf);
+                                                    dnd_offer.cur_read = Some((mime_type, data, token));
+                                                }
+                                                buf.len()
+                                            },
+                                            Err(e) if matches!(e.kind(), std::io::ErrorKind::Interrupted) => {
+                                                dnd_offer.cur_read = Some((mime_type, data, token));
+                                                return;
+                                            },
+                                            Err(e) => {
+                                                error!("Error reading selection data: {}", e);
+                                                loop_handle.remove(token);
+                                                return;
+                                            },
+                                        };
+                                        reader.consume(consumed);
+                                    }) {
+                                        Ok(token) => {
+                                            dnd_offer.cur_read = Some((mime_type.clone(), Vec::new(), token));
+                                        },
+                                        Err(_) => continue,
+                                    };
+                                }
+                            }
+                            platform_specific::wayland::data_device::Action::RequestSelectionData { mime_type } => {
+                                if let Some(selection_offer) = self.state.selection_offer.as_mut() {
+                                    let read_pipe = match selection_offer.offer.receive(mime_type.clone()) {
+                                        Ok(p) => p,
+                                        Err(_) => continue, // TODO error handling
+                                    };
+                                    let loop_handle = self.event_loop.handle();
+                                    match self.event_loop.handle().insert_source(read_pipe, move |_, f, state| {
+                                        let selection_offer = match state.selection_offer.as_mut() {
+                                            Some(s) => s,
+                                            None => return,
+                                        };
+                                        let (mime_type, data, token) = match selection_offer.cur_read.take() {
+                                            Some(s) => s,
+                                            None => return,
+                                        };
+                                        let mut reader = BufReader::new(f);
+                                        let consumed = match reader.fill_buf() {
+                                            Ok(buf) => {
+                                                if buf.is_empty() {
+                                                    loop_handle.remove(token);
+                                                    state.sctk_events.push(SctkEvent::SelectionOffer(SelectionOfferEvent::Data {mime_type, data }));
+                                                } else {
+                                                    let mut data = data;
+                                                    data.extend_from_slice(buf);
+                                                    selection_offer.cur_read = Some((mime_type, data, token));
+                                                }
+                                                buf.len()
+                                            },
+                                            Err(e) if matches!(e.kind(), std::io::ErrorKind::Interrupted) => {
+                                                selection_offer.cur_read = Some((mime_type, data, token));
+                                                return;
+                                            },
+                                            Err(e) => {
+                                                error!("Error reading selection data: {}", e);
+                                                loop_handle.remove(token);
+                                                return;
+                                            },
+                                        };
+                                        reader.consume(consumed);
+                                    }) {
+                                        Ok(token) => {
+                                            selection_offer.cur_read = Some((mime_type.clone(), Vec::new(), token));
+                                        },
+                                        Err(_) => continue,
+                                    };
                                 }
                             }
                             platform_specific::wayland::data_device::Action::SetSelection { mime_types, _phantom } => {
@@ -952,14 +1121,19 @@ where
                                     None => continue,
                                 };
                                 // remove the old selection
-                                self.state.selection = None;
+                                self.state.selection_source = None;
                                 // create a new one
                                 let source = self
                                     .state
                                     .data_device_manager_state
                                     .create_copy_paste_source(&qh, mime_types.iter().map(|s| s.as_str()).collect::<Vec<_>>());
                                 source.set_selection(&seat.data_device, serial);
-                                self.state.selection = Some(source);
+                                self.state.selection_source = Some(SctkCopyPasteSource {
+                                    source,
+                                    cur_write: None,
+                                    accepted_mime_types: Vec::new(),
+                                    pipe: None,
+                                });
                             }
                             platform_specific::wayland::data_device::Action::UnsetSelection => {
                                 let seat = match self.state.seats.get(0) {
@@ -970,12 +1144,12 @@ where
                                     Some(s) => s.2,
                                     None => continue,
                                 };
-                                self.state.selection = None;
+                                self.state.selection_source = None;
                                 seat.data_device.unset_selection(serial);
                             }
                             platform_specific::wayland::data_device::Action::SetActions { preferred, accepted } => {
                                 if let Some(offer) = self.state.dnd_offer.as_ref() {
-                                    offer.set_actions(preferred, accepted);
+                                    offer.offer.set_actions(preferred, accepted);
                                 }
                             }
                         }

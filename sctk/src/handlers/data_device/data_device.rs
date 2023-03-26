@@ -12,7 +12,7 @@ use sctk::{
 };
 
 use crate::{
-    event_loop::state::SctkState,
+    event_loop::state::{SctkDragOffer, SctkSelectionOffer, SctkState},
     sctk_event::{DndOfferEvent, SctkEvent},
 };
 
@@ -25,7 +25,10 @@ impl<T> DataDeviceHandler for SctkState<T> {
     ) {
         let mime_types = data_device.drag_mime_types();
         let drag_offer = data_device.drag_offer().unwrap();
-        self.dnd_offer = Some(drag_offer.clone());
+        self.dnd_offer = Some(SctkDragOffer {
+            offer: drag_offer.clone(),
+            cur_read: None,
+        });
         self.sctk_events.push(SctkEvent::DndOffer {
             event: DndOfferEvent::Enter {
                 mime_types,
@@ -42,10 +45,10 @@ impl<T> DataDeviceHandler for SctkState<T> {
         _qh: &QueueHandle<Self>,
         _data_device: DataDevice,
     ) {
-        let surface = self.dnd_offer.take().unwrap().surface.clone();
+        let surface = self.dnd_offer.take().unwrap().offer.surface.clone();
         self.sctk_events.push(SctkEvent::DndOffer {
             event: DndOfferEvent::Leave,
-            surface
+            surface,
         });
     }
 
@@ -80,7 +83,10 @@ impl<T> DataDeviceHandler for SctkState<T> {
                     data_device.selection_mime_types(),
                 ),
             ));
-            self.selection_offer = Some(offer);
+            self.selection_offer = Some(SctkSelectionOffer {
+                offer: offer.clone(),
+                cur_read: None,
+            });
         }
     }
 

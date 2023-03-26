@@ -34,10 +34,20 @@ pub enum DndOfferEvent {
     SourceActions(DndAction),
     /// Dnd Drop event
     DropPerformed,
-    /// Read the Selection data
-    ReadSelectionData(ReadData),
-    /// Read the DnD data
-    ReadData(ReadData),
+    /// Raw DnD Data
+    DndData {
+        /// The data
+        data: Vec<u8>,
+        /// The mime type of the data
+        mime_type: String,
+    },
+    /// Raw Selection Data
+    SelectionData {
+        /// The data
+        data: Vec<u8>,
+        /// The mime type of the data
+        mime_type: String,
+    },
     /// Selection Offer
     /// a selection offer has been introduced with the given mime types.
     SelectionOffer(Vec<String>),
@@ -49,7 +59,12 @@ pub enum SelectionOfferEvent {
     /// a selection offer has been introduced with the given mime types.
     Offer(Vec<String>),
     /// Read the Selection data
-    ReadData(ReadData),
+    Data {
+        /// The mime type that the selection should be converted to.
+        mime_type: String,
+        /// The data
+        data: Vec<u8>,
+    },
 }
 
 /// A ReadPipe and the mime type of the data.
@@ -78,10 +93,10 @@ pub enum DataSourceEvent {
     MimeAccepted(Option<String>),
     /// Some client has requested the DnD data.
     /// This is used to send the data to the client.
-    SendDndData(WriteData),
+    SendDndData(String),
     /// Some client has requested the selection data.
     /// This is used to send the data to the client.
-    SendSelectionData(WriteData),
+    SendSelectionData(String),
     /// The data source has been cancelled and is no longer valid.
     /// This may be sent for multiple reasons
     Cancelled,

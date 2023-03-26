@@ -937,36 +937,36 @@ where
         }
         Event::PlatformSpecific(PlatformSpecific::Wayland(
             wayland::Event::DataSource(wayland::DataSourceEvent::SendDndData(
-                wayland::WriteData { mime_type, fd },
+                mime_type,
             )),
         )) => {
             let state = state();
-            if let Some(DraggingState::Dnd(action)) = state.dragging_state {
-                dbg!(action);
-                if !action.is_empty()
-                    && SUPPORTED_MIME_TYPES.contains(&mime_type.as_str())
-                {
-                    if let Some(fd) =
-                        fd.lock().ok().and_then(|fd| fd.try_clone().ok())
-                    {
-                        let mut f = File::from(fd);
-                        let _ = f.write_all(
-                            state
-                                .selected_text(value.to_string().as_str())
-                                .unwrap_or_default()
-                                .as_bytes(),
-                        );
-                        if action.contains(DndAction::Move) {
-                            let mut editor =
-                                Editor::new(value, &mut state.cursor);
-                            editor.delete();
-
-                            let message = (on_change)(editor.contents());
-                            shell.publish(message);
-                        }
-                    }
-                }
-            }
+            // if let Some(DraggingState::Dnd(action)) = state.dragging_state {
+            //     dbg!(action);
+            //     if !action.is_empty()
+            //         && SUPPORTED_MIME_TYPES.contains(&mime_type.as_str())
+            //     {
+            //         if let Some(fd) =
+            //             fd.lock().ok().and_then(|fd| fd.try_clone().ok())
+            //         {
+            //             let mut f = File::from(fd);
+            //             let _ = f.write_all(
+            //                 state
+            //                     .selected_text(value.to_string().as_str())
+            //                     .unwrap_or_default()
+            //                     .as_bytes(),
+            //             );
+            //             if action.contains(DndAction::Move) {
+            //                 let mut editor =
+            //                     Editor::new(value, &mut state.cursor);
+            //                 editor.delete();
+            //
+            //                 let message = (on_change)(editor.contents());
+            //                 shell.publish(message);
+            //             }
+            //         }
+            //     }
+            // }
         }
         Event::PlatformSpecific(PlatformSpecific::Wayland(
             wayland::Event::DataSource(wayland::DataSourceEvent::DndFinished),

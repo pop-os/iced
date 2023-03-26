@@ -36,16 +36,10 @@ pub fn unset_selection<Message>() -> Command<Message> {
 
 /// request the selection
 /// This will trigger an event with a read pipe to read the data from.
-pub fn request_selection<Message>(
-    mime_type: String,
-    widget_id: Option<widget::Id>,
-) -> Command<Message> {
+pub fn request_selection<Message>(mime_type: String) -> Command<Message> {
     Command::single(command::Action::PlatformSpecific(
         platform_specific::Action::Wayland(wayland::Action::DataDevice(
-            wayland::data_device::Action::RequestSelection {
-                mime_type,
-                id: widget_id,
-            },
+            wayland::data_device::Action::RequestSelectionData { mime_type },
         )),
     ))
 }

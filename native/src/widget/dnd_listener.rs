@@ -375,14 +375,14 @@ fn update<Message: Clone, Renderer>(
                 return event::Status::Captured;
             }
         }
-        Event::PlatformSpecific(PlatformSpecific::Wayland(
-            event::wayland::Event::DndOffer(DndOfferEvent::ReadData(read_data)),
-        )) => {
-            if let Some(message) = widget.on_read_data.as_ref() {
-                shell.publish(message(read_data.clone()));
-                return event::Status::Captured;
-            }
-        }
+        // Event::PlatformSpecific(PlatformSpecific::Wayland(
+        //     event::wayland::Event::DndOffer(DndOfferEvent::ReadData(read_data)),
+        // )) => {
+        //     if let Some(message) = widget.on_read_data.as_ref() {
+        //         shell.publish(message(read_data.clone()));
+        //         return event::Status::Captured;
+        //     }
+        // }
         Event::PlatformSpecific(PlatformSpecific::Wayland(
             event::wayland::Event::DndOffer(DndOfferEvent::SourceActions(
                 actions,

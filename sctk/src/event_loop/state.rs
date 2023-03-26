@@ -1,8 +1,4 @@
-use std::{
-    collections::HashMap,
-    fmt::Debug,
-    sync::{Arc, Mutex},
-};
+use std::{collections::HashMap, fmt::Debug};
 
 use crate::{
     application::Event,
@@ -14,7 +10,6 @@ use iced_native::{
     command::platform_specific::{
         self,
         wayland::{
-            data_device::DndIcon,
             layer_surface::{IcedMargin, IcedOutput, SctkLayerSurfaceSettings},
             popup::SctkPopupSettings,
             window::SctkWindowSettings,
@@ -29,16 +24,15 @@ use sctk::{
         data_device::DataDevice,
         data_offer::{DragOffer, SelectionOffer},
         data_source::{CopyPasteSource, DragSource},
-        DataDeviceManagerState,
+        DataDeviceManagerState, WritePipe,
     },
     error::GlobalError,
     output::OutputState,
     reexports::{
-        calloop::LoopHandle,
+        calloop::{LoopHandle, RegistrationToken},
         client::{
             backend::ObjectId,
             protocol::{
-                wl_data_device_manager::DndAction,
                 wl_keyboard::WlKeyboard,
                 wl_output::WlOutput,
                 wl_pointer::WlPointer,
@@ -143,6 +137,20 @@ pub struct Dnd<T> {
     pub(crate) icon_surface: Option<(WlSurface, window::Id)>,
     pub(crate) pending_requests:
         Vec<platform_specific::wayland::data_device::Action<T>>,
+    pub(crate) pipe: Option<WritePipe>,
+    pub(crate) cur_write: Option<(Vec<u8>, usize, RegistrationToken)>,
+}
+
+#[derive(Debug)]
+pub struct SctkSelectionOffer {
+    pub(crate) offer: SelectionOffer,
+    pub(crate) cur_read: Option<(String, Vec<u8>, RegistrationToken)>,
+}
+
+#[derive(Debug)]
+pub struct SctkDragOffer {
+    pub(crate) offer: DragOffer,
+    pub(crate) cur_read: Option<(String, Vec<u8>, RegistrationToken)>,
 }
 
 #[derive(Debug)]
@@ -155,9 +163,10 @@ pub struct SctkPopupData {
 
 #[derive(Debug)]
 pub struct SctkCopyPasteSource {
-    pub selected_action: DndAction,
     pub accepted_mime_types: Vec<String>,
     pub source: CopyPasteSource,
+    pub(crate) pipe: Option<WritePipe>,
+    pub(crate) cur_write: Option<(Vec<u8>, usize, RegistrationToken)>,
 }
 
 /// Wrapper to carry sctk state.
@@ -181,9 +190,8 @@ pub struct SctkState<T> {
     pub(crate) windows: Vec<SctkWindow<T>>,
     pub(crate) layer_surfaces: Vec<SctkLayerSurface<T>>,
     pub(crate) popups: Vec<SctkPopup<T>>,
-    pub(crate) dnd: Option<Dnd<T>>,
+    pub(crate) dnd_source: Option<Dnd<T>>,
     pub(crate) kbd_focus: Option<WlSurface>,
-    pub(crate) selection: Option<CopyPasteSource>,
 
     /// Window updates, which are coming from SCTK or the compositor, which require
     /// calling back to the sctk's downstream. They are handled right in the event loop,
@@ -200,9 +208,9 @@ pub struct SctkState<T> {
         HashMap<ObjectId, SurfaceCompositorUpdate>,
 
     /// data data_device
-    pub(crate) selection_source: Option<CopyPasteSource>,
-    pub(crate) dnd_offer: Option<DragOffer>,
-    pub(crate) selection_offer: Option<SelectionOffer>,
+    pub(crate) selection_source: Option<SctkCopyPasteSource>,
+    pub(crate) dnd_offer: Option<SctkDragOffer>,
+    pub(crate) selection_offer: Option<SctkSelectionOffer>,
     pub(crate) accept_counter: u32,
     /// A sink for window and device events that is being filled during dispatching
     /// event loop and forwarded downstream afterwards.

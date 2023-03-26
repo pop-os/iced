@@ -249,10 +249,12 @@ impl Application for Todos {
                 ..
             }) => {
                 match dnd_state {
-                    DndState::Dragging(state, drag_id) if *drag_id ==  id => {
+                    DndState::Dragging(state, drag_id) if *drag_id == id => {
                         return text_input(
                             "What needs to be done?",
-                            &state.selected_text(&input_value).unwrap_or_default(),
+                            &state
+                                .selected_text(&input_value)
+                                .unwrap_or_default(),
                             |_| Message::Ignore,
                         )
                         .dnd_icon(true)
