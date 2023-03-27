@@ -6,7 +6,7 @@ use iced::theme::{self, Theme};
 use iced::wayland::actions::data_device::{self, DndIcon};
 use iced::wayland::actions::popup::SctkPopupSettings;
 use iced::wayland::actions::window::SctkWindowSettings;
-use iced::wayland::data_device::start_drag;
+use iced::wayland::data_device::{send_dnd_data, start_drag};
 use iced::wayland::popup::get_popup;
 use iced::wayland::window::get_window;
 use iced::wayland::{platform_specific, InitialSurface};
@@ -67,6 +67,7 @@ enum Message {
     TabPressed { shift: bool },
     CloseRequested(window::Id),
     TextInputDragged(text_input::State, Vec<String>, DndAction),
+    TextInputDndSourceData(Vec<u8>),
     Ignore,
 }
 
@@ -209,6 +210,9 @@ impl Application for Todos {
                             )),
                         )
                     }
+                    Message::TextInputDndSourceData(data) => {
+                        send_dnd_data(data)
+                    }
                     _ => Command::none(),
                 };
 
@@ -279,9 +283,8 @@ impl Application for Todos {
                 .padding(15)
                 .size(30)
                 .on_submit(Message::CreateTask)
-                .on_start_dnd(|state, mime_types, actions| {
-                    Message::TextInputDragged(state, mime_types, actions)
-                });
+                .on_start_dnd(Message::TextInputDragged)
+                .on_send_dnd_source_data(Message::TextInputDndSourceData);
 
                 let controls = view_controls(tasks, *filter);
                 let filtered_tasks =

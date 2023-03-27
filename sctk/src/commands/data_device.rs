@@ -95,7 +95,7 @@ pub fn set_actions<Message>(
     ))
 }
 
-/// Read drag and drop data. This will trigger an event with a read pipe to read the data from.
+/// Read drag and drop data. This will trigger an event with the data.
 pub fn request_dnd_data<Message>(
     mime_type: String,
     action: DndAction,
@@ -108,6 +108,17 @@ pub fn request_dnd_data<Message>(
                 mime_type,
                 action,
             },
+        )),
+    ))
+}
+
+/// Set the DnD data in response to a request event.
+pub fn send_dnd_data<Message>(
+    data: Vec<u8>,
+) -> Command<Message> {
+    Command::single(command::Action::PlatformSpecific(
+        platform_specific::Action::Wayland(wayland::Action::DataDevice(
+            wayland::data_device::Action::SendDndData { data },
         )),
     ))
 }

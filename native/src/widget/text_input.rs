@@ -82,8 +82,15 @@ where
     on_change: Box<dyn Fn(String) -> Message + 'a>,
     // (text_input::State, mime_type, dnd_action) -> Message
     #[cfg(feature = "wayland")]
-    on_start_dnd:
+    on_create_dnd_source:
         Option<Box<dyn Fn(State, Vec<String>, DndAction) -> Message + 'a>>,
+    #[cfg(feature = "wayland")]
+    on_send_dnd_source_data: Option<Box<dyn Fn(Vec<u8>) -> Message + 'a>>,
+    #[cfg(feature = "wayland")]
+    on_receive_dnd_offer_data:
+        Option<Box<dyn Fn(String, DndAction) -> Message + 'a>>,
+    #[cfg(feature = "wayland")]
+    on_dnd_offer_finished: Option<Message>,
     dnd_icon: bool,
     on_submit: Option<Message>,
     style: <Renderer::Theme as StyleSheet>::Style,
@@ -117,7 +124,13 @@ where
             dnd_icon: false,
             on_change: Box::new(on_change),
             #[cfg(feature = "wayland")]
-            on_start_dnd: None,
+            on_send_dnd_source_data: None,
+            #[cfg(feature = "wayland")]
+            on_receive_dnd_offer_data: None,
+            #[cfg(feature = "wayland")]
+            on_dnd_offer_finished: None,
+            #[cfg(feature = "wayland")]
+            on_create_dnd_source: None,
             on_submit: None,
             style: Default::default(),
         }
@@ -141,7 +154,35 @@ where
         mut self,
         on_start_dnd: impl Fn(State, Vec<String>, DndAction) -> Message + 'a,
     ) -> Self {
-        self.on_start_dnd = Some(Box::new(on_start_dnd));
+        self.on_create_dnd_source = Some(Box::new(on_start_dnd));
+        self
+    }
+
+    #[cfg(feature = "wayland")]
+    /// Sets the on_send_dnd_source_data handler of the [`TextInput`].
+    pub fn on_send_dnd_source_data(
+        mut self,
+        on_send_dnd_source_data: impl Fn(Vec<u8>) -> Message + 'a,
+    ) -> Self {
+        self.on_send_dnd_source_data = Some(Box::new(on_send_dnd_source_data));
+        self
+    }
+
+    #[cfg(feature = "wayland")]
+    /// Sets the on_receive_dnd_offer_data handler of the [`TextInput`].
+    pub fn on_receive_dnd_offer_data(
+        mut self,
+        on_receive_dnd_offer_data: impl Fn(String, DndAction) -> Message + 'a,
+    ) -> Self {
+        self.on_receive_dnd_offer_data =
+            Some(Box::new(on_receive_dnd_offer_data));
+        self
+    }
+
+    #[cfg(feature = "wayland")]
+    /// Sets the on_dnd_offer_finish handler of the [`TextInput`].
+    pub fn on_dnd_offer_finish(mut self, on_dnd_offer_finish: Message) -> Self {
+        self.on_dnd_offer_finished = Some(on_dnd_offer_finish);
         self
     }
 
@@ -307,9 +348,13 @@ where
             self.is_secure,
             self.on_change.as_ref(),
             #[cfg(feature = "wayland")]
-            self.on_start_dnd.as_deref(),
+            self.on_create_dnd_source.as_deref(),
             #[cfg(feature = "wayland")]
             self.dnd_icon,
+            #[cfg(feature = "wayland")]
+            self.on_send_dnd_source_data.as_deref(),
+            #[cfg(feature = "wayland")]
+            self.on_dnd_offer_finished.clone(),
             &self.on_submit,
             || tree.state.downcast_mut::<State>(),
         )
@@ -466,6 +511,8 @@ pub fn update<'a, Message, Renderer>(
         &dyn Fn(State, Vec<String>, DndAction) -> Message,
     >,
     #[cfg(feature = "wayland")] dnd_icon: bool,
+    #[cfg(feature = "wayland")] on_send_dnd_source_data: Option<&dyn Fn(Vec<u8>) -> Message>,
+    #[cfg(feature = "wayland")] on_dnd_offer_finished: Option<Message>,
     on_submit: &Option<Message>,
     state: impl FnOnce() -> &'a mut State,
 ) -> event::Status
@@ -941,38 +988,30 @@ where
             )),
         )) => {
             let state = state();
-            // if let Some(DraggingState::Dnd(action)) = state.dragging_state {
-            //     dbg!(action);
-            //     if !action.is_empty()
-            //         && SUPPORTED_MIME_TYPES.contains(&mime_type.as_str())
-            //     {
-            //         if let Some(fd) =
-            //             fd.lock().ok().and_then(|fd| fd.try_clone().ok())
-            //         {
-            //             let mut f = File::from(fd);
-            //             let _ = f.write_all(
-            //                 state
-            //                     .selected_text(value.to_string().as_str())
-            //                     .unwrap_or_default()
-            //                     .as_bytes(),
-            //             );
-            //             if action.contains(DndAction::Move) {
-            //                 let mut editor =
-            //                     Editor::new(value, &mut state.cursor);
-            //                 editor.delete();
-            //
-            //                 let message = (on_change)(editor.contents());
-            //                 shell.publish(message);
-            //             }
-            //         }
-            //     }
-            // }
+            if let Some(on_send_dnd_source_data) = on_send_dnd_source_data {
+                if SUPPORTED_MIME_TYPES.contains(&mime_type.as_str()) {
+                    if let Some(data) = state.selected_text(&value.to_string()) {
+                        shell.publish(on_send_dnd_source_data(data.into_bytes()));
+                    }
+                } else {
+                    return event::Status::Ignored;
+                }
+            } else {
+                return event::Status::Ignored;
+            }
         }
         Event::PlatformSpecific(PlatformSpecific::Wayland(
             wayland::Event::DataSource(wayland::DataSourceEvent::DndFinished),
         )) => {
             let state = state();
-            if matches!(state.dragging_state, Some(DraggingState::Dnd(_))) {
+            if let Some(DraggingState::Dnd(action)) = state.dragging_state {
+                if action.contains(DndAction::Move) {
+                    let mut editor = Editor::new(value, &mut state.cursor);
+                    editor.delete();
+
+                    let message = (on_change)(editor.contents());
+                    shell.publish(message);
+                }
                 state.dragging_state = None;
             }
         }
@@ -993,6 +1032,19 @@ where
             if let Some(DraggingState::Dnd(_)) = state.dragging_state {
                 state.dragging_state = Some(DraggingState::Dnd(action));
             }
+        }
+        // TODO: handle dnd offer events
+        Event::PlatformSpecific(PlatformSpecific::Wayland(wayland::Event::DndOffer(wayland::DndOfferEvent::Enter { x, y, mime_types }))) => {
+        }
+        Event::PlatformSpecific(PlatformSpecific::Wayland(wayland::Event::DndOffer(wayland::DndOfferEvent::Motion { x, y }))) => {
+        }
+        Event::PlatformSpecific(PlatformSpecific::Wayland(wayland::Event::DndOffer(wayland::DndOfferEvent::DropPerformed))) => {
+        }
+        Event::PlatformSpecific(PlatformSpecific::Wayland(wayland::Event::DndOffer(wayland::DndOfferEvent::Leave))) => {
+        }
+        Event::PlatformSpecific(PlatformSpecific::Wayland(wayland::Event::DndOffer(wayland::DndOfferEvent::DndData { mime_type, data }))) => {
+        }
+        Event::PlatformSpecific(PlatformSpecific::Wayland(wayland::Event::DndOffer(wayland::DndOfferEvent::SourceActions(actions)))) => {
         }
         _ => {}
     }

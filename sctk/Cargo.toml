@@ -14,7 +14,7 @@ multi_window = []
 [dependencies]
 log = "0.4"
 thiserror = "1.0"
-sctk = { package = "smithay-client-toolkit", git = "https://github.com/pop-os/client-toolkit", branch = "cosmic" }
+sctk = { package = "smithay-client-toolkit", git = "https://github.com/smithay/client-toolkit" }
 raw-window-handle = "0.5"
 enum-repr = "0.2"
 futures = "0.3"
