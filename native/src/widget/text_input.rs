@@ -6,20 +6,24 @@ mod value;
 
 pub mod cursor;
 
-use std::fs::File;
-use std::io::Write;
-
+#[cfg(feature = "wayland")]
+use crate::{
+    command::{
+        self,
+        platform_specific::{self, wayland::data_device::DndIcon},
+    },
+    event::{wayland, PlatformSpecific},
+};
 pub use cursor::Cursor;
 #[cfg(feature = "wayland")]
 use sctk::reexports::client::protocol::wl_data_device_manager::DndAction;
+
 pub use value::Value;
 
 use editor::Editor;
 
 use crate::alignment;
 use crate::event::{self, Event};
-#[cfg(feature = "wayland")]
-use crate::event::{wayland, PlatformSpecific};
 use crate::keyboard;
 use crate::layout;
 use crate::mouse::{self, click};
@@ -82,15 +86,12 @@ where
     on_change: Box<dyn Fn(String) -> Message + 'a>,
     // (text_input::State, mime_type, dnd_action) -> Message
     #[cfg(feature = "wayland")]
-    on_create_dnd_source:
-        Option<Box<dyn Fn(State, Vec<String>, DndAction) -> Message + 'a>>,
+    on_create_dnd_source: Option<Box<dyn Fn(State) -> Message + 'a>>,
     #[cfg(feature = "wayland")]
-    on_send_dnd_source_data: Option<Box<dyn Fn(Vec<u8>) -> Message + 'a>>,
+    on_dnd_command_produced:
+        Option<Box<dyn Fn(Box<dyn Send + Sync + Fn() -> platform_specific::wayland::data_device::ActionInner>) -> Message + 'a>>,
     #[cfg(feature = "wayland")]
-    on_receive_dnd_offer_data:
-        Option<Box<dyn Fn(String, DndAction) -> Message + 'a>>,
-    #[cfg(feature = "wayland")]
-    on_dnd_offer_finished: Option<Message>,
+    surface_ids: Option<(crate::window::Id, crate::window::Id)>,
     dnd_icon: bool,
     on_submit: Option<Message>,
     style: <Renderer::Theme as StyleSheet>::Style,
@@ -124,13 +125,11 @@ where
             dnd_icon: false,
             on_change: Box::new(on_change),
             #[cfg(feature = "wayland")]
-            on_send_dnd_source_data: None,
-            #[cfg(feature = "wayland")]
-            on_receive_dnd_offer_data: None,
-            #[cfg(feature = "wayland")]
-            on_dnd_offer_finished: None,
+            on_dnd_command_produced: None,
             #[cfg(feature = "wayland")]
             on_create_dnd_source: None,
+            #[cfg(feature = "wayland")]
+            surface_ids: None,
             on_submit: None,
             style: Default::default(),
         }
@@ -152,37 +151,32 @@ where
     /// Sets the on_start_dnd handler of the [`TextInput`].
     pub fn on_start_dnd(
         mut self,
-        on_start_dnd: impl Fn(State, Vec<String>, DndAction) -> Message + 'a,
+        on_start_dnd: impl Fn(State) -> Message + 'a,
     ) -> Self {
         self.on_create_dnd_source = Some(Box::new(on_start_dnd));
         self
     }
 
     #[cfg(feature = "wayland")]
-    /// Sets the on_send_dnd_source_data handler of the [`TextInput`].
-    pub fn on_send_dnd_source_data(
+    /// Sets the on_dnd_command_produced handler of the [`TextInput`].
+    /// Commands should be returned in the update function of the application.
+    pub fn on_dnd_command_produced(
         mut self,
-        on_send_dnd_source_data: impl Fn(Vec<u8>) -> Message + 'a,
+        on_dnd_command_produced: impl Fn(Box<dyn Send + Sync + Fn() -> platform_specific::wayland::data_device::ActionInner>) -> Message + 'a,
     ) -> Self {
-        self.on_send_dnd_source_data = Some(Box::new(on_send_dnd_source_data));
+        self.on_dnd_command_produced = Some(Box::new(on_dnd_command_produced));
         self
     }
 
     #[cfg(feature = "wayland")]
-    /// Sets the on_receive_dnd_offer_data handler of the [`TextInput`].
-    pub fn on_receive_dnd_offer_data(
+    /// Sets the window id of the [`TextInput`] and the window_id of the drag icon.
+    /// Both ids are required to be unique.
+    /// This is required for the dnd to work.
+    pub fn surface_ids(
         mut self,
-        on_receive_dnd_offer_data: impl Fn(String, DndAction) -> Message + 'a,
+        window_id: (crate::window::Id, crate::window::Id),
     ) -> Self {
-        self.on_receive_dnd_offer_data =
-            Some(Box::new(on_receive_dnd_offer_data));
-        self
-    }
-
-    #[cfg(feature = "wayland")]
-    /// Sets the on_dnd_offer_finish handler of the [`TextInput`].
-    pub fn on_dnd_offer_finish(mut self, on_dnd_offer_finish: Message) -> Self {
-        self.on_dnd_offer_finished = Some(on_dnd_offer_finish);
+        self.surface_ids = Some(window_id);
         self
     }
 
@@ -352,9 +346,9 @@ where
             #[cfg(feature = "wayland")]
             self.dnd_icon,
             #[cfg(feature = "wayland")]
-            self.on_send_dnd_source_data.as_deref(),
+            self.on_dnd_command_produced.as_deref(),
             #[cfg(feature = "wayland")]
-            self.on_dnd_offer_finished.clone(),
+            self.surface_ids.clone(),
             &self.on_submit,
             || tree.state.downcast_mut::<State>(),
         )
@@ -507,17 +501,27 @@ pub fn update<'a, Message, Renderer>(
     font: &Renderer::Font,
     is_secure: bool,
     on_change: &dyn Fn(String) -> Message,
-    #[cfg(feature = "wayland")] on_start_dnd: Option<
-        &dyn Fn(State, Vec<String>, DndAction) -> Message,
+    #[cfg(feature = "wayland")] on_start_dnd_source: Option<
+        &dyn Fn(State) -> Message,
     >,
     #[cfg(feature = "wayland")] dnd_icon: bool,
-    #[cfg(feature = "wayland")] on_send_dnd_source_data: Option<&dyn Fn(Vec<u8>) -> Message>,
-    #[cfg(feature = "wayland")] on_dnd_offer_finished: Option<Message>,
+    #[cfg(feature = "wayland")] on_dnd_command_produced: Option<
+        &dyn Fn(
+            Box<
+                dyn Send + Sync + Fn()
+                    -> platform_specific::wayland::data_device::ActionInner,
+            >,
+        ) -> Message,
+    >,
+    #[cfg(feature = "wayland")] surface_ids: Option<(
+        crate::window::Id,
+        crate::window::Id,
+    )>,
     on_submit: &Option<Message>,
     state: impl FnOnce() -> &'a mut State,
 ) -> event::Status
 where
-    Message: Clone,
+    Message: Clone + 'a,
     Renderer: text::Renderer,
 {
     // Dnd Icon version of the widget does not handle any events.
@@ -555,7 +559,15 @@ where
 
                         // is the click on selected text?
                         #[cfg(feature = "wayland")]
-                        if let Some(on_start_dnd) = on_start_dnd {
+                        if let (
+                            Some(on_start_dnd),
+                            Some(on_dnd_command_produced),
+                            Some((window_id, icon_id)),
+                        ) = (
+                            on_start_dnd_source,
+                            on_dnd_command_produced,
+                            surface_ids,
+                        ) {
                             let secure_value =
                                 is_secure.then(|| value.secure());
                             let value = secure_value.as_ref().unwrap_or(value);
@@ -599,14 +611,20 @@ where
                                 state.dragging_state = Some(
                                     DraggingState::Dnd(DndAction::empty()),
                                 );
-                                shell.publish(on_start_dnd(
-                                    state.clone(),
-                                    SUPPORTED_MIME_TYPES
-                                        .iter()
-                                        .map(|t| t.to_string())
-                                        .collect(),
-                                    DndAction::Move.union(DndAction::Copy),
-                                ));
+                                shell.publish(on_start_dnd(state.clone()));
+                                let state = state.clone();
+                                shell.publish(on_dnd_command_produced(Box::new(move || {
+                                platform_specific::wayland::data_device::ActionInner::StartDnd {
+                                    mime_types: SUPPORTED_MIME_TYPES.iter().map(|t| t.to_string()).collect(),
+                                    actions: DndAction::Move.union(DndAction::Copy),
+                                    origin_id: window_id.clone(),
+                                    icon_id: Some(
+                                        DndIcon::Widget(
+                                            icon_id.clone(),
+                                            Box::new(state.clone())
+                                            )),
+                                }
+                                })));
                             } else {
                                 // existing logic for setting the selection
                                 let position = if target > 0.0 {
@@ -988,10 +1006,11 @@ where
             )),
         )) => {
             let state = state();
-            if let Some(on_send_dnd_source_data) = on_send_dnd_source_data {
+            if let Some(on_dnd_command_produced) = on_dnd_command_produced {
                 if SUPPORTED_MIME_TYPES.contains(&mime_type.as_str()) {
-                    if let Some(data) = state.selected_text(&value.to_string()) {
-                        shell.publish(on_send_dnd_source_data(data.into_bytes()));
+                    if let Some(data) = state.selected_text(&value.to_string())
+                    {
+                        shell.publish(on_dnd_command_produced(Box::new(move || platform_specific::wayland::data_device::ActionInner::SendDndData { data: data.clone().into_bytes() })));
                     }
                 } else {
                     return event::Status::Ignored;
@@ -1034,18 +1053,33 @@ where
             }
         }
         // TODO: handle dnd offer events
-        Event::PlatformSpecific(PlatformSpecific::Wayland(wayland::Event::DndOffer(wayland::DndOfferEvent::Enter { x, y, mime_types }))) => {
-        }
-        Event::PlatformSpecific(PlatformSpecific::Wayland(wayland::Event::DndOffer(wayland::DndOfferEvent::Motion { x, y }))) => {
-        }
-        Event::PlatformSpecific(PlatformSpecific::Wayland(wayland::Event::DndOffer(wayland::DndOfferEvent::DropPerformed))) => {
-        }
-        Event::PlatformSpecific(PlatformSpecific::Wayland(wayland::Event::DndOffer(wayland::DndOfferEvent::Leave))) => {
-        }
-        Event::PlatformSpecific(PlatformSpecific::Wayland(wayland::Event::DndOffer(wayland::DndOfferEvent::DndData { mime_type, data }))) => {
-        }
-        Event::PlatformSpecific(PlatformSpecific::Wayland(wayland::Event::DndOffer(wayland::DndOfferEvent::SourceActions(actions)))) => {
-        }
+        Event::PlatformSpecific(PlatformSpecific::Wayland(
+            wayland::Event::DndOffer(wayland::DndOfferEvent::Enter {
+                x,
+                y,
+                mime_types,
+            }),
+        )) => {}
+        Event::PlatformSpecific(PlatformSpecific::Wayland(
+            wayland::Event::DndOffer(wayland::DndOfferEvent::Motion { x, y }),
+        )) => {}
+        Event::PlatformSpecific(PlatformSpecific::Wayland(
+            wayland::Event::DndOffer(wayland::DndOfferEvent::DropPerformed),
+        )) => {}
+        Event::PlatformSpecific(PlatformSpecific::Wayland(
+            wayland::Event::DndOffer(wayland::DndOfferEvent::Leave),
+        )) => {}
+        Event::PlatformSpecific(PlatformSpecific::Wayland(
+            wayland::Event::DndOffer(wayland::DndOfferEvent::DndData {
+                mime_type,
+                data,
+            }),
+        )) => {}
+        Event::PlatformSpecific(PlatformSpecific::Wayland(
+            wayland::Event::DndOffer(wayland::DndOfferEvent::SourceActions(
+                actions,
+            )),
+        )) => {}
         _ => {}
     }
     event::Status::Ignored

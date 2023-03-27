@@ -807,8 +807,8 @@ where
                         platform_specific::wayland::popup::Action::Grab { .. } => {},
                     },
                     Event::DataDevice(action) => {
-                        match action {
-                            platform_specific::wayland::data_device::Action::StartInternalDnd { origin_id, icon_id } => {
+                        match action.inner {
+                            platform_specific::wayland::data_device::ActionInner::StartInternalDnd { origin_id, icon_id } => {
                                 let qh = &self.state.queue_handle.clone();
                                 let seat = match self.state.seats.get(0) {
                                     Some(s) => s,
@@ -853,7 +853,7 @@ where
                                     cur_write: None,
                                 });
                             }
-                            platform_specific::wayland::data_device::Action::StartDnd { mime_types, actions, origin_id, icon_id } => {
+                            platform_specific::wayland::data_device::ActionInner::StartDnd { mime_types, actions, origin_id, icon_id } => {
                                 let qh = &self.state.queue_handle.clone();
                                 let seat = match self.state.seats.get(0) {
                                     Some(s) => s,
@@ -906,7 +906,7 @@ where
                                 };
                                 self.state.dnd_source = Some(Dnd { origin_id, origin, source: Some(source), icon_surface, pending_requests: Vec::new(), pipe: None, cur_write: None });
                             },
-                            platform_specific::wayland::data_device::Action::DndFinished => {
+                            platform_specific::wayland::data_device::ActionInner::DndFinished => {
                                 if let Some(offer) = self.state.dnd_offer.take() {
                                     offer.offer.finish();
                                     sticky_exit_callback(IcedSctkEvent::SctkEvent(SctkEvent::DataSource(DataSourceEvent::DndFinished)),
@@ -916,7 +916,7 @@ where
                                     );
                                 }
                             },
-                            platform_specific::wayland::data_device::Action::DndCancelled => {
+                            platform_specific::wayland::data_device::ActionInner::DndCancelled => {
                                 self.state.dnd_offer = None;
                                 sticky_exit_callback(IcedSctkEvent::SctkEvent(SctkEvent::DataSource(DataSourceEvent::DndCancelled)),
                                     &self.state,
@@ -924,7 +924,7 @@ where
                                     &mut callback,
                                 );
                             },
-                            platform_specific::wayland::data_device::Action::SendSelectionData { data } => {
+                            platform_specific::wayland::data_device::ActionInner::SendSelectionData { data } => {
                                 if let Some(selection_source) = self.state.selection_source.as_mut() {
                                     let pipe = match selection_source.pipe.take() {
                                         Some(fd) => fd,
@@ -969,7 +969,7 @@ where
                                     }
                                 }
                             }
-                            platform_specific::wayland::data_device::Action::SendDndData { data } => {
+                            platform_specific::wayland::data_device::ActionInner::SendDndData { data } => {
                                 if let Some(dnd_source) = self.state.dnd_source.as_mut() {
                                     let pipe = match dnd_source.pipe.take() {
                                         Some(fd) => fd,
@@ -1014,7 +1014,7 @@ where
                                     }
                                 }
                             }
-                            platform_specific::wayland::data_device::Action::RequestDndData { id, mime_type, action } => {
+                            platform_specific::wayland::data_device::ActionInner::RequestDndData { id, mime_type, action } => {
                                 if let Some(dnd_offer) = self.state.dnd_offer.as_mut() {
                                     let read_pipe = match dnd_offer.offer.receive(mime_type.clone()) {
                                         Ok(p) => p,
@@ -1062,7 +1062,7 @@ where
                                     };
                                 }
                             }
-                            platform_specific::wayland::data_device::Action::RequestSelectionData { mime_type } => {
+                            platform_specific::wayland::data_device::ActionInner::RequestSelectionData { mime_type } => {
                                 if let Some(selection_offer) = self.state.selection_offer.as_mut() {
                                     let read_pipe = match selection_offer.offer.receive(mime_type.clone()) {
                                         Ok(p) => p,
@@ -1110,7 +1110,7 @@ where
                                     };
                                 }
                             }
-                            platform_specific::wayland::data_device::Action::SetSelection { mime_types, _phantom } => {
+                            platform_specific::wayland::data_device::ActionInner::SetSelection { mime_types } => {
                                 let qh = &self.state.queue_handle.clone();
                                 let seat = match self.state.seats.get(0) {
                                     Some(s) => s,
@@ -1135,7 +1135,7 @@ where
                                     pipe: None,
                                 });
                             }
-                            platform_specific::wayland::data_device::Action::UnsetSelection => {
+                            platform_specific::wayland::data_device::ActionInner::UnsetSelection => {
                                 let seat = match self.state.seats.get(0) {
                                     Some(s) => s,
                                     None => continue,
@@ -1147,7 +1147,7 @@ where
                                 self.state.selection_source = None;
                                 seat.data_device.unset_selection(serial);
                             }
-                            platform_specific::wayland::data_device::Action::SetActions { preferred, accepted } => {
+                            platform_specific::wayland::data_device::ActionInner::SetActions { preferred, accepted } => {
                                 if let Some(offer) = self.state.dnd_offer.as_ref() {
                                     offer.offer.set_actions(preferred, accepted);
                                 }

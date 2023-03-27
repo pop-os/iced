@@ -5,14 +5,35 @@ use sctk::reexports::client::protocol::wl_data_device_manager::DndAction;
 use std::{any::Any, marker::PhantomData};
 
 /// DataDevice Action
-pub enum Action<T> {
+pub struct Action<T> {
+    /// The inner action
+    pub inner: ActionInner,
+    /// The phantom data
+    _phantom: PhantomData<T>,
+}
+
+impl<T> From <ActionInner> for Action<T> {
+    fn from(inner: ActionInner) -> Self {
+        Self {
+            inner,
+            _phantom: PhantomData,
+        }
+    }
+}
+
+impl<T> fmt::Debug for Action<T>{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.inner.fmt(f)
+    }
+}
+
+/// DataDevice Action
+pub enum ActionInner {
     /// Indicate that you are setting the selection and will respond to events
     /// with data of the advertised mime types.
     SetSelection {
         /// The mime types that the selection can be converted to.
         mime_types: Vec<String>,
-        /// Phantom data to allow the user to pass in a custom type.
-        _phantom: PhantomData<T>,
     },
     /// Unset the selection.
     UnsetSelection,
@@ -91,59 +112,11 @@ impl<T> Action<T> {
     where
         T: 'static,
     {
-        match self {
-            Action::UnsetSelection => Action::UnsetSelection,
-            Action::SetSelection {
-                mime_types,
-                _phantom,
-            } => Action::SetSelection {
-                mime_types,
-                _phantom: PhantomData,
-            },
-            Action::RequestSelectionData { mime_type } => {
-                Action::RequestSelectionData { mime_type }
-            }
-            Action::SendSelectionData { data } => {
-                Action::SendSelectionData { data }
-            }
-            Action::StartInternalDnd { origin_id, icon_id } => {
-                Action::StartInternalDnd { origin_id, icon_id }
-            }
-            Action::StartDnd {
-                mime_types,
-                actions,
-                origin_id,
-                icon_id,
-            } => Action::StartDnd {
-                mime_types,
-                actions,
-                origin_id,
-                icon_id,
-            },
-            Action::SetActions {
-                preferred,
-                accepted,
-            } => Action::SetActions {
-                preferred,
-                accepted,
-            },
-            Action::RequestDndData {
-                id,
-                mime_type,
-                action,
-            } => Action::RequestDndData {
-                id,
-                mime_type,
-                action,
-            },
-            Action::SendDndData { data } => Action::SendDndData { data },
-            Action::DndFinished => Action::DndFinished,
-            Action::DndCancelled => Action::DndCancelled,
-        }
+        Action::from(self.inner)
     }
 }
 
-impl<T> fmt::Debug for Action<T> {
+impl fmt::Debug for ActionInner {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::SetSelection { mime_types, .. } => {
