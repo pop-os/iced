@@ -6,6 +6,8 @@ mod value;
 
 pub mod cursor;
 
+use std::default;
+
 #[cfg(feature = "wayland")]
 use crate::{
     command::{
@@ -508,8 +510,9 @@ pub fn update<'a, Message, Renderer>(
     #[cfg(feature = "wayland")] on_dnd_command_produced: Option<
         &dyn Fn(
             Box<
-                dyn Send + Sync + Fn()
-                    -> platform_specific::wayland::data_device::ActionInner,
+                dyn Send
+                    + Sync
+                    + Fn() -> platform_specific::wayland::data_device::ActionInner,
             >,
         ) -> Message,
     >,
@@ -1032,6 +1035,7 @@ where
                     shell.publish(message);
                 }
                 state.dragging_state = None;
+                return event::Status::Captured;
             }
         }
         Event::PlatformSpecific(PlatformSpecific::Wayland(
@@ -1040,6 +1044,7 @@ where
             let state = state();
             if matches!(state.dragging_state, Some(DraggingState::Dnd(_))) {
                 state.dragging_state = None;
+                return event::Status::Captured;
             }
         }
         Event::PlatformSpecific(PlatformSpecific::Wayland(
@@ -1050,6 +1055,7 @@ where
             let state = state();
             if let Some(DraggingState::Dnd(_)) = state.dragging_state {
                 state.dragging_state = Some(DraggingState::Dnd(action));
+                return event::Status::Captured;
             }
         }
         // TODO: handle dnd offer events
@@ -1059,27 +1065,235 @@ where
                 y,
                 mime_types,
             }),
-        )) => {}
+        )) => {
+            let on_dnd_command_produced = match on_dnd_command_produced {
+                Some(on_dnd_command_produced) => on_dnd_command_produced,
+                None => return event::Status::Ignored,
+            };
+
+            let state = state();
+            let bounds = layout.bounds();
+            let is_clicked = bounds.contains(Point {
+                x: x as f32,
+                y: y as f32,
+            });
+
+            if !is_clicked
+                && matches!(state.dnd_offer, DndOfferState::HandlingOffer(..))
+            {
+                state.dnd_offer =
+                    DndOfferState::OutsideWidget(mime_types, DndAction::None);
+                return event::Status::Captured;
+            } else if !is_clicked {
+                state.dnd_offer =
+                    DndOfferState::OutsideWidget(mime_types, DndAction::None);
+                return event::Status::Captured;
+            }
+            let mut accepted = false;
+            for m in &mime_types {
+                if SUPPORTED_MIME_TYPES.contains(&m.as_str()) {
+                    let clone = m.clone();
+                    accepted = true;
+                    shell.publish(on_dnd_command_produced(Box::new(move || platform_specific::wayland::data_device::ActionInner::Accept(Some(clone.clone())))));
+                }
+            }
+            if accepted {
+                shell.publish(on_dnd_command_produced(Box::new(move || platform_specific::wayland::data_device::ActionInner::SetActions { preferred: DndAction::Move, accepted: DndAction::Move.union(DndAction::Copy) })));
+                let text_layout = layout.children().next().unwrap();
+                let target = x as f32 - text_layout.bounds().x;
+                state.dnd_offer = DndOfferState::HandlingOffer(
+                    mime_types.clone(),
+                    DndAction::None,
+                );
+                // existing logic for setting the selection
+                let position = if target > 0.0 {
+                    let value = if is_secure {
+                        value.secure()
+                    } else {
+                        value.clone()
+                    };
+
+                    find_cursor_position(
+                        renderer,
+                        text_layout.bounds(),
+                        font.clone(),
+                        size,
+                        &value,
+                        state,
+                        target,
+                    )
+                } else {
+                    None
+                };
+
+                state.cursor.move_to(position.unwrap_or(0));
+                return event::Status::Captured;
+            }
+        }
         Event::PlatformSpecific(PlatformSpecific::Wayland(
             wayland::Event::DndOffer(wayland::DndOfferEvent::Motion { x, y }),
-        )) => {}
+        )) => {
+            let on_dnd_command_produced = match on_dnd_command_produced {
+                Some(on_dnd_command_produced) => on_dnd_command_produced,
+                None => return event::Status::Ignored,
+            };
+
+            let state = state();
+            let bounds = layout.bounds();
+            let is_clicked = bounds.contains(Point {
+                x: x as f32,
+                y: y as f32,
+            });
+
+            if !is_clicked {
+                if let DndOfferState::HandlingOffer(mime_types, action) =
+                    state.dnd_offer.clone()
+                {
+                    state.dnd_offer =
+                        DndOfferState::OutsideWidget(mime_types, action);
+                    shell.publish(on_dnd_command_produced(Box::new(move || platform_specific::wayland::data_device::ActionInner::SetActions { preferred: DndAction::None, accepted: DndAction::None })));
+                    shell.publish(on_dnd_command_produced(Box::new(move || platform_specific::wayland::data_device::ActionInner::Accept(None))));
+                }
+                return event::Status::Captured;
+            } else if let DndOfferState::OutsideWidget(mime_types, action) =
+                state.dnd_offer.clone()
+            {
+                let mut accepted = false;
+                for m in &mime_types {
+                    if SUPPORTED_MIME_TYPES.contains(&m.as_str()) {
+                        accepted = true;
+                        let clone = m.clone();
+                        shell.publish(on_dnd_command_produced(Box::new(move || platform_specific::wayland::data_device::ActionInner::Accept(Some(clone.clone())))));
+                    }
+                }
+                if accepted {
+                    shell.publish(on_dnd_command_produced(Box::new(move || platform_specific::wayland::data_device::ActionInner::SetActions { preferred: DndAction::Move, accepted: DndAction::Move.union(DndAction::Copy) })));
+                    state.dnd_offer = DndOfferState::HandlingOffer(
+                        mime_types.clone(),
+                        action,
+                    );
+                }
+            };
+            let text_layout = layout.children().next().unwrap();
+            let target = x as f32 - text_layout.bounds().x;
+            // existing logic for setting the selection
+            let position = if target > 0.0 {
+                let value = if is_secure {
+                    value.secure()
+                } else {
+                    value.clone()
+                };
+
+                find_cursor_position(
+                    renderer,
+                    text_layout.bounds(),
+                    font.clone(),
+                    size,
+                    &value,
+                    state,
+                    target,
+                )
+            } else {
+                None
+            };
+
+            state.cursor.move_to(position.unwrap_or(0));
+            return event::Status::Captured;
+        }
         Event::PlatformSpecific(PlatformSpecific::Wayland(
             wayland::Event::DndOffer(wayland::DndOfferEvent::DropPerformed),
-        )) => {}
+        )) => {
+            let on_dnd_command_produced = match on_dnd_command_produced {
+                Some(on_dnd_command_produced) => on_dnd_command_produced,
+                None => return event::Status::Ignored,
+            };
+
+            let state = state();
+            if let DndOfferState::HandlingOffer(mime_types, _action) =
+                state.dnd_offer.clone()
+            {
+                let mime_type = match SUPPORTED_MIME_TYPES
+                    .iter()
+                    .find(|m| mime_types.contains(&m.to_string()))
+                {
+                    Some(m) => m.clone(),
+                    None => {
+                        state.dnd_offer = DndOfferState::None;
+                        return event::Status::Captured;
+                    }
+                }
+                .to_string();
+                state.dnd_offer = DndOfferState::Dropped;
+                shell.publish(on_dnd_command_produced(Box::new(move || platform_specific::wayland::data_device::ActionInner::RequestDndData(mime_type.clone()))));
+            } else if let DndOfferState::OutsideWidget(..) = &state.dnd_offer {
+                state.dnd_offer = DndOfferState::None;
+                return event::Status::Captured;
+            }
+            return event::Status::Ignored;
+        }
         Event::PlatformSpecific(PlatformSpecific::Wayland(
             wayland::Event::DndOffer(wayland::DndOfferEvent::Leave),
-        )) => {}
+        )) => {
+            let state = state();
+            // ASHLEY TODO we should be able to reset but for now we don't if we are handling a
+            // drop
+            match state.dnd_offer {
+                DndOfferState::Dropped => {},
+                _ => {
+                    state.dnd_offer = DndOfferState::None;
+                }
+            };
+            return event::Status::Captured;
+        }
         Event::PlatformSpecific(PlatformSpecific::Wayland(
             wayland::Event::DndOffer(wayland::DndOfferEvent::DndData {
                 mime_type,
                 data,
             }),
-        )) => {}
+        )) => {
+            let on_dnd_command_produced = match on_dnd_command_produced {
+                Some(on_dnd_command_produced) => on_dnd_command_produced,
+                None => return event::Status::Ignored,
+            };
+
+            let state = state();
+            if let DndOfferState::Dropped = state.dnd_offer.clone() {
+                state.dnd_offer = DndOfferState::None;
+                if !SUPPORTED_MIME_TYPES.contains(&mime_type.as_str()) {
+                    return event::Status::Captured;
+                }
+                let content = match String::from_utf8(data) {
+                    Ok(text) => text,
+                    Err(_) => return event::Status::Captured,
+                };
+                let mut editor = Editor::new(value, &mut state.cursor);
+
+                editor.paste(Value::new(content.as_str()));
+
+                let message = (on_change)(editor.contents());
+                shell.publish(message);
+                shell.publish(on_dnd_command_produced(Box::new(move || platform_specific::wayland::data_device::ActionInner::DndFinished)));
+                return event::Status::Captured;
+            }
+            return event::Status::Ignored;
+        }
         Event::PlatformSpecific(PlatformSpecific::Wayland(
             wayland::Event::DndOffer(wayland::DndOfferEvent::SourceActions(
                 actions,
             )),
-        )) => {}
+        )) => {
+            let on_dnd_command_produced = match on_dnd_command_produced {
+                Some(on_dnd_command_produced) => on_dnd_command_produced,
+                None => return event::Status::Ignored,
+            };
+
+            let state = state();
+            if let DndOfferState::HandlingOffer(..) = state.dnd_offer.clone() {
+                shell.publish(on_dnd_command_produced(Box::new(move || platform_specific::wayland::data_device::ActionInner::SetActions { preferred: actions.intersection(DndAction::Move), accepted: actions.clone() })));
+                return event::Status::Captured;
+            }
+            return event::Status::Ignored;
+        }
         _ => {}
     }
     event::Status::Ignored
@@ -1138,7 +1352,7 @@ pub fn draw<Renderer>(
         appearance.background,
     );
 
-    let mut text = value.to_string();
+    let text = value.to_string();
     let size = size.unwrap_or_else(|| renderer.default_size());
 
     let (cursor, offset) = if state.is_focused() {
@@ -1285,11 +1499,21 @@ pub fn mouse_interaction(
     }
 }
 
+#[derive(Debug, Default, Clone)]
+pub(crate) enum DndOfferState {
+    #[default]
+    None,
+    OutsideWidget(Vec<String>, DndAction),
+    HandlingOffer(Vec<String>, DndAction),
+    Dropped,
+}
+
 /// The state of a [`TextInput`].
 #[derive(Debug, Default, Clone)]
 pub struct State {
     is_focused: bool,
     dragging_state: Option<DraggingState>,
+    dnd_offer: DndOfferState,
     is_pasting: Option<Value>,
     last_click: Option<mouse::Click>,
     cursor: Cursor,
@@ -1322,6 +1546,7 @@ impl State {
             is_focused: true,
             dragging_state: None,
             is_pasting: None,
+            dnd_offer: DndOfferState::None,
             last_click: None,
             cursor: Cursor::default(),
             keyboard_modifiers: keyboard::Modifiers::default(),

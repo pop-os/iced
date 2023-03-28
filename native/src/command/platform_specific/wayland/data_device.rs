@@ -67,6 +67,8 @@ pub enum ActionInner {
         /// An optional window id for the cursor icon surface.
         icon_id: Option<DndIcon>,
     },
+    /// Set the accepted drag and drop mime type.
+    Accept(Option<String>),
     /// Set accepted and preferred drag and drop actions.
     SetActions {
         /// The preferred action.
@@ -74,15 +76,8 @@ pub enum ActionInner {
         /// The accepted actions.
         accepted: DndAction,
     },
-    /// Read the Drag and Drop data. An event will be delivered with a pipe to read the data from.
-    RequestDndData {
-        /// id of the widget which is requesting the drag
-        id: Option<widget::Id>,
-        /// The mime type that the selection should be converted to.
-        mime_type: String,
-        /// The action that the client supports.
-        action: DndAction,
-    },
+    /// Read the Drag and Drop data with a mime type. An event will be delivered with a pipe to read the data from.
+    RequestDndData(String),
     /// Send the drag and drop data.
     SendDndData {
         /// The data to send.
@@ -119,6 +114,9 @@ impl<T> Action<T> {
 impl fmt::Debug for ActionInner {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Accept(mime_type) => {
+                f.debug_tuple("Accept").field(mime_type).finish()
+            }
             Self::SetSelection { mime_types, .. } => {
                 f.debug_tuple("SetSelection").field(mime_types).finish()
             }
@@ -154,15 +152,9 @@ impl fmt::Debug for ActionInner {
                 .field(preferred)
                 .field(accepted)
                 .finish(),
-            Self::RequestDndData {
-                mime_type,
-                action,
-                id,
-            } => f
+            Self::RequestDndData(mime_type) => f
                 .debug_tuple("RequestDndData")
                 .field(mime_type)
-                .field(action)
-                .field(id)
                 .finish(),
             Self::SendDndData { data } => {
                 f.debug_tuple("SendDndData").field(data).finish()

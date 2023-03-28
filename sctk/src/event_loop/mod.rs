@@ -808,6 +808,13 @@ where
                     },
                     Event::DataDevice(action) => {
                         match action.inner {
+                            platform_specific::wayland::data_device::ActionInner::Accept(mime_type) => {
+                                let drag_offer = match self.state.dnd_offer.as_mut() {
+                                    Some(d) => d,
+                                    None => continue,
+                                };
+                                drag_offer.offer.accept_mime_type(drag_offer.offer.serial, mime_type);
+                            }
                             platform_specific::wayland::data_device::ActionInner::StartInternalDnd { origin_id, icon_id } => {
                                 let qh = &self.state.queue_handle.clone();
                                 let seat = match self.state.seats.get(0) {
@@ -1014,7 +1021,7 @@ where
                                     }
                                 }
                             }
-                            platform_specific::wayland::data_device::ActionInner::RequestDndData { id, mime_type, action } => {
+                            platform_specific::wayland::data_device::ActionInner::RequestDndData (mime_type) => {
                                 if let Some(dnd_offer) = self.state.dnd_offer.as_mut() {
                                     let read_pipe = match dnd_offer.offer.receive(mime_type.clone()) {
                                         Ok(p) => p,
@@ -1149,7 +1156,7 @@ where
                             }
                             platform_specific::wayland::data_device::ActionInner::SetActions { preferred, accepted } => {
                                 if let Some(offer) = self.state.dnd_offer.as_ref() {
-                                    offer.offer.set_actions(preferred, accepted);
+                                    offer.offer.set_actions(accepted, preferred);
                                 }
                             }
                         }

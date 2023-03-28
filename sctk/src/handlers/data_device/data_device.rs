@@ -45,7 +45,9 @@ impl<T> DataDeviceHandler for SctkState<T> {
         _qh: &QueueHandle<Self>,
         _data_device: DataDevice,
     ) {
-        let surface = self.dnd_offer.take().unwrap().offer.surface.clone();
+        // ASHLEY TODO the dnd_offer should be removed when the leave event is received
+        // but for now it is not
+        let surface = self.dnd_offer.as_ref().unwrap().offer.surface.clone();
         self.sctk_events.push(SctkEvent::DndOffer {
             event: DndOfferEvent::Leave,
             surface,
@@ -61,7 +63,6 @@ impl<T> DataDeviceHandler for SctkState<T> {
         let DragOffer {
             x,
             y,
-            time,
             surface,
             ..
         } = data_device.drag_offer().unwrap();

@@ -219,7 +219,6 @@ impl Application for Todos {
                             icon_id,
                         );
 
-                        state.window_id_ctr += 1;
                         Command::none()
                     }
                     Message::TextInputDndCommand(action) => {

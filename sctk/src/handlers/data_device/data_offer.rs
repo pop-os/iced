@@ -16,8 +16,8 @@ impl<T> DataOfferHandler for SctkState<T> {
         &mut self,
         _conn: &Connection,
         _qh: &QueueHandle<Self>,
-        offer: &mut DataDeviceOffer,
-        mime_type: String,
+        _offer: &mut DataDeviceOffer,
+        _mime_type: String,
     ) {
     }
 

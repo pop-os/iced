@@ -5,7 +5,10 @@ use iced_native::{
         self,
         platform_specific::{
             self,
-            wayland::{self, data_device::{DndIcon, ActionInner}},
+            wayland::{
+                self,
+                data_device::{ActionInner, DndIcon},
+            },
         },
     },
     widget, window, Command,
@@ -17,9 +20,8 @@ use sctk::reexports::client::protocol::wl_data_device_manager::DndAction;
 pub fn set_selection<Message>(mime_types: Vec<String>) -> Command<Message> {
     Command::single(command::Action::PlatformSpecific(
         platform_specific::Action::Wayland(wayland::Action::DataDevice(
-            wayland::data_device::ActionInner::SetSelection {
-                mime_types,
-            }.into(),
+            wayland::data_device::ActionInner::SetSelection { mime_types }
+                .into(),
         )),
     ))
 }
@@ -38,7 +40,10 @@ pub fn unset_selection<Message>() -> Command<Message> {
 pub fn request_selection<Message>(mime_type: String) -> Command<Message> {
     Command::single(command::Action::PlatformSpecific(
         platform_specific::Action::Wayland(wayland::Action::DataDevice(
-            wayland::data_device::ActionInner::RequestSelectionData { mime_type }.into(),
+            wayland::data_device::ActionInner::RequestSelectionData {
+                mime_type,
+            }
+            .into(),
         )),
     ))
 }
@@ -54,7 +59,8 @@ pub fn start_internal_drag<Message>(
             wayland::data_device::ActionInner::StartInternalDnd {
                 origin_id,
                 icon_id,
-            }.into(),
+            }
+            .into(),
         )),
     ))
 }
@@ -74,7 +80,8 @@ pub fn start_drag<Message>(
                 actions,
                 origin_id,
                 icon_id,
-            }.into(),
+            }
+            .into(),
         )),
     ))
 }
@@ -89,32 +96,23 @@ pub fn set_actions<Message>(
             wayland::data_device::ActionInner::SetActions {
                 preferred,
                 accepted,
-            }.into(),
+            }
+            .into(),
         )),
     ))
 }
 
 /// Read drag and drop data. This will trigger an event with the data.
-pub fn request_dnd_data<Message>(
-    mime_type: String,
-    action: DndAction,
-    widget_id: Option<widget::Id>,
-) -> Command<Message> {
+pub fn request_dnd_data<Message>(mime_type: String) -> Command<Message> {
     Command::single(command::Action::PlatformSpecific(
         platform_specific::Action::Wayland(wayland::Action::DataDevice(
-            wayland::data_device::ActionInner::RequestDndData {
-                id: widget_id,
-                mime_type,
-                action,
-            }.into(),
+            wayland::data_device::ActionInner::RequestDndData(mime_type).into(),
         )),
     ))
 }
 
 /// Set the DnD data in response to a request event.
-pub fn send_dnd_data<Message>(
-    data: Vec<u8>,
-) -> Command<Message> {
+pub fn send_dnd_data<Message>(data: Vec<u8>) -> Command<Message> {
     Command::single(command::Action::PlatformSpecific(
         platform_specific::Action::Wayland(wayland::Action::DataDevice(
             wayland::data_device::ActionInner::SendDndData { data }.into(),
@@ -141,12 +139,10 @@ pub fn cancel_dnd<Message>() -> Command<Message> {
 }
 
 /// Run a generic drag action
-pub fn action<Message>(
-    action: ActionInner
-) -> Command<Message> {
+pub fn action<Message>(action: ActionInner) -> Command<Message> {
     Command::single(command::Action::PlatformSpecific(
         platform_specific::Action::Wayland(wayland::Action::DataDevice(
-                action.into()
+            action.into(),
         )),
     ))
 }
