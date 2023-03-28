@@ -6,8 +6,6 @@ mod value;
 
 pub mod cursor;
 
-use std::default;
-
 #[cfg(feature = "wayland")]
 use crate::{
     command::{
@@ -561,6 +559,9 @@ where
                         // single click that is on top of the selected text
 
                         // is the click on selected text?
+                        if is_secure {
+                            return event::Status::Ignored;
+                        }
                         #[cfg(feature = "wayland")]
                         if let (
                             Some(on_start_dnd),
@@ -571,9 +572,6 @@ where
                             on_dnd_command_produced,
                             surface_ids,
                         ) {
-                            let secure_value =
-                                is_secure.then(|| value.secure());
-                            let value = secure_value.as_ref().unwrap_or(value);
                             let text_bounds =
                                 layout.children().next().unwrap().bounds();
                             let actual_size =
@@ -611,9 +609,19 @@ where
                             };
 
                             if selection_bounds.contains(cursor_position) {
-                                state.dragging_state = Some(
-                                    DraggingState::Dnd(DndAction::empty()),
-                                );
+                                let text =
+                                    state.selected_text(&value.to_string());
+                                state.dragging_state =
+                                    Some(DraggingState::Dnd(
+                                        DndAction::empty(),
+                                        text.unwrap_or_default(),
+                                    ));
+                                let mut editor =
+                                    Editor::new(value, &mut state.cursor);
+                                editor.delete();
+
+                                let message = (on_change)(editor.contents());
+                                shell.publish(message);
                                 shell.publish(on_start_dnd(state.clone()));
                                 let state = state.clone();
                                 shell.publish(on_dnd_command_produced(Box::new(move || {
@@ -658,7 +666,7 @@ where
                             state.dragging_state = None;
                         }
                     }
-                    (Some(DraggingState::Dnd(_)), _, _) => {
+                    (Some(DraggingState::Dnd(..)), _, _) => {
                         // TODO: should we cancel if this happens?
                         state.dragging_state = None;
                     }
@@ -952,7 +960,7 @@ where
                         state.is_focused = false;
                         state.dragging_state = None;
                         match state.dragging_state.as_ref() {
-                            Some(DraggingState::Dnd(_)) => {
+                            Some(DraggingState::Dnd(..)) => {
                                 // TODO should Dnd be canceled? And should it be canceled in
                                 // iced-sctk instead?
                             }
@@ -1011,7 +1019,11 @@ where
             let state = state();
             if let Some(on_dnd_command_produced) = on_dnd_command_produced {
                 if SUPPORTED_MIME_TYPES.contains(&mime_type.as_str()) {
-                    if let Some(data) = state.selected_text(&value.to_string())
+                    if let Some(data) =
+                        state.dragging_state.as_ref().and_then(|s| match s {
+                            DraggingState::Dnd(_, data) => Some(data.clone()),
+                            DraggingState::Selection => None,
+                        })
                     {
                         shell.publish(on_dnd_command_produced(Box::new(move || platform_specific::wayland::data_device::ActionInner::SendDndData { data: data.clone().into_bytes() })));
                     }
@@ -1026,14 +1038,7 @@ where
             wayland::Event::DataSource(wayland::DataSourceEvent::DndFinished),
         )) => {
             let state = state();
-            if let Some(DraggingState::Dnd(action)) = state.dragging_state {
-                if action.contains(DndAction::Move) {
-                    let mut editor = Editor::new(value, &mut state.cursor);
-                    editor.delete();
-
-                    let message = (on_change)(editor.contents());
-                    shell.publish(message);
-                }
+            if matches!(state.dragging_state, Some(DraggingState::Dnd(..))) {
                 state.dragging_state = None;
                 return event::Status::Captured;
             }
@@ -1042,7 +1047,7 @@ where
             wayland::Event::DataSource(wayland::DataSourceEvent::Cancelled),
         )) => {
             let state = state();
-            if matches!(state.dragging_state, Some(DraggingState::Dnd(_))) {
+            if matches!(state.dragging_state, Some(DraggingState::Dnd(..))) {
                 state.dragging_state = None;
                 return event::Status::Captured;
             }
@@ -1053,8 +1058,11 @@ where
             ),
         )) => {
             let state = state();
-            if let Some(DraggingState::Dnd(_)) = state.dragging_state {
-                state.dragging_state = Some(DraggingState::Dnd(action));
+            if let Some(DraggingState::Dnd(_, text)) =
+                state.dragging_state.as_ref()
+            {
+                state.dragging_state =
+                    Some(DraggingState::Dnd(action, text.clone()));
                 return event::Status::Captured;
             }
         }
@@ -1238,7 +1246,7 @@ where
             // ASHLEY TODO we should be able to reset but for now we don't if we are handling a
             // drop
             match state.dnd_offer {
-                DndOfferState::Dropped => {},
+                DndOfferState::Dropped => {}
                 _ => {
                     state.dnd_offer = DndOfferState::None;
                 }
@@ -1299,10 +1307,10 @@ where
     event::Status::Ignored
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum DraggingState {
     Selection,
-    Dnd(DndAction),
+    Dnd(DndAction, String),
 }
 
 /// Draws the [`TextInput`] with the given [`Renderer`], overriding its
@@ -1537,6 +1545,14 @@ impl State {
                 let right = end.max(start);
                 Some(text[left..right].to_string())
             }
+        }
+    }
+
+    /// Returns the current value of the dragged text in the [`TextInput`].
+    pub fn dragged_text(&self) -> Option<String> {
+        match self.dragging_state.as_ref() {
+            Some(DraggingState::Dnd(_, text)) => Some(text.clone()),
+            _ => None,
         }
     }
 

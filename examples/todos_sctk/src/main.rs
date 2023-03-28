@@ -269,7 +269,7 @@ impl Application for Todos {
                         return text_input(
                             "What needs to be done?",
                             &state
-                                .selected_text(&input_value)
+                                .dragged_text()
                                 .unwrap_or_default(),
                             |_| Message::Ignore,
                         )
