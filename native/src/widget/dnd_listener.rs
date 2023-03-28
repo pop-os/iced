@@ -2,7 +2,7 @@
 
 use sctk::reexports::client::protocol::wl_data_device_manager::DndAction;
 
-use crate::event::wayland::{DndOfferEvent, ReadData};
+use crate::event::wayland::DndOfferEvent;
 use crate::event::{self, Event, PlatformSpecific};
 use crate::layout;
 use crate::mouse;
@@ -22,11 +22,11 @@ pub struct DndListener<'a, Message, Renderer> {
 
     /// Sets the message to emit on a drag enter.
     on_enter:
-        Option<Box<dyn Fn(DndAction, Vec<String>, (f32, f32)) -> Message>>,
+        Option<Box<dyn Fn(DndAction, Vec<String>, (f32, f32)) -> Message + 'a>>,
 
     /// Sets the message to emit on a drag motion.
     /// x and y are the coordinates of the pointer relative to the widget in the range (0.0, 1.0)
-    on_motion: Option<Box<dyn Fn(f32, f32) -> Message>>,
+    on_motion: Option<Box<dyn Fn(f32, f32) -> Message + 'a>>,
 
     /// Sets the message to emit on a drag exit.
     on_exit: Option<Message>,
@@ -35,16 +35,16 @@ pub struct DndListener<'a, Message, Renderer> {
     on_drop: Option<Message>,
 
     /// Sets the message to emit on a drag mime type event.
-    on_mime_type: Option<Box<dyn Fn(String) -> Message>>,
+    on_mime_type: Option<Box<dyn Fn(String) -> Message + 'a>>,
 
     /// Sets the message to emit on a drag action event.
-    on_source_actions: Option<Box<dyn Fn(DndAction) -> Message>>,
+    on_source_actions: Option<Box<dyn Fn(DndAction) -> Message + 'a>>,
 
     /// Sets the message to emit on a drag action event.
-    on_selected_action: Option<Box<dyn Fn(DndAction) -> Message>>,
+    on_selected_action: Option<Box<dyn Fn(DndAction) -> Message + 'a>>,
 
-    /// Sets the message to emit on a Read Data event.
-    on_read_data: Option<Box<dyn Fn(ReadData) -> Message>>,
+    /// Sets the message to emit on a Data event.
+    on_data: Option<Box<dyn Fn(String, Vec<u8>) -> Message + 'a>>,
 }
 
 impl<'a, Message, Renderer> DndListener<'a, Message, Renderer> {
@@ -52,9 +52,9 @@ impl<'a, Message, Renderer> DndListener<'a, Message, Renderer> {
     #[must_use]
     pub fn on_enter(
         mut self,
-        message: Box<dyn Fn(DndAction, Vec<String>, (f32, f32)) -> Message>,
+        message: impl Fn(DndAction, Vec<String>, (f32, f32)) -> Message + 'a,
     ) -> Self {
-        self.on_enter = Some(message);
+        self.on_enter = Some(Box::new(message));
         self
     }
 
@@ -76,9 +76,9 @@ impl<'a, Message, Renderer> DndListener<'a, Message, Renderer> {
     #[must_use]
     pub fn on_mime_type(
         mut self,
-        message: Box<dyn Fn(String) -> Message>,
+        message: impl Fn(String) -> Message + 'a,
     ) -> Self {
-        self.on_mime_type = Some(message);
+        self.on_mime_type = Some(Box::new(message));
         self
     }
 
@@ -86,18 +86,36 @@ impl<'a, Message, Renderer> DndListener<'a, Message, Renderer> {
     #[must_use]
     pub fn on_action(
         mut self,
-        message: Box<dyn Fn(DndAction) -> Message>,
+        message: impl Fn(DndAction) -> Message + 'a,
     ) -> Self {
-        self.on_source_actions = Some(message);
+        self.on_source_actions = Some(Box::new(message));
         self
     }
+
+    /// The message to emit on a drag read data event.
+    #[must_use]
+    pub fn on_data(
+        mut self,
+        message: impl Fn(String, Vec<u8>) -> Message + 'a,
+    ) -> Self {
+        self.on_data = Some(Box::new(message));
+        self
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+enum DndState {
+    #[default]
+    None,
+    External(DndAction, Vec<String>),
+    Hovered(DndAction, Vec<String>),
+    Dropped,
 }
 
 /// Local state of the [`DndListener`].
 #[derive(Default)]
 struct State {
-    dnd: Option<(DndAction, Vec<String>)>,
-    hovered: bool,
+    dnd: DndState,
 }
 
 impl<'a, Message, Renderer> DndListener<'a, Message, Renderer> {
@@ -112,7 +130,7 @@ impl<'a, Message, Renderer> DndListener<'a, Message, Renderer> {
             on_mime_type: None,
             on_source_actions: None,
             on_selected_action: None,
-            on_read_data: None,
+            on_data: None,
         }
     }
 }
@@ -293,14 +311,14 @@ fn update<Message: Clone, Renderer>(
                 mime_types,
             }),
         )) => {
-            state.dnd = Some((DndAction::empty(), mime_types.clone()));
             let bounds = layout.bounds();
             let p = Point {
                 x: *x as f32,
                 y: *y as f32,
             };
             if layout.bounds().contains(p) {
-                state.hovered = true;
+                state.dnd =
+                    DndState::Hovered(DndAction::empty(), mime_types.clone());
                 if let Some(message) = widget.on_enter.as_ref() {
                     let normalized_x: f32 = (p.x - bounds.x) / bounds.width;
                     let normalized_y: f32 = (p.y - bounds.y) / bounds.height;
@@ -311,6 +329,9 @@ fn update<Message: Clone, Renderer>(
                     ));
                     return event::Status::Captured;
                 }
+            } else {
+                state.dnd =
+                    DndState::External(DndAction::empty(), mime_types.clone());
             }
         }
         Event::PlatformSpecific(PlatformSpecific::Wayland(
@@ -322,25 +343,31 @@ fn update<Message: Clone, Renderer>(
                 y: *y as f32,
             };
             // motion can trigger an enter, motion or leave event on the widget
-            if state.hovered && !layout.bounds().contains(p) {
-                state.hovered = false;
-                if let Some(message) = widget.on_exit.clone() {
-                    shell.publish(message);
-                    return event::Status::Captured;
-                }
-            } else if state.hovered && layout.bounds().contains(p) {
-                if let Some(message) = widget.on_motion.as_ref() {
+            if let DndState::Hovered(action, mime_types) = &state.dnd {
+                if !bounds.contains(p) {
+                    state.dnd = DndState::External(*action, mime_types.clone());
+                    if let Some(message) = widget.on_exit.clone() {
+                        shell.publish(message);
+                        return event::Status::Captured;
+                    }
+                } else if let Some(message) = widget.on_motion.as_ref() {
                     let normalized_x: f32 = (p.x - bounds.x) / bounds.width;
                     let normalized_y: f32 = (p.y - bounds.y) / bounds.height;
                     shell.publish(message(normalized_x, normalized_y));
                     return event::Status::Captured;
                 }
-            } else if !state.hovered && layout.bounds().contains(p) {
-                let (action, mime_types) = match state.dnd.as_ref() {
-                    Some((action, mime_types)) => (action, mime_types),
-                    None => return event::Status::Ignored,
+            } else if bounds.contains(p) {
+                state.dnd = match &state.dnd {
+                    DndState::External(a, m) => DndState::Hovered(*a, m.clone()),
+                    _ => DndState::Hovered(DndAction::empty(), vec![]),
                 };
-                state.hovered = true;
+                let (action, mime_types) = match &state.dnd {
+                    DndState::Hovered(action, mime_types) => {
+                        (action, mime_types)
+                    }
+                    _ => return event::Status::Ignored,
+                };
+                
                 if let Some(message) = widget.on_enter.as_ref() {
                     let normalized_x: f32 = (p.x - bounds.x) / bounds.width;
                     let normalized_y: f32 = (p.y - bounds.y) / bounds.height;
@@ -351,15 +378,15 @@ fn update<Message: Clone, Renderer>(
                     ));
                     return event::Status::Captured;
                 }
-            } else {
-                state.hovered = false;
             }
         }
         Event::PlatformSpecific(PlatformSpecific::Wayland(
             event::wayland::Event::DndOffer(DndOfferEvent::Leave),
         )) => {
-            state.hovered = false;
-            state.dnd = None;
+            if !matches!(state.dnd, DndState::Dropped) {
+                state.dnd = DndState::None;
+            }
+
             if let Some(message) = widget.on_exit.clone() {
                 shell.publish(message);
                 return event::Status::Captured;
@@ -368,29 +395,48 @@ fn update<Message: Clone, Renderer>(
         Event::PlatformSpecific(PlatformSpecific::Wayland(
             event::wayland::Event::DndOffer(DndOfferEvent::DropPerformed),
         )) => {
-            state.hovered = false;
-            state.dnd = None;
+            if matches!(state.dnd, DndState::Hovered(..)) {
+                state.dnd = DndState::Dropped;
+            }
             if let Some(message) = widget.on_drop.clone() {
                 shell.publish(message);
                 return event::Status::Captured;
             }
         }
-        // Event::PlatformSpecific(PlatformSpecific::Wayland(
-        //     event::wayland::Event::DndOffer(DndOfferEvent::ReadData(read_data)),
-        // )) => {
-        //     if let Some(message) = widget.on_read_data.as_ref() {
-        //         shell.publish(message(read_data.clone()));
-        //         return event::Status::Captured;
-        //     }
-        // }
+        Event::PlatformSpecific(PlatformSpecific::Wayland(
+            event::wayland::Event::DndOffer(DndOfferEvent::DndData {
+                mime_type,
+                data,
+            }),
+        )) => {
+            match &mut state.dnd {
+                DndState::Hovered(_, mime_types) => {
+                    if !mime_types.contains(mime_type) {
+                        return event::Status::Ignored;
+                    }
+                }
+                DndState::None | DndState::External(..) => {
+                    return event::Status::Ignored
+                }
+                DndState::Dropped => {}
+            };
+            if let Some(message) = widget.on_data.as_ref() {
+                shell.publish(message(mime_type.clone(), data.clone()));
+                return event::Status::Captured;
+            }
+        }
         Event::PlatformSpecific(PlatformSpecific::Wayland(
             event::wayland::Event::DndOffer(DndOfferEvent::SourceActions(
                 actions,
             )),
         )) => {
-            match state.dnd.as_mut() {
-                Some((action, _)) => *action = *actions,
-                None => state.dnd = Some((*actions, vec![])),
+            match &mut state.dnd {
+                DndState::Hovered(ref mut action, _) => *action = *actions,
+                DndState::External(ref mut action, _) => *action = *actions,
+                DndState::Dropped => {}
+                DndState::None => {
+                    state.dnd = DndState::External(*actions, vec![])
+                }
             };
             if let Some(message) = widget.on_source_actions.as_ref() {
                 shell.publish(message(*actions));
@@ -398,18 +444,9 @@ fn update<Message: Clone, Renderer>(
             }
         }
         Event::PlatformSpecific(PlatformSpecific::Wayland(
-            event::wayland::Event::DndOffer(DndOfferEvent::SelectedAction(
-                action,
-            )),
+            event::wayland::Event::DndOffer(DndOfferEvent::SelectedAction(_)),
         )) => {
-            match state.dnd.as_mut() {
-                Some((dnd_action, _)) => *dnd_action = *action,
-                None => state.dnd = Some((*action, vec![])),
-            };
-            if let Some(message) = widget.on_selected_action.as_ref() {
-                shell.publish(message(*action));
-                return event::Status::Captured;
-            }
+            // TODO?
         }
         _ => {}
     };

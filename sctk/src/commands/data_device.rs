@@ -102,6 +102,15 @@ pub fn set_actions<Message>(
     ))
 }
 
+/// Accept a mime type or None to reject the drag and drop operation.
+pub fn accept_mime_type<Message>(mime_type: Option<String>) -> Command<Message> {
+    Command::single(command::Action::PlatformSpecific(
+        platform_specific::Action::Wayland(wayland::Action::DataDevice(
+            wayland::data_device::ActionInner::Accept(mime_type).into(),
+        )),
+    ))
+}
+
 /// Read drag and drop data. This will trigger an event with the data.
 pub fn request_dnd_data<Message>(mime_type: String) -> Command<Message> {
     Command::single(command::Action::PlatformSpecific(

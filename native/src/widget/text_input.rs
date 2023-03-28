@@ -1290,6 +1290,7 @@ where
                 actions,
             )),
         )) => {
+            dbg!(actions);
             let on_dnd_command_produced = match on_dnd_command_produced {
                 Some(on_dnd_command_produced) => on_dnd_command_produced,
                 None => return event::Status::Ignored,
