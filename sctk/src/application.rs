@@ -711,11 +711,13 @@ where
                 state.synchronize(&application);
 
                 // just draw here immediately and never again for dnd icons
+                // TODO handle scale factor?
                 let new_mouse_interaction = user_interface.draw(
                     &mut renderer,
                     state.theme(),
                     &renderer::Style {
                         text_color: state.text_color(),
+                        scale_factor: state.scale_factor(),
                     },
                     state.cursor_position(),
                 );
