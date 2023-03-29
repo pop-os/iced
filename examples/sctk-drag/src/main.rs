@@ -3,12 +3,12 @@ use iced::{
     subscription,
     wayland::{
         actions::data_device::DndIcon,
-        data_device::{accept_mime_type, request_dnd_data, set_actions},
+        data_device::{accept_mime_type, request_dnd_data, set_actions, finish_dnd},
         InitialSurface,
     },
     wayland::{
         data_device::{send_dnd_data, start_drag},
-        platform_specific
+        platform_specific,
     },
     widget::{self, column, container, dnd_listener, mouse_listener, text},
     window, Application, Color, Command, Element, Subscription, Theme,
@@ -117,6 +117,7 @@ impl Application for DndTest {
             Message::DndData(data) => {
                 println!("DndData: {:?}", data);
                 self.current_text = String::from_utf8(data).unwrap();
+                return finish_dnd();
             }
             Message::SendSourceData(mime_type) => {
                 if let Some(source) = &self.source {
@@ -127,6 +128,7 @@ impl Application for DndTest {
             }
             Message::SourceFinished => {
                 self.source = None;
+                
             }
             Message::StartDnd => {
                 self.source = Some(self.current_text.clone());
@@ -178,39 +180,53 @@ impl Application for DndTest {
             return text(&self.current_text).into();
         }
         column![
-            container(
-                dnd_listener(text(format!(
+            dnd_listener(
+                container(text(format!(
                     "Drag text here: {}",
                     &self.current_text
                 )))
-                .on_enter(|_, mime_types: Vec<String>, _| {
-                    if mime_types.iter().any(|mime_type| {
-                        SUPPORTED_MIME_TYPES.contains(&mime_type.as_str())
-                    }) {
-                        Message::Enter(mime_types)
-                    } else {
-                        Message::Ignore
-                    }
+                .style(if matches!(self.target, DndState::Some(_)) {
+                    <iced_style::Theme as container::StyleSheet>::Style::Custom(
+                        Box::new(CustomTheme),
+                    )
+                } else {
+                    Default::default()
                 })
-                .on_exit(Message::Leave)
-                .on_drop(Message::Drop)
-                .on_data(|mime_type, data| {
-                    if matches!(self.target, DndState::Drop) {
-                        Message::DndData(data)
-                    } else {
-                        Message::Ignore
-                    }
-                })
+                .padding(20)
             )
-            .padding(20),
-            container(
-                mouse_listener(text(format!(
+            .on_enter(|_, mime_types: Vec<String>, _| {
+                if mime_types.iter().any(|mime_type| {
+                    SUPPORTED_MIME_TYPES.contains(&mime_type.as_str())
+                }) {
+                    Message::Enter(mime_types)
+                } else {
+                    Message::Ignore
+                }
+            })
+            .on_exit(Message::Leave)
+            .on_drop(Message::Drop)
+            .on_data(|mime_type, data| {
+                if matches!(self.target, DndState::Drop) {
+                    Message::DndData(data)
+                } else {
+                    Message::Ignore
+                }
+            }),
+            mouse_listener(
+                container(text(format!(
                     "Drag me: {}",
                     &self.current_text.chars().rev().collect::<String>()
                 )))
-                .on_press(Message::StartDnd)
+                .style(if self.source.is_some() {
+                    <iced_style::Theme as container::StyleSheet>::Style::Custom(
+                        Box::new(CustomTheme),
+                    )
+                } else {
+                    Default::default()
+                })
+                .padding(20)
             )
-            .padding(20)
+            .on_press(Message::StartDnd)
         ]
         .into()
     }
@@ -220,3 +236,17 @@ impl Application for DndTest {
     }
 }
 
+pub struct CustomTheme;
+
+impl container::StyleSheet for CustomTheme {
+    type Style = iced::Theme;
+
+    fn appearance(&self, style: &Self::Style) -> container::Appearance {
+        container::Appearance {
+            border_color: Color::from_rgb(1.0, 0.0, 0.0),
+            border_radius: 2.0,
+            border_width: 2.0,
+            ..container::Appearance::default()
+        }
+    }
+}
