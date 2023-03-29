@@ -916,20 +916,12 @@ where
                             platform_specific::wayland::data_device::ActionInner::DndFinished => {
                                 if let Some(offer) = self.state.dnd_offer.take() {
                                     offer.offer.finish();
-                                    sticky_exit_callback(IcedSctkEvent::SctkEvent(SctkEvent::DataSource(DataSourceEvent::DndFinished)),
-                                        &self.state,
-                                        &mut control_flow,
-                                        &mut callback,
-                                    );
-                                }
+                               }
                             },
                             platform_specific::wayland::data_device::ActionInner::DndCancelled => {
-                                self.state.dnd_offer = None;
-                                sticky_exit_callback(IcedSctkEvent::SctkEvent(SctkEvent::DataSource(DataSourceEvent::DndCancelled)),
-                                    &self.state,
-                                    &mut control_flow,
-                                    &mut callback,
-                                );
+                                if let Some(source) = self.state.dnd_source.as_mut() {
+                                    source.source = None;
+                                }
                             },
                             platform_specific::wayland::data_device::ActionInner::SendSelectionData { data } => {
                                 if let Some(selection_source) = self.state.selection_source.as_mut() {
