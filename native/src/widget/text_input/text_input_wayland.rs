@@ -610,7 +610,7 @@ where
                                 shell.publish(on_dnd_command_produced(Box::new(move || {
                                 platform_specific::wayland::data_device::ActionInner::StartDnd {
                                     mime_types: SUPPORTED_MIME_TYPES.iter().map(|t| t.to_string()).collect(),
-                                    actions: DndAction::Move.union(DndAction::Copy),
+                                    actions: DndAction::Move,
                                     origin_id: window_id.clone(),
                                     icon_id: Some(
                                         DndIcon::Widget(

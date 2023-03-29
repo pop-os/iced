@@ -1,9 +1,16 @@
 use iced::{
+    event::wayland::DataSourceEvent,
+    subscription,
     wayland::{
+        actions::data_device::DndIcon,
         data_device::{accept_mime_type, request_dnd_data, set_actions},
         InitialSurface,
     },
-    widget::{self, column, container, dnd_listener},
+    wayland::{
+        data_device::{send_dnd_data, start_drag},
+        platform_specific,
+    },
+    widget::{self, column, container, dnd_listener, mouse_listener, text},
     window, Application, Command, Element, Subscription, Theme,
 };
 use sctk::reexports::client::protocol::wl_data_device_manager::DndAction;
@@ -44,9 +51,10 @@ pub enum Message {
     Leave,
     Drop,
     DndData(Vec<u8>),
-    RequestSourceData(String),
-    SourceFinished,
     Ignore,
+    StartDnd,
+    SendSourceData(String),
+    SourceFinished,
 }
 
 impl Application for DndTest {
@@ -109,11 +117,27 @@ impl Application for DndTest {
                 println!("DndData: {:?}", data);
                 self.current_text = String::from_utf8(data).unwrap();
             }
-            Message::RequestSourceData(mime_type) => {
-                self.current_text = String::from("RequestSourceData");
+            Message::SendSourceData(mime_type) => {
+                if let Some(source) = &self.source {
+                    return send_dnd_data(
+                        source.chars().rev().collect::<String>().into_bytes(),
+                    );
+                }
             }
             Message::SourceFinished => {
-                self.current_text = String::from("SourceFinished");
+                self.source = None;
+            }
+            Message::StartDnd => {
+                self.source = Some(self.current_text.clone());
+                return start_drag(
+                    SUPPORTED_MIME_TYPES
+                        .iter()
+                        .map(|t| t.to_string())
+                        .collect(),
+                    DndAction::Move,
+                    window::Id::new(0),
+                    Some(DndIcon::Custom(window::Id::new(1))),
+                );
             }
             Message::Ignore => {}
         }
@@ -121,30 +145,72 @@ impl Application for DndTest {
     }
 
     fn subscription(&self) -> Subscription<Self::Message> {
-        Subscription::none()
+        subscription::events_with(|event, status| {
+            if let iced::Event::PlatformSpecific(
+                iced::event::PlatformSpecific::Wayland(
+                    iced::event::wayland::Event::DataSource(source_event),
+                ),
+            ) = event
+            {
+                match source_event {
+                    DataSourceEvent::SendDndData(mime_type) => {
+                        if SUPPORTED_MIME_TYPES.contains(&mime_type.as_str()) {
+                            Some(Message::SendSourceData(mime_type))
+                        } else {
+                            None
+                        }
+                    }
+                    DataSourceEvent::DndFinished
+                    | DataSourceEvent::Cancelled => {
+                        Some(Message::SourceFinished)
+                    }
+                    _ => None,
+                }
+            } else {
+                None
+            }
+        })
     }
 
-    fn view(&self, _: window::Id) -> Element<Self::Message> {
-        container(column![dnd_listener(widget::Text::new(&self.current_text))
-            .on_enter(|_, mime_types: Vec<String>, _| {
-                if mime_types.iter().any(|mime_type| {
-                    SUPPORTED_MIME_TYPES.contains(&mime_type.as_str())
-                }) {
-                    Message::Enter(mime_types)
-                } else {
-                    Message::Ignore
-                }
-            })
-            .on_exit(Message::Leave)
-            .on_drop(Message::Drop)
-            .on_data(|mime_type, data| {
-                if matches!(self.target, DndState::Drop) {
-                    Message::DndData(data)
-                } else {
-                    Message::Ignore
-                }
-            })])
-        .padding(20)
+    fn view(&self, id: window::Id) -> Element<Self::Message> {
+        if id == window::Id::new(1) {
+            return text(&self.current_text).into();
+        }
+        column![
+            container(
+                dnd_listener(text(format!(
+                    "Drag text here: {}",
+                    &self.current_text
+                )))
+                .on_enter(|_, mime_types: Vec<String>, _| {
+                    if mime_types.iter().any(|mime_type| {
+                        SUPPORTED_MIME_TYPES.contains(&mime_type.as_str())
+                    }) {
+                        Message::Enter(mime_types)
+                    } else {
+                        Message::Ignore
+                    }
+                })
+                .on_exit(Message::Leave)
+                .on_drop(Message::Drop)
+                .on_data(|mime_type, data| {
+                    if matches!(self.target, DndState::Drop) {
+                        Message::DndData(data)
+                    } else {
+                        Message::Ignore
+                    }
+                })
+            )
+            .padding(20),
+            container(
+                mouse_listener(text(format!(
+                    "Drag me: {}",
+                    &self.current_text.chars().rev().collect::<String>()
+                )))
+                .on_press(Message::StartDnd)
+            )
+            .padding(20)
+        ]
         .into()
     }
 
