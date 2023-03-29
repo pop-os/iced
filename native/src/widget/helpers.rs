@@ -32,6 +32,7 @@ macro_rules! row {
     );
 }
 
+#[cfg(feature = "wayland")]
 /// Creates a new [`DndListener`] with the provided content.
 ///
 /// [`DndListener`]: widget::DndListener
