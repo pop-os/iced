@@ -8,11 +8,12 @@ use iced::{
     },
     wayland::{
         data_device::{send_dnd_data, start_drag},
-        platform_specific,
+        platform_specific
     },
     widget::{self, column, container, dnd_listener, mouse_listener, text},
-    window, Application, Command, Element, Subscription, Theme,
+    window, Application, Color, Command, Element, Subscription, Theme,
 };
+use iced_style::application;
 use sctk::reexports::client::protocol::wl_data_device_manager::DndAction;
 
 fn main() {
@@ -218,3 +219,4 @@ impl Application for DndTest {
         Message::Ignore
     }
 }
+

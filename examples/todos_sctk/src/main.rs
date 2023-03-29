@@ -366,24 +366,6 @@ impl Application for Todos {
         Message::CloseRequested(id)
     }
 
-    fn style(&self) -> <iced_style::Theme as application::StyleSheet>::Style {
-        <iced_style::Theme as application::StyleSheet>::Style::Custom(Box::new(
-            CustomTheme,
-        ))
-    }
-}
-
-pub struct CustomTheme;
-
-impl application::StyleSheet for CustomTheme {
-    type Style = iced::Theme;
-
-    fn appearance(&self, style: &Self::Style) -> application::Appearance {
-        application::Appearance {
-            background_color: Color::TRANSPARENT,
-            text_color: Color::BLACK,
-        }
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

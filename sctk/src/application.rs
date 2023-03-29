@@ -658,7 +658,7 @@ where
                 // if the surface is meant to be drawn as a custom widget by the
                 // application, we should treat it like any other surfaces
                 //
-                // if the surface is meant to be drawn by a widget that implements
+                // TODO if the surface is meant to be drawn by a widget that implements
                 // draw_dnd_icon, we should mark it and not pass it to the view method
                 // of the Application
                 //
@@ -712,7 +712,7 @@ where
 
                 // just draw here immediately and never again for dnd icons
                 // TODO handle scale factor?
-                let new_mouse_interaction = user_interface.draw(
+                let _new_mouse_interaction = user_interface.draw(
                     &mut renderer,
                     state.theme(),
                     &renderer::Style {

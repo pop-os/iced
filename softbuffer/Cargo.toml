@@ -13,7 +13,7 @@ lazy_static = "1.4"
 log = "0.4"
 raw-window-handle = "0.5"
 raqote = { version = "0.8", default-features = false }
-softbuffer = { git = "https://github.com/rust-windowing/softbuffer", rev = "77f9f68" } 
+softbuffer = { git = "https://github.com/pop-os/softbuffer", tag = "cosmic-2.0" } 
 
 [dependencies.iced_native]
 path = "../native"
