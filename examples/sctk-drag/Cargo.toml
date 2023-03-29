@@ -10,4 +10,4 @@ iced = { path = "../..", default-features = false,  features = ["wayland", "debu
 iced_style = { path = "../../style" }
 env_logger = "0.10"
 # sctk = { package = "smithay-client-toolkit", path = "../../../fork/client-toolkit/" }
-sctk = { package = "smithay-client-toolkit", git = "https://github.com/smithay/client-toolkit" }
+sctk = { package = "smithay-client-toolkit", git = "https://github.com/smithay/client-toolkit", rev = "63e5026" }
