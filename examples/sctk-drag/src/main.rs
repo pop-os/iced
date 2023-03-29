@@ -98,6 +98,7 @@ impl Application for DndTest {
             }
             Message::Leave => {
                 if let DndState::Drop = &self.target {
+                    println!("Leave: {:?}", self.target);
                     return Command::none();
                 }
                 self.target = DndState::None;
@@ -116,8 +117,11 @@ impl Application for DndTest {
             }
             Message::DndData(data) => {
                 println!("DndData: {:?}", data);
-                self.current_text = String::from_utf8(data).unwrap();
-                return finish_dnd();
+                if matches!(self.target, DndState::Drop) {
+                    self.current_text = String::from_utf8(data).unwrap();
+                    self.target = DndState::None;
+                    return finish_dnd();
+                }
             }
             Message::SendSourceData(mime_type) => {
                 if let Some(source) = &self.source {
@@ -127,6 +131,7 @@ impl Application for DndTest {
                 }
             }
             Message::SourceFinished => {
+                println!("Removing source");
                 self.source = None;
                 
             }
