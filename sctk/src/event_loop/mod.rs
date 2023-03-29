@@ -957,12 +957,17 @@ where
                                                 } else {
                                                     selection_source.cur_write = Some((data, cur_index, token));
                                                 }
-                                                writer.flush().unwrap();
+                                                if let Err(err) = writer.flush() {
+                                                    loop_handle.remove(token);
+                                                    error!("Failed to flush pipe: {}", err);
+                                                }
                                             }
                                             Err(e) if matches!(e.kind(), std::io::ErrorKind::Interrupted) => {
+                                                // try again
                                                 selection_source.cur_write = Some((data, cur_index, token));
                                             }
                                             Err(_) => {
+                                                loop_handle.remove(token);
                                                 error!("Failed to write to pipe");
                                             }
                                         };
@@ -1002,12 +1007,17 @@ where
                                                 } else {
                                                     dnd_source.cur_write = Some((data, cur_index, token));
                                                 }
-                                                writer.flush().unwrap();
+                                                if let Err(err) = writer.flush() {
+                                                    loop_handle.remove(token);
+                                                    error!("Failed to flush pipe: {}", err);
+                                                }
                                             }
                                             Err(e) if matches!(e.kind(), std::io::ErrorKind::Interrupted) => {
+                                                // try again
                                                 dnd_source.cur_write = Some((data, cur_index, token));
                                             }
                                             Err(_) => {
+                                                loop_handle.remove(token);
                                                 error!("Failed to write to pipe");
                                             }
                                         };
