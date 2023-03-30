@@ -13,7 +13,7 @@ use float_cmp::approx_eq;
 use futures::{channel::mpsc, task, Future, FutureExt, StreamExt};
 use iced_native::{
     application::{self, StyleSheet},
-    clipboard::{self, Null},
+    clipboard,
     command::platform_specific::{
         self,
         wayland::{data_device::DndIcon, popup},
@@ -24,6 +24,7 @@ use iced_native::{
     widget::{self, operation, Tree},
     Element, Renderer, Widget,
 };
+use log::error;
 
 use sctk::{
     reexports::client::{protocol::wl_surface::WlSurface, Proxy},
@@ -654,7 +655,11 @@ where
                     _ => {}
                 }
             }
-            IcedSctkEvent::DndSurfaceCreated(wl_surface, dnd_icon) => {
+            IcedSctkEvent::DndSurfaceCreated(
+                wl_surface,
+                dnd_icon,
+                origin_id,
+            ) => {
                 // if the surface is meant to be drawn as a custom widget by the
                 // application, we should treat it like any other surfaces
                 //
@@ -688,6 +693,19 @@ where
                 let bounds = node.bounds();
                 let w = bounds.width.ceil() as u32;
                 let h = bounds.height.ceil() as u32;
+                if w == 0 || h == 0 {
+                    error!("Dnd surface has zero size, ignoring");
+                    continue;
+                }
+                let parent_size = states
+                    .get(&origin_id)
+                    .map(|s| s.logical_size())
+                    .unwrap_or_else(|| Size::new(1024.0, 1024.0));
+                if w > parent_size.width as u32 || h > parent_size.height as u32
+                {
+                    error!("Dnd surface is too large, ignoring");
+                    continue;
+                }
                 let mut wrapper = SurfaceDisplayWrapper {
                     comp_surface: None,
                     backend: backend.clone(),

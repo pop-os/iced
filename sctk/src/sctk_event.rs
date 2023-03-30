@@ -100,7 +100,7 @@ pub enum IcedSctkEvent<T> {
     LoopDestroyed,
 
     /// Dnd source created with an icon surface.
-    DndSurfaceCreated(WlSurface, DndIcon),
+    DndSurfaceCreated(WlSurface, DndIcon, SurfaceId),
 }
 
 #[derive(Debug, Clone)]

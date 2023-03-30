@@ -898,7 +898,8 @@ where
                                     sticky_exit_callback(
                                         IcedSctkEvent::DndSurfaceCreated(
                                                     wl_surface.clone(),
-                                                    icon_id)
+                                                    icon_id,
+                                                    origin_id)
                                                 ,
                                             &self.state,
                                             &mut control_flow,
