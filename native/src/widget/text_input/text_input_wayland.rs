@@ -1250,7 +1250,7 @@ where
             let state = state();
             if let DndOfferState::Dropped = state.dnd_offer.clone() {
                 state.dnd_offer = DndOfferState::None;
-                if !SUPPORTED_MIME_TYPES.contains(&mime_type.as_str()) {
+                if !SUPPORTED_MIME_TYPES.contains(&mime_type.as_str()) || data.is_empty() {
                     return event::Status::Captured;
                 }
                 let content = match String::from_utf8(data) {

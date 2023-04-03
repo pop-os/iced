@@ -42,7 +42,7 @@ impl<T> DataDeviceHandler for SctkState<T> {
         &mut self,
         _conn: &Connection,
         _qh: &QueueHandle<Self>,
-        _data_device: DataDevice,
+        data_device: DataDevice,
     ) {
         // ASHLEY TODO the dnd_offer should be removed when the leave event is received
         // but for now it is not if the offer was previously dropped.
@@ -67,6 +67,11 @@ impl<T> DataDeviceHandler for SctkState<T> {
         _qh: &QueueHandle<Self>,
         data_device: DataDevice,
     ) {
+        let offer = data_device.drag_offer();
+        // if the offer is not the same as the current one, ignore the leave event
+        if offer.as_ref() != self.dnd_offer.as_ref().map(|o| &o.offer) {
+            return;
+        }
         let DragOffer { x, y, surface, .. } = data_device.drag_offer().unwrap();
         self.sctk_events.push(SctkEvent::DndOffer {
             event: DndOfferEvent::Motion { x, y },
@@ -101,6 +106,9 @@ impl<T> DataDeviceHandler for SctkState<T> {
     ) {
         if let Some(offer) = data_device.drag_offer() {
             if let Some(dnd_offer) = self.dnd_offer.as_mut() {
+                if offer != dnd_offer.offer {
+                    return;
+                }
                 dnd_offer.dropped = true;
             }
             self.sctk_events.push(SctkEvent::DndOffer {

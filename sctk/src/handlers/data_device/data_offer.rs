@@ -28,11 +28,16 @@ impl<T> DataOfferHandler for SctkState<T> {
         offer: &mut DragOffer,
         actions: DndAction,
     ) {
-        self.sctk_events
-            .push(crate::sctk_event::SctkEvent::DndOffer {
-                event: crate::sctk_event::DndOfferEvent::SourceActions(actions),
-                surface: offer.surface.clone(),
-            });
+        if self.dnd_offer.as_ref().map(|o| o.offer.inner() == offer.inner()).unwrap_or(false)
+        {
+            self.sctk_events
+                .push(crate::sctk_event::SctkEvent::DndOffer {
+                    event: crate::sctk_event::DndOfferEvent::SourceActions(
+                        actions,
+                    ),
+                    surface: offer.surface.clone(),
+                });
+        }
     }
 
     fn selected_action(
@@ -42,13 +47,16 @@ impl<T> DataOfferHandler for SctkState<T> {
         offer: &mut DragOffer,
         actions: DndAction,
     ) {
-        self.sctk_events
-            .push(crate::sctk_event::SctkEvent::DndOffer {
-                event: crate::sctk_event::DndOfferEvent::SelectedAction(
-                    actions,
-                ),
-                surface: offer.surface.clone(),
-            });
+        if self.dnd_offer.as_ref().map(|o| o.offer.inner() == offer.inner()).unwrap_or(false)
+        {
+            self.sctk_events
+                .push(crate::sctk_event::SctkEvent::DndOffer {
+                    event: crate::sctk_event::DndOfferEvent::SelectedAction(
+                        actions,
+                    ),
+                    surface: offer.surface.clone(),
+                });
+        }
     }
 }
 

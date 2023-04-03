@@ -117,6 +117,9 @@ impl Application for DndTest {
             }
             Message::DndData(data) => {
                 println!("DndData: {:?}", data);
+                if data.is_empty() {
+                    return Command::none();
+                }
                 if matches!(self.target, DndState::Drop) {
                     self.current_text = String::from_utf8(data).unwrap();
                     self.target = DndState::None;
@@ -124,11 +127,13 @@ impl Application for DndTest {
                 }
             }
             Message::SendSourceData(mime_type) => {
+                println!("Sending source data");
                 if let Some(source) = &self.source {
                     return send_dnd_data(
                         source.chars().rev().collect::<String>().into_bytes(),
                     );
                 }
+                println!("No source");
             }
             Message::SourceFinished => {
                 println!("Removing source");
@@ -136,6 +141,7 @@ impl Application for DndTest {
                 
             }
             Message::StartDnd => {
+                println!("Starting DnD");
                 self.source = Some(self.current_text.clone());
                 return start_drag(
                     SUPPORTED_MIME_TYPES

@@ -11,20 +11,26 @@ use sctk::{
         Connection, QueueHandle,
     },
 };
-use std::{
-    fmt::Debug,
-};
+use std::fmt::Debug;
 
 impl<T> DataSourceHandler for SctkState<T> {
     fn accept_mime(
         &mut self,
         _conn: &Connection,
         _qh: &QueueHandle<Self>,
-        _source: &WlDataSource,
+        source: &WlDataSource,
         mime: Option<String>,
     ) {
-        self.sctk_events
-            .push(SctkEvent::DataSource(DataSourceEvent::MimeAccepted(mime)));
+        let is_active_source = self
+            .dnd_source
+            .as_ref()
+            .and_then(|s| (s.source.as_ref().map(|s| s.inner() == source)))
+            .unwrap_or(false);
+        if is_active_source {
+            self.sctk_events.push(SctkEvent::DataSource(
+                DataSourceEvent::MimeAccepted(mime),
+            ));
+        }
     }
 
     fn send_request(
@@ -35,15 +41,27 @@ impl<T> DataSourceHandler for SctkState<T> {
         mime: String,
         pipe: WritePipe,
     ) {
+        let is_active_source = self
+            .selection_source
+            .as_ref()
+            .map(|s| s.source.inner() == source)
+            .unwrap_or(false)
+            || self
+                .dnd_source
+                .as_ref()
+                .and_then(|s| (s.source.as_ref().map(|s| s.inner() == source)))
+                .unwrap_or(false);
+
+        if !is_active_source {
+            source.destroy();
+            return;
+        }
+
         if let Some(my_source) = self
             .selection_source
             .as_mut()
             .filter(|s| s.source.inner() == source)
         {
-            if source != my_source.source.inner() {
-                source.destroy();
-                return;
-            }
             my_source.pipe = Some(pipe);
             self.sctk_events.push(SctkEvent::DataSource(
                 DataSourceEvent::SendSelectionData { mime_type: mime },
@@ -65,43 +83,76 @@ impl<T> DataSourceHandler for SctkState<T> {
         &mut self,
         _conn: &Connection,
         _qh: &QueueHandle<Self>,
-        _source: &WlDataSource,
+        source: &WlDataSource,
     ) {
-        self.sctk_events
-            .push(SctkEvent::DataSource(DataSourceEvent::DndCancelled));
+        let is_active_source = self
+            .selection_source
+            .as_ref()
+            .map(|s| s.source.inner() == source)
+            .unwrap_or(false)
+            || self
+                .dnd_source
+                .as_ref()
+                .and_then(|s| (s.source.as_ref().map(|s| s.inner() == source)))
+                .unwrap_or(false);
+        if is_active_source {
+            self.sctk_events
+                .push(SctkEvent::DataSource(DataSourceEvent::DndCancelled));
+        }
     }
 
     fn dnd_dropped(
         &mut self,
         _conn: &Connection,
         _qh: &QueueHandle<Self>,
-        _source: &WlDataSource,
+        source: &WlDataSource,
     ) {
-        self.sctk_events
-            .push(SctkEvent::DataSource(DataSourceEvent::DndDropPerformed));
+        let is_active_source = self
+            .dnd_source
+            .as_ref()
+            .and_then(|s| (s.source.as_ref().map(|s| s.inner() == source)))
+            .unwrap_or(false);
+        if is_active_source {
+            self.sctk_events
+                .push(SctkEvent::DataSource(DataSourceEvent::DndDropPerformed));
+        }
     }
 
     fn dnd_finished(
         &mut self,
         _conn: &Connection,
         _qh: &QueueHandle<Self>,
-        _source: &WlDataSource,
+        source: &WlDataSource,
     ) {
-        self.sctk_events
-            .push(SctkEvent::DataSource(DataSourceEvent::DndFinished));
+        let is_active_source = self
+            .dnd_source
+            .as_ref()
+            .and_then(|s| (s.source.as_ref().map(|s| s.inner() == source)))
+            .unwrap_or(false);
+        if is_active_source {
+            self.sctk_events
+                .push(SctkEvent::DataSource(DataSourceEvent::DndFinished));
+        }
     }
 
     fn action(
         &mut self,
         _conn: &Connection,
         _qh: &QueueHandle<Self>,
-        _source: &WlDataSource,
+        source: &WlDataSource,
         action: DndAction,
     ) {
-        self.sctk_events
-            .push(crate::sctk_event::SctkEvent::DataSource(
-                DataSourceEvent::DndActionAccepted(action),
-            ));
+        let is_active_source = self
+            .dnd_source
+            .as_ref()
+            .and_then(|s| (s.source.as_ref().map(|s| s.inner() == source)))
+            .unwrap_or(false);
+        if is_active_source {
+            self.sctk_events
+                .push(crate::sctk_event::SctkEvent::DataSource(
+                    DataSourceEvent::DndActionAccepted(action),
+                ));
+        }
     }
 }
 
