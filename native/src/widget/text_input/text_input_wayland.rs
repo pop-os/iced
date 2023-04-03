@@ -6,6 +6,7 @@ use super::value;
 
 pub use super::cursor;
 
+use crate::command::platform_specific::wayland::data_device::DataFromMimeType;
 use crate::{
     command::{
         self,
@@ -593,11 +594,11 @@ where
 
                             if selection_bounds.contains(cursor_position) {
                                 let text =
-                                    state.selected_text(&value.to_string());
+                                    state.selected_text(&value.to_string()).unwrap_or_default();
                                 state.dragging_state =
                                     Some(DraggingState::Dnd(
                                         DndAction::empty(),
-                                        text.unwrap_or_default(),
+                                        text.clone(),
                                     ));
                                 let mut editor =
                                     Editor::new(value, &mut state.cursor);
@@ -617,6 +618,7 @@ where
                                             icon_id.clone(),
                                             Box::new(state.clone())
                                             )),
+                                    data: Box::new(TextInputString(text.clone()))
                                 }
                                 })));
                             } else {
@@ -995,29 +997,6 @@ where
             state.keyboard_modifiers = modifiers;
         }
         Event::PlatformSpecific(PlatformSpecific::Wayland(
-            wayland::Event::DataSource(wayland::DataSourceEvent::SendDndData(
-                mime_type,
-            )),
-        )) => {
-            let state = state();
-            if let Some(on_dnd_command_produced) = on_dnd_command_produced {
-                if SUPPORTED_MIME_TYPES.contains(&mime_type.as_str()) {
-                    if let Some(data) =
-                        state.dragging_state.as_ref().and_then(|s| match s {
-                            DraggingState::Dnd(_, data) => Some(data.clone()),
-                            DraggingState::Selection => None,
-                        })
-                    {
-                        shell.publish(on_dnd_command_produced(Box::new(move || platform_specific::wayland::data_device::ActionInner::SendDndData { data: data.clone().into_bytes() })));
-                    }
-                } else {
-                    return event::Status::Ignored;
-                }
-            } else {
-                return event::Status::Ignored;
-            }
-        }
-        Event::PlatformSpecific(PlatformSpecific::Wayland(
             wayland::Event::DataSource(wayland::DataSourceEvent::DndFinished),
         )) => {
             let state = state();
@@ -1289,6 +1268,20 @@ where
         _ => {}
     }
     event::Status::Ignored
+}
+
+/// A string which can be sent to the clipboard or drag-and-dropped.
+#[derive(Debug, Clone)]
+pub struct TextInputString(String);
+
+impl DataFromMimeType for TextInputString {
+    fn from_mime_type(&self, mime_type: &str) -> Option<Vec<u8>> {
+        if SUPPORTED_MIME_TYPES.contains(&mime_type) {
+            Some(self.0.as_bytes().to_vec())
+        } else {
+            None
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

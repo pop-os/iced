@@ -7,7 +7,7 @@ use iced_native::{
             self,
             wayland::{
                 self,
-                data_device::{ActionInner, DndIcon},
+                data_device::{ActionInner, DndIcon, DataFromMimeType},
             },
         },
     },
@@ -17,10 +17,10 @@ use sctk::reexports::client::protocol::wl_data_device_manager::DndAction;
 
 /// Set the selection. When a client asks for the selection, an event will be delivered to the
 /// client with the fd to write the data to.
-pub fn set_selection<Message>(mime_types: Vec<String>) -> Command<Message> {
+pub fn set_selection<Message>(mime_types: Vec<String>, data: Box<dyn DataFromMimeType + Send + Sync>) -> Command<Message> {
     Command::single(command::Action::PlatformSpecific(
         platform_specific::Action::Wayland(wayland::Action::DataDevice(
-            wayland::data_device::ActionInner::SetSelection { mime_types }
+            wayland::data_device::ActionInner::SetSelection { mime_types, data }
                 .into(),
         )),
     ))
@@ -72,6 +72,7 @@ pub fn start_drag<Message>(
     actions: DndAction,
     origin_id: window::Id,
     icon_id: Option<DndIcon>,
+    data: Box<dyn DataFromMimeType + Send + Sync>,
 ) -> Command<Message> {
     Command::single(command::Action::PlatformSpecific(
         platform_specific::Action::Wayland(wayland::Action::DataDevice(
@@ -80,6 +81,7 @@ pub fn start_drag<Message>(
                 actions,
                 origin_id,
                 icon_id,
+                data,
             }
             .into(),
         )),
@@ -116,15 +118,6 @@ pub fn request_dnd_data<Message>(mime_type: String) -> Command<Message> {
     Command::single(command::Action::PlatformSpecific(
         platform_specific::Action::Wayland(wayland::Action::DataDevice(
             wayland::data_device::ActionInner::RequestDndData(mime_type).into(),
-        )),
-    ))
-}
-
-/// Set the DnD data in response to a request event.
-pub fn send_dnd_data<Message>(data: Vec<u8>) -> Command<Message> {
-    Command::single(command::Action::PlatformSpecific(
-        platform_specific::Action::Wayland(wayland::Action::DataDevice(
-            wayland::data_device::ActionInner::SendDndData { data }.into(),
         )),
     ))
 }

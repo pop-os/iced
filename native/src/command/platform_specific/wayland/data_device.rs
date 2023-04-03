@@ -1,8 +1,7 @@
-use crate::{widget, window};
-use core::fmt;
+use crate::window;
 use iced_futures::MaybeSend;
 use sctk::reexports::client::protocol::wl_data_device_manager::DndAction;
-use std::{any::Any, marker::PhantomData};
+use std::{any::Any, marker::PhantomData, fmt};
 
 /// DataDevice Action
 pub struct Action<T> {
@@ -27,6 +26,12 @@ impl<T> fmt::Debug for Action<T>{
     }
 }
 
+/// A trait for converting to data given a mime type.
+pub trait DataFromMimeType {
+    /// Convert to data given a mime type.
+    fn from_mime_type(&self, mime_type: &str) -> Option<Vec<u8>>;
+}
+
 /// DataDevice Action
 pub enum ActionInner {
     /// Indicate that you are setting the selection and will respond to events
@@ -34,14 +39,11 @@ pub enum ActionInner {
     SetSelection {
         /// The mime types that the selection can be converted to.
         mime_types: Vec<String>,
+        /// The data to send.
+        data: Box<dyn DataFromMimeType + Send + Sync>,
     },
     /// Unset the selection.
     UnsetSelection,
-    /// Send the selection data.
-    SendSelectionData {
-        /// The data to send.
-        data: Vec<u8>,
-    },
     /// Request the selection data from the clipboard.
     RequestSelectionData {
         /// The mime type that the selection should be converted to.
@@ -66,6 +68,8 @@ pub enum ActionInner {
         origin_id: window::Id,
         /// An optional window id for the cursor icon surface.
         icon_id: Option<DndIcon>,
+        /// The data to send.
+        data: Box<dyn DataFromMimeType + Send + Sync>,
     },
     /// Set the accepted drag and drop mime type.
     Accept(Option<String>),
@@ -78,11 +82,6 @@ pub enum ActionInner {
     },
     /// Read the Drag and Drop data with a mime type. An event will be delivered with a pipe to read the data from.
     RequestDndData(String),
-    /// Send the drag and drop data.
-    SendDndData {
-        /// The data to send.
-        data: Vec<u8>,
-    },
     /// The drag and drop operation has finished.
     DndFinished,
     /// The drag and drop operation has been cancelled.
@@ -124,9 +123,6 @@ impl fmt::Debug for ActionInner {
             Self::RequestSelectionData { mime_type } => {
                 f.debug_tuple("RequestSelection").field(mime_type).finish()
             }
-            Self::SendSelectionData { data } => {
-                f.debug_tuple("SendSelectionData").field(data).finish()
-            }
             Self::StartInternalDnd { origin_id, icon_id } => f
                 .debug_tuple("StartInternalDnd")
                 .field(origin_id)
@@ -137,6 +133,7 @@ impl fmt::Debug for ActionInner {
                 actions,
                 origin_id,
                 icon_id,
+                ..
             } => f
                 .debug_tuple("StartDnd")
                 .field(mime_types)
@@ -156,9 +153,6 @@ impl fmt::Debug for ActionInner {
                 .debug_tuple("RequestDndData")
                 .field(mime_type)
                 .finish(),
-            Self::SendDndData { data } => {
-                f.debug_tuple("SendDndData").field(data).finish()
-            }
             Self::DndFinished => f.debug_tuple("DndFinished").finish(),
             Self::DndCancelled => f.debug_tuple("DndCancelled").finish(),
         }

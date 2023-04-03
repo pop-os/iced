@@ -7,8 +7,8 @@ use iced::{
         InitialSurface,
     },
     wayland::{
-        data_device::{send_dnd_data, start_drag},
-        platform_specific,
+        data_device::{start_drag},
+        platform_specific, actions::data_device::DataFromMimeType,
     },
     widget::{self, column, container, dnd_listener, mouse_listener, text},
     window, Application, Color, Command, Element, Subscription, Theme,
@@ -37,6 +37,18 @@ enum DndState {
     Drop,
 }
 
+pub struct MyDndString(String);
+
+impl DataFromMimeType for MyDndString {
+    fn from_mime_type(&self, mime_type: &str) -> Option<Vec<u8>> {
+        if SUPPORTED_MIME_TYPES.contains(&mime_type) {
+            Some(self.0.as_bytes().to_vec())
+        } else {
+            None
+        }
+    }
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct DndTest {
     /// option with the dragged text
@@ -54,7 +66,6 @@ pub enum Message {
     DndData(Vec<u8>),
     Ignore,
     StartDnd,
-    SendSourceData(String),
     SourceFinished,
 }
 
@@ -124,15 +135,6 @@ impl Application for DndTest {
                     // return finish_dnd();
                 }
             }
-            Message::SendSourceData(mime_type) => {
-                println!("Sending source data");
-                if let Some(source) = &self.source {
-                    return send_dnd_data(
-                        source.chars().rev().collect::<String>().into_bytes(),
-                    );
-                }
-                println!("No source");
-            }
             Message::SourceFinished => {
                 println!("Removing source");
                 self.source = None;
@@ -149,6 +151,7 @@ impl Application for DndTest {
                     DndAction::Move,
                     window::Id::new(0),
                     Some(DndIcon::Custom(window::Id::new(1))),
+                    Box::new(MyDndString(self.current_text.chars().rev().collect::<String>()))
                 );
             }
             Message::Ignore => {}
@@ -165,13 +168,6 @@ impl Application for DndTest {
             ) = event
             {
                 match source_event {
-                    DataSourceEvent::SendDndData(mime_type) => {
-                        if SUPPORTED_MIME_TYPES.contains(&mime_type.as_str()) {
-                            Some(Message::SendSourceData(mime_type))
-                        } else {
-                            None
-                        }
-                    }
                     DataSourceEvent::DndFinished
                     | DataSourceEvent::Cancelled => {
                         Some(Message::SourceFinished)

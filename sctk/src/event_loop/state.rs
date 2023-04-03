@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt::Debug};
+use std::{collections::HashMap, fmt::{Debug, Formatter}};
 
 use crate::{
     application::Event,
@@ -12,7 +12,7 @@ use iced_native::{
         wayland::{
             layer_surface::{IcedMargin, IcedOutput, SctkLayerSurfaceSettings},
             popup::SctkPopupSettings,
-            window::SctkWindowSettings,
+            window::SctkWindowSettings, data_device::DataFromMimeType,
         },
     },
     keyboard::Modifiers,
@@ -129,16 +129,28 @@ pub struct SctkPopup<T> {
     pub(crate) data: SctkPopupData,
 }
 
-#[derive(Debug)]
 pub struct Dnd<T> {
     pub(crate) origin_id: iced_native::window::Id,
     pub(crate) origin: WlSurface,
-    pub(crate) source: Option<DragSource>,
+    pub(crate) source: Option<(DragSource, Box<dyn DataFromMimeType>)>,
     pub(crate) icon_surface: Option<(WlSurface, window::Id)>,
     pub(crate) pending_requests:
         Vec<platform_specific::wayland::data_device::Action<T>>,
     pub(crate) pipe: Option<WritePipe>,
     pub(crate) cur_write: Option<(Vec<u8>, usize, RegistrationToken)>,
+}
+
+impl<T> Debug for Dnd<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("Dnd")
+            .field(&self.origin_id)
+            .field(&self.origin)
+            .field(&self.icon_surface)
+            .field(&self.pending_requests)
+            .field(&self.pipe)
+            .field(&self.cur_write)
+            .finish()
+    }
 }
 
 #[derive(Debug)]
@@ -162,12 +174,23 @@ pub struct SctkPopupData {
     pub(crate) positioner: XdgPositioner,
 }
 
-#[derive(Debug)]
 pub struct SctkCopyPasteSource {
     pub accepted_mime_types: Vec<String>,
     pub source: CopyPasteSource,
+    pub data: Box<dyn DataFromMimeType>,
     pub(crate) pipe: Option<WritePipe>,
     pub(crate) cur_write: Option<(Vec<u8>, usize, RegistrationToken)>,
+}
+
+impl Debug for SctkCopyPasteSource {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("SctkCopyPasteSource")
+            .field(&self.accepted_mime_types)
+            .field(&self.source)
+            .field(&self.pipe)
+            .field(&self.cur_write)
+            .finish()
+    }
 }
 
 /// Wrapper to carry sctk state.

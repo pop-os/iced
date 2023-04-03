@@ -860,7 +860,7 @@ where
                                     cur_write: None,
                                 });
                             }
-                            platform_specific::wayland::data_device::ActionInner::StartDnd { mime_types, actions, origin_id, icon_id } => {
+                            platform_specific::wayland::data_device::ActionInner::StartDnd { mime_types, actions, origin_id, icon_id, data } => {
                                 if let Some(dnd_source) = self.state.dnd_source.as_ref() {
                                     if dnd_source.cur_write.is_some() {
                                         continue;
@@ -915,7 +915,7 @@ where
                                     source.start_drag(device, &origin, None, serial);
                                     None
                                 };
-                                self.state.dnd_source = Some(Dnd { origin_id, origin, source: Some(source), icon_surface, pending_requests: Vec::new(), pipe: None, cur_write: None });
+                                self.state.dnd_source = Some(Dnd { origin_id, origin, source: Some((source, data)), icon_surface, pending_requests: Vec::new(), pipe: None, cur_write: None });
                             },
                             platform_specific::wayland::data_device::ActionInner::DndFinished => {
                                 if let Some(offer) = self.state.dnd_offer.take() {
@@ -932,106 +932,6 @@ where
                                     source.source = None;
                                 }
                             },
-                            platform_specific::wayland::data_device::ActionInner::SendSelectionData { data } => {
-                                if let Some(selection_source) = self.state.selection_source.as_mut() {
-                                    let pipe = match selection_source.pipe.take() {
-                                        Some(fd) => fd,
-                                        None => continue, // TODO error handling
-                                    };
-                                    let loop_handle = self.event_loop.handle();
-                                    match self.event_loop.handle().insert_source(pipe, move |_, f, state| {
-                                        let selection_source = match state.selection_source.as_mut() {
-                                            Some(s) => s,
-                                            None => return,
-                                        };
-                                        let (data, mut cur_index, token) = match selection_source.cur_write.take() {
-                                            Some(s) => s,
-                                            None => return,
-                                        };
-                                        let mut writer = BufWriter::new(f);
-                                        let slice = &data.as_slice()[cur_index..(cur_index + writer.capacity()).min(data.len())];
-                                        match writer.write(slice) {
-                                            Ok(num_written) => {
-                                                cur_index += num_written;
-                                                if cur_index == data.len() {
-                                                    loop_handle.remove(token);
-                                                } else {
-                                                    selection_source.cur_write = Some((data, cur_index, token));
-                                                }
-                                                if let Err(err) = writer.flush() {
-                                                    loop_handle.remove(token);
-                                                    error!("Failed to flush pipe: {}", err);
-                                                }
-                                            }
-                                            Err(e) if matches!(e.kind(), std::io::ErrorKind::Interrupted) => {
-                                                // try again
-                                                selection_source.cur_write = Some((data, cur_index, token));
-                                            }
-                                            Err(_) => {
-                                                loop_handle.remove(token);
-                                                error!("Failed to write to pipe");
-                                            }
-                                        };
-                                    }) {
-                                        Ok(s) => {
-                                            selection_source.cur_write = Some((data, 0, s));
-                                        }
-                                        Err(_) => {
-                                            error!("Failed to insert source");
-                                        }
-                                    }
-                                }
-                            }
-                            platform_specific::wayland::data_device::ActionInner::SendDndData { data } => {
-                                if let Some(dnd_source) = self.state.dnd_source.as_mut() {
-                                    let pipe = match dnd_source.pipe.take() {
-                                        Some(fd) => fd,
-                                        None => continue, // TODO error handling
-                                    };
-                                    let loop_handle = self.event_loop.handle();
-                                    match self.event_loop.handle().insert_source(pipe, move |_, f, state| {
-                                        let dnd_source = match state.dnd_source.as_mut() {
-                                            Some(s) => s,
-                                            None => return,
-                                        };
-                                        let (data, mut cur_index, token) = match dnd_source.cur_write.take() {
-                                            Some(s) => s,
-                                            None => return,
-                                        };
-                                        let mut writer = BufWriter::new(f);
-                                        let slice = &data.as_slice()[cur_index..(cur_index + writer.capacity()).min(data.len())];
-                                        match writer.write(slice) {
-                                            Ok(num_written) => {
-                                                cur_index += num_written;
-                                                if cur_index == data.len() {
-                                                    loop_handle.remove(token);
-                                                } else {
-                                                    dnd_source.cur_write = Some((data, cur_index, token));
-                                                }
-                                                if let Err(err) = writer.flush() {
-                                                    loop_handle.remove(token);
-                                                    error!("Failed to flush pipe: {}", err);
-                                                }
-                                            }
-                                            Err(e) if matches!(e.kind(), std::io::ErrorKind::Interrupted) => {
-                                                // try again
-                                                dnd_source.cur_write = Some((data, cur_index, token));
-                                            }
-                                            Err(_) => {
-                                                loop_handle.remove(token);
-                                                error!("Failed to write to pipe");
-                                            }
-                                        };
-                                    }) {
-                                        Ok(s) => {
-                                            dnd_source.cur_write = Some((data, 0, s));
-                                        }
-                                        Err(_) => {
-                                            error!("Failed to insert source");
-                                        }
-                                    }
-                                }
-                            }
                             platform_specific::wayland::data_device::ActionInner::RequestDndData (mime_type) => {
                                 if let Some(dnd_offer) = self.state.dnd_offer.as_mut() {
                                     let read_pipe = match dnd_offer.offer.receive(mime_type.clone()) {
@@ -1143,7 +1043,7 @@ where
                                     };
                                 }
                             }
-                            platform_specific::wayland::data_device::ActionInner::SetSelection { mime_types } => {
+                            platform_specific::wayland::data_device::ActionInner::SetSelection { mime_types, data } => {
                                 let qh = &self.state.queue_handle.clone();
                                 let seat = match self.state.seats.get(0) {
                                     Some(s) => s,
@@ -1166,6 +1066,7 @@ where
                                     cur_write: None,
                                     accepted_mime_types: Vec::new(),
                                     pipe: None,
+                                    data,
                                 });
                             }
                             platform_specific::wayland::data_device::ActionInner::UnsetSelection => {
