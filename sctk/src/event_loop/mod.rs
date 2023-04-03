@@ -1040,7 +1040,7 @@ where
                                     };
                                     let loop_handle = self.event_loop.handle();
                                     match self.event_loop.handle().insert_source(read_pipe, move |_, f, state| {
-                                        let dnd_offer = match state.dnd_offer.as_mut() {
+                                        let mut dnd_offer = match state.dnd_offer.take() {
                                             Some(s) => s,
                                             None => return,
                                         };
@@ -1053,21 +1053,36 @@ where
                                             Ok(buf) => {
                                                 if buf.is_empty() {
                                                     loop_handle.remove(token);
-                                                    state.sctk_events.push(SctkEvent::DndOffer { event: DndOfferEvent::Data { data, mime_type }, surface: dnd_offer.offer.surface.clone() });
+                                                    if data.is_empty() && dnd_offer.dropped {
+                                                        dnd_offer.offer.finish();
+                                                        state.sctk_events.push(SctkEvent::DndOffer { event: DndOfferEvent::Leave, surface: dnd_offer.offer.surface.clone() });
+                                                    } else if !data.is_empty() {
+                                                        state.sctk_events.push(SctkEvent::DndOffer { event: DndOfferEvent::Data { data, mime_type }, surface: dnd_offer.offer.surface.clone() });
+                                                    }
+                                                    if !dnd_offer.dropped {
+                                                        state.dnd_offer = Some(dnd_offer);
+                                                    } else {
+                                                        dnd_offer.offer.finish();
+                                                    }
                                                 } else {
                                                     let mut data = data;
                                                     data.extend_from_slice(buf);
                                                     dnd_offer.cur_read = Some((mime_type, data, token));
+                                                    state.dnd_offer = Some(dnd_offer);
                                                 }
                                                 buf.len()
                                             },
                                             Err(e) if matches!(e.kind(), std::io::ErrorKind::Interrupted) => {
                                                 dnd_offer.cur_read = Some((mime_type, data, token));
+                                                state.dnd_offer = Some(dnd_offer);
                                                 return;
                                             },
                                             Err(e) => {
                                                 error!("Error reading selection data: {}", e);
                                                 loop_handle.remove(token);
+                                                if !dnd_offer.dropped {
+                                                    state.dnd_offer = Some(dnd_offer);
+                                                }
                                                 return;
                                             },
                                         };

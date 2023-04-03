@@ -97,10 +97,6 @@ impl Application for DndTest {
                 return Command::batch(cmds);
             }
             Message::Leave => {
-                if let DndState::Drop = &self.target {
-                    println!("Leave: {:?}", self.target);
-                    return Command::none();
-                }
                 self.target = DndState::None;
                 return Command::batch(vec![
                     accept_mime_type(None),
@@ -123,7 +119,9 @@ impl Application for DndTest {
                 if matches!(self.target, DndState::Drop) {
                     self.current_text = String::from_utf8(data).unwrap();
                     self.target = DndState::None;
-                    return finish_dnd();
+                    // Sent automatically now after a successful read of data following a drop.
+                    // No longer needed here
+                    // return finish_dnd();
                 }
             }
             Message::SendSourceData(mime_type) => {
