@@ -149,6 +149,7 @@ pub struct SctkSelectionOffer {
 
 #[derive(Debug)]
 pub struct SctkDragOffer {
+    pub(crate) dropped: bool,
     pub(crate) offer: DragOffer,
     pub(crate) cur_read: Option<(String, Vec<u8>, RegistrationToken)>,
 }

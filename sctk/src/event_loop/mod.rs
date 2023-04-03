@@ -5,7 +5,7 @@ pub mod state;
 use crate::{
     application::Event,
     sctk_event::{
-        DataSourceEvent, DndOfferEvent, IcedSctkEvent,
+        DndOfferEvent, IcedSctkEvent,
         LayerSurfaceEventVariant, PopupEventVariant, SctkEvent,
         SelectionOfferEvent, StartCause, WindowEventVariant,
     },
@@ -861,6 +861,11 @@ where
                                 });
                             }
                             platform_specific::wayland::data_device::ActionInner::StartDnd { mime_types, actions, origin_id, icon_id } => {
+                                if let Some(dnd_source) = self.state.dnd_source.as_ref() {
+                                    if dnd_source.cur_write.is_some() {
+                                        continue;
+                                    }
+                                }
                                 let qh = &self.state.queue_handle.clone();
                                 let seat = match self.state.seats.get(0) {
                                     Some(s) => s,
@@ -906,8 +911,6 @@ where
                                             &mut callback
                                     );
                                    Some((wl_surface, icon_native_id))
-                                    // sticky_exit_callback(IcedSctkEvent::SctkEvent(SctkEvent::DataSource(DataSourceEvent::DndSurfaceCreated(wl_surface.clone(), icon_id))),
-                                        // &self.stateand_then,
                                 } else {
                                     source.start_drag(device, &origin, None, serial);
                                     None
@@ -916,7 +919,12 @@ where
                             },
                             platform_specific::wayland::data_device::ActionInner::DndFinished => {
                                 if let Some(offer) = self.state.dnd_offer.take() {
-                                    offer.offer.finish();
+                                    if offer.dropped {
+                                        offer.offer.finish();
+                                    }
+                                    else {
+                                        self.state.dnd_offer = Some(offer);
+                                    }
                                }
                             },
                             platform_specific::wayland::data_device::ActionInner::DndCancelled => {

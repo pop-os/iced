@@ -1,4 +1,4 @@
-use std::{fmt::Debug, fs::File, io::Read};
+use std::fmt::Debug;
 
 use sctk::{
     data_device_manager::{
@@ -6,9 +6,7 @@ use sctk::{
         data_offer::DragOffer,
     },
     delegate_data_device,
-    reexports::client::{
-        protocol::wl_data_device_manager::DndAction, Connection, QueueHandle,
-    },
+    reexports::client::{Connection, QueueHandle},
 };
 
 use crate::{
@@ -26,6 +24,7 @@ impl<T> DataDeviceHandler for SctkState<T> {
         let mime_types = data_device.drag_mime_types();
         let drag_offer = data_device.drag_offer().unwrap();
         self.dnd_offer = Some(SctkDragOffer {
+            dropped: false,
             offer: drag_offer.clone(),
             cur_read: None,
         });
@@ -46,12 +45,20 @@ impl<T> DataDeviceHandler for SctkState<T> {
         _data_device: DataDevice,
     ) {
         // ASHLEY TODO the dnd_offer should be removed when the leave event is received
-        // but for now it is not
-        let surface = self.dnd_offer.as_ref().unwrap().offer.surface.clone();
-        self.sctk_events.push(SctkEvent::DndOffer {
-            event: DndOfferEvent::Leave,
-            surface,
-        });
+        // but for now it is not if the offer was previously dropped.
+        // It seems that leave events are received even for offers which have
+        // been accepted and need to be read.
+        if let Some(dnd_offer) = self.dnd_offer.take() {
+            if dnd_offer.dropped {
+                self.dnd_offer = Some(dnd_offer);
+                return;
+            }
+
+            self.sctk_events.push(SctkEvent::DndOffer {
+                event: DndOfferEvent::Leave,
+                surface: dnd_offer.offer.surface.clone(),
+            });
+        }
     }
 
     fn motion(
@@ -60,12 +67,7 @@ impl<T> DataDeviceHandler for SctkState<T> {
         _qh: &QueueHandle<Self>,
         data_device: DataDevice,
     ) {
-        let DragOffer {
-            x,
-            y,
-            surface,
-            ..
-        } = data_device.drag_offer().unwrap();
+        let DragOffer { x, y, surface, .. } = data_device.drag_offer().unwrap();
         self.sctk_events.push(SctkEvent::DndOffer {
             event: DndOfferEvent::Motion { x, y },
             surface: surface.clone(),
@@ -98,6 +100,9 @@ impl<T> DataDeviceHandler for SctkState<T> {
         data_device: DataDevice,
     ) {
         if let Some(offer) = data_device.drag_offer() {
+            if let Some(dnd_offer) = self.dnd_offer.as_mut() {
+                dnd_offer.dropped = true;
+            }
             self.sctk_events.push(SctkEvent::DndOffer {
                 event: DndOfferEvent::DropPerformed,
                 surface: offer.surface.clone(),

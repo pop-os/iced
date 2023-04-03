@@ -13,7 +13,6 @@ use sctk::{
 };
 use std::{
     fmt::Debug,
-    sync::{Arc, Mutex},
 };
 
 impl<T> DataSourceHandler for SctkState<T> {
@@ -36,12 +35,16 @@ impl<T> DataSourceHandler for SctkState<T> {
         mime: String,
         pipe: WritePipe,
     ) {
-        if let Some(source) = self
+        if let Some(my_source) = self
             .selection_source
             .as_mut()
             .filter(|s| s.source.inner() == source)
         {
-            source.pipe = Some(pipe);
+            if source != my_source.source.inner() {
+                source.destroy();
+                return;
+            }
+            my_source.pipe = Some(pipe);
             self.sctk_events.push(SctkEvent::DataSource(
                 DataSourceEvent::SendSelectionData { mime_type: mime },
             ));
