@@ -32,7 +32,7 @@ pub enum Event {
 }
 
 /// A platform specific event
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum PlatformSpecific {
     /// A Wayland specific event
     #[cfg(feature = "wayland")]

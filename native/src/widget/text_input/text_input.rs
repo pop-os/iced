@@ -1,15 +1,8 @@
-//! Display fields that can be filled with text.
-//!
-//! A [`TextInput`] has some local [`State`].
-mod editor;
-mod value;
+use super::cursor;
+pub use super::cursor::Cursor;
+pub use super::value::Value;
 
-pub mod cursor;
-
-pub use cursor::Cursor;
-pub use value::Value;
-
-use editor::Editor;
+use super::editor::Editor;
 
 use crate::alignment;
 use crate::event::{self, Event};

@@ -3,12 +3,13 @@ use iced::event::{self, Event};
 use iced::keyboard;
 use iced::subscription;
 use iced::theme::{self, Theme};
+use iced::wayland::actions::data_device::{self, DndIcon, ActionInner};
 use iced::wayland::actions::popup::SctkPopupSettings;
 use iced::wayland::actions::window::SctkWindowSettings;
+use iced::wayland::data_device::action as data_device_action;
 use iced::wayland::popup::get_popup;
 use iced::wayland::window::get_window;
-use iced::wayland::InitialSurface;
-use iced::wayland::SurfaceIdWrapper;
+use iced::wayland::{platform_specific, InitialSurface};
 use iced::widget::{
     self, button, checkbox, column, container, row, scrollable, text,
     text_input, Text,
@@ -18,7 +19,10 @@ use iced::{Color, Command, Font, Length, Settings, Subscription};
 use iced_style::application;
 
 use once_cell::sync::Lazy;
+use sctk::reexports::client::protocol::wl_data_device_manager::DndAction;
 use serde::{Deserialize, Serialize};
+use std::fmt::Debug;
+use std::sync::Arc;
 
 static INPUT_ID: Lazy<text_input::Id> = Lazy::new(text_input::Id::unique);
 
@@ -35,16 +39,26 @@ enum Todos {
     Loaded(State),
 }
 
+#[derive(Debug, Default, Clone)]
+enum DndState {
+    #[default]
+    None,
+    // hold onto text input state and the id of the window being dragged
+    Dragging(text_input::State, window::Id),
+}
+
 #[derive(Debug, Default)]
 struct State {
+    window_id_ctr: u64,
     input_value: String,
     filter: Filter,
     tasks: Vec<Task>,
     dirty: bool,
     saving: bool,
+    dnd_state: DndState,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 enum Message {
     Loaded(Result<SavedState, LoadError>),
     Saved(Result<(), SaveError>),
@@ -53,7 +67,28 @@ enum Message {
     FilterChanged(Filter),
     TaskMessage(usize, TaskMessage),
     TabPressed { shift: bool },
-    CloseRequested(SurfaceIdWrapper),
+    CloseRequested(window::Id),
+    TextInputDragged(text_input::State),
+    TextInputDndCommand(Arc<Box<dyn Send + Sync + Fn() -> ActionInner>>),
+    Ignore,
+}
+
+impl Debug for Message {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Message::Loaded(_) => write!(f, "Message::Loaded(_)"),
+            Message::Saved(_) => write!(f, "Message::Saved(_)"),
+            Message::InputChanged(_) => write!(f, "Message::InputChanged(_)"),
+            Message::CreateTask => write!(f, "Message::CreateTask"),
+            Message::FilterChanged(_) => write!(f, "Message::FilterChanged(_)"),
+            Message::TaskMessage(_, _) => write!(f, "Message::TaskMessage(_, _)"),
+            Message::TabPressed { shift: _ } => write!(f, "Message::TabPressed {{ shift: _ }}"),
+            Message::CloseRequested(_) => write!(f, "Message::CloseRequested(_)"),
+            Message::TextInputDragged(_) => write!(f, "Message::TextInputDragged(_)"),
+            Message::TextInputDndCommand(_) => write!(f, "Message::TextInputDndCommand(_)"),
+            Message::Ignore => write!(f, "Message::Ignore"),
+        }
+    }
 }
 
 impl Application for Todos {
@@ -65,13 +100,10 @@ impl Application for Todos {
     fn new(_flags: ()) -> (Todos, Command<Message>) {
         (
             Todos::Loading,
-            Command::batch(vec![
-                Command::perform(SavedState::load(), Message::Loaded),
-                get_window(SctkWindowSettings {
-                    window_id: window::Id::new(1),
-                    ..Default::default()
-                }),
-            ]),
+            Command::batch(vec![Command::perform(
+                SavedState::load(),
+                Message::Loaded,
+            )]),
         )
     }
 
@@ -93,6 +125,7 @@ impl Application for Todos {
                             input_value: state.input_value,
                             filter: state.filter,
                             tasks: state.tasks,
+                            window_id_ctr: 1,
                             ..State::default()
                         });
                     }
@@ -176,6 +209,21 @@ impl Application for Todos {
                         dbg!(s);
                         std::process::exit(0);
                     }
+                    Message::TextInputDragged(
+                        text_input_state,
+                    ) => {
+                        let icon_id = window::Id::new(state.window_id_ctr);
+
+                        state.dnd_state = DndState::Dragging(
+                            text_input_state.clone(),
+                            icon_id,
+                        );
+
+                        Command::none()
+                    }
+                    Message::TextInputDndCommand(action) => {
+                        data_device_action(action())
+                    }
                     _ => Command::none(),
                 };
 
@@ -205,79 +253,96 @@ impl Application for Todos {
         }
     }
 
-    fn view(&self, id: SurfaceIdWrapper) -> Element<Message> {
-        match id {
-            SurfaceIdWrapper::LayerSurface(_) => todo!(),
-            SurfaceIdWrapper::Window(_) => match self {
-                Todos::Loading => loading_message(),
-                Todos::Loaded(State {
-                    input_value,
-                    filter,
-                    tasks,
-                    ..
-                }) => {
-                    let title = text("todos")
-                        .width(Length::Fill)
-                        .size(100)
-                        .style(Color::from([0.5, 0.5, 0.5]))
-                        .horizontal_alignment(alignment::Horizontal::Center);
-
-                    let input = text_input(
-                        "What needs to be done?",
-                        input_value,
-                        Message::InputChanged,
-                    )
-                    .id(INPUT_ID.clone())
-                    .padding(15)
-                    .size(30)
-                    .on_submit(Message::CreateTask);
-
-                    let controls = view_controls(tasks, *filter);
-                    let filtered_tasks =
-                        tasks.iter().filter(|task| filter.matches(task));
-
-                    let tasks: Element<_> = if filtered_tasks.count() > 0 {
-                        column(
-                            tasks
-                                .iter()
-                                .enumerate()
-                                .filter(|(_, task)| filter.matches(task))
-                                .map(|(i, task)| {
-                                    task.view(i).map(move |message| {
-                                        Message::TaskMessage(i, message)
-                                    })
-                                })
-                                .collect(),
+    fn view(&self, id: window::Id) -> Element<Message> {
+        match self {
+            Todos::Loading => loading_message(),
+            Todos::Loaded(State {
+                input_value,
+                filter,
+                tasks,
+                dnd_state,
+                window_id_ctr,
+                ..
+            }) => {
+                match dnd_state {
+                    DndState::Dragging(state, drag_id) if *drag_id == id => {
+                        return text_input(
+                            "What needs to be done?",
+                            &state
+                                .dragged_text()
+                                .unwrap_or_default(),
+                            |_| Message::Ignore,
                         )
-                        .spacing(10)
-                        .into()
-                    } else {
-                        empty_message(match filter {
-                            Filter::All => "You have not created a task yet...",
-                            Filter::Active => "All your tasks are done! :D",
-                            Filter::Completed => {
-                                "You have not completed a task yet..."
-                            }
-                        })
-                    };
-
-                    let content = column![title, input, controls, tasks]
-                        .spacing(20)
-                        .max_width(800);
-
-                    scrollable(
-                        container(content)
-                            .width(Length::Fill)
-                            .padding(40)
-                            .center_x(),
-                    )
-                    .into()
+                        .dnd_icon(true)
+                        .size(30)
+                        .into();
+                    }
+                    _ => {}
+                };
+                if window::Id::new(0) != id {
+                    panic!("Wrong window id: {:?}", id)
                 }
-            },
-            SurfaceIdWrapper::Popup(_) => container(text("hello"))
-                .width(Length::Fill)
-                .height(Length::Fill)
-                .into(),
+
+                let title = text("todos")
+                    .width(Length::Fill)
+                    .size(100)
+                    .style(Color::from([0.5, 0.5, 0.5]))
+                    .horizontal_alignment(alignment::Horizontal::Center);
+
+                let input = text_input(
+                    "What needs to be done?",
+                    input_value,
+                    Message::InputChanged,
+                )
+                .id(INPUT_ID.clone())
+                .padding(15)
+                .size(30)
+                .on_submit(Message::CreateTask)
+                .surface_ids((window::Id::new(0), window::Id::new(window_id_ctr)))
+                .on_start_dnd(Message::TextInputDragged)
+                .on_dnd_command_produced(|a| Message::TextInputDndCommand(Arc::new(a)));
+
+                let controls = view_controls(tasks, *filter);
+                let filtered_tasks =
+                    tasks.iter().filter(|task| filter.matches(task));
+
+                let tasks: Element<_> = if filtered_tasks.count() > 0 {
+                    column(
+                        tasks
+                            .iter()
+                            .enumerate()
+                            .filter(|(_, task)| filter.matches(task))
+                            .map(|(i, task)| {
+                                task.view(i).map(move |message| {
+                                    Message::TaskMessage(i, message)
+                                })
+                            })
+                            .collect(),
+                    )
+                    .spacing(10)
+                    .into()
+                } else {
+                    empty_message(match filter {
+                        Filter::All => "You have not created a task yet...",
+                        Filter::Active => "All your tasks are done! :D",
+                        Filter::Completed => {
+                            "You have not completed a task yet..."
+                        }
+                    })
+                };
+
+                let content = column![title, input, controls, tasks]
+                    .spacing(20)
+                    .max_width(800);
+
+                scrollable(
+                    container(content)
+                        .width(Length::Fill)
+                        .padding(40)
+                        .center_x(),
+                )
+                .into()
+            }
         }
     }
 
@@ -297,28 +362,10 @@ impl Application for Todos {
         })
     }
 
-    fn close_requested(&self, id: SurfaceIdWrapper) -> Self::Message {
+    fn close_requested(&self, id: window::Id) -> Self::Message {
         Message::CloseRequested(id)
     }
 
-    fn style(&self) -> <iced_style::Theme as application::StyleSheet>::Style {
-        <iced_style::Theme as application::StyleSheet>::Style::Custom(Box::new(
-            CustomTheme,
-        ))
-    }
-}
-
-pub struct CustomTheme;
-
-impl application::StyleSheet for CustomTheme {
-    type Style = iced::Theme;
-
-    fn appearance(&self, style: &Self::Style) -> application::Appearance {
-        application::Appearance {
-            background_color: Color::TRANSPARENT,
-            text_color: Color::BLACK,
-        }
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

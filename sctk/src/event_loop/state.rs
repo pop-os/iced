@@ -1,9 +1,9 @@
-use std::{collections::HashMap, fmt::Debug};
+use std::{collections::HashMap, fmt::{Debug, Formatter}};
 
 use crate::{
     application::Event,
     dpi::LogicalSize,
-    sctk_event::{SctkEvent, SurfaceCompositorUpdate, SurfaceUserRequest},
+    sctk_event::{SctkEvent, SurfaceCompositorUpdate},
 };
 
 use iced_native::{
@@ -12,23 +12,27 @@ use iced_native::{
         wayland::{
             layer_surface::{IcedMargin, IcedOutput, SctkLayerSurfaceSettings},
             popup::SctkPopupSettings,
-            window::SctkWindowSettings,
+            window::SctkWindowSettings, data_device::DataFromMimeType,
         },
     },
     keyboard::Modifiers,
-    layout::Limits,
     window,
 };
 use sctk::{
     compositor::CompositorState,
+    data_device_manager::{
+        data_device::DataDevice,
+        data_offer::{DragOffer, SelectionOffer},
+        data_source::{CopyPasteSource, DragSource},
+        DataDeviceManagerState, WritePipe,
+    },
     error::GlobalError,
     output::OutputState,
     reexports::{
-        calloop::LoopHandle,
+        calloop::{LoopHandle, RegistrationToken},
         client::{
             backend::ObjectId,
             protocol::{
-                wl_data_device::WlDataDevice,
                 wl_keyboard::WlKeyboard,
                 wl_output::WlOutput,
                 wl_pointer::WlPointer,
@@ -36,7 +40,7 @@ use sctk::{
                 wl_surface::{self, WlSurface},
                 wl_touch::WlTouch,
             },
-            Connection, Proxy, QueueHandle,
+            Connection, QueueHandle,
         },
     },
     registry::RegistryState,
@@ -49,7 +53,7 @@ use sctk::{
         xdg::{
             popup::{Popup, PopupConfigure},
             window::{Window, WindowConfigure, WindowDecorations},
-            XdgPositioner, XdgShell, XdgShellSurface, XdgSurface,
+            XdgPositioner, XdgShell, XdgSurface,
         },
         WaylandSurface,
     },
@@ -66,8 +70,8 @@ pub(crate) struct SctkSeat {
     pub(crate) ptr_focus: Option<WlSurface>,
     pub(crate) last_ptr_press: Option<(u32, u32, u32)>, // (time, button, serial)
     pub(crate) touch: Option<WlTouch>,
-    pub(crate) data_device: Option<WlDataDevice>,
     pub(crate) modifiers: Modifiers,
+    pub(crate) data_device: DataDevice,
 }
 
 #[derive(Debug, Clone)]
@@ -125,12 +129,68 @@ pub struct SctkPopup<T> {
     pub(crate) data: SctkPopupData,
 }
 
+pub struct Dnd<T> {
+    pub(crate) origin_id: iced_native::window::Id,
+    pub(crate) origin: WlSurface,
+    pub(crate) source: Option<(DragSource, Box<dyn DataFromMimeType>)>,
+    pub(crate) icon_surface: Option<(WlSurface, window::Id)>,
+    pub(crate) pending_requests:
+        Vec<platform_specific::wayland::data_device::Action<T>>,
+    pub(crate) pipe: Option<WritePipe>,
+    pub(crate) cur_write: Option<(Vec<u8>, usize, RegistrationToken)>,
+}
+
+impl<T> Debug for Dnd<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("Dnd")
+            .field(&self.origin_id)
+            .field(&self.origin)
+            .field(&self.icon_surface)
+            .field(&self.pending_requests)
+            .field(&self.pipe)
+            .field(&self.cur_write)
+            .finish()
+    }
+}
+
+#[derive(Debug)]
+pub struct SctkSelectionOffer {
+    pub(crate) offer: SelectionOffer,
+    pub(crate) cur_read: Option<(String, Vec<u8>, RegistrationToken)>,
+}
+
+#[derive(Debug)]
+pub struct SctkDragOffer {
+    pub(crate) dropped: bool,
+    pub(crate) offer: DragOffer,
+    pub(crate) cur_read: Option<(String, Vec<u8>, RegistrationToken)>,
+}
+
 #[derive(Debug)]
 pub struct SctkPopupData {
     pub(crate) id: iced_native::window::Id,
     pub(crate) parent: SctkSurface,
     pub(crate) toplevel: WlSurface,
     pub(crate) positioner: XdgPositioner,
+}
+
+pub struct SctkCopyPasteSource {
+    pub accepted_mime_types: Vec<String>,
+    pub source: CopyPasteSource,
+    pub data: Box<dyn DataFromMimeType>,
+    pub(crate) pipe: Option<WritePipe>,
+    pub(crate) cur_write: Option<(Vec<u8>, usize, RegistrationToken)>,
+}
+
+impl Debug for SctkCopyPasteSource {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("SctkCopyPasteSource")
+            .field(&self.accepted_mime_types)
+            .field(&self.source)
+            .field(&self.pipe)
+            .field(&self.cur_write)
+            .finish()
+    }
 }
 
 /// Wrapper to carry sctk state.
@@ -154,6 +214,7 @@ pub struct SctkState<T> {
     pub(crate) windows: Vec<SctkWindow<T>>,
     pub(crate) layer_surfaces: Vec<SctkLayerSurface<T>>,
     pub(crate) popups: Vec<SctkPopup<T>>,
+    pub(crate) dnd_source: Option<Dnd<T>>,
     pub(crate) kbd_focus: Option<WlSurface>,
 
     /// Window updates, which are coming from SCTK or the compositor, which require
@@ -170,6 +231,11 @@ pub struct SctkState<T> {
     pub layer_surface_compositor_updates:
         HashMap<ObjectId, SurfaceCompositorUpdate>,
 
+    /// data data_device
+    pub(crate) selection_source: Option<SctkCopyPasteSource>,
+    pub(crate) dnd_offer: Option<SctkDragOffer>,
+    pub(crate) selection_offer: Option<SctkSelectionOffer>,
+    pub(crate) accept_counter: u32,
     /// A sink for window and device events that is being filled during dispatching
     /// event loop and forwarded downstream afterwards.
     pub(crate) sctk_events: Vec<SctkEvent>,
@@ -189,7 +255,7 @@ pub struct SctkState<T> {
     pub(crate) shm_state: Shm,
     pub(crate) xdg_shell_state: XdgShell,
     pub(crate) layer_shell: Option<LayerShell>,
-
+    pub(crate) data_device_manager_state: DataDeviceManagerState,
     pub(crate) connection: Connection,
     pub(crate) token_ctr: u32,
 }
@@ -230,6 +296,10 @@ pub enum LayerSurfaceCreationError {
     LayerSurfaceCreationFailed(GlobalError),
 }
 
+/// An error that occurred while starting a drag and drop operation.
+#[derive(Debug, thiserror::Error)]
+pub enum DndStartError {}
+
 impl<T> SctkState<T>
 where
     T: 'static + Debug,
@@ -239,8 +309,6 @@ where
         settings: SctkPopupSettings,
     ) -> Result<(window::Id, WlSurface, WlSurface, WlSurface), PopupCreationError>
     {
-        let limits = settings.positioner.size_limits;
-
         let (parent, toplevel) = if let Some(parent) =
             self.layer_surfaces.iter().find(|l| l.id == settings.parent)
         {
@@ -276,7 +344,7 @@ where
         };
 
         let positioner = XdgPositioner::new(&self.xdg_shell_state)
-            .map_err(|e| PopupCreationError::PositionerCreationFailed(e))?;
+            .map_err(PopupCreationError::PositionerCreationFailed)?;
         positioner.set_anchor(settings.positioner.anchor);
         positioner.set_anchor_rect(
             settings.positioner.anchor_rect.x,
@@ -316,7 +384,7 @@ where
                     wl_surface.clone(),
                     &self.xdg_shell_state,
                 )
-                .map_err(|e| PopupCreationError::PopupCreationFailed(e))?;
+                .map_err(PopupCreationError::PopupCreationFailed)?;
                 parent_layer_surface.surface.get_popup(popup.xdg_popup());
                 (parent_layer_surface.surface.wl_surface(), popup)
             }
@@ -335,7 +403,7 @@ where
                         wl_surface.clone(),
                         &self.xdg_shell_state,
                     )
-                    .map_err(|e| PopupCreationError::PopupCreationFailed(e))?,
+                    .map_err(PopupCreationError::PopupCreationFailed)?,
                 )
             }
             SctkSurface::Popup(parent) => {
@@ -360,7 +428,7 @@ where
                         wl_surface.clone(),
                         &self.xdg_shell_state,
                     )
-                    .map_err(|e| PopupCreationError::PopupCreationFailed(e))?,
+                    .map_err(PopupCreationError::PopupCreationFailed)?,
                 )
             }
         };
@@ -500,7 +568,7 @@ where
         if anchor.contains(Anchor::LEFT.union(Anchor::RIGHT)) {
             size.0 = None;
         }
-        let mut layer_surface = layer_shell.create_layer_surface(
+        let layer_surface = layer_shell.create_layer_surface(
             &self.queue_handle,
             wl_surface.clone(),
             layer,

@@ -1,4 +1,4 @@
-use iced_sctk::application::SurfaceIdWrapper;
+use iced_native::window::Id;
 
 use crate::theme::{self, Theme};
 use crate::{Application, Command, Element, Error, Settings, Subscription};
@@ -112,11 +112,11 @@ pub trait Sandbox {
     /// These widgets can produce __messages__ based on user interaction.
     fn view(
         &self,
-        id: SurfaceIdWrapper,
+        id: Id,
     ) -> Element<'_, Self::Message>;
 
     /// window was requested to close
-    fn close_requested(&self, id: SurfaceIdWrapper) -> Self::Message;
+    fn close_requested(&self, id: Id) -> Self::Message;
 
     /// Returns the current [`Theme`] of the [`Sandbox`].
     ///
@@ -217,13 +217,13 @@ where
     /// These widgets can produce __messages__ based on user interaction.
     fn view(
         &self,
-        id: SurfaceIdWrapper,
+        id: Id,
     ) -> Element<'_, Self::Message> {
         T::view(self, id)
     }
 
     /// window was requested to close
-    fn close_requested(&self, id: SurfaceIdWrapper) -> Self::Message {
-        T::close_requested(&self, id)
+    fn close_requested(&self, id: Id) -> Self::Message {
+        T::close_requested(self, id)
     }
 }

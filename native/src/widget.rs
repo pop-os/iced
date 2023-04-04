@@ -15,6 +15,8 @@ pub mod button;
 pub mod checkbox;
 pub mod column;
 pub mod container;
+#[cfg(feature = "wayland")]
+pub mod dnd_listener;
 pub mod helpers;
 pub mod image;
 pub mod mouse_listener;
@@ -47,6 +49,9 @@ pub use checkbox::Checkbox;
 pub use column::Column;
 #[doc(no_inline)]
 pub use container::Container;
+#[doc(no_inline)]
+#[cfg(feature = "wayland")]
+pub use dnd_listener::DndListener;
 #[doc(no_inline)]
 pub use helpers::*;
 #[doc(no_inline)]

@@ -3,7 +3,11 @@ use crate::{
     sctk_event::{KeyboardEventVariant, SctkEvent, SeatEventVariant},
 };
 use iced_native::keyboard::Modifiers;
-use sctk::{delegate_seat, reexports::client::Proxy, seat::SeatHandler};
+use sctk::{
+    delegate_seat,
+    reexports::client::{protocol::wl_keyboard::WlKeyboard, Proxy},
+    seat::SeatHandler,
+};
 use std::fmt::Debug;
 
 impl<T: Debug> SeatHandler for SctkState<T>
@@ -17,19 +21,21 @@ where
     fn new_seat(
         &mut self,
         _conn: &sctk::reexports::client::Connection,
-        _qh: &sctk::reexports::client::QueueHandle<Self>,
+        qh: &sctk::reexports::client::QueueHandle<Self>,
         seat: sctk::reexports::client::protocol::wl_seat::WlSeat,
     ) {
         self.sctk_events.push(SctkEvent::SeatEvent {
             variant: SeatEventVariant::New,
             id: seat.clone(),
         });
+        let data_device =
+            self.data_device_manager_state.get_data_device(qh, &seat);
         self.seats.push(SctkSeat {
             seat,
             kbd: None,
             ptr: None,
             touch: None,
-            data_device: None,
+            data_device,
             modifiers: Modifiers::default(),
             kbd_focus: None,
             ptr_focus: None,
@@ -53,7 +59,9 @@ where
                     kbd: None,
                     ptr: None,
                     touch: None,
-                    data_device: None,
+                    data_device: self
+                        .data_device_manager_state
+                        .get_data_device(qh, &seat),
                     modifiers: Modifiers::default(),
                     kbd_focus: None,
                     ptr_focus: None,
@@ -66,9 +74,20 @@ where
         // TODO data device
         match capability {
             sctk::seat::Capability::Keyboard => {
-                if let Ok((kbd, source)) =
-                    self.seat_state.get_keyboard_with_repeat(qh, &seat, None)
-                {
+                let seat_clone = seat.clone();
+                if let Ok(kbd) = self.seat_state.get_keyboard_with_repeat(
+                    qh,
+                    &seat,
+                    None,
+                    self.loop_handle.clone(),
+                    Box::new(move |state, kbd: &WlKeyboard, e| {
+                        state.sctk_events.push(SctkEvent::KeyboardEvent {
+                            variant: KeyboardEventVariant::Repeat(e),
+                            kbd_id: kbd.clone(),
+                            seat_id: seat_clone.clone(),
+                        });
+                    }),
+                ) {
                     self.sctk_events.push(SctkEvent::SeatEvent {
                         variant: SeatEventVariant::NewCapability(
                             capability,
@@ -76,16 +95,6 @@ where
                         ),
                         id: seat.clone(),
                     });
-                    let kbd_clone = kbd.clone();
-                    self.loop_handle
-                        .insert_source(source, move |e, _, state| {
-                            state.sctk_events.push(SctkEvent::KeyboardEvent {
-                                variant: KeyboardEventVariant::Repeat(e),
-                                kbd_id: kbd_clone.clone(),
-                                seat_id: seat.clone(),
-                            });
-                        })
-                        .expect("Failed to insert the repeating keyboard into the event loop");
                     my_seat.kbd.replace(kbd);
                 }
             }

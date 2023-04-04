@@ -2,27 +2,29 @@ pub mod control_flow;
 pub mod proxy;
 pub mod state;
 
+use std::{
+    collections::HashMap,
+    fmt::Debug,
+    time::{Duration, Instant},
+};
+
 use crate::{
     application::Event,
     sctk_event::{
-        DndOfferEvent, IcedSctkEvent,
-        LayerSurfaceEventVariant, PopupEventVariant, SctkEvent,
-        SelectionOfferEvent, StartCause, WindowEventVariant,
+        IcedSctkEvent, LayerSurfaceEventVariant, PopupEventVariant, SctkEvent,
+        StartCause, WindowEventVariant,
     },
     settings,
 };
-use iced_native::command::platform_specific::{
+
+use iced_native::{command::platform_specific::{
     self,
     wayland::{
-        data_device::DndIcon, layer_surface::SctkLayerSurfaceSettings,
-        window::SctkWindowSettings,
+        layer_surface::SctkLayerSurfaceSettings, window::SctkWindowSettings,
     },
-};
-use log::error;
-use sctk::data_device_manager::data_source::DragSource;
+}, window};
 use sctk::{
     compositor::CompositorState,
-    data_device_manager::DataDeviceManagerState,
     output::OutputState,
     reexports::{
         calloop::{self, EventLoop},
@@ -38,20 +40,13 @@ use sctk::{
         xdg::{XdgShell, XdgSurface},
         WaylandSurface,
     },
-    shm::Shm,
-};
-use std::{
-    collections::HashMap,
-    fmt::Debug,
-    io::{BufRead, BufReader, BufWriter, Write},
-    num::NonZeroU32,
-    time::{Duration, Instant},
+    shm::Shm, data_device_manager::DataDeviceManagerState,
 };
 use wayland_backend::client::WaylandError;
 
 use self::{
     control_flow::ControlFlow,
-    state::{Dnd, LayerSurfaceCreationError, SctkCopyPasteSource, SctkState},
+    state::{LayerSurfaceCreationError, SctkState},
 };
 
 // impl SctkSurface {
@@ -150,10 +145,7 @@ where
                 xdg_shell_state: XdgShell::bind(&globals, &qh)
                     .expect("xdg shell is not available"),
                 layer_shell: LayerShell::bind(&globals, &qh).ok(),
-                data_device_manager_state: DataDeviceManagerState::bind(
-                    &globals, &qh,
-                )
-                .expect("data device manager is not available"),
+                data_device_manager_state: DataDeviceManagerState::bind(&globals, &qh).expect("data device manager is not available"),
 
                 queue_handle: qh,
                 loop_handle,
@@ -165,7 +157,7 @@ where
                 windows: Vec::new(),
                 layer_surfaces: Vec::new(),
                 popups: Vec::new(),
-                dnd_source: None,
+                dnd_surface: None,
                 kbd_focus: None,
                 window_compositor_updates: HashMap::new(),
                 sctk_events: Vec::new(),
@@ -173,10 +165,12 @@ where
                 layer_surface_compositor_updates: Default::default(),
                 pending_user_events: Vec::new(),
                 token_ctr: 0,
-                selection_source: None,
+                data_devices: Vec::new(),
+                copy_paste_sources: Vec::new(),
+                drag_sources: Vec::new(),
                 accept_counter: 0,
-                dnd_offer: None,
-                selection_offer: None,
+                dnd_offers: Vec::new(),
+                selection_offers: Vec::new(),
             },
             features: Default::default(),
             event_loop_awakener: ping,
@@ -505,6 +499,7 @@ where
 
                                 pending_redraws.push(layer_surface.surface.wl_surface().id());
                             }
+                            
                         },
                         platform_specific::wayland::layer_surface::Action::Destroy(id) => {
                             if let Some(i) = self.state.layer_surfaces.iter().position(|l| l.id == id) {
@@ -582,14 +577,13 @@ where
                         },
                         platform_specific::wayland::window::Action::Size { id, width, height } => {
                             if let Some(window) = self.state.windows.iter_mut().find(|w| w.id == id) {
-                                let (width, height) = (NonZeroU32::new(width).unwrap_or(NonZeroU32::new(1).unwrap()), NonZeroU32::new(height).unwrap_or(NonZeroU32::new(1).unwrap()));
-                                window.requested_size = Some((width.get(), height.get()));
-                                window.window.xdg_surface().set_window_geometry(0, 0, width.get() as i32, height.get() as i32);
+                                window.requested_size = Some((width, height));
+                                window.window.xdg_surface().set_window_geometry(0, 0, width.max(1) as i32, height.max(1) as i32);
                                 // TODO Ashley maybe don't force window size?
                                 pending_redraws.push(window.window.wl_surface().id());
 
                                 if let Some(mut prev_configure) = window.last_configure.clone() {
-                                    prev_configure.new_size = (Some(width), Some(height));
+                                    prev_configure.new_size = Some((width, height));
                                     sticky_exit_callback(
                                         IcedSctkEvent::SctkEvent(SctkEvent::WindowEvent { variant: WindowEventVariant::Configure(prev_configure, window.window.wl_surface().clone(), false), id: window.window.wl_surface().clone()}),
                                         &self.state,
@@ -804,18 +798,11 @@ where
                             }
                         },
                         // TODO probably remove this?
-                        platform_specific::wayland::popup::Action::Grab { .. } => {},
+                        platform_specific::wayland::popup::Action::Grab { id } => {},
                     },
                     Event::DataDevice(action) => {
-                        match action.inner {
-                            platform_specific::wayland::data_device::ActionInner::Accept(mime_type) => {
-                                let drag_offer = match self.state.dnd_offer.as_mut() {
-                                    Some(d) => d,
-                                    None => continue,
-                                };
-                                drag_offer.offer.accept_mime_type(drag_offer.offer.serial, mime_type);
-                            }
-                            platform_specific::wayland::data_device::ActionInner::StartInternalDnd { origin_id, icon_id } => {
+                        match action {
+                            platform_specific::wayland::data_device::Action::StartDnd { mime_types, actions, origin_id, icon_id } => {
                                 let qh = &self.state.queue_handle.clone();
                                 let seat = match self.state.seats.get(0) {
                                     Some(s) => s,
@@ -826,261 +813,33 @@ where
                                     None => continue,
                                 };
 
-                                let origin = match self
-                                .state
-                                .windows
-                                .iter()
-                                .find(|w| w.id == origin_id)
-                                .map(|w| Some(w.window.wl_surface()))
-                                .unwrap_or_else(|| self.state.layer_surfaces.iter()
-                                                .find(|l| l.id == origin_id).map(|l| Some(l.surface.wl_surface()))
-                                .unwrap_or_else(|| self.state.popups.iter().find(|p| p.data.id == origin_id).map(|p| p.popup.wl_surface()))) {
-                                    Some(s) => s.clone(),
-                                    None => continue,
-                                };
-                                let device = match self.state.seats.get(0) {
-                                    Some(s) => &s.data_device,
-                                    None => continue,
-                                };
-                                let icon_surface =  if let Some(icon_id) = icon_id{
+                                let origin = self.state.windows.iter().find(|w| w.id == origin_id).map(|w| w.window.wl_surface()).unwrap_or_else(|| self.layer_surfaces.iter().find(|l| l.id == origin_id).map(|l| l.surface.wl_surface()).unwrap_or_else(|| self.popups.iter().find(|p| p.id == origin_id)).map(|p| p.wl_surface());
+                                
+                                    
+                                let data_device = self.state.data_device_manager_state.get_data_device(qh, &seat.seat);
+                                let source = self.state.data_device_manager_state.create_drag_and_drop_source(qh, mime_types.iter().map(|s| &s).collect(), actions);
+                                if let Some(icon_id) = icon_id{
                                     let wl_surface = self.state.compositor_state.create_surface(qh);
-                                    DragSource::start_internal_drag(device, &origin, Some(&wl_surface), serial);
-                                    Some((wl_surface, icon_id))
+                                    source.start_drag(device, &origin, Some(&wl_surface), serial)
                                 } else {
-                                    DragSource::start_internal_drag(device, &origin, None, serial);
-                                    None
-                                };
-                                self.state.dnd_source = Some(Dnd {
-                                    origin_id,
-                                    icon_surface,
-                                    origin,
-                                    source: None,
-                                    pending_requests: Vec::new(),
-                                    pipe: None,
-                                    cur_write: None,
-                                });
-                            }
-                            platform_specific::wayland::data_device::ActionInner::StartDnd { mime_types, actions, origin_id, icon_id, data } => {
-                                if let Some(dnd_source) = self.state.dnd_source.as_ref() {
-                                    if dnd_source.cur_write.is_some() {
-                                        continue;
-                                    }
-                                }
-                                let qh = &self.state.queue_handle.clone();
-                                let seat = match self.state.seats.get(0) {
-                                    Some(s) => s,
-                                    None => continue,
-                                };
-                                let serial = match seat.last_ptr_press {
-                                    Some(s) => s.2,
-                                    None => continue,
-                                };
 
-                                let origin = match self
-                                .state
-                                .windows
-                                .iter()
-                                .find(|w| w.id == origin_id)
-                                .map(|w| Some(w.window.wl_surface()))
-                                .unwrap_or_else(|| self.state.layer_surfaces.iter()
-                                                .find(|l| l.id == origin_id).map(|l| Some(l.surface.wl_surface()))
-                                .unwrap_or_else(|| self.state.popups.iter().find(|p| p.data.id == origin_id).map(|p| p.popup.wl_surface()))) {
-                                    Some(s) => s.clone(),
-                                    None => continue,
-                                };
-                                let device = match self.state.seats.get(0) {
-                                    Some(s) => &s.data_device,
-                                    None => continue,
-                                };
-                                let source = self.state.data_device_manager_state.create_drag_and_drop_source(qh, mime_types.iter().map(|s| s.as_str()).collect::<Vec<_>>(), actions);
-                                let icon_surface =  if let Some(icon_id) = icon_id{
-                                    let icon_native_id = match &icon_id {
-                                        DndIcon::Custom(icon_id) => icon_id.clone(),
-                                        DndIcon::Widget(icon_id, _) => icon_id.clone(),
-                                    };
-                                    let wl_surface = self.state.compositor_state.create_surface(qh);
-                                    source.start_drag(device, &origin, Some(&wl_surface), serial);
-                                    sticky_exit_callback(
-                                        IcedSctkEvent::DndSurfaceCreated(
-                                                    wl_surface.clone(),
-                                                    icon_id,
-                                                    origin_id)
-                                                ,
-                                            &self.state,
-                                            &mut control_flow,
-                                            &mut callback
-                                    );
-                                   Some((wl_surface, icon_native_id))
-                                } else {
-                                    source.start_drag(device, &origin, None, serial);
-                                    None
-                                };
-                                self.state.dnd_source = Some(Dnd { origin_id, origin, source: Some((source, data)), icon_surface, pending_requests: Vec::new(), pipe: None, cur_write: None });
-                            },
-                            platform_specific::wayland::data_device::ActionInner::DndFinished => {
-                                if let Some(offer) = self.state.dnd_offer.take() {
-                                    if offer.dropped {
-                                        offer.offer.finish();
-                                    }
-                                    else {
-                                        self.state.dnd_offer = Some(offer);
-                                    }
-                               }
-                            },
-                            platform_specific::wayland::data_device::ActionInner::DndCancelled => {
-                                if let Some(source) = self.state.dnd_source.as_mut() {
-                                    source.source = None;
                                 }
-                            },
-                            platform_specific::wayland::data_device::ActionInner::RequestDndData (mime_type) => {
-                                if let Some(dnd_offer) = self.state.dnd_offer.as_mut() {
-                                    let read_pipe = match dnd_offer.offer.receive(mime_type.clone()) {
-                                        Ok(p) => p,
-                                        Err(_) => continue, // TODO error handling
-                                    };
-                                    let loop_handle = self.event_loop.handle();
-                                    match self.event_loop.handle().insert_source(read_pipe, move |_, f, state| {
-                                        let mut dnd_offer = match state.dnd_offer.take() {
-                                            Some(s) => s,
-                                            None => return,
-                                        };
-                                        let (mime_type, data, token) = match dnd_offer.cur_read.take() {
-                                            Some(s) => s,
-                                            None => return,
-                                        };
-                                        let mut reader = BufReader::new(f);
-                                        let consumed = match reader.fill_buf() {
-                                            Ok(buf) => {
-                                                if buf.is_empty() {
-                                                    loop_handle.remove(token);
-                                                    state.sctk_events.push(SctkEvent::DndOffer { event: DndOfferEvent::Data { data, mime_type }, surface: dnd_offer.offer.surface.clone() });
-                                                    if dnd_offer.dropped {
-                                                        dnd_offer.offer.finish();
-                                                    } else {
-                                                        state.dnd_offer = Some(dnd_offer);
-                                                    }
-                                                } else {
-                                                    let mut data = data;
-                                                    data.extend_from_slice(buf);
-                                                    dnd_offer.cur_read = Some((mime_type, data, token));
-                                                    state.dnd_offer = Some(dnd_offer);
-                                                }
-                                                buf.len()
-                                            },
-                                            Err(e) if matches!(e.kind(), std::io::ErrorKind::Interrupted) => {
-                                                dnd_offer.cur_read = Some((mime_type, data, token));
-                                                state.dnd_offer = Some(dnd_offer);
-                                                return;
-                                            },
-                                            Err(e) => {
-                                                error!("Error reading selection data: {}", e);
-                                                loop_handle.remove(token);
-                                                if !dnd_offer.dropped {
-                                                    state.dnd_offer = Some(dnd_offer);
-                                                }
-                                                return;
-                                            },
-                                        };
-                                        reader.consume(consumed);
-                                    }) {
-                                        Ok(token) => {
-                                            dnd_offer.cur_read = Some((mime_type.clone(), Vec::new(), token));
-                                        },
-                                        Err(_) => continue,
-                                    };
-                                }
-                            }
-                            platform_specific::wayland::data_device::ActionInner::RequestSelectionData { mime_type } => {
-                                if let Some(selection_offer) = self.state.selection_offer.as_mut() {
-                                    let read_pipe = match selection_offer.offer.receive(mime_type.clone()) {
-                                        Ok(p) => p,
-                                        Err(_) => continue, // TODO error handling
-                                    };
-                                    let loop_handle = self.event_loop.handle();
-                                    match self.event_loop.handle().insert_source(read_pipe, move |_, f, state| {
-                                        let selection_offer = match state.selection_offer.as_mut() {
-                                            Some(s) => s,
-                                            None => return,
-                                        };
-                                        let (mime_type, data, token) = match selection_offer.cur_read.take() {
-                                            Some(s) => s,
-                                            None => return,
-                                        };
-                                        let mut reader = BufReader::new(f);
-                                        let consumed = match reader.fill_buf() {
-                                            Ok(buf) => {
-                                                if buf.is_empty() {
-                                                    loop_handle.remove(token);
-                                                    state.sctk_events.push(SctkEvent::SelectionOffer(SelectionOfferEvent::Data {mime_type, data }));
-                                                } else {
-                                                    let mut data = data;
-                                                    data.extend_from_slice(buf);
-                                                    selection_offer.cur_read = Some((mime_type, data, token));
-                                                }
-                                                buf.len()
-                                            },
-                                            Err(e) if matches!(e.kind(), std::io::ErrorKind::Interrupted) => {
-                                                selection_offer.cur_read = Some((mime_type, data, token));
-                                                return;
-                                            },
-                                            Err(e) => {
-                                                error!("Error reading selection data: {}", e);
-                                                loop_handle.remove(token);
-                                                return;
-                                            },
-                                        };
-                                        reader.consume(consumed);
-                                    }) {
-                                        Ok(token) => {
-                                            selection_offer.cur_read = Some((mime_type.clone(), Vec::new(), token));
-                                        },
-                                        Err(_) => continue,
-                                    };
-                                }
-                            }
-                            platform_specific::wayland::data_device::ActionInner::SetSelection { mime_types, data } => {
-                                let qh = &self.state.queue_handle.clone();
-                                let seat = match self.state.seats.get(0) {
-                                    Some(s) => s,
-                                    None => continue,
-                                };
-                                let serial = match seat.last_ptr_press {
-                                    Some(s) => s.2,
-                                    None => continue,
-                                };
-                                // remove the old selection
-                                self.state.selection_source = None;
-                                // create a new one
-                                let source = self
-                                    .state
-                                    .data_device_manager_state
-                                    .create_copy_paste_source(&qh, mime_types.iter().map(|s| s.as_str()).collect::<Vec<_>>());
-                                source.set_selection(&seat.data_device, serial);
-                                self.state.selection_source = Some(SctkCopyPasteSource {
-                                    source,
-                                    cur_write: None,
-                                    accepted_mime_types: Vec::new(),
-                                    pipe: None,
-                                    data,
+
+                                self.state.dnd = Some( Dnd {
+
                                 });
-                            }
-                            platform_specific::wayland::data_device::ActionInner::UnsetSelection => {
-                                let seat = match self.state.seats.get(0) {
-                                    Some(s) => s,
-                                    None => continue,
-                                };
-                                let serial = match seat.last_ptr_press {
-                                    Some(s) => s.2,
-                                    None => continue,
-                                };
-                                self.state.selection_source = None;
-                                seat.data_device.unset_selection(serial);
-                            }
-                            platform_specific::wayland::data_device::ActionInner::SetActions { preferred, accepted } => {
-                                if let Some(offer) = self.state.dnd_offer.as_ref() {
-                                    offer.offer.set_actions(accepted, preferred);
-                                }
-                            }
+                                // if let Ok((id, wl_surface)) = self.state.get_data_device(data_device) {
+                                //     let object_id = wl_surface.id();
+                                //     sticky_exit_callback(
+                                //         IcedSctkEvent::SctkEvent(SctkEvent::DataDeviceEvent { variant: crate::sctk_event::DataDeviceEventVariant::Created(object_id.clone(), id), id: wl_surface.clone() }),
+                                //         &self.state,
+                                //         &mut control_flow,
+                                //         &mut callback,
+                                //     );
+                                // }
+                            },
+                            // TODO
+                            _ => {}
                         }
                     }
                 }

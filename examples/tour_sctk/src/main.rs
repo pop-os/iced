@@ -7,7 +7,7 @@ use iced::widget::{
     scrollable, slider, text, text_input, toggler, vertical_space,
 };
 use iced::widget::{Button, Column, Container, Slider};
-use iced::{Color, Element, Length, Renderer, Sandbox, Settings};
+use iced::{window, Color, Element, Length, Renderer, Sandbox, Settings};
 
 pub fn main() -> iced::Result {
     env_logger::init();
@@ -51,7 +51,7 @@ impl Sandbox for Tour {
         }
     }
 
-    fn view(&self, _: SurfaceIdWrapper) -> Element<Message> {
+    fn view(&self, _: window::Id) -> Element<Message> {
         let Tour { steps, .. } = self;
 
         let mut controls = row![];
@@ -96,7 +96,7 @@ impl Sandbox for Tour {
         container(scrollable).height(Length::Fill).center_y().into()
     }
 
-    fn close_requested(&self, _: SurfaceIdWrapper) -> Message {
+    fn close_requested(&self, _: window::Id) -> Message {
         todo!()
     }
 }

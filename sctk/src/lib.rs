@@ -1,6 +1,7 @@
 pub use iced_native::*;
 
 pub mod application;
+pub mod clipboard;
 pub mod commands;
 pub mod conversion;
 pub mod dpi;

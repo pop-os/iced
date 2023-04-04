@@ -1,5 +1,3 @@
-use std::{collections::HashMap, time::Instant};
-
 use crate::{
     application::SurfaceIdWrapper,
     conversion::{
@@ -10,6 +8,7 @@ use crate::{
 };
 use iced_graphics::Point;
 use iced_native::{
+    command::platform_specific::wayland::data_device::DndIcon,
     event::{
         wayland::{self, LayerEvent, PopupEvent},
         PlatformSpecific,
@@ -23,10 +22,8 @@ use sctk::{
     reexports::client::{
         backend::ObjectId,
         protocol::{
-            wl_keyboard::WlKeyboard,
-            wl_output::WlOutput,
-            wl_pointer::WlPointer,
-            wl_seat::{self, WlSeat},
+            wl_data_device_manager::DndAction, wl_keyboard::WlKeyboard,
+            wl_output::WlOutput, wl_pointer::WlPointer, wl_seat::WlSeat,
             wl_surface::WlSurface,
         },
         Proxy,
@@ -41,8 +38,9 @@ use sctk::{
         xdg::{popup::PopupConfigure, window::WindowConfigure},
     },
 };
+use std::{collections::HashMap, time::Instant};
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum IcedSctkEvent<T> {
     /// Emitted when new events arrive from the OS to be processed.
     ///
@@ -100,6 +98,9 @@ pub enum IcedSctkEvent<T> {
     /// This is irreversible - if this event is emitted, it is guaranteed to be the last event that
     /// gets emitted. You generally want to treat this as an "do on quit" event.
     LoopDestroyed,
+
+    /// Dnd source created with an icon surface.
+    DndSurfaceCreated(WlSurface, DndIcon, SurfaceId),
 }
 
 #[derive(Debug, Clone)]
@@ -156,7 +157,6 @@ pub enum SctkEvent {
         info: OutputInfo,
     },
     RemovedOutput(WlOutput),
-
     //
     // compositor events
     //
@@ -166,6 +166,79 @@ pub enum SctkEvent {
         id: WlOutput,
         inner_size: PhysicalSize<u32>,
     },
+    DataSource(DataSourceEvent),
+    DndOffer {
+        event: DndOfferEvent,
+        surface: WlSurface,
+    },
+    SelectionOffer(SelectionOfferEvent),
+}
+
+#[derive(Debug, Clone)]
+pub enum DataSourceEvent {
+    /// A DnD action has been accepted by the compositor for your source.
+    DndActionAccepted(DndAction),
+    /// A DnD mime type has been accepted by a client for your source.
+    MimeAccepted(Option<String>),
+    /// Dnd Finished event.
+    DndFinished,
+    /// Dnd Cancelled event.
+    DndCancelled,
+    /// Dnd Drop performed event.
+    DndDropPerformed,
+    /// Send the selection data to the clipboard.
+    SendSelectionData {
+        /// The mime type of the data to be sent
+        mime_type: String,
+    },
+    /// Send the DnD data to the destination.
+    SendDndData {
+        /// The mime type of the data to be sent
+        mime_type: String,
+    },
+}
+
+#[derive(Debug, Clone)]
+pub enum SelectionOfferEvent {
+    /// A Selection offer has been introduced with the given mime types.
+    Offer(Vec<String>),
+    /// Read the selection data from the clipboard.
+    Data {
+        /// The raww data
+        data: Vec<u8>,
+        /// mime type of the data to read
+        mime_type: String,
+    },
+}
+
+#[derive(Debug, Clone)]
+pub enum DndOfferEvent {
+    /// A DnD offer has been introduced with the given mime types.
+    Enter {
+        x: f64,
+        y: f64,
+        mime_types: Vec<String>,
+    },
+    /// The DnD device has left.
+    Leave,
+    /// Drag and Drop Motion event.
+    Motion {
+        /// x coordinate of the pointer
+        x: f64,
+        /// y coordinate of the pointer
+        y: f64,
+    },
+    /// A drop has been performed.
+    DropPerformed,
+    /// Read the DnD data
+    Data {
+        /// The raw data
+        data: Vec<u8>,
+        /// mime type of the data to read
+        mime_type: String,
+    },
+    SourceActions(DndAction),
+    SelectedAction(DndAction),
 }
 
 #[derive(Debug, Clone)]
@@ -354,9 +427,9 @@ impl SctkEvent {
             } => match variant {
                 KeyboardEventVariant::Leave(surface) => surface_ids
                     .get(&surface.id())
-                    .map(|id| match id {
+                    .and_then(|id| match id {
                         SurfaceIdWrapper::LayerSurface(_id) => {
-                            iced_native::Event::PlatformSpecific(
+                            Some(iced_native::Event::PlatformSpecific(
                                 PlatformSpecific::Wayland(
                                     wayland::Event::Layer(
                                         LayerEvent::Unfocused,
@@ -364,16 +437,16 @@ impl SctkEvent {
                                         id.inner(),
                                     ),
                                 ),
-                            )
+                            ))
                         }
                         SurfaceIdWrapper::Window(id) => {
-                            iced_native::Event::Window(
+                            Some(iced_native::Event::Window(
                                 *id,
                                 window::Event::Unfocused,
-                            )
+                            ))
                         }
                         SurfaceIdWrapper::Popup(_id) => {
-                            iced_native::Event::PlatformSpecific(
+                            Some(iced_native::Event::PlatformSpecific(
                                 PlatformSpecific::Wayland(
                                     wayland::Event::Popup(
                                         PopupEvent::Unfocused,
@@ -381,8 +454,9 @@ impl SctkEvent {
                                         id.inner(),
                                     ),
                                 ),
-                            )
+                            ))
                         }
+                        SurfaceIdWrapper::Dnd(_) => None,
                     })
                     .into_iter()
                     .chain([iced_native::Event::PlatformSpecific(
@@ -394,9 +468,9 @@ impl SctkEvent {
                     .collect(),
                 KeyboardEventVariant::Enter(surface) => surface_ids
                     .get(&surface.id())
-                    .map(|id| match id {
+                    .and_then(|id| match id {
                         SurfaceIdWrapper::LayerSurface(_id) => {
-                            iced_native::Event::PlatformSpecific(
+                            Some(iced_native::Event::PlatformSpecific(
                                 PlatformSpecific::Wayland(
                                     wayland::Event::Layer(
                                         LayerEvent::Focused,
@@ -404,16 +478,16 @@ impl SctkEvent {
                                         id.inner(),
                                     ),
                                 ),
-                            )
+                            ))
                         }
                         SurfaceIdWrapper::Window(id) => {
-                            iced_native::Event::Window(
+                            Some(iced_native::Event::Window(
                                 *id,
                                 window::Event::Focused,
-                            )
+                            ))
                         }
                         SurfaceIdWrapper::Popup(_id) => {
-                            iced_native::Event::PlatformSpecific(
+                            Some(iced_native::Event::PlatformSpecific(
                                 PlatformSpecific::Wayland(
                                     wayland::Event::Popup(
                                         PopupEvent::Focused,
@@ -421,8 +495,9 @@ impl SctkEvent {
                                         id.inner(),
                                     ),
                                 ),
-                            )
+                            ))
                         }
+                        SurfaceIdWrapper::Dnd(_) => None,
                     })
                     .into_iter()
                     .chain([iced_native::Event::PlatformSpecific(
@@ -538,15 +613,22 @@ impl SctkEvent {
                 }
                 WindowEventVariant::Configure(configure, surface, _) => {
                     if configure.is_resizing() {
-                        let new_size = configure.new_size.unwrap();
                         surface_ids
                             .get(&surface.id())
                             .map(|id| {
                                 iced_native::Event::Window(
                                     id.inner(),
                                     window::Event::Resized {
-                                        width: new_size.0,
-                                        height: new_size.1,
+                                        width: configure
+                                            .new_size
+                                            .0
+                                            .unwrap()
+                                            .get(),
+                                        height: configure
+                                            .new_size
+                                            .1
+                                            .unwrap()
+                                            .get(),
                                     },
                                 )
                             })
@@ -620,7 +702,7 @@ impl SctkEvent {
                 vec![iced_native::Event::PlatformSpecific(
                     PlatformSpecific::Wayland(wayland::Event::Output(
                         wayland::OutputEvent::InfoUpdate(info),
-                        id.clone(),
+                        id,
                     )),
                 )]
             }
@@ -628,7 +710,7 @@ impl SctkEvent {
                 Some(iced_native::Event::PlatformSpecific(
                     PlatformSpecific::Wayland(wayland::Event::Output(
                         wayland::OutputEvent::Removed,
-                        id.clone(),
+                        id,
                     )),
                 ))
                 .into_iter()
@@ -640,6 +722,170 @@ impl SctkEvent {
                 id,
                 inner_size,
             } => Default::default(),
+            SctkEvent::DndOffer { event, .. } => match event {
+                DndOfferEvent::Enter { mime_types, x, y } => {
+                    Some(iced_native::Event::PlatformSpecific(
+                        PlatformSpecific::Wayland(wayland::Event::DndOffer(
+                            wayland::DndOfferEvent::Enter { mime_types, x, y },
+                        )),
+                    ))
+                    .into_iter()
+                    .collect()
+                }
+                DndOfferEvent::Motion { x, y } => {
+                    Some(iced_native::Event::PlatformSpecific(
+                        PlatformSpecific::Wayland(wayland::Event::DndOffer(
+                            wayland::DndOfferEvent::Motion { x, y },
+                        )),
+                    ))
+                    .into_iter()
+                    .collect()
+                }
+                DndOfferEvent::DropPerformed => {
+                    Some(iced_native::Event::PlatformSpecific(
+                        PlatformSpecific::Wayland(wayland::Event::DndOffer(
+                            wayland::DndOfferEvent::DropPerformed,
+                        )),
+                    ))
+                    .into_iter()
+                    .collect()
+                }
+                DndOfferEvent::Leave => {
+                    Some(iced_native::Event::PlatformSpecific(
+                        PlatformSpecific::Wayland(wayland::Event::DndOffer(
+                            wayland::DndOfferEvent::Leave,
+                        )),
+                    ))
+                    .into_iter()
+                    .collect()
+                }
+                DndOfferEvent::Data { mime_type, data } => {
+                    Some(iced_native::Event::PlatformSpecific(
+                        PlatformSpecific::Wayland(wayland::Event::DndOffer(
+                            wayland::DndOfferEvent::DndData { data, mime_type },
+                        )),
+                    ))
+                    .into_iter()
+                    .collect()
+                }
+                DndOfferEvent::SourceActions(actions) => {
+                    Some(iced_native::Event::PlatformSpecific(
+                        PlatformSpecific::Wayland(wayland::Event::DndOffer(
+                            wayland::DndOfferEvent::SourceActions(actions),
+                        )),
+                    ))
+                    .into_iter()
+                    .collect()
+                }
+                DndOfferEvent::SelectedAction(action) => {
+                    Some(iced_native::Event::PlatformSpecific(
+                        PlatformSpecific::Wayland(wayland::Event::DndOffer(
+                            wayland::DndOfferEvent::SelectedAction(action),
+                        )),
+                    ))
+                    .into_iter()
+                    .collect()
+                }
+            },
+            SctkEvent::SelectionOffer(so) => match so {
+                SelectionOfferEvent::Offer(mime_types) => {
+                    Some(iced_native::Event::PlatformSpecific(
+                        PlatformSpecific::Wayland(
+                            wayland::Event::SelectionOffer(
+                                wayland::SelectionOfferEvent::Offer(
+                                    mime_types
+                                        .iter()
+                                        .map(|m| m.to_string())
+                                        .collect(),
+                                ),
+                            ),
+                        ),
+                    ))
+                    .into_iter()
+                    .collect()
+                }
+                SelectionOfferEvent::Data { mime_type, data } => {
+                    Some(iced_native::Event::PlatformSpecific(
+                        PlatformSpecific::Wayland(
+                            wayland::Event::SelectionOffer(
+                                wayland::SelectionOfferEvent::Data {
+                                    data,
+                                    mime_type,
+                                },
+                            ),
+                        ),
+                    ))
+                    .into_iter()
+                    .collect()
+                }
+            },
+            SctkEvent::DataSource(event) => match event {
+                DataSourceEvent::DndDropPerformed => {
+                    Some(iced_native::Event::PlatformSpecific(
+                        PlatformSpecific::Wayland(wayland::Event::DataSource(
+                            wayland::DataSourceEvent::DndDropPerformed,
+                        )),
+                    ))
+                    .into_iter()
+                    .collect()
+                }
+                DataSourceEvent::DndFinished => {
+                    Some(iced_native::Event::PlatformSpecific(
+                        PlatformSpecific::Wayland(wayland::Event::DataSource(
+                            wayland::DataSourceEvent::DndFinished,
+                        )),
+                    ))
+                    .into_iter()
+                    .collect()
+                }
+                DataSourceEvent::DndCancelled => {
+                    Some(iced_native::Event::PlatformSpecific(
+                        PlatformSpecific::Wayland(wayland::Event::DataSource(
+                            wayland::DataSourceEvent::Cancelled,
+                        )),
+                    ))
+                    .into_iter()
+                    .collect()
+                }
+                DataSourceEvent::MimeAccepted(mime_type) => {
+                    Some(iced_native::Event::PlatformSpecific(
+                        PlatformSpecific::Wayland(wayland::Event::DataSource(
+                            wayland::DataSourceEvent::MimeAccepted(mime_type),
+                        )),
+                    ))
+                    .into_iter()
+                    .collect()
+                }
+                DataSourceEvent::DndActionAccepted(action) => {
+                    Some(iced_native::Event::PlatformSpecific(
+                        PlatformSpecific::Wayland(wayland::Event::DataSource(
+                            wayland::DataSourceEvent::DndActionAccepted(action),
+                        )),
+                    ))
+                    .into_iter()
+                    .collect()
+                }
+                DataSourceEvent::SendDndData { mime_type } => {
+                    Some(iced_native::Event::PlatformSpecific(
+                        PlatformSpecific::Wayland(wayland::Event::DataSource(
+                            wayland::DataSourceEvent::SendDndData(mime_type),
+                        )),
+                    ))
+                    .into_iter()
+                    .collect()
+                }
+                DataSourceEvent::SendSelectionData { mime_type } => {
+                    Some(iced_native::Event::PlatformSpecific(
+                        PlatformSpecific::Wayland(wayland::Event::DataSource(
+                            wayland::DataSourceEvent::SendSelectionData(
+                                mime_type,
+                            ),
+                        )),
+                    ))
+                    .into_iter()
+                    .collect()
+                }
+            },
         }
     }
 }

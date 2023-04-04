@@ -32,6 +32,20 @@ macro_rules! row {
     );
 }
 
+#[cfg(feature = "wayland")]
+/// Creates a new [`DndListener`] with the provided content.
+///
+/// [`DndListener`]: widget::DndListener
+pub fn dnd_listener<'a, Message, Renderer>(
+    content: impl Into<Element<'a, Message, Renderer>>,
+) -> widget::DndListener<'a, Message, Renderer>
+where
+    Renderer: crate::Renderer,
+    Renderer::Theme: widget::container::StyleSheet,
+{
+    widget::DndListener::new(content)
+}
+
 /// Creates a new [`Container`] with the provided content.
 ///
 /// [`Container`]: widget::Container

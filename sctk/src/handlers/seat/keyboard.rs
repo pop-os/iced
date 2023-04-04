@@ -49,7 +49,7 @@ impl<T: Debug> KeyboardHandler for SctkState<T> {
             self.sctk_events.push(SctkEvent::KeyboardEvent {
                 variant: KeyboardEventVariant::Enter(surface.clone()),
                 kbd_id: keyboard.clone(),
-                seat_id: seat.clone(),
+                seat_id: seat,
             })
         }
     }
