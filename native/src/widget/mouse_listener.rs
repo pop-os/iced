@@ -8,7 +8,7 @@ use crate::renderer;
 use crate::touch;
 use crate::widget::{tree, Operation, Tree};
 use crate::{
-    Clipboard, Element, Layout, Length, Point, Rectangle, Shell, Size, Widget,
+    Clipboard, Element, Layout, Length, Point, Rectangle, Shell, Widget,
 };
 
 use std::u32;
@@ -41,6 +41,14 @@ pub struct MouseListener<'a, Message, Renderer> {
 
     /// Sets the messsage to emit when the mouse exits the widget.
     on_mouse_exit: Option<Message>,
+
+    /// Sets the message to emit when the mouse drags the widget.
+    on_drag: Option<Message>,
+
+    /// threshold of the mouse drag detection
+    /// if the mouse is moved more than this radius while pressed, the drag event is triggered
+    drag_radius_squared: f32,
+
 }
 
 impl<'a, Message, Renderer> MouseListener<'a, Message, Renderer> {
@@ -99,12 +107,30 @@ impl<'a, Message, Renderer> MouseListener<'a, Message, Renderer> {
         self.on_mouse_exit = Some(message);
         self
     }
+
+    /// The message to emit when the mouse drags the widget.
+    #[must_use]
+    pub fn on_drag(mut self, message: Message) -> Self {
+        self.on_drag = Some(message);
+        self
+    }
+
+    /// Sets the threshold radius of the mouse drag detection
+    /// if the mouse is moved more than this radius while pressed, the drag event is triggered
+    #[must_use]
+    pub fn drag_threshold(mut self, radius: f32) -> Self {
+        self.drag_radius_squared = radius.powi(2);
+        self
+    }
+
+
 }
 
 /// Local state of the [`MouseListener`].
 #[derive(Default)]
 struct State {
     hovered: bool,
+    left_pressed_position: Option<Point>,
 }
 
 impl<'a, Message, Renderer> MouseListener<'a, Message, Renderer> {
@@ -120,6 +146,8 @@ impl<'a, Message, Renderer> MouseListener<'a, Message, Renderer> {
             on_middle_release: None,
             on_mouse_enter: None,
             on_mouse_exit: None,
+            on_drag: None,
+            drag_radius_squared: 5.0,
         }
     }
 }
@@ -297,6 +325,15 @@ fn update<Message: Clone, Renderer>(
     let hovered = state.hovered;
 
     if !layout.bounds().contains(cursor_position) {
+        // XXX if the widget is not hovered but the mouse is pressed,
+        // we are triggering on_drag
+        if let (Some(on_drag), Some(_)) =
+            (widget.on_drag.clone(), state.left_pressed_position.take())
+        {
+            shell.publish(on_drag);
+            return event::Status::Captured;
+        }
+
         if hovered {
             state.hovered = false;
             if let Some(message) = widget.on_mouse_exit.clone() {
@@ -304,16 +341,35 @@ fn update<Message: Clone, Renderer>(
                 return event::Status::Captured;
             }
         }
-
         return event::Status::Ignored;
     }
 
     state.hovered = true;
 
+    if let (Some(on_drag), Some(pressed_pos)) =
+        (widget.on_drag.clone(), state.left_pressed_position.clone())
+    {
+        let distance = (cursor_position.x - pressed_pos.x).powi(2)
+            + (cursor_position.y - pressed_pos.y).powi(2);
+        if distance > widget.drag_radius_squared {
+            state.left_pressed_position = None;
+            shell.publish(on_drag);
+            return event::Status::Captured;
+        }
+    }
+
     if !hovered {
         if let Some(message) = widget.on_mouse_enter.clone() {
             shell.publish(message);
             return event::Status::Captured;
+        }
+    }
+
+    if widget.on_drag.is_some() {
+        if let Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left))
+        | Event::Touch(touch::Event::FingerPressed { .. }) = event
+        {
+            state.left_pressed_position = Some(cursor_position);
         }
     }
 
