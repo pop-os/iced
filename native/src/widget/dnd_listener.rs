@@ -57,6 +57,26 @@ impl<'a, Message, Renderer> DndListener<'a, Message, Renderer> {
         self.on_enter = Some(Box::new(message));
         self
     }
+    
+    /// The message to emit on a drag motion.
+    #[must_use]
+    pub fn on_motion(
+        mut self,
+        message: impl Fn(f32, f32) -> Message + 'a,
+    ) -> Self {
+        self.on_motion = Some(Box::new(message));
+        self
+    }
+
+    /// The message to emit on a selected drag action.
+    #[must_use]
+    pub fn on_selected_action(
+        mut self,
+        message: impl Fn(DndAction) -> Message + 'a,
+    ) -> Self {
+        self.on_selected_action = Some(Box::new(message));
+        self
+    }
 
     /// The message to emit on a drag exit.
     #[must_use]
@@ -444,9 +464,12 @@ fn update<Message: Clone, Renderer>(
             }
         }
         Event::PlatformSpecific(PlatformSpecific::Wayland(
-            event::wayland::Event::DndOffer(DndOfferEvent::SelectedAction(_)),
+            event::wayland::Event::DndOffer(DndOfferEvent::SelectedAction(action)),
         )) => {
-            // TODO?
+            if let Some(message) = widget.on_selected_action.as_ref() {
+                shell.publish(message(*action));
+                return event::Status::Captured;
+            }
         }
         _ => {}
     };
