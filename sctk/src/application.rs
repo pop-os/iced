@@ -673,7 +673,14 @@ where
                 let (native_id, e) = match dnd_icon {
                     DndIcon::Custom(id) => {
                         let e = application.view(id);
-                        e.as_widget().diff(&mut Tree::empty());
+                        let state = e.as_widget().state();
+                        let tag = e.as_widget().tag();
+                        let mut tree = Tree {
+                            tag,
+                            state,
+                            children: e.as_widget().children(),
+                        };
+                        e.as_widget().diff(&mut tree);
                         (id, e)
                     }
                     DndIcon::Widget(id, widget_state) => {
@@ -681,8 +688,7 @@ where
                         let mut tree = Tree {
                             tag: e.as_widget().tag(),
                             state: widget::tree::State::Some(widget_state),
-                            children: vec![], // TODO somehow include the child state
-                                              // eventually? They are not guaranteed to be Send though :/
+                            children: e.as_widget().children(),
                         };
                         e.as_widget().diff(&mut tree);
                         (id, e)
