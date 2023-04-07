@@ -46,6 +46,20 @@ where
     widget::DndListener::new(content)
 }
 
+#[cfg(feature = "wayland")]
+/// Creates a new [`DndListener`] with the provided content.
+///
+/// [`DndListener`]: widget::DndListener
+pub fn dnd_source<'a, Message, Renderer>(
+    content: impl Into<Element<'a, Message, Renderer>>,
+) -> widget::DndSource<'a, Message, Renderer>
+where
+    Renderer: crate::Renderer,
+    Renderer::Theme: widget::container::StyleSheet,
+{
+    widget::DndSource::new(content)
+}
+
 /// Creates a new [`Container`] with the provided content.
 ///
 /// [`Container`]: widget::Container

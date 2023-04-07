@@ -17,6 +17,8 @@ pub mod column;
 pub mod container;
 #[cfg(feature = "wayland")]
 pub mod dnd_listener;
+#[cfg(feature = "wayland")]
+pub mod dnd_source;
 pub mod helpers;
 pub mod image;
 pub mod mouse_listener;
@@ -52,6 +54,9 @@ pub use container::Container;
 #[doc(no_inline)]
 #[cfg(feature = "wayland")]
 pub use dnd_listener::DndListener;
+#[doc(no_inline)]
+#[cfg(feature = "wayland")]
+pub use dnd_source::DndSource;
 #[doc(no_inline)]
 pub use helpers::*;
 #[doc(no_inline)]

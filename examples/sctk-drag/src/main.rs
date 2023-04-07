@@ -10,7 +10,7 @@ use iced::{
         data_device::{start_drag},
         platform_specific, actions::data_device::DataFromMimeType,
     },
-    widget::{self, column, container, dnd_listener, mouse_listener, text},
+    widget::{self, column, container, dnd_listener, dnd_source, mouse_listener, text},
     window, Application, Color, Command, Element, Subscription, Theme,
 };
 use iced_style::application;
@@ -159,27 +159,6 @@ impl Application for DndTest {
         Command::none()
     }
 
-    fn subscription(&self) -> Subscription<Self::Message> {
-        subscription::events_with(|event, status| {
-            if let iced::Event::PlatformSpecific(
-                iced::event::PlatformSpecific::Wayland(
-                    iced::event::wayland::Event::DataSource(source_event),
-                ),
-            ) = event
-            {
-                match source_event {
-                    DataSourceEvent::DndFinished
-                    | DataSourceEvent::Cancelled => {
-                        Some(Message::SourceFinished)
-                    }
-                    _ => None,
-                }
-            } else {
-                None
-            }
-        })
-    }
-
     fn view(&self, id: window::Id) -> Element<Self::Message> {
         if id == window::Id::new(1) {
             return text(&self.current_text).into();
@@ -217,7 +196,7 @@ impl Application for DndTest {
                     Message::Ignore
                 }
             }),
-            mouse_listener(
+            dnd_source(
                 container(text(format!(
                     "Drag me: {}",
                     &self.current_text.chars().rev().collect::<String>()
@@ -231,7 +210,11 @@ impl Application for DndTest {
                 })
                 .padding(20)
             )
-            .on_press(Message::StartDnd)
+            .drag_threshold(5.0)
+            .on_drag(Message::StartDnd)
+            .on_finished(Message::SourceFinished)
+            .on_cancelled(Message::SourceFinished)
+
         ]
         .into()
     }
