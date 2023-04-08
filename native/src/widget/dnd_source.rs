@@ -108,7 +108,7 @@ impl<'a, Message, Renderer> DndSource<'a, Message, Renderer> {
             on_finished: None,
             on_dropped: None,
             on_selection_action: None,
-            drag_threshold: 5.0,
+            drag_threshold: 25.0,
             handle_captured_events: true,
         }
     }
@@ -249,6 +249,22 @@ where
         }
 
         let mut state = tree.state.downcast_mut::<State>();
+        
+        if matches!(
+            event,
+            Event::PlatformSpecific(event::PlatformSpecific::Wayland(
+                event::wayland::Event::Seat(
+                    event::wayland::SeatEvent::Leave,
+                    _
+                )
+            )) | Event::Mouse(mouse::Event::ButtonReleased(
+                mouse::Button::Left
+            )) | Event::Touch(touch::Event::FingerLifted { .. })
+                | Event::Touch(touch::Event::FingerLost { .. })
+        ) {
+            state.left_pressed_position = None;
+            return event::Status::Captured;
+        }
 
         if state.is_dragging {
             if let Event::PlatformSpecific(event::PlatformSpecific::Wayland(
@@ -302,7 +318,10 @@ where
             }
         }
 
-        if !layout.bounds().contains(cursor_position) {
+        if cursor_position.x > 0.0
+            && cursor_position.y > 0.0
+            && !layout.bounds().contains(cursor_position)
+        {
             // XXX if the widget is not hovered but the mouse is pressed,
             // we are triggering on_drag
             if let (Some(on_drag), Some(_)) =
@@ -319,6 +338,9 @@ where
         if let (Some(on_drag), Some(pressed_pos)) =
             (self.on_drag.clone(), state.left_pressed_position.clone())
         {
+            if cursor_position.x < 0.0 || cursor_position.y < 0.0 {
+                return captured;
+            }
             let distance = (cursor_position.x - pressed_pos.x).powi(2)
                 + (cursor_position.y - pressed_pos.y).powi(2);
             if distance > self.drag_threshold {
