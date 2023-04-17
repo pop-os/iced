@@ -3,12 +3,7 @@ pub mod proxy;
 pub mod state;
 #[cfg(feature = "a11y")]
 pub mod adapter;
-use std::{
-    collections::HashMap,
-    fmt::Debug,
-    time::{Duration, Instant},
-    sync::{Arc, Mutex}
-};
+
 
 use crate::{
     application::{Event, SurfaceIdWrapper},
@@ -54,6 +49,8 @@ use std::{
     io::{BufRead, BufReader, BufWriter, Write},
     num::NonZeroU32,
     time::{Duration, Instant},
+    sync::{Arc, Mutex}
+
 };
 use wayland_backend::client::WaylandError;
 

@@ -13,6 +13,7 @@ use crate::{
 };
 use float_cmp::approx_eq;
 use futures::{channel::mpsc, task, Future, FutureExt, StreamExt};
+#[cfg(feature = "a11y")]
 use iced_accessibility::{A11yId, accesskit::NodeId, A11yNode};
 use iced_native::{
     application::{self, StyleSheet},
@@ -23,10 +24,9 @@ use iced_native::{
     },
     event::Status,
     layout::Limits,
-    layout::Limits,
     mouse::{self, Interaction},
-    widget::{operation::{self, focusable::{focus, find_focused}}, Tree},
-    Element, Renderer, Widget, layout::Limits,
+    widget::{operation::{self, focusable::{focus, find_focused}}, Tree, self},
+    Element, Renderer, Widget,
 };
 use log::error;
 
@@ -51,13 +51,11 @@ use raw_window_handle::{
     HasRawDisplayHandle, HasRawWindowHandle, RawDisplayHandle, RawWindowHandle,
     WaylandDisplayHandle, WaylandWindowHandle,
 };
-use std::mem::ManuallyDrop;
-use iced_native::widget::operation::{MapOperation, OperationWrapper};
-use itertools::Itertools;
+use iced_native::widget::operation::OperationWrapper;
 
-#[derive(Debug)]
 pub enum Event<Message> {
     /// A normal sctk event
+    SctkEvent(IcedSctkEvent<Message>),
     /// TODO
     // (maybe we should also allow users to listen/react to those internal messages?)
 
@@ -750,6 +748,7 @@ where
                     user_interface::Cache::default(),
                     &mut renderer,
                     state.logical_size(),
+                    &state.title,
                     &mut debug,
                     SurfaceIdWrapper::Dnd(native_id),
                     &mut auto_size_surfaces,
@@ -785,15 +784,15 @@ where
             }
             IcedSctkEvent::MainEventsCleared => {
                 let mut i = 0;
-                while i < events.len() {
+                while i < sctk_events.len() {
                     let remove = matches!(
-                        events[i],
+                        sctk_events[i],
                         SctkEvent::NewOutput { .. }
                             | SctkEvent::UpdateOutput { .. }
                             | SctkEvent::RemovedOutput(_)
                     );
                     if remove {
-                        let event = events.remove(i);
+                        let event = sctk_events.remove(i);
                         for native_event in event.to_native(
                             &mut mods,
                             &surface_ids,
@@ -848,18 +847,18 @@ where
                         if matches!(surface_id, SurfaceIdWrapper::Dnd(_)) {
                             continue;
                         }
-                        let mut filtered = Vec::with_capacity(events.len());
+                        let mut filtered_sctk = Vec::with_capacity(sctk_events.len());
 
                         let mut i = 0;
-                        while i < events.len() {
+                        while i < sctk_events.len() {
                             let has_kbd_focus =
                                 kbd_surface_id.as_ref() == Some(object_id);
                             if event_is_for_surface(
-                                &events[i],
+                                &sctk_events[i],
                                 object_id,
                                 has_kbd_focus,
                             ) {
-                                filtered.push(events.remove(i));
+                                filtered_sctk.push(sctk_events.remove(i));
                             } else {
                                 i += 1;
                             }
@@ -1137,6 +1136,7 @@ where
                 surface_id,
                 request,
             }) => {
+                use iced_accessibility::accesskit::Action;  
                 match request.action {
                     Action::Default => {
                         // TODO default operation?

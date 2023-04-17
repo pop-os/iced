@@ -8,7 +8,7 @@ use crate::{
     Shell, Widget,
 };
 
-use super::{tree, Operation, Tree};
+use super::{operation::OperationOutputWrapper, tree, Operation, Tree};
 
 /// A widget that can be dragged and dropped.
 #[allow(missing_debug_implementations)]
@@ -192,7 +192,7 @@ where
         &self,
         tree: &mut Tree,
         layout: layout::Layout<'_>,
-        operation: &mut dyn Operation<Message>,
+        operation: &mut dyn Operation<OperationOutputWrapper<Message>>,
     ) {
         operation.container(None, &mut |operation| {
             self.content.as_widget().operate(
@@ -249,7 +249,7 @@ where
         }
 
         let mut state = tree.state.downcast_mut::<State>();
-        
+
         if matches!(
             event,
             Event::PlatformSpecific(event::PlatformSpecific::Wayland(

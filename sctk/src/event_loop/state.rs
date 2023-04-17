@@ -1,6 +1,6 @@
 use std::{
     collections::HashMap,
-    fmt::Debug,
+    fmt::{Debug, Formatter},
     sync::{Arc, Mutex},
 };
 

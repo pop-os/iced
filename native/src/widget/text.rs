@@ -172,13 +172,29 @@ where
     }
 
     #[cfg(feature = "a11y")]
-    fn a11y_nodes(&self, _layout: Layout<'_>) -> iced_accessibility::A11yTree {
-        use iced_accessibility::{accesskit, A11yNode, A11yTree};
+    fn a11y_nodes(&self, layout: Layout<'_>) -> iced_accessibility::A11yTree {
+        use iced_accessibility::{
+            accesskit::{self, kurbo},
+            A11yNode, A11yTree,
+        };
 
+        let Rectangle {
+            x,
+            y,
+            width,
+            height,
+        } = layout.bounds();
+        let bounds = Some(kurbo::Rect::new(
+            x as f64,
+            y as f64,
+            (x + width) as f64,
+            (y + height) as f64,
+        ));
         let node = accesskit::Node {
             role: accesskit::Role::StaticText,
             name: Some(self.content.to_string().into_boxed_str()),
             live: Some(accesskit::Live::Polite),
+            bounds,
             ..Default::default()
         };
         A11yTree::new(vec![A11yNode::new(node, self.id.clone())], Vec::new())

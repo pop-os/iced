@@ -40,7 +40,6 @@ use sctk::{
 };
 use std::{collections::HashMap, time::Instant};
 
-#[derive(Debug)]
 pub enum IcedSctkEvent<T> {
     /// Emitted when new events arrive from the OS to be processed.
     ///

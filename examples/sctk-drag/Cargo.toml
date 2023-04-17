@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-iced = { path = "../..", default-features = false,  features = ["wayland", "debug", "image", "dyrend"] }
+iced = { path = "../..", default-features = false,  features = ["wayland", "debug", "image", "dyrend", "a11y"] }
 iced_style = { path = "../../style" }
 env_logger = "0.10"
 # sctk = { package = "smithay-client-toolkit", path = "../../../fork/client-toolkit/" }

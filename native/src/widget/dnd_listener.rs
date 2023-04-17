@@ -15,6 +15,8 @@ use crate::{
 
 use std::u32;
 
+use super::operation::OperationOutputWrapper;
+
 /// Emit messages on mouse events.
 #[allow(missing_debug_implementations)]
 pub struct DndListener<'a, Message, Renderer> {
@@ -57,7 +59,7 @@ impl<'a, Message, Renderer> DndListener<'a, Message, Renderer> {
         self.on_enter = Some(Box::new(message));
         self
     }
-    
+
     /// The message to emit on a drag motion.
     #[must_use]
     pub fn on_motion(
@@ -199,7 +201,7 @@ where
         &self,
         tree: &mut Tree,
         layout: Layout<'_>,
-        operation: &mut dyn Operation<Message>,
+        operation: &mut dyn Operation<OperationOutputWrapper<Message>>,
     ) {
         operation.container(None, &mut |operation| {
             self.content.as_widget().operate(
@@ -378,7 +380,9 @@ fn update<Message: Clone, Renderer>(
                 }
             } else if bounds.contains(p) {
                 state.dnd = match &state.dnd {
-                    DndState::External(a, m) => DndState::Hovered(*a, m.clone()),
+                    DndState::External(a, m) => {
+                        DndState::Hovered(*a, m.clone())
+                    }
                     _ => DndState::Hovered(DndAction::empty(), vec![]),
                 };
                 let (action, mime_types) = match &state.dnd {
@@ -387,7 +391,7 @@ fn update<Message: Clone, Renderer>(
                     }
                     _ => return event::Status::Ignored,
                 };
-                
+
                 if let Some(message) = widget.on_enter.as_ref() {
                     let normalized_x: f32 = (p.x - bounds.x) / bounds.width;
                     let normalized_y: f32 = (p.y - bounds.y) / bounds.height;
@@ -464,7 +468,9 @@ fn update<Message: Clone, Renderer>(
             }
         }
         Event::PlatformSpecific(PlatformSpecific::Wayland(
-            event::wayland::Event::DndOffer(DndOfferEvent::SelectedAction(action)),
+            event::wayland::Event::DndOffer(DndOfferEvent::SelectedAction(
+                action,
+            )),
         )) => {
             if let Some(message) = widget.on_selected_action.as_ref() {
                 shell.publish(message(*action));

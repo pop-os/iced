@@ -20,9 +20,8 @@ use crate::{
     Rectangle, Shell, Size, Vector, Widget,
 };
 
+use crate::widget::operation::OperationOutputWrapper;
 pub use iced_style::text_input::{Appearance, StyleSheet};
-
-use super::operation::OperationOutputWrapper;
 
 /// A field that can be filled with text.
 ///

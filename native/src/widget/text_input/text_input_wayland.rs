@@ -7,6 +7,7 @@ use super::value;
 pub use super::cursor;
 
 use crate::command::platform_specific::wayland::data_device::DataFromMimeType;
+use crate::widget::operation::OperationOutputWrapper;
 use crate::{
     command::{
         self,
@@ -300,7 +301,7 @@ where
         &self,
         tree: &mut Tree,
         _layout: Layout<'_>,
-        operation: &mut dyn Operation<Message>,
+        operation: &mut dyn Operation<OperationOutputWrapper<Message>>,
     ) {
         let state = tree.state.downcast_mut::<State>();
 
@@ -392,7 +393,7 @@ where
 }
 
 /// The identifier of a [`TextInput`].
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Id(widget::Id);
 
 impl Id {
@@ -486,9 +487,7 @@ pub fn update<'a, Message, Renderer>(
     font: &Renderer::Font,
     is_secure: bool,
     on_change: &dyn Fn(String) -> Message,
-    on_start_dnd_source: Option<
-        &dyn Fn(State) -> Message,
-    >,
+    on_start_dnd_source: Option<&dyn Fn(State) -> Message>,
     dnd_icon: bool,
     on_dnd_command_produced: Option<
         &dyn Fn(
@@ -499,10 +498,7 @@ pub fn update<'a, Message, Renderer>(
             >,
         ) -> Message,
     >,
-    surface_ids: Option<(
-        crate::window::Id,
-        crate::window::Id,
-    )>,
+    surface_ids: Option<(crate::window::Id, crate::window::Id)>,
     on_submit: &Option<Message>,
     state: impl FnOnce() -> &'a mut State,
 ) -> event::Status
@@ -593,8 +589,9 @@ where
                             };
 
                             if selection_bounds.contains(cursor_position) {
-                                let text =
-                                    state.selected_text(&value.to_string()).unwrap_or_default();
+                                let text = state
+                                    .selected_text(&value.to_string())
+                                    .unwrap_or_default();
                                 state.dragging_state =
                                     Some(DraggingState::Dnd(
                                         DndAction::empty(),
@@ -1229,7 +1226,9 @@ where
             let state = state();
             if let DndOfferState::Dropped = state.dnd_offer.clone() {
                 state.dnd_offer = DndOfferState::None;
-                if !SUPPORTED_MIME_TYPES.contains(&mime_type.as_str()) || data.is_empty() {
+                if !SUPPORTED_MIME_TYPES.contains(&mime_type.as_str())
+                    || data.is_empty()
+                {
                     return event::Status::Captured;
                 }
                 let content = match String::from_utf8(data) {
