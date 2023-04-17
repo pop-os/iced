@@ -694,8 +694,14 @@ where
                         (id, e)
                     }
                 };
+
+                let parent_size = states
+                    .get(&origin_id)
+                    .map(|s| s.logical_size())
+                    .unwrap_or_else(|| Size::new(1024.0, 1024.0));
+ 
                 let node =
-                    Widget::layout(e.as_widget(), &renderer, &Limits::NONE);
+                    Widget::layout(e.as_widget(), &renderer, &Limits::NONE.min_width(1).min_height(1).max_width(parent_size.width as u32).max_height(parent_size.height as u32));
                 let bounds = node.bounds();
                 let w = bounds.width.ceil() as u32;
                 let h = bounds.height.ceil() as u32;
@@ -703,11 +709,7 @@ where
                     error!("Dnd surface has zero size, ignoring");
                     continue;
                 }
-                let parent_size = states
-                    .get(&origin_id)
-                    .map(|s| s.logical_size())
-                    .unwrap_or_else(|| Size::new(1024.0, 1024.0));
-                if w > parent_size.width as u32 || h > parent_size.height as u32
+               if w > parent_size.width as u32 || h > parent_size.height as u32
                 {
                     error!("Dnd surface is too large, ignoring");
                     continue;
