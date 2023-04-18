@@ -345,7 +345,7 @@ async fn run_instance<A, E, C>(
         let node_id = iced_native::widget::window_node_id();
 
         use iced_accessibility::accesskit::{
-            Node, NodeBuilder, NodeId, Role, Tree, TreeUpdate,
+            NodeBuilder, NodeId, Role, Tree, TreeUpdate,
         };
         use iced_accessibility::accesskit_winit::Adapter;
         let title = state.title().to_string();
@@ -523,6 +523,7 @@ async fn run_instance<A, E, C>(
                         Some(Box::new(OperationWrapper::Id(Box::new(
                             operation::focusable::find_focused(),
                         ))));
+
                     let mut focus = None;
                     while let Some(mut operation) = current_operation.take() {
                         user_interface.operate(&renderer, operation.as_mut());
@@ -546,6 +547,7 @@ async fn run_instance<A, E, C>(
                             }
                         }
                     }
+
                     log::debug!(
                         "focus: {:?}\ntree root: {:?}\n children: {:?}",
                         &focus,
@@ -560,10 +562,14 @@ async fn run_instance<A, E, C>(
                             .map(|n| (n.node().role(), n.id()))
                             .collect::<Vec<_>>()
                     );
+                    // TODO maybe optimize this?
+                    let focus = focus
+                        .filter(|f_id| window_tree.contains(f_id))
+                        .map(|id| id.into());
                     adapter.update(TreeUpdate {
                         nodes: window_tree.into(),
                         tree: Some(tree),
-                        focus: focus.map(|id| id.into()),
+                        focus,
                     });
                 }
 

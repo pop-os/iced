@@ -1,25 +1,22 @@
+use env_logger::Env;
 use iced::alignment::{self, Alignment};
 use iced::event::{self, Event};
 use iced::keyboard;
 use iced::subscription;
 use iced::theme::{self, Theme};
-use iced::wayland::actions::data_device::{self, DndIcon, ActionInner};
+use iced::wayland::actions::data_device::ActionInner;
 use iced::wayland::actions::popup::SctkPopupSettings;
-use iced::wayland::actions::window::SctkWindowSettings;
 use iced::wayland::data_device::action as data_device_action;
 use iced::wayland::popup::get_popup;
-use iced::wayland::window::get_window;
-use iced::wayland::{platform_specific, InitialSurface};
+use iced::wayland::InitialSurface;
 use iced::widget::{
     self, button, checkbox, column, container, row, scrollable, text,
     text_input, Text,
 };
 use iced::{window, Application, Element};
 use iced::{Color, Command, Font, Length, Settings, Subscription};
-use iced_style::application;
 
 use once_cell::sync::Lazy;
-use sctk::reexports::client::protocol::wl_data_device_manager::DndAction;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::sync::Arc;
@@ -27,6 +24,11 @@ use std::sync::Arc;
 static INPUT_ID: Lazy<text_input::Id> = Lazy::new(text_input::Id::unique);
 
 pub fn main() -> iced::Result {
+    let env = Env::default()
+        .filter_or("MY_LOG_LEVEL", "debug")
+        .write_style_or("MY_LOG_STYLE", "always");
+
+    env_logger::init_from_env(env);
     Todos::run(Settings {
         initial_surface: InitialSurface::XdgWindow(Default::default()),
         ..Settings::default()
@@ -81,11 +83,21 @@ impl Debug for Message {
             Message::InputChanged(_) => write!(f, "Message::InputChanged(_)"),
             Message::CreateTask => write!(f, "Message::CreateTask"),
             Message::FilterChanged(_) => write!(f, "Message::FilterChanged(_)"),
-            Message::TaskMessage(_, _) => write!(f, "Message::TaskMessage(_, _)"),
-            Message::TabPressed { shift: _ } => write!(f, "Message::TabPressed {{ shift: _ }}"),
-            Message::CloseRequested(_) => write!(f, "Message::CloseRequested(_)"),
-            Message::TextInputDragged(_) => write!(f, "Message::TextInputDragged(_)"),
-            Message::TextInputDndCommand(_) => write!(f, "Message::TextInputDndCommand(_)"),
+            Message::TaskMessage(_, _) => {
+                write!(f, "Message::TaskMessage(_, _)")
+            }
+            Message::TabPressed { shift: _ } => {
+                write!(f, "Message::TabPressed {{ shift: _ }}")
+            }
+            Message::CloseRequested(_) => {
+                write!(f, "Message::CloseRequested(_)")
+            }
+            Message::TextInputDragged(_) => {
+                write!(f, "Message::TextInputDragged(_)")
+            }
+            Message::TextInputDndCommand(_) => {
+                write!(f, "Message::TextInputDndCommand(_)")
+            }
             Message::Ignore => write!(f, "Message::Ignore"),
         }
     }
@@ -209,9 +221,7 @@ impl Application for Todos {
                         dbg!(s);
                         std::process::exit(0);
                     }
-                    Message::TextInputDragged(
-                        text_input_state,
-                    ) => {
+                    Message::TextInputDragged(text_input_state) => {
                         let icon_id = window::Id::new(state.window_id_ctr);
 
                         state.dnd_state = DndState::Dragging(
@@ -268,9 +278,7 @@ impl Application for Todos {
                     DndState::Dragging(state, drag_id) if *drag_id == id => {
                         return text_input(
                             "What needs to be done?",
-                            &state
-                                .dragged_text()
-                                .unwrap_or_default(),
+                            &state.dragged_text().unwrap_or_default(),
                             |_| Message::Ignore,
                         )
                         .dnd_icon(true)
@@ -298,9 +306,14 @@ impl Application for Todos {
                 .padding(15)
                 .size(30)
                 .on_submit(Message::CreateTask)
-                .surface_ids((window::Id::new(0), window::Id::new(window_id_ctr)))
+                .surface_ids((
+                    window::Id::new(0),
+                    window::Id::new(window_id_ctr),
+                ))
                 .on_start_dnd(Message::TextInputDragged)
-                .on_dnd_command_produced(|a| Message::TextInputDndCommand(Arc::new(a)));
+                .on_dnd_command_produced(|a| {
+                    Message::TextInputDndCommand(Arc::new(a))
+                });
 
                 let controls = view_controls(tasks, *filter);
                 let filtered_tasks =
@@ -365,7 +378,6 @@ impl Application for Todos {
     fn close_requested(&self, id: window::Id) -> Self::Message {
         Message::CloseRequested(id)
     }
-
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

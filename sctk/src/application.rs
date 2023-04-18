@@ -1059,7 +1059,14 @@ where
                             }
                         }
                         log::debug!("focus: {:?}\ntree root: {:?}\n children: {:?}", &focus, window_tree.root().iter().map(|n| (n.node().role(), n.id())).collect::<Vec<_>>(), window_tree.children().iter().map(|n| (n.node().role(), n.id())).collect::<Vec<_>>());
-                        adapter.adapter.update(TreeUpdate { nodes: window_tree.into(), tree: None, focus: focus.map(|id| id.into()) });
+                        let focus = focus
+                            .filter(|f_id| window_tree.contains(f_id))
+                            .map(|id| id.into());
+                        adapter.adapter.update(TreeUpdate {
+                            nodes: window_tree.into(),
+                            tree: Some(tree),
+                            focus,
+                        });
                     }
                     let comp_surface = match wrapper.comp_surface.as_mut() {
                         Some(s) => s,

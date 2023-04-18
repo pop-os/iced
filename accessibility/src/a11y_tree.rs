@@ -1,4 +1,4 @@
-use crate::A11yNode;
+use crate::{A11yId, A11yNode};
 
 #[derive(Debug, Clone, Default)]
 /// Accessible tree of nodes
@@ -53,6 +53,11 @@ impl A11yTree {
 
     pub fn children_mut(&mut self) -> &mut Vec<A11yNode> {
         &mut self.children
+    }
+
+    pub fn contains(&self, id: &A11yId) -> bool {
+        self.root.iter().any(|n| n.id() == id)
+            || self.children.iter().any(|n| n.id() == id)
     }
 }
 
