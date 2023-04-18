@@ -1,6 +1,8 @@
 //! Allow your users to perform actions by pressing a button.
 //!
 //! A [`Button`] has some local [`State`].
+use std::borrow::Cow;
+
 use crate::event::{self, Event};
 use crate::keyboard;
 use crate::layout;
@@ -61,6 +63,8 @@ where
     Renderer::Theme: StyleSheet,
 {
     id: Id,
+    name: Option<Cow<'a, str>>,
+    description: Option<Cow<'a, str>>,
     content: Element<'a, Message, Renderer>,
     on_press: Option<Message>,
     width: Length,
@@ -78,6 +82,8 @@ where
     pub fn new(content: impl Into<Element<'a, Message, Renderer>>) -> Self {
         Button {
             id: Id::unique(),
+            name: None,
+            description: None,
             content: content.into(),
             on_press: None,
             width: Length::Shrink,
@@ -127,6 +133,18 @@ where
         self.style = style;
         self
     }
+
+    /// Sets the name of the [`Button`].
+    pub fn name(mut self, name: impl Into<Cow<'a, str>>) -> Self {
+        self.name = Some(name.into());
+        self
+    }
+
+    /// Sets the description of the [`Button`].
+    pub fn description(mut self, description: impl Into<Cow<'a, str>>) -> Self {
+        self.description = Some(description.into());
+        self
+    }
 }
 
 impl<'a, Message, Renderer> Widget<Message, Renderer>
@@ -167,12 +185,9 @@ where
     #[cfg(feature = "a11y")]
     /// get the a11y nodes for the widget
     fn a11y_nodes(&self, layout: Layout<'_>) -> iced_accessibility::A11yTree {
-        use std::sync::Arc;
-
-        use enumset::enum_set;
         use iced_accessibility::{
-            accesskit::{kurbo::Rect, Action, DefaultActionVerb, Node, Role},
-            A11yId, A11yNode, A11yTree,
+            accesskit::{Action, DefaultActionVerb, NodeBuilder, Rect, Role},
+            A11yNode, A11yTree,
         };
 
         let child_layout = layout.children().next().unwrap();
@@ -184,21 +199,21 @@ where
             width,
             height,
         } = layout.bounds();
-        let bounds = Some(Rect::new(
+        let bounds = Rect::new(
             x as f64,
             y as f64,
             (x + width) as f64,
             (y + height) as f64,
-        ));
-        let node = Node {
-            role: Role::Button,
-            actions: enum_set!(Action::Focus | Action::Default),
-            bounds,
-            name: Some(self.name().into_boxed_str()),
-            focusable: true,
-            default_action_verb: Some(DefaultActionVerb::Click),
-            ..Default::default()
-        };
+        );
+
+        let mut node = NodeBuilder::new(Role::Button);
+        node.add_action(Action::Focus);
+        node.add_action(Action::Default);
+        node.set_bounds(bounds);
+        node.set_name(self.name().into_boxed_str());
+        // node.set_focusable(true);
+        node.set_default_action_verb(DefaultActionVerb::Click);
+
         A11yTree::node_with_child_tree(
             A11yNode::new(node, self.id.0.clone()),
             child_tree,

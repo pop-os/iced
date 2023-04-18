@@ -12,7 +12,7 @@ keywords = ["gui", "ui", "graphics", "interface", "widgets"]
 categories = ["gui"]
 
 [features]
-default = ["softbuffer", "wayland", "a11y"]
+default = ["softbuffer", "winit", "a11y"]
 # Enables the `Image` widget
 image = ["iced_wgpu?/image", "iced_glow?/image", "iced_softbuffer?/image", "iced_dyrend?/image", "image_rs"]
 # Enables the `Svg` widget
@@ -88,7 +88,6 @@ iced_glow = { version = "0.5", path = "glow", optional = true }
 iced_sctk = { path = "./sctk", optional = true }
 iced_softbuffer = { version = "0.1", path = "softbuffer", optional = true }
 iced_accessibility = { version = "0.1", path = "accessibility", optional = true }
-accesskit = { version = "0.8.1", optional = true }
 thiserror = "1.0"
 
 [dependencies.image_rs]
@@ -115,7 +114,3 @@ incremental = false
 opt-level = 3
 overflow-checks = false
 strip = "debuginfo"
-
-[patch."https://github.com/iced-rs/winit.git".winit]
-git = "https://github.com/pop-os/winit.git"
-branch = "iced"

@@ -62,6 +62,11 @@ where
         &self.viewport
     }
 
+    /// Returns the title of the [`State`].
+    pub fn title(&self) -> &str {
+        &self.title
+    }
+
     /// Returns the version of the [`Viewport`] of the [`State`].
     ///
     /// The version is incremented every time the [`Viewport`] changes.

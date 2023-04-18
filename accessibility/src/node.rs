@@ -1,15 +1,15 @@
-use std::sync::Arc;
+use accesskit::NodeClassSet;
 
 use crate::A11yId;
 
 #[derive(Debug, Clone)]
 pub struct A11yNode {
-    node: accesskit::Node,
+    node: accesskit::NodeBuilder,
     id: A11yId,
 }
 
 impl A11yNode {
-    pub fn new<T: Into<A11yId>>(node: accesskit::Node, id: T) -> Self {
+    pub fn new<T: Into<A11yId>>(node: accesskit::NodeBuilder, id: T) -> Self {
         Self {
             node: node,
             id: id.into(),
@@ -20,25 +20,27 @@ impl A11yNode {
         &self.id
     }
 
-    pub fn node_mut(&mut self) -> &mut accesskit::Node {
+    pub fn node_mut(&mut self) -> &mut accesskit::NodeBuilder {
         &mut self.node
     }
 
-    pub fn node(&self) -> &accesskit::Node {
+    pub fn node(&self) -> &accesskit::NodeBuilder {
         &self.node
     }
 
     pub fn add_children(&mut self, children: Vec<A11yId>) {
-        self.node.children.extend(
-            children
-                .into_iter()
-                .map(|id| <A11yId as Into<accesskit::NodeId>>::into(id)),
-        );
+        let mut children =
+            children.into_iter().map(|id| id.into()).collect::<Vec<_>>();
+        children.extend_from_slice(self.node.children());
+        self.node.set_children(children);
     }
 }
 
-impl Into<(accesskit::NodeId, Arc<accesskit::Node>)> for A11yNode {
-    fn into(self) -> (accesskit::NodeId, Arc<accesskit::Node>) {
-        (self.id.into(), Arc::new(self.node))
+impl From<A11yNode> for (accesskit::NodeId, accesskit::Node) {
+    fn from(node: A11yNode) -> Self {
+        (
+            node.id.into(),
+            node.node.build(&mut NodeClassSet::lock_global()),
+        )
     }
 }

@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use crate::A11yNode;
 
 #[derive(Debug, Clone, Default)]
@@ -58,12 +56,12 @@ impl A11yTree {
     }
 }
 
-impl Into<Vec<(accesskit::NodeId, Arc<accesskit::Node>)>> for A11yTree {
-    fn into(self) -> Vec<(accesskit::NodeId, Arc<accesskit::Node>)> {
-        self.root
+impl From<A11yTree> for Vec<(accesskit::NodeId, accesskit::Node)> {
+    fn from(tree: A11yTree) -> Vec<(accesskit::NodeId, accesskit::Node)> {
+        tree.root
             .into_iter()
             .map(|node| node.into())
-            .chain(self.children.into_iter().map(|node| node.into()))
+            .chain(tree.children.into_iter().map(|node| node.into()))
             .collect()
     }
 }

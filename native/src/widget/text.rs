@@ -174,7 +174,7 @@ where
     #[cfg(feature = "a11y")]
     fn a11y_nodes(&self, layout: Layout<'_>) -> iced_accessibility::A11yTree {
         use iced_accessibility::{
-            accesskit::{self, kurbo},
+            accesskit::{Live, NodeBuilder, Rect, Role},
             A11yNode, A11yTree,
         };
 
@@ -184,19 +184,19 @@ where
             width,
             height,
         } = layout.bounds();
-        let bounds = Some(kurbo::Rect::new(
+        let bounds = Rect::new(
             x as f64,
             y as f64,
             (x + width) as f64,
             (y + height) as f64,
-        ));
-        let node = accesskit::Node {
-            role: accesskit::Role::StaticText,
-            name: Some(self.content.to_string().into_boxed_str()),
-            live: Some(accesskit::Live::Polite),
-            bounds,
-            ..Default::default()
-        };
+        );
+
+        let mut node = NodeBuilder::new(Role::StaticText);
+
+        node.set_name(self.content.to_string().into_boxed_str());
+        node.set_live(Live::Polite);
+        node.set_bounds(bounds);
+
         A11yTree::new(vec![A11yNode::new(node, self.id.clone())], Vec::new())
     }
 }
