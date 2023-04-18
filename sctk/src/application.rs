@@ -14,7 +14,7 @@ use crate::{
 use float_cmp::approx_eq;
 use futures::{channel::mpsc, task, Future, FutureExt, StreamExt};
 #[cfg(feature = "a11y")]
-use iced_accessibility::{A11yId, accesskit::NodeId, A11yNode};
+use iced_accessibility::{A11yId, accesskit::{NodeId, NodeBuilder}, A11yNode};
 use iced_native::{
     application::{self, StyleSheet},
     clipboard,
@@ -1030,7 +1030,8 @@ where
                         use iced_accessibility::{A11yTree, accesskit::{TreeUpdate, Tree, Node, Role}};
                         // TODO send a11y tree
                         let child_tree = user_interface.a11y_nodes();
-                        let root = Node {role: Role::Window, name: Some(state.title.clone().into_boxed_str()), ..Default::default()};
+                        let mut root = NodeBuilder::new(Role::Window);
+                        root.set_name(state.title().to_string());
                         let window_tree = A11yTree::node_with_child_tree(A11yNode::new(root, adapter.id), child_tree);
                         let tree = Tree::new(NodeId(adapter.id));
                         let mut current_operation = Some(Box::new(OperationWrapper::Id(Box::new(find_focused()))));
@@ -1057,7 +1058,7 @@ where
                                 }
                             }
                         }
-                        log::debug!("focus: {:?}\ntree root: {:?}\n children: {:?}", &focus, window_tree.root().iter().map(|n| (n.node().role, n.id())).collect::<Vec<_>>(), window_tree.children().iter().map(|n| (n.node().role, n.id())).collect::<Vec<_>>());
+                        log::debug!("focus: {:?}\ntree root: {:?}\n children: {:?}", &focus, window_tree.root().iter().map(|n| (n.node().role(), n.id())).collect::<Vec<_>>(), window_tree.children().iter().map(|n| (n.node().role(), n.id())).collect::<Vec<_>>());
                         adapter.adapter.update(TreeUpdate { nodes: window_tree.into(), tree: None, focus: focus.map(|id| id.into()) });
                     }
                     let comp_surface = match wrapper.comp_surface.as_mut() {
@@ -1326,6 +1327,11 @@ where
     /// Returns the current [`Viewport`] of the [`State`].
     pub fn viewport(&self) -> &Viewport {
         &self.viewport
+    }
+
+    /// Returns the current title of the [`State`].
+    pub fn title(&self) -> &str {
+        &self.title
     }
 
     /// TODO

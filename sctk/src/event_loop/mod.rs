@@ -207,23 +207,22 @@ where
     // TODO Ashley provide users a reasonable method of setting the role for the surface
     #[cfg(feature = "a11y")]
     pub fn init_a11y_adapter(&mut self, surface: &WlSurface, app_id: Option<String>, surface_title: Option<String>, role: iced_accessibility::accesskit::Role) -> adapter::IcedSctkAdapter {
-        use iced_accessibility::{accesskit_unix::Adapter, accesskit::{Node, Tree, TreeUpdate, Role, NodeId}};
+        use iced_accessibility::{accesskit_unix::Adapter, accesskit::{Node, Tree, TreeUpdate, Role, NodeId, NodeBuilder, NodeClassSet}};
         let node_id = iced_native::widget::window_node_id();
         // let node_id_clone = node_id.clone();
         let event_list = self.a11y_events.clone();
         adapter::IcedSctkAdapter {
             adapter: Adapter::new(app_id.unwrap_or_else(|| String::from("None")), "Iced".to_string(), env!("CARGO_PKG_VERSION").to_string(), move || {
                 event_list.lock().unwrap().push(adapter::A11yWrapper::Enabled);
-                
+                let mut node = NodeBuilder::new(Role::Window);
+                if let Some(name) = surface_title {
+                    node.set_name(name);
+                }
+                let node = node.build(&mut NodeClassSet::lock_global());
                 TreeUpdate {
                     nodes: vec![(
                         NodeId(node_id),
-                        Arc::new(
-                            Node {
-                            role: Role::Window,
-                            name: surface_title.map(|s| s.into_boxed_str()),
-                            ..Default::default()
-                        }),
+                        node,
                     )],
                     tree: Some(Tree::new(NodeId(node_id))),
                     focus: None,

@@ -1,27 +1,12 @@
 use env_logger::Env;
-use iced::alignment::{self, Alignment};
-use iced::event::{self, Event};
-use iced::keyboard;
-use iced::subscription;
-use iced::theme::{self, Theme};
-use iced::wayland::actions::layer_surface::SctkLayerSurfaceSettings;
-use iced::wayland::actions::popup::SctkPopupSettings;
-use iced::wayland::actions::popup::SctkPositioner;
+use iced::theme::Theme;
+
 use iced::wayland::actions::window::SctkWindowSettings;
-use iced::wayland::layer_surface::{get_layer_surface, Anchor};
-use iced::wayland::popup::destroy_popup;
-use iced::wayland::popup::get_popup;
-use iced::wayland::window::get_window;
 use iced::wayland::InitialSurface;
-use iced::wayland::SurfaceIdWrapper;
 use iced::widget::button::focus;
-use iced::widget::{
-    self, button, checkbox, column, container, horizontal_space, row,
-    scrollable, text, text_input, Column, Row, Text,
-};
-use iced::Rectangle;
+use iced::widget::{button, row, text};
 use iced::{window, Application, Element};
-use iced::{Color, Command, Font, Length, Settings, Subscription};
+use iced::{Color, Command, Length, Settings};
 use iced_native::layout::Limits;
 use iced_style::application;
 
@@ -98,35 +83,31 @@ impl Application for Window {
         Command::none()
     }
 
-    fn view(&self, id: SurfaceIdWrapper) -> Element<Message> {
-        match id {
-            SurfaceIdWrapper::Window(_) => row![
-                button(text(format!("{}", self.button_1_press_count)))
-                    .on_press(Message::Press1)
-                    .width(Length::Shrink)
-                    .height(Length::Shrink)
-                    .id(button::Id::new(format!(
-                        "button one {}",
-                        self.button_1_press_count
-                    ))),
-                button(text(format!("{}", self.button_2_press_count)))
-                    .on_press(Message::Press2)
-                    .width(Length::Shrink)
-                    .height(Length::Shrink)
-                    .id(button::Id::new(format!(
-                        "button two {}",
-                        self.button_2_press_count
-                    ))),
-            ]
-            .width(Length::Shrink)
-            .height(Length::Shrink)
-            .into(),
-            SurfaceIdWrapper::Popup(_) => unimplemented!(),
-            SurfaceIdWrapper::LayerSurface(_) => unimplemented!(),
-        }
+    fn view(&self, _id: window::Id) -> Element<Message> {
+        row![
+            button(text(format!("{}", self.button_1_press_count)))
+                .on_press(Message::Press1)
+                .width(Length::Shrink)
+                .height(Length::Shrink)
+                .id(button::Id::new(format!(
+                    "button one {}",
+                    self.button_1_press_count
+                ))),
+            button(text(format!("{}", self.button_2_press_count)))
+                .on_press(Message::Press2)
+                .width(Length::Shrink)
+                .height(Length::Shrink)
+                .id(button::Id::new(format!(
+                    "button two {}",
+                    self.button_2_press_count
+                ))),
+        ]
+        .width(Length::Shrink)
+        .height(Length::Shrink)
+        .into()
     }
 
-    fn close_requested(&self, id: SurfaceIdWrapper) -> Self::Message {
+    fn close_requested(&self, id: window::Id) -> Self::Message {
         Message::Ignore
     }
 
