@@ -134,7 +134,7 @@ where
     /// #
     /// # pub struct Counter;
     /// #
-    /// # impl Counter {~
+    /// # impl Counter {
     /// #     pub fn new() -> Self { Counter }
     /// #     pub fn view(&self) -> Column<(), Renderer> {
     /// #         Column::new()
