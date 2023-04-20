@@ -165,9 +165,7 @@ where
 
     #[cfg(feature = "a11y")]
     /// get the a11y nodes for the widget and its children
-    /// this will return a tuple of vectors containing nodes that the caller should parent and the nodes that the callee should parent respectively
-    /// perfaps this could benefit from a data structure
-    fn a11y_nodes(&self, _layout: Layout<'_>) -> iced_accessibility::A11yTree {
+    fn a11y_nodes(&self, _layout: Layout<'_>, state: &Tree) -> iced_accessibility::A11yTree {
         iced_accessibility::A11yTree::default()
     }
 

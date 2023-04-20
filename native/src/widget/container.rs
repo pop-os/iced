@@ -176,9 +176,10 @@ where
 
     #[cfg(feature = "a11y")]
     /// get the a11y nodes for the widget
-    fn a11y_nodes(&self, layout: Layout<'_>) -> iced_accessibility::A11yTree {
+    fn a11y_nodes(&self, layout: Layout<'_>, state: &Tree) -> iced_accessibility::A11yTree {
         let c_layout = layout.children().next().unwrap();
-        self.content.as_widget().a11y_nodes(c_layout)
+        let c_state = &state.children[0];
+        self.content.as_widget().a11y_nodes(c_layout, state)
     }
 
     fn operate(

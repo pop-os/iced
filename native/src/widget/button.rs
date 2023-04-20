@@ -184,14 +184,15 @@ where
 
     #[cfg(feature = "a11y")]
     /// get the a11y nodes for the widget
-    fn a11y_nodes(&self, layout: Layout<'_>) -> iced_accessibility::A11yTree {
+    fn a11y_nodes(&self, layout: Layout<'_>, state: &Tree) -> iced_accessibility::A11yTree {
         use iced_accessibility::{
             accesskit::{Action, DefaultActionVerb, NodeBuilder, Rect, Role},
             A11yNode, A11yTree,
         };
 
         let child_layout = layout.children().next().unwrap();
-        let child_tree = self.content.as_widget().a11y_nodes(child_layout);
+        let child_tree = &state.children[0];
+        let child_tree = self.content.as_widget().a11y_nodes(child_layout, &child_tree);
 
         let Rectangle {
             x,

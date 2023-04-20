@@ -12,6 +12,7 @@ use crate::{
     Widget,
 };
 
+use iced_core::Id;
 pub use iced_style::checkbox::{Appearance, StyleSheet};
 
 /// A box that can be checked.
@@ -37,6 +38,7 @@ where
     Renderer: text::Renderer,
     Renderer::Theme: StyleSheet + widget::text::StyleSheet,
 {
+    id: Id,
     is_checked: bool,
     on_toggle: Box<dyn Fn(bool) -> Message + 'a>,
     label: String,
@@ -72,6 +74,7 @@ where
         F: 'a + Fn(bool) -> Message,
     {
         Checkbox {
+            id: Id::unique(),
             is_checked,
             on_toggle: Box::new(f),
             label: label.into(),
@@ -124,6 +127,9 @@ where
         self.style = style.into();
         self
     }
+
+    // #[cfg(feature = "a11y")]
+    // fn a11y_nodes(&self, layout: Layout<'_>)
 }
 
 impl<'a, Message, Renderer> Widget<Message, Renderer>

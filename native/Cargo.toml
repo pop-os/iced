@@ -14,6 +14,7 @@ debug = []
 a11y = ["iced_accessibility", "enumset", "iced_core/a11y"]
 
 [dependencies]
+itertools = "0.10.5"
 twox-hash = { version = "1.5", default-features = false }
 unicode-segmentation = "1.6"
 num-traits = "0.2"
