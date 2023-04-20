@@ -2,7 +2,7 @@ use std::num::NonZeroU128;
 
 use iced_core::Id;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum A11yId {
     Window(NonZeroU128),
     Widget(iced_core::Id),

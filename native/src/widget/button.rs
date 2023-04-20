@@ -86,8 +86,11 @@ where
     pub fn new(content: impl Into<Element<'a, Message, Renderer>>) -> Self {
         Button {
             id: Id::unique(),
+            #[cfg(feature = "a11y")]
             name: None,
+            #[cfg(feature = "a11y")]
             description: None,
+            #[cfg(feature = "a11y")]
             label: None,
             content: content.into(),
             on_press: None,

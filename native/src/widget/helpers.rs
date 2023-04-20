@@ -268,7 +268,7 @@ where
 /// Creates a new [`Image`].
 ///
 /// [`Image`]: widget::Image
-pub fn image<Handle>(handle: impl Into<Handle>) -> widget::Image<Handle> {
+pub fn image<'a, Handle>(handle: impl Into<Handle>) -> widget::Image<'a, Handle> {
     widget::Image::new(handle.into())
 }
 
@@ -330,9 +330,9 @@ where
 ///
 /// [`Svg`]: widget::Svg
 /// [`Handle`]: widget::svg::Handle
-pub fn svg<Renderer>(
+pub fn svg<'a, Renderer>(
     handle: impl Into<widget::svg::Handle>,
-) -> widget::Svg<Renderer>
+) -> widget::Svg<'a, Renderer>
 where
     Renderer: crate::svg::Renderer,
     Renderer::Theme: widget::svg::StyleSheet,
