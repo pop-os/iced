@@ -252,6 +252,7 @@ where
             accesskit::{self, NodeBuilder, Role},
             A11yNode, A11yTree,
         };
+        use iced_core::Internal;
 
         let bounds = layout.bounds();
         let is_hovered = bounds.contains(cursor_position);
@@ -292,13 +293,21 @@ where
         // Ashley: TODO add the list of options as children of the group node?
         // I need to confirm that this is the correct way to do this.
 
+        let (button_id, group_id) = match &self.id.0 {
+            Internal::Set(set) => (set[0].clone(), set[1].clone()),
+            _ => unreachable!(),
+        };
         A11yTree::new(
             vec![
-                A11yNode::new(button_node, self.id.clone()),
-                A11yNode::new(group_node, self.id.clone()),
+                A11yNode::new(button_node, Id(button_id)),
+                A11yNode::new(group_node, Id(group_id)),
             ],
             Vec::new(),
         )
+    }
+
+    fn id(&self) -> Option<Id> {
+        Some(self.id.clone())
     }
 }
 

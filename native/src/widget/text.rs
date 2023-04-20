@@ -189,6 +189,7 @@ where
             y as f64,
             (x + width) as f64,
             (y + height) as f64,
+
         );
 
         let mut node = NodeBuilder::new(Role::StaticText);
@@ -199,6 +200,10 @@ where
         node.set_bounds(bounds);
 
         A11yTree::new(vec![A11yNode::new(node, self.id.clone())], Vec::new())
+    }
+
+    fn id(&self) -> Option<crate::widget::Id> {
+        Some(self.id.clone())
     }
 }
 

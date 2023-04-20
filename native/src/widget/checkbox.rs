@@ -303,7 +303,10 @@ where
         node.add_action(Action::Default);
         A11yTree::leaf(A11yNode::new(node, self.id.clone()))
     }
-
+    
+    fn id(&self) -> Option<Id> {
+        Some(self.id.clone())
+    }
 }
 
 impl<'a, Message, Renderer> From<Checkbox<'a, Message, Renderer>>
