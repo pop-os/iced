@@ -51,6 +51,11 @@ impl Into<NonZeroU128> for Id {
             Internal::Custom(id, _) => {
                 NonZeroU128::try_from(*id as u128).unwrap()
             }
+            // this is a set id, which is not a valid id and will not ever be converted to a NonZeroU128
+            // so we panic
+            Internal::Set(_) => {
+                panic!("Cannot convert a set id to a NonZeroU128")
+            }
         }
     }
 }
@@ -60,6 +65,7 @@ impl ToString for Id {
         match &self.0 {
             Internal::Unique(_) => "Undefined".to_string(),
             Internal::Custom(_, id) => id.to_string(),
+            Internal::Set(_) => "Set".to_string(),
         }
     }
 }
@@ -74,6 +80,7 @@ pub fn window_node_id() -> NonZeroU128 {
     .unwrap()
 }
 
+// TODO refactor to make panic impossible?
 #[derive(Debug, Clone, Eq, Hash)]
 /// Internal representation of an [`Id`].
 pub enum Internal {
@@ -81,6 +88,11 @@ pub enum Internal {
     Unique(u64),
     /// a custom id, which is equal to any [`Id`] with a matching number or string
     Custom(u64, borrow::Cow<'static, str>),
+    /// XXX Do not use this as an id for an accessibility node, it will panic!
+    /// XXX Only meant to be used for widgets that have multiple accessibility nodes, each with a
+    /// unique or custom id
+    /// an Id Set, which is equal to any [`Id`] with a matching number or string
+    Set(Vec<Self>),
 }
 
 impl PartialEq for Internal {
@@ -93,6 +105,9 @@ impl PartialEq for Internal {
             // allow custom ids to be equal to unique ids
             (Self::Unique(l0), Self::Custom(r0, _))
             | (Self::Custom(l0, _), Self::Unique(r0)) => l0 == r0,
+            (Self::Set(l0), Self::Set(r0)) => l0.iter().zip(r0).any(|(l, r)| l == r),
+            // allow set ids to just be equal to any of their members 
+            (Self::Set(l0), r) | (r, Self::Set(l0)) => l0.iter().any(|l| l == r),
         }
     }
 }
