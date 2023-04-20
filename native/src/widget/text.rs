@@ -172,7 +172,7 @@ where
     }
 
     #[cfg(feature = "a11y")]
-    fn a11y_nodes(&self, layout: Layout<'_>, state: &Tree) -> iced_accessibility::A11yTree {
+    fn a11y_nodes(&self, layout: Layout<'_>, _state: &Tree, _: Point) -> iced_accessibility::A11yTree {
         use iced_accessibility::{
             accesskit::{Live, NodeBuilder, Rect, Role},
             A11yNode, A11yTree,
@@ -193,6 +193,7 @@ where
 
         let mut node = NodeBuilder::new(Role::StaticText);
 
+        // TODO is the name likely different from the content?
         node.set_name(self.content.to_string().into_boxed_str());
         node.set_live(Live::Polite);
         node.set_bounds(bounds);

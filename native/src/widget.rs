@@ -165,7 +165,7 @@ where
 
     #[cfg(feature = "a11y")]
     /// get the a11y nodes for the widget and its children
-    fn a11y_nodes(&self, _layout: Layout<'_>, state: &Tree) -> iced_accessibility::A11yTree {
+    fn a11y_nodes(&self, _layout: Layout<'_>, state: &Tree, cursor_position: Point) -> iced_accessibility::A11yTree {
         iced_accessibility::A11yTree::default()
     }
 

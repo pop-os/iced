@@ -510,7 +510,7 @@ async fn run_instance<A, E, C>(
                         A11yId, A11yNode, A11yTree,
                     };
                     // TODO send a11y tree
-                    let child_tree = user_interface.a11y_nodes();
+                    let child_tree = user_interface.a11y_nodes(state.cursor_position());
                     let mut root = NodeBuilder::new(Role::Window);
                     root.set_name(state.title());
 

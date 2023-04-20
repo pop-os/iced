@@ -127,9 +127,6 @@ where
         self.style = style.into();
         self
     }
-
-    // #[cfg(feature = "a11y")]
-    // fn a11y_nodes(&self, layout: Layout<'_>)
 }
 
 impl<'a, Message, Renderer> Widget<Message, Renderer>
@@ -284,6 +281,29 @@ where
             );
         }
     }
+
+    #[cfg(feature = "a11y")]
+    fn a11y_nodes(&self, layout: Layout<'_>, state: &Tree, cursor_position: Point) -> iced_accessibility::A11yTree {
+        use iced_accessibility::{accesskit::{self, NodeBuilder, Role, CheckedState, Action}, A11yTree, A11yNode};
+
+        let bounds = layout.bounds();
+        let is_hovered = bounds.contains(cursor_position);
+        let Rectangle {
+            x, y, width, height
+        } = bounds;
+
+        let bounds = accesskit::Rect::new(x as f64, y as f64, (x + width) as f64, (y + height) as f64);
+        let mut node = NodeBuilder::new(Role::CheckBox);
+        node.set_bounds(bounds);
+        node.set_checked_state(if self.is_checked { CheckedState::True } else { CheckedState::False});
+        if is_hovered {
+            node.set_hovered();
+        }
+        node.set_name(self.label.clone());
+        node.add_action(Action::Default);
+        A11yTree::leaf(A11yNode::new(node, self.id.clone()))
+    }
+
 }
 
 impl<'a, Message, Renderer> From<Checkbox<'a, Message, Renderer>>
@@ -299,3 +319,4 @@ where
         Element::new(checkbox)
     }
 }
+

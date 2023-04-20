@@ -1029,7 +1029,7 @@ where
                     if let Some(Some(adapter)) = a11y_enabled.then(|| adapters.get_mut(&native_id.inner())) {
                         use iced_accessibility::{A11yTree, accesskit::{TreeUpdate, Tree, Node, Role}};
                         // TODO send a11y tree
-                        let child_tree = user_interface.a11y_nodes();
+                        let child_tree = user_interface.a11y_nodes(state.cursor_position());
                         let mut root = NodeBuilder::new(Role::Window);
                         root.set_name(state.title().to_string());
                         let window_tree = A11yTree::node_with_child_tree(A11yNode::new(root, adapter.id), child_tree);
