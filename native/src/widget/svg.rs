@@ -9,6 +9,7 @@ use crate::{
 
 use std::path::PathBuf;
 
+use iced_core::Id;
 pub use iced_style::svg::{Appearance, StyleSheet};
 pub use svg::Handle;
 
@@ -24,6 +25,9 @@ where
     Renderer: svg::Renderer,
     Renderer::Theme: StyleSheet,
 {
+    id: Id,
+    name: Option<String>,
+    description: Option<String>,
     handle: Handle,
     width: Length,
     height: Length,
@@ -39,12 +43,27 @@ where
     /// Creates a new [`Svg`] from the given [`Handle`].
     pub fn new(handle: impl Into<Handle>) -> Self {
         Svg {
+            id: Id::unique(),
+            name: None,
+            description: None,
             handle: handle.into(),
             width: Length::Fill,
             height: Length::Shrink,
             content_fit: ContentFit::Contain,
             style: Default::default(),
         }
+    }
+
+    /// Sets the name of the [`Svg`].
+    pub fn name(mut self, name: impl Into<String>) -> Self {
+        self.name = Some(name.into());
+        self
+    }
+
+    /// Sets the description of the [`Svg`].
+    pub fn description(mut self, description: impl Into<String>) -> Self {
+        self.description = Some(description.into());
+        self
     }
 
     /// Creates a new [`Svg`] that will display the contents of the file at the
@@ -181,6 +200,27 @@ where
             render(renderer);
         }
     }
+
+
+    #[cfg(feature = "a11y")]
+    fn a11y_nodes(&self, layout: Layout<'_>, _state: &Tree, _cursor_position: Point) -> iced_accessibility::A11yTree {
+        use iced_accessibility::{accesskit::{Rect, NodeBuilder, Role}, A11yTree, A11yNode};
+
+        let bounds = layout.bounds();
+        let Rectangle { x, y, width, height } = bounds;
+        let bounds = Rect::new(x as f64, y as f64, (x + width) as f64, (y + height) as f64);
+        let mut node = NodeBuilder::new(Role::Image);
+        node.set_bounds(bounds);
+        if let Some(name) = self.name.as_ref() {
+            node.set_name(name.clone());
+        }
+        if let Some(description) = self.description.as_ref() {
+            node.set_description(description.clone());
+        }
+
+        A11yTree::leaf(A11yNode::new(node, self.id.clone()))
+    }
+
 }
 
 impl<'a, Message, Renderer> From<Svg<Renderer>>

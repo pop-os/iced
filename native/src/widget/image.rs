@@ -199,7 +199,7 @@ where
     }
 
     #[cfg(feature = "a11y")]
-    fn a11y_nodes(&self, layout: Layout<'_>, state: &Tree, cursor_position: Point) -> iced_accessibility::A11yTree {
+    fn a11y_nodes(&self, layout: Layout<'_>, _state: &Tree, _cursor_position: Point) -> iced_accessibility::A11yTree {
         use iced_accessibility::{accesskit::{Rect, NodeBuilder, Role}, A11yTree, A11yNode};
 
         let bounds = layout.bounds();
