@@ -18,6 +18,7 @@ use crate::{
 };
 use std::borrow::Cow;
 
+use iced_core::Id;
 pub use iced_style::pick_list::{Appearance, StyleSheet};
 
 /// A widget for selecting a single value from a list of options.
@@ -28,6 +29,7 @@ where
     Renderer: text::Renderer,
     Renderer::Theme: StyleSheet,
 {
+    id: Id,
     on_selected: Box<dyn Fn(T) -> Message + 'a>,
     options: Cow<'a, [T]>,
     placeholder: Option<String>,
@@ -62,6 +64,8 @@ where
         on_selected: impl Fn(T) -> Message + 'a,
     ) -> Self {
         Self {
+            // TODO include options in id ?
+            id: Id(iced_core::Internal::Set(vec![Id::unique().0, Id::unique().0])),
             on_selected: Box::new(on_selected),
             options: options.into(),
             placeholder: None,
@@ -234,6 +238,66 @@ where
             self.font.clone(),
             &self.options,
             self.style.clone(),
+        )
+    }
+
+    #[cfg(feature = "a11y")]
+    fn a11y_nodes(
+        &self,
+        layout: Layout<'_>,
+        state: &Tree,
+        cursor_position: Point,
+    ) -> iced_accessibility::A11yTree {
+        use iced_accessibility::{
+            accesskit::{self, NodeBuilder, Role},
+            A11yNode, A11yTree,
+        };
+
+        let bounds = layout.bounds();
+        let is_hovered = bounds.contains(cursor_position);
+        let Rectangle {
+            x,
+            y,
+            width,
+            height,
+        } = bounds;
+
+        let bounds = accesskit::Rect::new(
+            x as f64,
+            y as f64,
+            (x + width) as f64,
+            (y + height) as f64,
+        );
+        let my_state = state.state.downcast_ref::<State<T>>();
+        let mut button_node = NodeBuilder::new(Role::ComboBoxMenuButton);
+        button_node.set_bounds(bounds);
+        if let Some(selected) = self.selected.as_ref() {
+            button_node.set_value(selected.to_string());
+            button_node.set_selected(true);
+        }
+        if is_hovered {
+            button_node.set_hovered();
+        };
+
+        let mut group_node = NodeBuilder::new(Role::ComboBoxGrouping);
+        if my_state.is_open {
+            group_node.set_expanded(true);
+        } else {
+            group_node.set_expanded(false);
+            group_node.set_hidden()
+        }
+        if my_state.hovered_option.is_some() {
+            group_node.set_hovered();
+        }
+        // Ashley: TODO add the list of options as children of the group node?
+        // I need to confirm that this is the correct way to do this.
+
+        A11yTree::new(
+            vec![
+                A11yNode::new(button_node, self.id.clone()),
+                A11yNode::new(group_node, self.id.clone()),
+            ],
+            Vec::new(),
         )
     }
 }
