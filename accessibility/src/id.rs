@@ -41,12 +41,12 @@ impl From<accesskit::NodeId> for A11yId {
     }
 }
 
-impl Into<accesskit::NodeId> for A11yId {
-    fn into(self) -> accesskit::NodeId {
-        let node_id = match self {
-            Self::Window(id) => id,
-            Self::Widget(id) => id.into(),
+impl From<A11yId> for accesskit::NodeId {
+    fn from(value: A11yId) -> Self {
+        let node_id = match value {
+            A11yId::Window(id) => id,
+            A11yId::Widget(id) => id.into(),
         };
         accesskit::NodeId(node_id)
-    }
+     }
 }

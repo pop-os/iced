@@ -1,11 +1,13 @@
 mod a11y_tree;
 mod id;
 mod node;
+mod traits;
 
 pub use a11y_tree::*;
 pub use accesskit;
 pub use id::*;
 pub use node::*;
+pub use traits::*;
 
 #[cfg(feature = "accesskit_macos")]
 pub use accesskit_macos;

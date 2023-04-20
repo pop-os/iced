@@ -63,8 +63,12 @@ where
     Renderer::Theme: StyleSheet,
 {
     id: Id,
+    #[cfg(feature = "a11y")]
     name: Option<Cow<'a, str>>,
-    description: Option<Cow<'a, str>>,
+    #[cfg(feature = "a11y")]
+    description: Option<iced_accessibility::Description<'a>>,
+    #[cfg(feature = "a11y")]
+    label: Option<Vec<iced_accessibility::accesskit::NodeId>>,
     content: Element<'a, Message, Renderer>,
     on_press: Option<Message>,
     width: Length,
@@ -84,6 +88,7 @@ where
             id: Id::unique(),
             name: None,
             description: None,
+            label: None,
             content: content.into(),
             on_press: None,
             width: Length::Shrink,
@@ -134,15 +139,38 @@ where
         self
     }
 
+    #[cfg(feature = "a11y")]
     /// Sets the name of the [`Button`].
     pub fn name(mut self, name: impl Into<Cow<'a, str>>) -> Self {
         self.name = Some(name.into());
         self
     }
 
+    #[cfg(feature = "a11y")]
+    /// Sets the description of the [`Button`].
+    pub fn description_widget<T: iced_accessibility::Describes>(
+        mut self,
+        description: &T,
+    ) -> Self {
+        self.description = Some(iced_accessibility::Description::Id(
+            description.description(),
+        ));
+        self
+    }
+
+    #[cfg(feature = "a11y")]
     /// Sets the description of the [`Button`].
     pub fn description(mut self, description: impl Into<Cow<'a, str>>) -> Self {
-        self.description = Some(description.into());
+        self.description =
+            Some(iced_accessibility::Description::Text(description.into()));
+        self
+    }
+
+    #[cfg(feature = "a11y")]
+    /// Sets the label of the [`Button`].
+    pub fn label(mut self, label: &dyn iced_accessibility::Labels) -> Self {
+        self.label =
+            Some(label.label().into_iter().map(|l| l.into()).collect());
         self
     }
 }
@@ -184,15 +212,25 @@ where
 
     #[cfg(feature = "a11y")]
     /// get the a11y nodes for the widget
-    fn a11y_nodes(&self, layout: Layout<'_>, state: &Tree, p: Point) -> iced_accessibility::A11yTree {
+    fn a11y_nodes(
+        &self,
+        layout: Layout<'_>,
+        state: &Tree,
+        p: Point,
+    ) -> iced_accessibility::A11yTree {
         use iced_accessibility::{
-            accesskit::{Action, DefaultActionVerb, NodeBuilder, Rect, Role},
+            accesskit::{
+                Action, DefaultActionVerb, NodeBuilder, NodeId, Rect, Role,
+            },
             A11yNode, A11yTree,
         };
 
         let child_layout = layout.children().next().unwrap();
         let child_tree = &state.children[0];
-        let child_tree = self.content.as_widget().a11y_nodes(child_layout, &child_tree, p);
+        let child_tree =
+            self.content
+                .as_widget()
+                .a11y_nodes(child_layout, &child_tree, p);
 
         let Rectangle {
             x,
@@ -212,7 +250,28 @@ where
         node.add_action(Action::Focus);
         node.add_action(Action::Default);
         node.set_bounds(bounds);
-        node.set_name(self.name());
+        if let Some(name) = self.name.as_ref() {
+            node.set_name(name.clone());
+        }
+        match self.description.as_ref() {
+            Some(iced_accessibility::Description::Id(id)) => {
+                node.set_described_by(
+                    id.iter()
+                        .cloned()
+                        .map(|id| NodeId::from(id))
+                        .collect::<Vec<_>>(),
+                );
+            }
+            Some(iced_accessibility::Description::Text(text)) => {
+                node.set_description(text.clone());
+            }
+            None => {}
+        }
+
+        if let Some(label) = self.label.as_ref() {
+            node.set_labelled_by(label.clone());
+        }
+
         if self.on_press.is_none() {
             node.set_disabled()
         }
@@ -428,7 +487,7 @@ pub fn update<'a, Message: Clone>(
 
                 if bounds.contains(cursor_position) {
                     let state = state();
-                    
+
                     state.is_pressed = true;
 
                     return event::Status::Captured;
@@ -487,9 +546,9 @@ pub fn update<'a, Message: Clone>(
             }
             return event::Status::Captured;
         }
-        Event::Mouse(mouse::Event::CursorEntered | mouse::Event::CursorMoved {
-            ..
-        }) => {
+        Event::Mouse(
+            mouse::Event::CursorEntered | mouse::Event::CursorMoved { .. },
+        ) => {
             let state = state();
             if layout.bounds().contains(cursor_position) {
                 state.is_hovered = true;
