@@ -6,7 +6,7 @@ static NEXT_ID: AtomicU64 = AtomicU64::new(1);
 static NEXT_WINDOW_ID: AtomicU64 = AtomicU64::new(1);
 
 /// The identifier of a generic widget.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Id(pub Internal);
 
 impl Id {

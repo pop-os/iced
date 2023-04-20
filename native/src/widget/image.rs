@@ -1,5 +1,6 @@
 //! Display images in your user interface.
 pub mod viewer;
+use iced_core::Id;
 pub use viewer::Viewer;
 
 use crate::image;
@@ -31,6 +32,9 @@ pub fn viewer<Handle>(handle: Handle) -> Viewer<Handle> {
 /// <img src="https://github.com/iced-rs/iced/blob/9712b319bb7a32848001b96bd84977430f14b623/examples/resources/ferris.png?raw=true" width="300">
 #[derive(Debug, Hash)]
 pub struct Image<Handle> {
+    id: Id,
+    name: Option<String>,
+    description: Option<String>,
     handle: Handle,
     width: Length,
     height: Length,
@@ -41,11 +45,26 @@ impl<Handle> Image<Handle> {
     /// Creates a new [`Image`] with the given path.
     pub fn new<T: Into<Handle>>(handle: T) -> Self {
         Image {
+            id: Id::unique(),
+            name: None,
+            description: None,
             handle: handle.into(),
             width: Length::Shrink,
             height: Length::Shrink,
             content_fit: ContentFit::Contain,
         }
+    }
+
+    /// Sets the name of the [`Image`].
+    pub fn name<T: Into<String>>(mut self, name: T) -> Self {
+        self.name = Some(name.into());
+        self
+    }
+
+    /// Sets the description of the [`Image`].
+    pub fn description<T: Into<String>>(mut self, description: T) -> Self {
+        self.description = Some(description.into());
+        self
     }
 
     /// Sets the width of the [`Image`] boundaries.
@@ -177,6 +196,25 @@ where
         } else {
             render(renderer)
         }
+    }
+
+    #[cfg(feature = "a11y")]
+    fn a11y_nodes(&self, layout: Layout<'_>, state: &Tree, cursor_position: Point) -> iced_accessibility::A11yTree {
+        use iced_accessibility::{accesskit::{Rect, NodeBuilder, Role}, A11yTree, A11yNode};
+
+        let bounds = layout.bounds();
+        let Rectangle { x, y, width, height } = bounds;
+        let bounds = Rect::new(x as f64, y as f64, (x + width) as f64, (y + height) as f64);
+        let mut node = NodeBuilder::new(Role::Image);
+        node.set_bounds(bounds);
+        if let Some(name) = self.name.as_ref() {
+            node.set_name(name.clone());
+        }
+        if let Some(description) = self.description.as_ref() {
+            node.set_description(description.clone());
+        }
+
+        A11yTree::leaf(A11yNode::new(node, self.id.clone()))
     }
 }
 
