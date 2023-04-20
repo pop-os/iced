@@ -206,13 +206,19 @@ where
             (x + width) as f64,
             (y + height) as f64,
         );
+        let is_hovered = state.state.downcast_ref::<State>().is_hovered;
 
         let mut node = NodeBuilder::new(Role::Button);
         node.add_action(Action::Focus);
         node.add_action(Action::Default);
         node.set_bounds(bounds);
-        node.set_name(self.name().into_boxed_str());
-        // node.set_focusable(true);
+        node.set_name(self.name());
+        if self.on_press.is_none() {
+            node.set_disabled()
+        }
+        if is_hovered {
+            node.set_hovered()
+        }
         node.set_default_action_verb(DefaultActionVerb::Click);
 
         A11yTree::node_with_child_tree(
@@ -371,6 +377,7 @@ where
 /// The local state of a [`Button`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct State {
+    is_hovered: bool,
     is_pressed: bool,
     is_focused: bool,
 }
@@ -384,6 +391,11 @@ impl State {
     /// Returns whether the [`Button`] is currently focused or not.
     pub fn is_focused(&self) -> bool {
         self.is_focused
+    }
+
+    /// Returns whether the [`Button`] is currently hovered or not.
+    pub fn is_hovered(&self) -> bool {
+        self.is_hovered
     }
 
     /// Focuses the [`Button`].
@@ -416,7 +428,7 @@ pub fn update<'a, Message: Clone>(
 
                 if bounds.contains(cursor_position) {
                     let state = state();
-
+                    
                     state.is_pressed = true;
 
                     return event::Status::Captured;
@@ -454,7 +466,7 @@ pub fn update<'a, Message: Clone>(
         }
         Event::Touch(touch::Event::FingerLost { .. }) => {
             let state = state();
-
+            state.is_hovered = false;
             state.is_pressed = false;
         }
         #[cfg(feature = "a11y")]
@@ -474,6 +486,16 @@ pub fn update<'a, Message: Clone>(
                 shell.publish(on_press);
             }
             return event::Status::Captured;
+        }
+        Event::Mouse(mouse::Event::CursorEntered | mouse::Event::CursorMoved {
+            ..
+        }) => {
+            let state = state();
+            if layout.bounds().contains(cursor_position) {
+                state.is_hovered = true;
+            } else {
+                state.is_hovered = false;
+            }
         }
         _ => {}
     }
