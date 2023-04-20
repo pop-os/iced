@@ -4,6 +4,8 @@ use crate::Color;
 
 use iced_native::svg;
 use iced_native::Size;
+use resvg::tiny_skia;
+use usvg::NodeExt;
 
 use std::collections::{HashMap, HashSet};
 use std::fs;
@@ -21,7 +23,7 @@ impl Svg {
     pub fn viewport_dimensions(&self) -> Size<u32> {
         match self {
             Svg::Loaded(tree) => {
-                let size = tree.svg_node().size;
+                let size = tree.size;
 
                 Size::new(size.width() as u32, size.height() as u32)
             }
@@ -53,7 +55,7 @@ impl<T: Storage> Cache<T> {
                 let tree = fs::read_to_string(path).ok().and_then(|contents| {
                     usvg::Tree::from_str(
                         &contents,
-                        &usvg::Options::default().to_ref(),
+                        &usvg::Options::default(),
                     )
                     .ok()
                 });
@@ -63,7 +65,7 @@ impl<T: Storage> Cache<T> {
             svg::Data::Bytes(bytes) => {
                 match usvg::Tree::from_data(
                     bytes,
-                    &usvg::Options::default().to_ref(),
+                    &usvg::Options::default(),
                 ) {
                     Ok(tree) => Svg::Loaded(tree),
                     Err(_) => Svg::NotFound,
@@ -125,6 +127,7 @@ impl<T: Storage> Cache<T> {
                     } else {
                         usvg::FitTo::Height(height)
                     },
+                    tiny_skia::Transform::default(),
                     img.as_mut(),
                 )?;
 
