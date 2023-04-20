@@ -105,7 +105,7 @@ impl PartialEq for Internal {
             // allow custom ids to be equal to unique ids
             (Self::Unique(l0), Self::Custom(r0, _))
             | (Self::Custom(l0, _), Self::Unique(r0)) => l0 == r0,
-            (Self::Set(l0), Self::Set(r0)) => l0.iter().zip(r0).any(|(l, r)| l == r),
+            (Self::Set(l0), Self::Set(r0)) => l0 == r0,
             // allow set ids to just be equal to any of their members 
             (Self::Set(l0), r) | (r, Self::Set(l0)) => l0.iter().any(|l| l == r),
         }
