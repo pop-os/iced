@@ -11,7 +11,7 @@ pub struct A11yNode {
 impl A11yNode {
     pub fn new<T: Into<A11yId>>(node: accesskit::NodeBuilder, id: T) -> Self {
         Self {
-            node: node,
+            node,
             id: id.into(),
         }
     }

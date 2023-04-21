@@ -241,70 +241,71 @@ where
         )
     }
 
-    #[cfg(feature = "a11y")]
-    fn a11y_nodes(
-        &self,
-        layout: Layout<'_>,
-        state: &Tree,
-        cursor_position: Point,
-    ) -> iced_accessibility::A11yTree {
-        use iced_accessibility::{
-            accesskit::{self, NodeBuilder, Role},
-            A11yNode, A11yTree,
-        };
-        use iced_core::Internal;
-
-        let bounds = layout.bounds();
-        let is_hovered = bounds.contains(cursor_position);
-        let Rectangle {
-            x,
-            y,
-            width,
-            height,
-        } = bounds;
-
-        let bounds = accesskit::Rect::new(
-            x as f64,
-            y as f64,
-            (x + width) as f64,
-            (y + height) as f64,
-        );
-        let my_state = state.state.downcast_ref::<State<T>>();
-        let mut button_node = NodeBuilder::new(Role::ComboBoxMenuButton);
-        button_node.set_bounds(bounds);
-        if let Some(selected) = self.selected.as_ref() {
-            button_node.set_value(selected.to_string());
-            button_node.set_selected(true);
-        }
-        if is_hovered {
-            button_node.set_hovered();
-        };
-
-        let mut group_node = NodeBuilder::new(Role::ComboBoxGrouping);
-        if my_state.is_open {
-            group_node.set_expanded(true);
-        } else {
-            group_node.set_expanded(false);
-            group_node.set_hidden()
-        }
-        if my_state.hovered_option.is_some() {
-            group_node.set_hovered();
-        }
-        // Ashley: TODO add the list of options as children of the group node?
-        // I need to confirm that this is the correct way to do this.
-
-        let (button_id, group_id) = match &self.id.0 {
-            Internal::Set(set) => (set[0].clone(), set[1].clone()),
-            _ => unreachable!(),
-        };
-        A11yTree::new(
-            vec![
-                A11yNode::new(button_node, Id(button_id)),
-                A11yNode::new(group_node, Id(group_id)),
-            ],
-            Vec::new(),
-        )
-    }
+    // TODO...
+    // #[cfg(feature = "a11y")]
+    // fn a11y_nodes(
+    //     &self,
+    //     layout: Layout<'_>,
+    //     state: &Tree,
+    //     cursor_position: Point,
+    // ) -> iced_accessibility::A11yTree {
+    //     use iced_accessibility::{
+    //         accesskit::{self, NodeBuilder, Role},
+    //         A11yNode, A11yTree,
+    //     };
+    //     use iced_core::Internal;
+    //
+    //     let bounds = layout.bounds();
+    //     let is_hovered = bounds.contains(cursor_position);
+    //     let Rectangle {
+    //         x,
+    //         y,
+    //         width,
+    //         height,
+    //     } = bounds;
+    //
+    //     let bounds = accesskit::Rect::new(
+    //         x as f64,
+    //         y as f64,
+    //         (x + width) as f64,
+    //         (y + height) as f64,
+    //     );
+    //     let my_state = state.state.downcast_ref::<State<T>>();
+    //     let mut button_node = NodeBuilder::new(Role::ComboBoxMenuButton);
+    //     button_node.set_bounds(bounds);
+    //     if let Some(selected) = self.selected.as_ref() {
+    //         button_node.set_value(selected.to_string());
+    //         button_node.set_selected(true);
+    //     }
+    //     if is_hovered {
+    //         button_node.set_hovered();
+    //     };
+    //
+    //     let mut group_node = NodeBuilder::new(Role::ComboBoxGrouping);
+    //     if my_state.is_open {
+    //         group_node.set_expanded(true);
+    //     } else {
+    //         group_node.set_expanded(false);
+    //         group_node.set_hidden()
+    //     }
+    //     if my_state.hovered_option.is_some() {
+    //         group_node.set_hovered();
+    //     }
+    //     // Ashley: TODO add the list of options as children of the group node?
+    //     // I need to confirm that this is the correct way to do this.
+    //
+    //     let (button_id, group_id) = match &self.id.0 {
+    //         Internal::Set(set) => (set[0].clone(), set[1].clone()),
+    //         _ => unreachable!(),
+    //     };
+    //     A11yTree::new(
+    //         vec![
+    //             A11yNode::new(button_node, Id(button_id)),
+    //             A11yNode::new(group_node, Id(group_id)),
+    //         ],
+    //         Vec::new(),
+    //     )
+    // }
 
     fn id(&self) -> Option<Id> {
         Some(self.id.clone())

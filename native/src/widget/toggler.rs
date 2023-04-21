@@ -1,4 +1,6 @@
 //! Show toggle controls using togglers.
+use std::borrow::Cow;
+
 use crate::alignment;
 use crate::event;
 use crate::layout;
@@ -11,6 +13,8 @@ use crate::{
     Shell, Widget,
 };
 
+use iced_core::Id;
+use iced_core::Internal;
 pub use iced_style::toggler::{Appearance, StyleSheet};
 
 /// A toggler widget.
@@ -34,6 +38,14 @@ where
     Renderer: text::Renderer,
     Renderer::Theme: StyleSheet,
 {
+    id: Id,
+    label_id: Option<Id>,
+    #[cfg(feature = "a11y")]
+    name: Option<Cow<'a, str>>,
+    #[cfg(feature = "a11y")]
+    description: Option<iced_accessibility::Description<'a>>,
+    #[cfg(feature = "a11y")]
+    labeled_by_widget: Option<Vec<iced_accessibility::accesskit::NodeId>>,
     is_active: bool,
     on_toggle: Box<dyn Fn(bool) -> Message + 'a>,
     label: Option<String>,
@@ -70,7 +82,17 @@ where
     where
         F: 'a + Fn(bool) -> Message,
     {
+        let label = label.into();
+
         Toggler {
+            id: Id::unique(),
+            label_id: label.as_ref().map(|_| Id::unique()),
+            #[cfg(feature = "a11y")]
+            name: None,
+            #[cfg(feature = "a11y")]
+            description: None,
+            #[cfg(feature = "a11y")]
+            labeled_by_widget: None,
             is_active,
             on_toggle: Box::new(f),
             label: label.into(),
@@ -82,6 +104,41 @@ where
             font: Renderer::Font::default(),
             style: Default::default(),
         }
+    }
+
+    #[cfg(feature = "a11y")]
+    /// Sets the name of the [`Button`].
+    pub fn name(mut self, name: impl Into<Cow<'a, str>>) -> Self {
+        self.name = Some(name.into());
+        self
+    }
+
+    #[cfg(feature = "a11y")]
+    /// Sets the description of the [`Button`].
+    pub fn description_widget<T: iced_accessibility::Describes>(
+        mut self,
+        description: &T,
+    ) -> Self {
+        self.description = Some(iced_accessibility::Description::Id(
+            description.description(),
+        ));
+        self
+    }
+
+    #[cfg(feature = "a11y")]
+    /// Sets the description of the [`Button`].
+    pub fn description(mut self, description: impl Into<Cow<'a, str>>) -> Self {
+        self.description =
+            Some(iced_accessibility::Description::Text(description.into()));
+        self
+    }
+
+    #[cfg(feature = "a11y")]
+    /// Sets the label of the [`Button`] using another widget.
+    pub fn label(mut self, label: &dyn iced_accessibility::Labels) -> Self {
+        self.labeled_by_widget =
+            Some(label.label().into_iter().map(|l| l.into()).collect());
+        self
     }
 
     /// Sets the size of the [`Toggler`].
@@ -310,6 +367,97 @@ where
             },
             style.foreground,
         );
+    }
+
+    #[cfg(feature = "a11y")]
+    /// get the a11y nodes for the widget
+    fn a11y_nodes(
+        &self,
+        layout: Layout<'_>,
+        _state: &Tree,
+        cursor_position: Point,
+    ) -> iced_accessibility::A11yTree {
+        use iced_accessibility::{
+            accesskit::{
+                Action, CheckedState, NodeBuilder, NodeId, Rect, Role,
+            },
+            A11yNode, A11yTree,
+        };
+
+        let bounds = layout.bounds();
+        let is_hovered = bounds.contains(cursor_position);
+        let Rectangle {
+            x,
+            y,
+            width,
+            height,
+        } = bounds;
+
+        let bounds = Rect::new(
+            x as f64,
+            y as f64,
+            (x + width) as f64,
+            (y + height) as f64,
+        );
+
+        let mut node = NodeBuilder::new(Role::Switch);
+        node.add_action(Action::Focus);
+        node.add_action(Action::Default);
+        node.set_bounds(bounds);
+        if let Some(name) = self.name.as_ref() {
+            node.set_name(name.clone());
+        }
+        match self.description.as_ref() {
+            Some(iced_accessibility::Description::Id(id)) => {
+                node.set_described_by(
+                    id.iter()
+                        .cloned()
+                        .map(|id| NodeId::from(id))
+                        .collect::<Vec<_>>(),
+                );
+            }
+            Some(iced_accessibility::Description::Text(text)) => {
+                node.set_description(text.clone());
+            }
+            None => {}
+        }
+        node.set_checked_state(if self.is_active {
+            CheckedState::True
+        } else {
+            CheckedState::False
+        });
+        if is_hovered {
+            node.set_hovered();
+        }
+        node.add_action(Action::Default);
+        if let Some(label) = self.label.as_ref() {
+            let mut label_node = NodeBuilder::new(Role::StaticText);
+
+            label_node.set_name(label.clone());
+            // TODO proper label bounds for the label
+            label_node.set_bounds(bounds);
+
+            A11yTree::node_with_child_tree(
+                A11yNode::new(node, self.id.clone()),
+                A11yTree::leaf(label_node, self.label_id.clone().unwrap()),
+            )
+        } else {
+            if let Some(labeled_by_widget) = self.labeled_by_widget.as_ref() {
+                node.set_labelled_by(labeled_by_widget.clone());
+            }
+            A11yTree::leaf(node, self.id.clone())
+        }
+    }
+
+    fn id(&self) -> Option<Id> {
+        if self.label.is_some() {
+            Some(Id(Internal::Set(vec![
+                self.id.0.clone(),
+                self.label_id.clone().unwrap().0,
+            ])))
+        } else {
+            Some(self.id.clone())
+        }
     }
 }
 
