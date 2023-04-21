@@ -179,7 +179,7 @@ where
     fn a11y_nodes(&self, layout: Layout<'_>, state: &Tree, p: Point) -> iced_accessibility::A11yTree {
         let c_layout = layout.children().next().unwrap();
         let c_state = &state.children[0];
-        self.content.as_widget().a11y_nodes(c_layout, state, p)
+        self.content.as_widget().a11y_nodes(c_layout, c_state, p)
     }
 
     fn operate(
