@@ -398,7 +398,7 @@ pub mod image {
     pub use iced_native::image::Handle;
 
     /// A frame that displays an image.
-    pub type Image = iced_native::widget::Image<Handle>;
+    pub type Image<'a> = iced_native::widget::Image<'a, Handle>;
 
     pub use iced_native::widget::image::viewer;
     pub use viewer::Viewer;

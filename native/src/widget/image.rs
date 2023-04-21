@@ -261,7 +261,11 @@ where
             node.set_labelled_by(label.clone());
         }
 
-        A11yTree::leaf(A11yNode::new(node, self.id.clone()))
+        A11yTree::leaf(node, self.id.clone())
+    }
+
+    fn id(&self) -> Option<Id> {
+        Some(self.id.clone())
     }
 }
 

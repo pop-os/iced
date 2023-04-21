@@ -218,10 +218,10 @@ pub fn slider<'a, T, Message, Renderer>(
     on_change: impl Fn(T) -> Message + 'a,
 ) -> widget::Slider<'a, T, Message, Renderer>
 where
-    T: Copy + From<u8> + std::cmp::PartialOrd,
+    T: Copy + From<u8> + std::cmp::PartialOrd + TryInto<f64>,
     Message: Clone,
     Renderer: crate::Renderer,
-    Renderer::Theme: widget::slider::StyleSheet,
+    Renderer::Theme: widget::slider::StyleSheet, 
 {
     widget::Slider::new(range, value, on_change)
 }

@@ -301,7 +301,7 @@ where
         }
         node.set_name(self.label.clone());
         node.add_action(Action::Default);
-        A11yTree::leaf(A11yNode::new(node, self.id.clone()))
+        A11yTree::leaf(node, self.id.clone())
     }
     
     fn id(&self) -> Option<Id> {

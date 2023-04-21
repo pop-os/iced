@@ -12,8 +12,10 @@ use crate::{
     Shell, Size, Widget,
 };
 
+use std::borrow::Cow;
 use std::ops::RangeInclusive;
 
+use iced_core::Id;
 pub use iced_style::slider::{Appearance, Handle, HandleShape, StyleSheet};
 
 /// An horizontal bar and a handle that selects a single value from a range of
@@ -48,6 +50,13 @@ where
     Renderer: crate::Renderer,
     Renderer::Theme: StyleSheet,
 {
+    id: Id,
+    #[cfg(feature = "a11y")]
+    name: Option<Cow<'a, str>>,
+    #[cfg(feature = "a11y")]
+    description: Option<iced_accessibility::Description<'a>>,
+    #[cfg(feature = "a11y")]
+    label: Option<Vec<iced_accessibility::accesskit::NodeId>>,
     range: RangeInclusive<T>,
     step: T,
     value: T,
@@ -60,7 +69,7 @@ where
 
 impl<'a, T, Message, Renderer> Slider<'a, T, Message, Renderer>
 where
-    T: Copy + From<u8> + std::cmp::PartialOrd,
+    T: Copy + From<u8> + std::cmp::PartialOrd + TryInto<f64>,
     Message: Clone,
     Renderer: crate::Renderer,
     Renderer::Theme: StyleSheet,
@@ -93,6 +102,13 @@ where
         };
 
         Slider {
+            id: Id::unique(),
+            #[cfg(feature = "a11y")]
+            name: None,
+            #[cfg(feature = "a11y")]
+            description: None,
+            #[cfg(feature = "a11y")]
+            label: None,
             value,
             range,
             step: T::from(1),
@@ -102,6 +118,41 @@ where
             height: Self::DEFAULT_HEIGHT,
             style: Default::default(),
         }
+    }
+
+    #[cfg(feature = "a11y")]
+    /// Sets the name of the [`Button`].
+    pub fn name(mut self, name: impl Into<Cow<'a, str>>) -> Self {
+        self.name = Some(name.into());
+        self
+    }
+
+    #[cfg(feature = "a11y")]
+    /// Sets the description of the [`Button`].
+    pub fn description_widget(
+        mut self,
+        description: &impl iced_accessibility::Describes,
+    ) -> Self {
+        self.description = Some(iced_accessibility::Description::Id(
+            description.description(),
+        ));
+        self
+    }
+
+    #[cfg(feature = "a11y")]
+    /// Sets the description of the [`Button`].
+    pub fn description(mut self, description: impl Into<Cow<'a, str>>) -> Self {
+        self.description =
+            Some(iced_accessibility::Description::Text(description.into()));
+        self
+    }
+
+    #[cfg(feature = "a11y")]
+    /// Sets the label of the [`Button`].
+    pub fn label(mut self, label: &dyn iced_accessibility::Labels) -> Self {
+        self.label =
+            Some(label.label().into_iter().map(|l| l.into()).collect());
+        self
     }
 
     /// Sets the release message of the [`Slider`].
@@ -239,6 +290,83 @@ where
             cursor_position,
             tree.state.downcast_ref::<State>(),
         )
+    }
+
+    #[cfg(feature = "a11y")]
+    fn a11y_nodes(
+        &self,
+        layout: Layout<'_>,
+        _state: &Tree,
+        cursor_position: Point,
+    ) -> iced_accessibility::A11yTree {
+        use iced_accessibility::{
+            accesskit::{NodeBuilder, NodeId, Rect, Role},
+            A11yTree,
+        };
+
+        let bounds = layout.bounds();
+        let is_hovered = bounds.contains(cursor_position);
+        let Rectangle {
+            x,
+            y,
+            width,
+            height,
+        } = bounds;
+        let bounds = Rect::new(
+            x as f64,
+            y as f64,
+            (x + width) as f64,
+            (y + height) as f64,
+        );
+        let mut node = NodeBuilder::new(Role::Slider);
+        node.set_bounds(bounds);
+        if let Some(name) = self.name.as_ref() {
+            node.set_name(name.clone());
+        }
+        match self.description.as_ref() {
+            Some(iced_accessibility::Description::Id(id)) => {
+                node.set_described_by(
+                    id.iter()
+                        .cloned()
+                        .map(|id| NodeId::from(id))
+                        .collect::<Vec<_>>(),
+                );
+            }
+            Some(iced_accessibility::Description::Text(text)) => {
+                node.set_description(text.clone());
+            }
+            None => {}
+        }
+
+        if is_hovered {
+            node.set_hovered();
+        }
+
+        if let Some(label) = self.label.as_ref() {
+            node.set_labelled_by(label.clone());
+        }
+
+        if let Ok(min) = self.range.start().clone().try_into() {
+            node.set_min_numeric_value(min);
+        }
+        if let Ok(max) = self.range.end().clone().try_into() {
+            node.set_max_numeric_value(max);
+        }
+        if let Ok(value) = self.value.clone().try_into() {
+            node.set_numeric_value(value);
+        }
+        if let Ok(step) = self.step.clone().try_into() {
+            node.set_numeric_value_step(step);
+        }
+
+        // TODO: This could be a setting on the slider
+        node.set_live(iced_accessibility::accesskit::Live::Polite);
+
+        A11yTree::leaf(node, self.id.clone())
+    }
+
+    fn id(&self) -> Option<Id> {
+        Some(self.id.clone())
     }
 }
 
