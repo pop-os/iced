@@ -172,10 +172,15 @@ where
     }
 
     #[cfg(feature = "a11y")]
-    fn a11y_nodes(&self, layout: Layout<'_>, _state: &Tree, _: Point) -> iced_accessibility::A11yTree {
+    fn a11y_nodes(
+        &self,
+        layout: Layout<'_>,
+        _state: &Tree,
+        _: Point,
+    ) -> iced_accessibility::A11yTree {
         use iced_accessibility::{
             accesskit::{Live, NodeBuilder, Rect, Role},
-            A11yNode, A11yTree,
+            A11yTree,
         };
 
         let Rectangle {
@@ -189,17 +194,17 @@ where
             y as f64,
             (x + width) as f64,
             (y + height) as f64,
-
         );
 
         let mut node = NodeBuilder::new(Role::StaticText);
 
         // TODO is the name likely different from the content?
         node.set_name(self.content.to_string().into_boxed_str());
-        node.set_live(Live::Polite);
         node.set_bounds(bounds);
 
-        A11yTree::new(vec![A11yNode::new(node, self.id.clone())], Vec::new())
+        // TODO make this configurable
+        node.set_live(Live::Polite);
+        A11yTree::leaf(node, self.id.clone())
     }
 
     fn id(&self) -> Option<crate::widget::Id> {

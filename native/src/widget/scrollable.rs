@@ -13,8 +13,10 @@ use crate::{
     Rectangle, Shell, Size, Vector, Widget,
 };
 
+use std::borrow::Cow;
 use std::{f32, u32};
 
+use iced_core::{Id, Internal};
 pub use iced_style::scrollable::StyleSheet;
 
 use super::operation::OperationOutputWrapper;
@@ -34,7 +36,14 @@ where
     Renderer: crate::Renderer,
     Renderer::Theme: StyleSheet,
 {
-    id: Option<Id>,
+    id: Id,
+    scrollbar_id: Id,
+    #[cfg(feature = "a11y")]
+    name: Option<Cow<'a, str>>,
+    #[cfg(feature = "a11y")]
+    description: Option<iced_accessibility::Description<'a>>,
+    #[cfg(feature = "a11y")]
+    label: Option<Vec<iced_accessibility::accesskit::NodeId>>,
     height: Length,
     scrollbar_width: u16,
     scrollbar_margin: u16,
@@ -52,7 +61,14 @@ where
     /// Creates a new [`Scrollable`].
     pub fn new(content: impl Into<Element<'a, Message, Renderer>>) -> Self {
         Scrollable {
-            id: None,
+            id: Id::unique(),
+            scrollbar_id: Id::unique(),
+            #[cfg(feature = "a11y")]
+            name: None,
+            #[cfg(feature = "a11y")]
+            description: None,
+            #[cfg(feature = "a11y")]
+            label: None,
             height: Length::Shrink,
             scrollbar_width: 10,
             scrollbar_margin: 0,
@@ -63,9 +79,44 @@ where
         }
     }
 
+    #[cfg(feature = "a11y")]
+    /// Sets the name of the [`Button`].
+    pub fn name(mut self, name: impl Into<Cow<'a, str>>) -> Self {
+        self.name = Some(name.into());
+        self
+    }
+
+    #[cfg(feature = "a11y")]
+    /// Sets the description of the [`Button`].
+    pub fn description_widget(
+        mut self,
+        description: &impl iced_accessibility::Describes,
+    ) -> Self {
+        self.description = Some(iced_accessibility::Description::Id(
+            description.description(),
+        ));
+        self
+    }
+
+    #[cfg(feature = "a11y")]
+    /// Sets the description of the [`Button`].
+    pub fn description(mut self, description: impl Into<Cow<'a, str>>) -> Self {
+        self.description =
+            Some(iced_accessibility::Description::Text(description.into()));
+        self
+    }
+
+    #[cfg(feature = "a11y")]
+    /// Sets the label of the [`Button`].
+    pub fn label(mut self, label: &dyn iced_accessibility::Labels) -> Self {
+        self.label =
+            Some(label.label().into_iter().map(|l| l.into()).collect());
+        self
+    }
+
     /// Sets the [`Id`] of the [`Scrollable`].
     pub fn id(mut self, id: Id) -> Self {
-        self.id = Some(id);
+        self.id = id;
         self
     }
 
@@ -170,7 +221,7 @@ where
     ) {
         let state = tree.state.downcast_mut::<State>();
 
-        operation.scrollable(state, self.id.as_ref().map(|id| &id.0));
+        operation.scrollable(state, Some(&self.id));
 
         operation.container(None, &mut |operation| {
             self.content.as_widget().operate(
@@ -302,6 +353,130 @@ where
                 overlay.translate(Vector::new(0.0, -(offset as f32)))
             })
     }
+
+    #[cfg(feature = "a11y")]
+    fn a11y_nodes(
+        &self,
+        layout: Layout<'_>,
+        state: &Tree,
+        cursor_position: Point,
+    ) -> iced_accessibility::A11yTree {
+        use iced_accessibility::{
+            accesskit::{NodeBuilder, NodeId, Rect, Role},
+            A11yId, A11yNode, A11yTree,
+        };
+
+        let child_layout = layout.children().next().unwrap();
+        let child_tree = &state.children[0];
+        let child_tree = self.content.as_widget().a11y_nodes(
+            child_layout,
+            &child_tree,
+            cursor_position,
+        );
+
+        let bounds_ = layout.bounds();
+        let is_hovered = bounds_.contains(cursor_position);
+        let Rectangle {
+            x,
+            y,
+            width,
+            height,
+        } = bounds_;
+        let bounds = Rect::new(
+            x as f64,
+            y as f64,
+            (x + width) as f64,
+            (y + height) as f64,
+        );
+        let mut node = NodeBuilder::new(Role::ScrollView);
+        node.set_bounds(bounds);
+        if let Some(name) = self.name.as_ref() {
+            node.set_name(name.clone());
+        }
+        match self.description.as_ref() {
+            Some(iced_accessibility::Description::Id(id)) => {
+                node.set_described_by(
+                    id.iter()
+                        .cloned()
+                        .map(|id| NodeId::from(id))
+                        .collect::<Vec<_>>(),
+                );
+            }
+            Some(iced_accessibility::Description::Text(text)) => {
+                node.set_description(text.clone());
+            }
+            None => {}
+        }
+
+        if is_hovered {
+            node.set_hovered();
+        }
+
+        if let Some(label) = self.label.as_ref() {
+            node.set_labelled_by(label.clone());
+        }
+
+        let content = layout.children().next().unwrap();
+        let content_bounds = content.bounds();
+
+        let mut scrollbar_node = NodeBuilder::new(Role::ScrollBar);
+        if matches!(state.state, tree::State::Some(_)) {
+            let state = state.state.downcast_ref::<State>();
+            if let Some(scrollbar) = scrollbar(
+                state,
+                self.scrollbar_width,
+                self.scrollbar_margin,
+                self.scroller_width,
+                bounds_,
+                content_bounds,
+            ) {
+                let scrollbar_bounds = scrollbar.bounds;
+                let is_hovered = scrollbar_bounds.contains(cursor_position);
+                let Rectangle {
+                    x,
+                    y,
+                    width,
+                    height,
+                } = scrollbar_bounds;
+                let bounds = Rect::new(
+                    x as f64,
+                    y as f64,
+                    (x + width) as f64,
+                    (y + height) as f64,
+                );
+                scrollbar_node.set_bounds(bounds);
+                if is_hovered {
+                    scrollbar_node.set_hovered();
+                }
+                scrollbar_node
+                    .set_controls(vec![A11yId::Widget(self.id.clone()).into()]);
+                scrollbar_node.set_numeric_value(
+                    100.0
+                        * state.offset(scrollbar_bounds, content_bounds) as f64
+                        / scrollbar.bounds.height as f64,
+                );
+            }
+        }
+
+        let child_tree = A11yTree::join(
+            [
+                child_tree,
+                A11yTree::leaf(scrollbar_node, self.scrollbar_id.clone()),
+            ]
+            .into_iter(),
+        );
+        A11yTree::node_with_child_tree(
+            A11yNode::new(node, self.id.clone()),
+            child_tree,
+        )
+    }
+
+    fn id(&self) -> Option<Id> {
+        Some(Id(Internal::Set(vec![
+            self.id.0.clone(),
+            self.scrollbar_id.0.clone(),
+        ])))
+    }
 }
 
 impl<'a, Message, Renderer> From<Scrollable<'a, Message, Renderer>>
@@ -318,34 +493,10 @@ where
     }
 }
 
-/// The identifier of a [`Scrollable`].
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Id(widget::Id);
-
-impl Id {
-    /// Creates a custom [`Id`].
-    pub fn new(id: impl Into<std::borrow::Cow<'static, str>>) -> Self {
-        Self(widget::Id::new(id))
-    }
-
-    /// Creates a unique [`Id`].
-    ///
-    /// This function produces a different [`Id`] every time it is called.
-    pub fn unique() -> Self {
-        Self(widget::Id::unique())
-    }
-}
-
-impl From<Id> for widget::Id {
-    fn from(id: Id) -> Self {
-        id.0
-    }
-}
-
 /// Produces a [`Command`] that snaps the [`Scrollable`] with the given [`Id`]
 /// to the provided `percentage`.
 pub fn snap_to<Message: 'static>(id: Id, percentage: f32) -> Command<Message> {
-    Command::widget(operation::scrollable::snap_to(id.0, percentage))
+    Command::widget(operation::scrollable::snap_to(id, percentage))
 }
 
 /// Computes the layout of a [`Scrollable`].

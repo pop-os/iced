@@ -375,6 +375,15 @@ where
             .overlay(tree, layout, renderer)
             .map(move |overlay| overlay.map(mapper))
     }
+
+    fn id(&self) -> Option<iced_core::Id> {
+        self.widget.id()
+    }
+
+    #[cfg(feature = "a11y")]
+    fn a11y_nodes(&self, _layout: Layout<'_>, state: &Tree, cursor_position: Point) -> iced_accessibility::A11yTree {
+        self.widget.a11y_nodes(_layout, state, cursor_position)
+    }
 }
 
 struct Explain<'a, Message, Renderer: crate::Renderer> {
