@@ -715,8 +715,8 @@ where
     <A::Renderer as crate::Renderer>::Theme: StyleSheet,
 {
     // XXX Ashley: for multi-window this should be moved to build_user_interfaces
-    // #[cfg(feature = "a11y")]
-    // iced_native::widget::Id::reset();
+    #[cfg(feature = "a11y")]
+    iced_native::widget::Id::reset();
 
     debug.view_started();
     let view = application.view();

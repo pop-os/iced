@@ -11,6 +11,7 @@ pub struct A11yTree {
 
 impl A11yTree {
     /// Create a new A11yTree
+    /// XXX if you use this method, you will need to manually add the children of the root nodes
     pub fn new(root: Vec<A11yNode>, children: Vec<A11yNode>) -> Self {
         Self { root, children }
     }
