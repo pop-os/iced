@@ -38,7 +38,7 @@ use sctk::{
                 wl_pointer::WlPointer,
                 wl_seat::WlSeat,
                 wl_surface::{self, WlSurface},
-                wl_touch::WlTouch,
+                wl_touch::WlTouch, wl_region::WlRegion,
             },
             Connection, QueueHandle,
         },
@@ -545,6 +545,7 @@ where
             margin,
             size,
             exclusive_zone,
+            pointer_interactivity,
             ..
         }: SctkLayerSurfaceSettings,
     ) -> Result<(iced_native::window::Id, WlSurface), LayerSurfaceCreationError>
@@ -586,6 +587,9 @@ where
         layer_surface
             .set_size(size.0.unwrap_or_default(), size.1.unwrap_or_default());
         layer_surface.set_exclusive_zone(exclusive_zone);
+        if !pointer_interactivity {
+            layer_surface.set_input_region(None);
+        }
         layer_surface.commit();
         self.layer_surfaces.push(SctkLayerSurface {
             id,

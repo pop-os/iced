@@ -50,6 +50,8 @@ pub struct SctkLayerSurfaceSettings {
     pub layer: Layer,
     /// interactivity
     pub keyboard_interactivity: KeyboardInteractivity,
+    /// pointer interactivity
+    pub pointer_interactivity: bool,
     /// anchor, if a surface is anchored to two opposite edges, it will be stretched to fit between those edges, regardless of the specified size in that dimension.
     pub anchor: Anchor,
     /// output
@@ -84,6 +86,7 @@ impl Default for SctkLayerSurfaceSettings {
                 .min_width(1)
                 .max_width(1920)
                 .max_height(1080),
+            pointer_interactivity: true,
         }
     }
 }
