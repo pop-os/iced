@@ -44,6 +44,7 @@ pub struct Image<'a, Handle> {
     width: Length,
     height: Length,
     content_fit: ContentFit,
+    phantom_data: std::marker::PhantomData<&'a ()>,
 }
 
 impl<'a, Handle> Image<'a, Handle> {
@@ -61,6 +62,7 @@ impl<'a, Handle> Image<'a, Handle> {
             width: Length::Shrink,
             height: Length::Shrink,
             content_fit: ContentFit::Contain,
+            phantom_data: std::marker::PhantomData,
         }
     }
 

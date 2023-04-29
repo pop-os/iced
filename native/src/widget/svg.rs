@@ -8,6 +8,7 @@ use crate::{
 };
 
 use std::borrow::Cow;
+use std::marker::PhantomData;
 use std::path::PathBuf;
 
 use iced_core::Id;
@@ -38,6 +39,7 @@ where
     height: Length,
     content_fit: ContentFit,
     style: <Renderer::Theme as StyleSheet>::Style,
+    phantom_data: PhantomData<&'a ()>,
 }
 
 impl<'a, Renderer> Svg<'a, Renderer>
@@ -60,6 +62,7 @@ where
             height: Length::Shrink,
             content_fit: ContentFit::Contain,
             style: Default::default(),
+            phantom_data: PhantomData,
         }
     }
 
