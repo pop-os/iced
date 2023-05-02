@@ -4,24 +4,39 @@ pub use ::image as image_rs;
 
 use crate::core::image;
 use crate::core::svg;
+use crate::core::Color;
+use crate::core::Radians;
 use crate::core::Rectangle;
 
 /// A raster or vector image.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Image {
     /// A raster image.
-    Raster(image::Image, Rectangle),
+    Raster {
+        /// The image handle
+        handle: image::Image,
 
+        /// The bounds of the image.
+        bounds: Rectangle,
+    },
     /// A vector image.
-    Vector(svg::Svg, Rectangle),
+    Vector {
+        /// The handle of a vector image.
+        handle: svg::Svg,
+
+        /// The bounds of the image.
+        bounds: Rectangle,
+    },
 }
 
 impl Image {
     /// Returns the bounds of the [`Image`].
     pub fn bounds(&self) -> Rectangle {
         match self {
-            Image::Raster(image, bounds) => bounds.rotate(image.rotation),
-            Image::Vector(svg, bounds) => bounds.rotate(svg.rotation),
+            Image::Raster { handle, bounds } => bounds.rotate(handle.rotation),
+            Image::Vector { handle, bounds, .. } => {
+                bounds.rotate(handle.rotation)
+            }
         }
     }
 }
@@ -85,7 +100,9 @@ pub fn load(
 
     let (width, height, pixels) = match handle {
         image::Handle::Path(_, path) => {
-            let image = ::image::open(path)?;
+            let image = ::image::io::Reader::open(&path)?
+                .with_guessed_format()?
+                .decode()?;
 
             let operation = std::fs::File::open(path)
                 .ok()

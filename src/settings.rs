@@ -28,13 +28,13 @@ pub struct Settings {
     /// If set to true, the renderer will try to perform antialiasing for some
     /// primitives.
     ///
-    /// Enabling it can produce a smoother result in some widgets, like the
-    /// [`Canvas`], at a performance cost.
+    /// Enabling it can produce a smoother result in some widgets
     ///
     /// By default, it is disabled.
-    ///
-    /// [`Canvas`]: crate::widget::Canvas
     pub antialiasing: bool,
+
+    /// If set to true the application will exit when the main window is closed.
+    pub exit_on_close_request: bool,
 }
 
 impl Default for Settings {
@@ -43,12 +43,14 @@ impl Default for Settings {
             id: None,
             fonts: Vec::new(),
             default_font: Font::default(),
-            default_text_size: Pixels(16.0),
+            default_text_size: Pixels(14.0),
             antialiasing: false,
+            exit_on_close_request: false,
         }
     }
 }
 
+#[cfg(feature = "winit")]
 impl From<Settings> for iced_winit::Settings {
     fn from(settings: Settings) -> iced_winit::Settings {
         iced_winit::Settings {

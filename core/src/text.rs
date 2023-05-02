@@ -57,8 +57,6 @@ pub enum Shaping {
     /// You should use this strategy when you have complete control of the text
     /// and the font you are displaying in your application.
     ///
-    /// This is the default.
-    #[default]
     Basic,
     /// Advanced text shaping and font fallback.
     ///
@@ -67,6 +65,8 @@ pub enum Shaping {
     /// may be needed to display all of the glyphs.
     ///
     /// Advanced shaping is expensive! You should only enable it when necessary.
+    /// This is the default.
+    #[default]
     Advanced,
 }
 
@@ -108,7 +108,7 @@ impl LineHeight {
 
 impl Default for LineHeight {
     fn default() -> Self {
-        Self::Relative(1.3)
+        Self::Relative(1.4)
     }
 }
 
@@ -193,6 +193,9 @@ pub trait Renderer: crate::Renderer {
     /// The [`Editor`] of this [`Renderer`].
     type Editor: Editor<Font = Self::Font> + 'static;
 
+    /// The Raw of this [`Renderer`].
+    type Raw;
+
     /// The icon font of the backend.
     const ICON_FONT: Self::Font;
 
@@ -231,6 +234,9 @@ pub trait Renderer: crate::Renderer {
         color: Color,
         clip_bounds: Rectangle,
     );
+
+    /// Draws the given Raw
+    fn fill_raw(&mut self, raw: Self::Raw);
 
     /// Draws the given [`Text`] at the given position and with the given
     /// [`Color`].

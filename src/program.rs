@@ -1,10 +1,14 @@
 use crate::core::text;
 use crate::graphics::compositor;
+#[cfg(any(feature = "winit", feature = "wayland"))]
 use crate::shell;
+#[cfg(any(feature = "winit", feature = "wayland"))]
+pub use crate::shell::program::{Appearance, DefaultStyle};
 use crate::window;
 use crate::{Element, Executor, Result, Settings, Subscription, Task};
 
-pub use crate::shell::program::{Appearance, DefaultStyle};
+#[cfg(not(any(feature = "winit", feature = "wayland")))]
+pub use crate::runtime::{Appearance, DefaultStyle};
 
 /// The internal definition of a [`Program`].
 ///
@@ -62,6 +66,7 @@ pub trait Program: Sized {
         1.0
     }
 
+    #[cfg(any(feature = "winit", feature = "wayland"))]
     /// Runs the [`Program`].
     ///
     /// The state of the [`Program`] must implement [`Default`].
@@ -83,6 +88,7 @@ pub trait Program: Sized {
         })
     }
 
+    #[cfg(any(feature = "winit", feature = "wayland"))]
     /// Runs the [`Program`] with the given [`Settings`] and a closure that creates the initial state.
     fn run_with<I>(
         self,
@@ -184,6 +190,7 @@ pub trait Program: Sized {
                 default_font: settings.default_font,
                 default_text_size: settings.default_text_size,
                 antialiasing: settings.antialiasing,
+                exit_on_close_request: settings.exit_on_close_request,
             }
             .into(),
             renderer_settings,

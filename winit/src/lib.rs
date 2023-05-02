@@ -24,8 +24,11 @@ pub use iced_runtime::core;
 pub use iced_runtime::futures;
 pub use winit;
 
+#[cfg(feature = "a11y")]
+pub mod a11y;
 pub mod clipboard;
 pub mod conversion;
+pub mod platform_specific;
 pub mod settings;
 
 #[cfg(feature = "program")]
@@ -44,3 +47,5 @@ pub use settings::Settings;
 
 #[cfg(feature = "program")]
 pub use program::Program;
+
+pub use platform_specific::*;

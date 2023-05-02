@@ -7,7 +7,7 @@ publish = false
 
 [dependencies]
 iced.workspace = true
-iced.features = ["advanced", "canvas"]
+iced.features = ["advanced", "canvas", "winit"]
 
 lyon_algorithms = "1.0"
 once_cell.workspace = true
