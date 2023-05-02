@@ -1,3 +1,5 @@
+use iced_core::widget::operation::Outcome;
+
 use crate::core::event::{self, Event};
 use crate::core::mouse;
 use crate::core::renderer;
@@ -27,12 +29,14 @@ where
     /// Creates a new [`State`] with the provided [`Program`], initializing its
     /// primitive with the given logical bounds and renderer.
     pub fn new(
+        id: iced_core::id::Id,
         mut program: P,
         bounds: Size,
         renderer: &mut P::Renderer,
         debug: &mut Debug,
     ) -> Self {
         let user_interface = build_user_interface(
+            id,
             &mut program,
             user_interface::Cache::default(),
             renderer,
@@ -88,6 +92,7 @@ where
     /// after updating it, only if an update was necessary.
     pub fn update(
         &mut self,
+        id: iced_core::id::Id,
         bounds: Size,
         cursor: mouse::Cursor,
         renderer: &mut P::Renderer,
@@ -97,6 +102,7 @@ where
         debug: &mut Debug,
     ) -> (Vec<Event>, Option<Task<P::Message>>) {
         let mut user_interface = build_user_interface(
+            id.clone(),
             &mut self.program,
             self.cache.take().unwrap(),
             renderer,
@@ -154,6 +160,7 @@ where
             }));
 
             let mut user_interface = build_user_interface(
+                id,
                 &mut self.program,
                 temp_cache,
                 renderer,
@@ -177,12 +184,14 @@ where
     /// Applies [`Operation`]s to the [`State`]
     pub fn operate(
         &mut self,
+        id: iced_core::id::Id,
         renderer: &mut P::Renderer,
         operations: impl Iterator<Item = Box<dyn Operation>>,
         bounds: Size,
         debug: &mut Debug,
     ) {
         let mut user_interface = build_user_interface(
+            id,
             &mut self.program,
             self.cache.take().unwrap(),
             renderer,
@@ -202,6 +211,7 @@ where
                     operation::Outcome::Chain(next) => {
                         current_operation = Some(next);
                     }
+                    _ => {}
                 };
             }
         }
@@ -211,6 +221,7 @@ where
 }
 
 fn build_user_interface<'a, P: Program>(
+    _id: iced_core::id::Id,
     program: &'a mut P,
     cache: user_interface::Cache,
     renderer: &mut P::Renderer,

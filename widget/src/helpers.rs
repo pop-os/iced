@@ -27,6 +27,7 @@ use crate::vertical_slider::{self, VerticalSlider};
 use crate::{Column, MouseArea, Row, Space, Stack, Themer};
 
 use std::borrow::Borrow;
+
 use std::ops::RangeInclusive;
 
 /// Creates a [`Column`] with the given children.
@@ -391,8 +392,8 @@ where
             self.content.as_widget().children()
         }
 
-        fn diff(&self, tree: &mut Tree) {
-            self.content.as_widget().diff(tree);
+        fn diff(&mut self, tree: &mut Tree) {
+            self.content.as_widget_mut().diff(tree);
         }
 
         fn size(&self) -> Size<Length> {
@@ -558,8 +559,8 @@ where
             vec![Tree::new(&self.base), Tree::new(&self.top)]
         }
 
-        fn diff(&self, tree: &mut Tree) {
-            tree.diff_children(&[&self.base, &self.top]);
+        fn diff(&mut self, tree: &mut Tree) {
+            tree.diff_children(&mut [&mut self.base, &mut self.top]);
         }
 
         fn size(&self) -> Size<Length> {
@@ -1624,7 +1625,10 @@ where
 /// ```
 /// <img src="https://github.com/iced-rs/iced/blob/9712b319bb7a32848001b96bd84977430f14b623/examples/resources/ferris.png?raw=true" width="300">
 #[cfg(feature = "image")]
-pub fn image<Handle>(handle: impl Into<Handle>) -> crate::Image<Handle> {
+#[cfg_attr(docsrs, doc(cfg(feature = "image")))]
+pub fn image<'a, Handle>(
+    handle: impl Into<Handle>,
+) -> crate::Image<'a, Handle> {
     crate::Image::new(handle.into())
 }
 

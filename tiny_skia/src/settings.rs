@@ -19,7 +19,7 @@ impl Default for Settings {
     fn default() -> Settings {
         Settings {
             default_font: Font::default(),
-            default_text_size: Pixels(16.0),
+            default_text_size: Pixels(14.0),
         }
     }
 }

@@ -40,6 +40,7 @@ pub struct Menu<
     text_size: Option<Pixels>,
     text_line_height: text::LineHeight,
     text_shaping: text::Shaping,
+    text_wrap: text::Wrapping,
     font: Option<Renderer::Font>,
     class: &'a <Theme as Catalog>::Class<'b>,
 }
@@ -73,7 +74,8 @@ where
             padding: Padding::ZERO,
             text_size: None,
             text_line_height: text::LineHeight::default(),
-            text_shaping: text::Shaping::Basic,
+            text_shaping: text::Shaping::Advanced,
+            text_wrap: text::Wrapping::default(),
             font: None,
             class,
         }
@@ -109,6 +111,12 @@ where
     /// Sets the [`text::Shaping`] strategy of the [`Menu`].
     pub fn text_shaping(mut self, shaping: text::Shaping) -> Self {
         self.text_shaping = shaping;
+        self
+    }
+
+    /// Sets the [`text::Wrap`] mode of the [`Menu`].
+    pub fn text_wrap(mut self, wrap: text::Wrapping) -> Self {
+        self.text_wrap = wrap;
         self
     }
 
@@ -198,10 +206,11 @@ where
             text_size,
             text_line_height,
             text_shaping,
+            text_wrap,
             class,
         } = menu;
 
-        let list = Scrollable::new(List {
+        let mut list = Scrollable::new(List {
             options,
             hovered_option,
             on_selected,
@@ -209,12 +218,13 @@ where
             font,
             text_size,
             text_line_height,
+            text_wrap,
             text_shaping,
             padding,
             class,
         });
 
-        state.tree.diff(&list as &dyn Widget<_, _, _>);
+        state.tree.diff(&mut list as &mut dyn Widget<_, _, _>);
 
         Self {
             position,
@@ -330,6 +340,7 @@ where
     text_size: Option<Pixels>,
     text_line_height: text::LineHeight,
     text_shaping: text::Shaping,
+    text_wrap: text::Wrapping,
     font: Option<Renderer::Font>,
     class: &'a <Theme as Catalog>::Class<'b>,
 }

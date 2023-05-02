@@ -72,7 +72,7 @@ impl crate::graphics::Compositor for Compositor {
             clip_mask: tiny_skia::Mask::new(width, height)
                 .expect("Create clip mask"),
             layer_stack: VecDeque::new(),
-            background_color: Color::BLACK,
+            background_color: Color::TRANSPARENT,
             max_age: 0,
         };
 
@@ -181,11 +181,15 @@ pub fn present<T: AsRef<str>>(
         })
         .unwrap_or_else(|| vec![Rectangle::with_size(viewport.logical_size())]);
 
-    if damage.is_empty() {
-        return Ok(());
-    }
-
+    // TODO(POP): I tried to adapt this to what I saw in the diff, which was essentially making sure this is called
+    // before the damage.is_empty() check
     surface.layer_stack.push_front(renderer.layers().to_vec());
+
+    // TODO better handling of no damage. As it is, the winit shell does not handle a skipped present well.
+    // if damage.is_empty() {
+    //     return Err(compositor::SurfaceError::NoDamage);
+    // }
+
     surface.background_color = background_color;
 
     let damage =
@@ -197,6 +201,9 @@ pub fn present<T: AsRef<str>>(
         physical_size.height,
     )
     .expect("Create pixel map");
+
+    // let damage = damage::group(damage, scale_factor, physical_size);
+    // TODO(POP): Is this something that needs to be adapted?
 
     renderer.draw(
         &mut pixels,

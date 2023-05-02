@@ -3,9 +3,7 @@ pub mod operation;
 pub mod text;
 pub mod tree;
 
-mod id;
-
-pub use id::Id;
+pub use crate::id::Id;
 pub use operation::Operation;
 pub use text::Text;
 pub use tree::Tree;
@@ -96,8 +94,8 @@ where
         Vec::new()
     }
 
-    /// Reconciles the [`Widget`] with the provided [`Tree`].
-    fn diff(&self, _tree: &mut Tree) {}
+    /// Reconciliates the [`Widget`] with the provided [`Tree`].
+    fn diff(&mut self, _tree: &mut Tree) {}
 
     /// Applies an [`Operation`] to the [`Widget`].
     fn operate(
@@ -149,5 +147,36 @@ where
         _translation: Vector,
     ) -> Option<overlay::Element<'a, Message, Theme, Renderer>> {
         None
+    }
+
+    #[cfg(feature = "a11y")]
+    /// get the a11y nodes for the widget and its children
+    fn a11y_nodes(
+        &self,
+        _layout: Layout<'_>,
+        _state: &Tree,
+        _cursor: mouse::Cursor,
+    ) -> iced_accessibility::A11yTree {
+        iced_accessibility::A11yTree::default()
+    }
+
+    /// Returns the id of the widget
+    fn id(&self) -> Option<Id> {
+        None
+    }
+
+    /// Sets the id of the widget
+    /// This may be called while diffing the widget tree
+    fn set_id(&mut self, _id: Id) {}
+
+    /// Adds the drag destination rectangles of the widget.
+    /// Runs after the layout phase for each widget in the tree.
+    fn drag_destinations(
+        &self,
+        _state: &Tree,
+        _layout: Layout<'_>,
+        _renderer: &Renderer,
+        _dnd_rectangles: &mut crate::clipboard::DndDestinationRectangles,
+    ) {
     }
 }

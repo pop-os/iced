@@ -5,6 +5,7 @@ use crate::graphics::Viewport;
 use crate::program::{self, Program};
 use std::fmt::{Debug, Formatter};
 
+use winit::dpi::LogicalPosition;
 use winit::event::{Touch, WindowEvent};
 use winit::window::Window;
 
@@ -13,7 +14,7 @@ pub struct State<P: Program>
 where
     P::Theme: program::DefaultStyle,
 {
-    title: String,
+    pub(crate) title: String,
     scale_factor: f64,
     viewport: Viewport,
     viewport_version: u64,
@@ -47,7 +48,7 @@ where
     pub fn new(
         application: &P,
         window_id: window::Id,
-        window: &Window,
+        window: &dyn Window,
     ) -> Self {
         let title = application.title(window_id);
         let scale_factor = application.scale_factor(window_id);
@@ -55,7 +56,7 @@ where
         let appearance = application.style(&theme);
 
         let viewport = {
-            let physical_size = window.inner_size();
+            let physical_size = window.surface_size();
 
             Viewport::with_physical_size(
                 Size::new(physical_size.width, physical_size.height),
@@ -102,6 +103,11 @@ where
         self.viewport.scale_factor()
     }
 
+    pub fn set_logical_cursor_pos(&mut self, pos: LogicalPosition<f64>) {
+        let physical = pos.to_physical(self.scale_factor());
+        self.cursor_position = Some(physical);
+    }
+
     /// Returns the current cursor position of the [`State`].
     pub fn cursor(&self) -> mouse::Cursor {
         self.cursor_position
@@ -135,15 +141,32 @@ where
         self.appearance.text_color
     }
 
+    /// Returns the current icon [`Color`] of the [`State`].
+    pub fn icon_color(&self) -> Color {
+        self.appearance.icon_color
+    }
+
+    /// Update the scale factor
+    pub(crate) fn update_scale_factor(&mut self, new_scale_factor: f64) {
+        let size = self.viewport.physical_size();
+
+        self.viewport = Viewport::with_physical_size(
+            size,
+            new_scale_factor * self.scale_factor,
+        );
+
+        self.viewport_version = self.viewport_version.wrapping_add(1);
+    }
+
     /// Processes the provided window event and updates the [`State`] accordingly.
     pub fn update(
         &mut self,
-        window: &Window,
+        window: &dyn Window,
         event: &WindowEvent,
         _debug: &mut crate::runtime::Debug,
     ) {
         match event {
-            WindowEvent::Resized(new_size) => {
+            WindowEvent::SurfaceResized(new_size) => {
                 let size = Size::new(new_size.width, new_size.height);
 
                 self.viewport = Viewport::with_physical_size(
@@ -157,14 +180,7 @@ where
                 scale_factor: new_scale_factor,
                 ..
             } => {
-                let size = self.viewport.physical_size();
-
-                self.viewport = Viewport::with_physical_size(
-                    size,
-                    new_scale_factor * self.scale_factor,
-                );
-
-                self.viewport_version = self.viewport_version.wrapping_add(1);
+                self.update_scale_factor(*new_scale_factor);
             }
             WindowEvent::CursorMoved { position, .. }
             | WindowEvent::Touch(Touch {
@@ -204,7 +220,7 @@ where
         &mut self,
         application: &P,
         window_id: window::Id,
-        window: &Window,
+        window: &dyn Window,
     ) {
         // Update window title
         let new_title = application.title(window_id);
@@ -216,13 +232,19 @@ where
 
         // Update scale factor and size
         let new_scale_factor = application.scale_factor(window_id);
-        let new_size = window.inner_size();
+        let mut new_size = window.surface_size();
         let current_size = self.viewport.physical_size();
-
         if self.scale_factor != new_scale_factor
             || (current_size.width, current_size.height)
                 != (new_size.width, new_size.height)
+                && !(new_size.width == 0 && new_size.height == 0)
         {
+            if new_size.width == 0 {
+                new_size.width = current_size.width;
+            }
+            if new_size.height == 0 {
+                new_size.height = current_size.height;
+            }
             self.viewport = Viewport::with_physical_size(
                 Size::new(new_size.width, new_size.height),
                 window.scale_factor() * new_scale_factor,
