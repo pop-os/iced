@@ -1,12 +1,14 @@
+use iced::widget::scrollable::{self, Properties, Scrollbar, Scroller};
 use iced::widget::{
     button, column, container, horizontal_space, progress_bar, radio, row,
     scrollable, slider, text, vertical_space,
 };
 use iced::{Border, Center, Color, Element, Fill, Task, Theme};
+use iced_core::id::Id;
 
 use once_cell::sync::Lazy;
 
-static SCROLLABLE_ID: Lazy<scrollable::Id> = Lazy::new(scrollable::Id::unique);
+static SCROLLABLE_ID: Lazy<Id> = Lazy::new(|| Id::new("scrollable"));
 
 pub fn main() -> iced::Result {
     iced::application(

@@ -35,12 +35,13 @@ where
     pub fn insert(
         &mut self,
         id: Id,
-        window: Arc<winit::window::Window>,
+        window: Arc<dyn winit::window::Window>,
         application: &P,
         compositor: &mut C,
         exit_on_close_request: bool,
+        resize_border: u32,
     ) -> &mut Window<P, C> {
-        let state = State::new(application, id, &window);
+        let state = State::new(application, id, window.as_ref());
         let viewport_version = state.viewport_version();
         let physical_size = state.physical_size();
         let surface = compositor.create_surface(
@@ -52,6 +53,11 @@ where
 
         let _ = self.aliases.insert(window.id(), id);
 
+        let drag_resize_window_func = super::drag_resize::event_func(
+            window.as_ref(),
+            resize_border as f64 * window.scale_factor(),
+        );
+
         let _ = self.entries.insert(
             id,
             Window {
@@ -59,9 +65,12 @@ where
                 state,
                 viewport_version,
                 exit_on_close_request,
+                drag_resize_window_func,
                 surface,
                 renderer,
                 mouse_interaction: mouse::Interaction::None,
+                prev_dnd_destination_rectangles_count: 0,
+                resize_enabled: false,
             },
         );
 
@@ -90,6 +99,10 @@ where
 
     pub fn get_mut(&mut self, id: Id) -> Option<&mut Window<P, C>> {
         self.entries.get_mut(&id)
+    }
+
+    pub fn ids(&self) -> impl Iterator<Item = Id> + '_ {
+        self.entries.keys().cloned()
     }
 
     pub fn get_mut_alias(
@@ -124,6 +137,12 @@ where
     }
 }
 
+pub(crate) enum Frame {
+    None,
+    Waiting,
+    Ready,
+}
+
 #[allow(missing_debug_implementations)]
 pub struct Window<P, C>
 where
@@ -131,13 +150,23 @@ where
     C: Compositor<Renderer = P::Renderer>,
     P::Theme: DefaultStyle,
 {
-    pub raw: Arc<winit::window::Window>,
-    pub state: State<P>,
+    pub raw: Arc<dyn winit::window::Window>,
+    pub(crate) state: State<P>,
     pub viewport_version: u64,
     pub exit_on_close_request: bool,
+    pub drag_resize_window_func: Option<
+        Box<
+            dyn FnMut(
+                &dyn winit::window::Window,
+                &winit::event::WindowEvent,
+            ) -> bool,
+        >,
+    >,
+    pub prev_dnd_destination_rectangles_count: usize,
     pub mouse_interaction: mouse::Interaction,
     pub surface: C::Surface,
     pub renderer: P::Renderer,
+    pub resize_enabled: bool,
 }
 
 impl<P, C> Window<P, C>
@@ -158,8 +187,12 @@ where
     }
 
     pub fn size(&self) -> Size {
-        let size = self.raw.inner_size().to_logical(self.raw.scale_factor());
+        let size = self.raw.surface_size().to_logical(self.raw.scale_factor());
 
         Size::new(size.width, size.height)
+    }
+
+    pub fn request_redraw(&mut self) {
+        self.raw.request_redraw();
     }
 }

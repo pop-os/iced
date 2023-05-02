@@ -71,7 +71,7 @@ impl editor::Editor for Editor {
         buffer.set_text(
             font_system.raw(),
             text,
-            cosmic_text::Attrs::new(),
+            &cosmic_text::Attrs::new(),
             cosmic_text::Shaping::Advanced,
         );
 
@@ -166,10 +166,8 @@ impl editor::Editor for Editor {
                     .get(cursor.line)
                     .expect("Cursor line should be present");
 
-                let layout = line
-                    .layout_opt()
-                    .as_ref()
-                    .expect("Line layout should be cached");
+                let layout =
+                    line.layout_opt().expect("Line layout should be cached");
 
                 let mut lines = layout.iter().enumerate();
 
@@ -467,7 +465,7 @@ impl editor::Editor for Editor {
 
             for line in buffer.lines.iter_mut() {
                 let _ = line.set_attrs_list(cosmic_text::AttrsList::new(
-                    text::to_attributes(new_font),
+                    &text::to_attributes(new_font),
                 ));
             }
 
@@ -575,7 +573,7 @@ impl editor::Editor for Editor {
         for line in &mut buffer_mut_from_editor(&mut internal.editor).lines
             [current_line..=last_visible_line]
         {
-            let mut list = cosmic_text::AttrsList::new(attributes);
+            let mut list = cosmic_text::AttrsList::new(&attributes);
 
             for (range, highlight) in highlighter.highlight_line(line.text()) {
                 let format = format_highlight(&highlight);
@@ -583,12 +581,12 @@ impl editor::Editor for Editor {
                 if format.color.is_some() || format.font.is_some() {
                     list.add_span(
                         range,
-                        cosmic_text::Attrs {
+                        &cosmic_text::Attrs {
                             color_opt: format.color.map(text::to_color),
                             ..if let Some(font) = format.font {
                                 text::to_attributes(font)
                             } else {
-                                attributes
+                                attributes.clone() // NOTE(POP-OS): Added clone due to attrslist now requiring a ref
                             }
                         },
                     );
@@ -674,11 +672,7 @@ fn highlight_line(
     from: usize,
     to: usize,
 ) -> impl Iterator<Item = (f32, f32)> + '_ {
-    let layout = line
-        .layout_opt()
-        .as_ref()
-        .map(Vec::as_slice)
-        .unwrap_or_default();
+    let layout = line.layout_opt().map(Vec::as_slice).unwrap_or_default();
 
     layout.iter().map(move |visual_line| {
         let start = visual_line
@@ -729,9 +723,7 @@ fn visual_lines_offset(line: usize, buffer: &cosmic_text::Buffer) -> i32 {
     let visual_lines_offset: usize = buffer.lines[start..]
         .iter()
         .take(end - start)
-        .map(|line| {
-            line.layout_opt().as_ref().map(Vec::len).unwrap_or_default()
-        })
+        .map(|line| line.layout_opt().map(Vec::len).unwrap_or_default())
         .sum();
 
     visual_lines_offset as i32 * if scroll.line < line { 1 } else { -1 }

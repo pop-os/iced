@@ -1,8 +1,8 @@
 //! Draw paragraphs.
 use crate::core;
 use crate::core::alignment;
-use crate::core::text::{Hit, Shaping, Span, Text, Wrapping};
-use crate::core::{Font, Point, Rectangle, Size};
+use crate::core::text::{Hit, LineHeight, Shaping, Span, Text, Wrapping};
+use crate::core::{Font, Pixels, Point, Rectangle, Size};
 use crate::text;
 
 use std::fmt;
@@ -80,10 +80,12 @@ impl core::text::Paragraph for Paragraph {
             Some(text.bounds.height),
         );
 
+        buffer.set_wrap(font_system.raw(), text::to_wrap(text.wrapping));
+
         buffer.set_text(
             font_system.raw(),
             text.content,
-            text::to_attributes(text.font),
+            &text::to_attributes(text.font),
             text::to_shaping(text.shaping),
         );
 
@@ -150,8 +152,13 @@ impl core::text::Paragraph for Paragraph {
 
                 (span.text.as_ref(), attrs.metadata(i))
             }),
-            text::to_attributes(text.font),
+            &text::to_attributes(text.font),
             text::to_shaping(text.shaping),
+            Some(match text.horizontal_alignment {
+                alignment::Horizontal::Left => cosmic_text::Align::Left,
+                alignment::Horizontal::Center => cosmic_text::Align::Center,
+                alignment::Horizontal::Right => cosmic_text::Align::Right,
+            }),
         );
 
         let min_bounds = text::measure(&buffer);

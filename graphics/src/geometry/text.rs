@@ -44,7 +44,7 @@ impl Text {
         let mut buffer = cosmic_text::BufferLine::new(
             &self.content,
             cosmic_text::LineEnding::default(),
-            cosmic_text::AttrsList::new(text::to_attributes(self.font)),
+            cosmic_text::AttrsList::new(&text::to_attributes(self.font)),
             text::to_shaping(self.shaping),
         );
 
@@ -54,7 +54,7 @@ impl Text {
             None,
             cosmic_text::Wrap::None,
             None,
-            4,
+            8,
         );
 
         let translation_x = match self.horizontal_alignment {
@@ -174,12 +174,12 @@ impl Default for Text {
             content: String::new(),
             position: Point::ORIGIN,
             color: Color::BLACK,
-            size: Pixels(16.0),
-            line_height: LineHeight::Relative(1.2),
+            size: Pixels(14.0),
+            line_height: LineHeight::default(),
             font: Font::default(),
             horizontal_alignment: alignment::Horizontal::Left,
             vertical_alignment: alignment::Vertical::Top,
-            shaping: Shaping::Basic,
+            shaping: Shaping::Advanced,
         }
     }
 }

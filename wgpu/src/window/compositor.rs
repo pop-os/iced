@@ -7,6 +7,12 @@ use crate::graphics::{self, Viewport};
 use crate::settings::{self, Settings};
 use crate::{Engine, Renderer};
 
+#[cfg(all(unix, not(target_os = "macos")))]
+use super::wayland::get_wayland_device_ids;
+#[cfg(all(unix, not(target_os = "macos")))]
+use super::x11::get_x11_device_ids;
+use std::future::Future;
+
 /// A window graphics backend for iced powered by `wgpu`.
 #[allow(missing_debug_implementations)]
 pub struct Compositor {
@@ -54,6 +60,26 @@ impl Compositor {
         settings: Settings,
         compatible_window: Option<W>,
     ) -> Result<Self, Error> {
+        #[cfg(all(unix, not(target_os = "macos")))]
+        let ids = compatible_window.as_ref().and_then(|window| {
+            get_wayland_device_ids(window)
+                .or_else(|| get_x11_device_ids(window))
+        });
+
+        // HACK:
+        //  1. If we specifically didn't select an nvidia gpu
+        //  2. and nobody set an adapter name,
+        //  3. and the user didn't request the high power pref
+        // => don't load the nvidia icd, as it might power on the gpu in hybrid setups causing severe delays
+        #[cfg(all(unix, not(target_os = "macos")))]
+        if !matches!(ids, Some((0x10de, _)))
+            && std::env::var_os("WGPU_ADAPTER_NAME").is_none()
+            && std::env::var("WGPU_POWER_PREF").as_deref() != Ok("high")
+        {
+            std::env::set_var("VK_LOADER_DRIVERS_DISABLE", "nvidia*");
+        }
+
+        // only load the instance after setting environment variables, this initializes the vulkan loader
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: settings.backends,
             flags: if cfg!(feature = "strict-assertions") {
@@ -65,6 +91,10 @@ impl Compositor {
         });
 
         log::info!("{settings:#?}");
+
+        let available_adapters = instance.enumerate_adapters(settings.backends);
+
+        std::env::remove_var("VK_LOADER_DRIVERS_DISABLE");
 
         #[cfg(not(target_arch = "wasm32"))]
         if log::max_level() >= log::LevelFilter::Info {
@@ -95,7 +125,63 @@ impl Compositor {
             .request_adapter(&adapter_options)
             .await
             .ok_or(Error::NoAdapterFound(format!("{:?}", adapter_options)))?;
+        // start pop
+        // let mut adapter = None;
+        // #[cfg_attr(not(unix), allow(dead_code))]
+        // if std::env::var_os("WGPU_ADAPTER_NAME").is_none() {
+        //     #[cfg(all(unix, not(target_os = "macos")))]
+        //     if let Some((vendor_id, device_id)) = ids {
+        //         adapter = available_adapters
+        //             .into_iter()
+        //             .filter(|adapter| {
+        //                 let info = adapter.get_info();
+        //                 info.device == device_id as u32
+        //                     && info.vendor == vendor_id as u32
+        //             })
+        //             .find(|adapter| {
+        //                 if let Some(surface) = compatible_surface.as_ref() {
+        //                     adapter.is_surface_supported(surface)
+        //                 } else {
+        //                     true
+        //                 }
+        //             });
+        //     }
+        // } else if let Ok(name) = std::env::var("WGPU_ADAPTER_NAME") {
+        //     adapter = available_adapters
+        //         .into_iter()
+        //         .filter(|adapter| {
+        //             let info = adapter.get_info();
+        //             info.name == name
+        //         })
+        //         .find(|adapter| {
+        //             if let Some(surface) = compatible_surface.as_ref() {
+        //                 adapter.is_surface_supported(surface)
+        //             } else {
+        //                 true
+        //             }
+        //         });
+        // }
 
+        // let adapter =
+        //     match adapter {
+        //         Some(adapter) => adapter,
+        //         None => instance
+        //             .request_adapter(&wgpu::RequestAdapterOptions {
+        //                 power_preference:
+        //                     wgpu::util::power_preference_from_env().unwrap_or(
+        //                         if settings.antialiasing.is_none() {
+        //                             wgpu::PowerPreference::LowPower
+        //                         } else {
+        //                             wgpu::PowerPreference::HighPerformance
+        //                         },
+        //                     ),
+        //                 compatible_surface: compatible_surface.as_ref(),
+        //                 force_fallback_adapter: false,
+        //             })
+        //             .await?,
+        //     };
+        // end pop
+        // TODO(POP): Merge conflict ensued with above stuff, is your code still needed?
         log::info!("Selected: {:#?}", adapter.get_info());
 
         let (format, alpha_mode) = compatible_surface
@@ -332,6 +418,21 @@ impl graphics::Compositor for Compositor {
         width: u32,
         height: u32,
     ) {
+        let caps = surface.get_capabilities(&self.adapter);
+        let alpha_mode = if caps
+            .alpha_modes
+            .contains(&wgpu::CompositeAlphaMode::PostMultiplied)
+        {
+            wgpu::CompositeAlphaMode::PostMultiplied
+        } else if caps
+            .alpha_modes
+            .contains(&wgpu::CompositeAlphaMode::PreMultiplied)
+        {
+            wgpu::CompositeAlphaMode::PreMultiplied
+        } else {
+            wgpu::CompositeAlphaMode::Auto
+        };
+
         surface.configure(
             &self.device,
             &wgpu::SurfaceConfiguration {
@@ -340,7 +441,7 @@ impl graphics::Compositor for Compositor {
                 present_mode: self.settings.present_mode,
                 width,
                 height,
-                alpha_mode: self.alpha_mode,
+                alpha_mode,
                 view_formats: vec![],
                 desired_maximum_frame_latency: 1,
             },

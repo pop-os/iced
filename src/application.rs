@@ -31,14 +31,16 @@
 //! }
 //! ```
 use crate::program::{self, Program};
+#[cfg(not(feature = "winit"))]
+use crate::runtime::{Appearance, DefaultStyle};
+#[cfg(feature = "winit")]
+pub use crate::shell::program::{Appearance, DefaultStyle};
 use crate::window;
 use crate::{
     Element, Executor, Font, Result, Settings, Size, Subscription, Task,
 };
 
 use std::borrow::Cow;
-
-pub use crate::shell::program::{Appearance, DefaultStyle};
 
 /// Creates an iced [`Application`] given its title, update, and view logic.
 ///
@@ -152,6 +154,7 @@ pub struct Application<P: Program> {
 }
 
 impl<P: Program> Application<P> {
+    #[cfg(any(feature = "winit", feature = "wayland"))]
     /// Runs the [`Application`].
     ///
     /// The state of the [`Application`] must implement [`Default`].
@@ -167,6 +170,7 @@ impl<P: Program> Application<P> {
         self.raw.run(self.settings, Some(self.window))
     }
 
+    #[cfg(any(feature = "winit", feature = "wayland"))]
     /// Runs the [`Application`] with a closure that creates the initial state.
     pub fn run_with<I>(self, initialize: I) -> Result
     where
