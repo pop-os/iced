@@ -22,12 +22,14 @@ all-features = true
 maintenance = { status = "actively-developed" }
 
 [features]
-default = ["wgpu", "tiny-skia", "crisp", "web-colors", "thread-pool", "linux-theme-detection", "x11", "wayland"]
-# Enables the `wgpu` GPU-accelerated renderer with all its default features (Vulkan, Metal, DX12, OpenGL, and WebGPU)
 wgpu = ["wgpu-bare", "iced_renderer/wgpu"]
 # Enables the `wgpu` GPU-accelerated renderer with the minimum required features (no backends!)
 wgpu-bare = ["iced_renderer/wgpu-bare", "iced_widget/wgpu"]
 # Enables the `tiny-skia` software renderer
+
+
+default = ["tiny-skia", "x11", "wayland", "tokio"]
+# Enable the `tiny-skia` software renderer backend
 tiny-skia = ["iced_renderer/tiny-skia"]
 # Enables the `image` widget
 image = ["image-without-codecs", "image/default"]
@@ -39,11 +41,11 @@ svg = ["iced_widget/svg"]
 canvas = ["iced_widget/canvas"]
 # Enables the `qr_code` widget
 qr_code = ["iced_widget/qr_code"]
-# Enables the `markdown` widget
-markdown = ["iced_widget/markdown"]
-# Enables lazy widgets
-lazy = ["iced_widget/lazy"]
+
+
 # Enables debug metrics in native platforms (press F12)
+lazy = ["iced_widget/lazy"]                       # Enables lazy widgets
+markdown = ["iced_widget/markdown"]               # Enables the `markdown` widget
 debug = ["iced_winit/debug", "dep:iced_devtools"]
 # Enables time-travel debugging (very experimental!)
 time-travel = ["debug", "iced_devtools/time-travel"]
@@ -51,10 +53,15 @@ time-travel = ["debug", "iced_devtools/time-travel"]
 hot = ["debug", "iced_debug/hot"]
 # Enables the tester developer tool for recording and playing tests (press F12)
 tester = ["dep:iced_tester"]
+
+
 # Enables the `thread-pool` futures executor as the `executor::Default` on native platforms
 thread-pool = ["iced_futures/thread-pool"]
+
 # Enables `tokio` as the `executor::Default` on native platforms
-tokio = ["iced_futures/tokio"]
+tokio = ["iced_futures/tokio", "iced_accessibility?/tokio"]
+# Enables `async-std` as the `executor::Default` on native platforms
+async-std = ["iced_accessibility?/async-io"]
 # Enables `smol` as the `executor::Default` on native platforms
 smol = ["iced_futures/smol"]
 # Enables querying system information
@@ -62,18 +69,30 @@ sysinfo = ["iced_winit/sysinfo"]
 # Enables broken "sRGB linear" blending to reproduce color management of the Web
 web-colors = ["iced_renderer/web-colors"]
 # Enables pixel snapping for crisp edges by default (can cause jitter!)
+
+
+# Enables the `widget::selector` module
 crisp = ["iced_core/crisp", "iced_widget/crisp"]
 # Enables the WebGL backend
+
+
 webgl = ["iced_renderer/webgl"]
 # Enables syntax highlighting
 highlighter = ["iced_highlighter", "iced_widget/highlighter"]
-# Enables the `widget::selector` module
 selector = ["iced_runtime/selector"]
-# Enables the advanced module
-advanced = ["iced_core/advanced", "iced_widget/advanced"]
-# Embeds Fira Sans into the final application; useful for testing and Wasm builds
-fira-sans = ["iced_renderer/fira-sans"]
+
+
 # Enables basic text shaping by default
+fira-sans = [
+    "iced_renderer/fira-sans",
+] # Embeds Fira Sans into the final application; useful for testing and Wasm builds
+advanced = [
+    "iced_core/advanced",
+    "iced_widget/advanced",
+] # Enables the advanced module
+multi-window = [
+    "iced_winit?/multi-window",
+] # Enables experimental multi-window support.
 basic-shaping = ["iced_core/basic-shaping"]
 # Enables advanced text shaping by default
 advanced-shaping = ["iced_core/advanced-shaping"]
@@ -83,32 +102,48 @@ strict-assertions = ["iced_renderer/strict-assertions"]
 unconditional-rendering = ["iced_winit/unconditional-rendering"]
 # Enables support for the `sipper` library
 sipper = ["iced_runtime/sipper"]
+
+
 # Enables Linux system theme detection
 linux-theme-detection = ["iced_winit/linux-theme-detection"]
 # Enables the Unix X11 backend
 x11 = ["iced_renderer/x11", "iced_winit/x11"]
-# Enables the Unix Wayland backend
-wayland = ["iced_renderer/wayland", "iced_winit/wayland"]
-
+# Enables the `accesskit` accessibility library
+a11y = [
+    "iced_accessibility",
+    "iced_core/a11y",
+    "iced_widget/a11y",
+    "iced_winit?/a11y",
+]
+# Enables the winit shell. Conflicts with `wayland` and `glutin`.
+winit = ["iced_winit", "iced_accessibility?/accesskit_winit"]
+# Enables the sctk shell. 
+wayland = ["iced_widget/wayland", "iced_core/wayland", "iced_winit/wayland"]
 [dependencies]
+
+
+iced_devtools.workspace = true
 iced_debug.workspace = true
+
+iced_program.workspace = true
 iced_core.workspace = true
 iced_futures.workspace = true
 iced_renderer.workspace = true
 iced_runtime.workspace = true
 iced_widget.workspace = true
 iced_winit.workspace = true
-
-iced_devtools.workspace = true
 iced_devtools.optional = true
-
 iced_tester.workspace = true
 iced_tester.optional = true
-
+iced_winit.optional = true
 iced_highlighter.workspace = true
 iced_highlighter.optional = true
-
+iced_accessibility.workspace = true
+iced_accessibility.optional = true
 thiserror.workspace = true
+window_clipboard.workspace = true
+mime.workspace = true
+dnd.workspace = true
 
 image.workspace = true
 image.optional = true
@@ -152,7 +187,9 @@ members = [
     "widget",
     "winit",
     "examples/*",
+    "accessibility",
 ]
+exclude = ["examples/integration"]
 
 [workspace.package]
 version = "0.14.0"
@@ -184,16 +221,28 @@ iced_tiny_skia = { version = "0.14.0", path = "tiny_skia", default-features = fa
 iced_wgpu = { version = "0.14.0", path = "wgpu", default-features = false }
 iced_widget = { version = "0.14.0", path = "widget" }
 iced_winit = { version = "0.14.0", path = "winit", default-features = false }
-
 bincode = "1.3"
-bitflags = "2.0"
+cargo-hot = { version = "0.1", package = "cargo-hot-protocol" }
+futures = { version = "0.3", default-features = false, features = [
+    "std",
+    "async-await",
+] }
+glam = "0.25"
+iced_accessibility = { version = "0.1", path = "accessibility" }
+
+async-std = "1.0"
+
+
+bitflags = "2.5"
 bytemuck = { version = "1.0", features = ["derive"] }
 bytes = "1.6"
-cargo-hot = { version = "0.1", package = "cargo-hot-protocol" }
-cosmic-text = "0.15"
-cryoglyph = "0.1"
-futures = { version = "0.3", default-features = false, features = ["std", "async-await"] }
-glam = "0.25"
+cosmic-text = { git = "https://github.com/pop-os/cosmic-text.git" }
+# cosmic-text = "0.10"
+dark-light = "1.0"
+cryoglyph = { package = "cryoglyph", git = "https://github.com/pop-os/glyphon.git", branch = "iced-0.14" }
+resvg = "0.45"
+# glyphon = { package = "iced_glyphon", path = "../../../glyphon" }
+web-sys = "0.3.69"
 guillotiere = "0.6"
 half = "2.2"
 image = { version = "0.25", default-features = false }
@@ -211,7 +260,6 @@ png = "0.18"
 pulldown-cmark = "0.12"
 qrcode = { version = "0.13", default-features = false }
 raw-window-handle = "0.6"
-resvg = "0.45"
 rfd = "0.16"
 rustc-hash = "2.0"
 semver = "1.0"
@@ -219,28 +267,56 @@ serde = "1.0"
 sha2 = "0.10"
 sipper = "0.1"
 smol = "2"
-smol_str = "0.2"
-softbuffer = { version = "0.4", default-features = false }
+smol_str = "0.3"
 sysinfo = "0.33"
 thiserror = "2"
-tiny-skia = { version = "0.11", default-features = false, features = ["std", "simd"] }
+tiny-skia = { version = "0.11", default-features = false, features = [
+    "std",
+    "simd",
+] }
+sctk = { package = "smithay-client-toolkit", version = "0.19.1" }
+softbuffer = { git = "https://github.com/pop-os/softbuffer", tag = "cosmic-4.0" }
+syntect = "5.2"
 tokio = "1.0"
 tracing = "0.1"
-two-face = { version = "0.4", default-features = false, features = ["syntect-default-fancy"] }
+two-face = { version = "0.4", default-features = false, features = [
+    "syntect-default-fancy",
+] }
 unicode-segmentation = "1.0"
 url = "2.5"
 wasm-bindgen-futures = "0.4"
 wasmtimer = "0.4.2"
-web-sys = "0.3.69"
 web-time = "1.1"
-wgpu = { version = "27.0", default-features = false, features = ["std", "wgsl"] }
-window_clipboard = { version = "0.5", default-features = false }
-winit = { version = "0.30", default-features = false, features = ["rwh_06"] }
+wgpu = { version = "27.0", default-features = false, features = [
+    "std",
+    "wgsl",
+] }
+wayland-protocols = { version = "0.32.1", features = ["staging"] }
+# web-time = "1.1"
+
+
+# wgpu = "0.19"
+# Newer wgpu commit that fixes Vulkan backend on Nvidia
+winapi = "0.3"
+# window_clipboard = "0.4.1"
+
+window_clipboard = { git = "https://github.com/pop-os/window_clipboard.git", tag = "pop-0.13-2" }
+dnd = { git = "https://github.com/pop-os/window_clipboard.git", tag = "pop-0.13-2" }
+mime = { git = "https://github.com/pop-os/window_clipboard.git", tag = "pop-0.13-2" }
+# window_clipboard = { path = "../../window_clipboard", tag = "pop-0.13-2" }
+# dnd = { path = "../../window_clipboard/dnd", tag = "pop-0.13" }
+# mime = { path = "../../window_clipboard/mime", tag = "pop-0.13" }
+# winit = { git = "https://github.com/pop-os/winit.git", tag = "iced-xdg-surface-0.13" }
+winit = { path = "../../winit/winit" }
+winit-core = { path = "../../winit/winit-core" }
+cursor-icon = "1.1.0"
+# winit = { git = "https://github.com/iced-rs/winit.git", rev = "254d6b3420ce4e674f516f7a2bd440665e05484d" }
+# winit = { git = "https://github.com/rust-windowing/winit.git", rev = "241b7a80bba96c91fa3901729cd5dec66abb9be4" }
+# winit = { path = "../../../winit" }
+
 
 [workspace.lints.rust]
 rust_2018_idioms = { level = "deny", priority = -1 }
-missing_docs = "deny"
-unsafe_code = "deny"
 unused_results = "deny"
 
 [workspace.lints.clippy]
@@ -263,3 +339,7 @@ useless_conversion = "deny"
 
 [workspace.lints.rustdoc]
 broken_intra_doc_links = "forbid"
+
+# [patch."https://github.com/rust-windowing/winit.git"]
+# winit = { git = "https://github.com/rust-windowing/winit.git", rev = "241b7a80bba96c91fa3901729cd5dec66abb9be4" }
+# winit = { path = "../../../winit" }

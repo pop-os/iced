@@ -293,7 +293,7 @@ impl State {
                             image.opacity,
                             image.snap,
                             atlas_entry,
-                            match image.filter_method {
+                            match handle.filter_method {
                                 crate::core::image::FilterMethod::Nearest => {
                                     &mut self.nearest_instances
                                 }

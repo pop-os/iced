@@ -276,3 +276,54 @@ impl std::ops::Mul<f32> for Radius {
         }
     }
 }
+
+impl From<[f32; 4]> for Radius {
+    /// [
+    ///     radi.top_left,
+    ///     radi.top_right,
+    ///     radi.bottom_right,
+    ///     radi.bottom_left,
+    /// ]
+    fn from(value: [f32; 4]) -> Self {
+        Self {
+            top_left: value[0],
+            top_right: value[1],
+            bottom_right: value[2],
+            bottom_left: value[3],
+        }
+    }
+}
+
+impl From<[u8; 4]> for Radius {
+    /// [
+    ///     radi.top_left,
+    ///     radi.top_right,
+    ///     radi.bottom_right,
+    ///     radi.bottom_left,
+    /// ]
+    fn from(value: [u8; 4]) -> Self {
+        Self {
+            top_left: f32::from(value[0]),
+            top_right: f32::from(value[1]),
+            bottom_right: f32::from(value[2]),
+            bottom_left: f32::from(value[3]),
+        }
+    }
+}
+
+impl From<[u16; 4]> for Radius {
+    /// [
+    ///     radi.top_left,
+    ///     radi.top_right,
+    ///     radi.bottom_right,
+    ///     radi.bottom_left,
+    /// ]
+    fn from(value: [u16; 4]) -> Self {
+        Self {
+            top_left: f32::from(value[0]),
+            top_right: f32::from(value[1]),
+            bottom_right: f32::from(value[2]),
+            bottom_left: f32::from(value[3]),
+        }
+    }
+}

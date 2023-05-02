@@ -166,7 +166,9 @@ mod toast {
     use iced::advanced::layout::{self, Layout};
     use iced::advanced::overlay;
     use iced::advanced::renderer;
-    use iced::advanced::widget::{self, Operation, Tree};
+    use iced::advanced::widget::{
+        self, Operation, OperationOutputWrapper, Tree,
+    };
     use iced::advanced::{Clipboard, Shell, Widget};
     use iced::mouse;
     use iced::time::{self, Duration, Instant};
@@ -319,7 +321,7 @@ mod toast {
                 .collect()
         }
 
-        fn diff(&self, tree: &mut Tree) {
+        fn diff(&mut self, tree: &mut Tree) {
             let instants = tree.state.downcast_mut::<Vec<Option<Instant>>>();
 
             // Invalidating removed instants to None allows us to remove
@@ -341,8 +343,8 @@ mod toast {
             }
 
             tree.diff_children(
-                &std::iter::once(&self.content)
-                    .chain(self.toasts.iter())
+                &mut std::iter::once(&mut self.content)
+                    .chain(self.toasts.iter_mut())
                     .collect::<Vec<_>>(),
             );
         }

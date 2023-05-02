@@ -323,9 +323,18 @@ fn to_align(alignment: Alignment) -> Option<cosmic_text::Align> {
 
 /// Converts some [`Shaping`] strategy to a [`cosmic_text::Shaping`] strategy.
 pub fn to_shaping(shaping: Shaping, text: &str) -> cosmic_text::Shaping {
+    to_shaping_ascii(shaping, text.is_ascii())
+}
+
+#[inline]
+/// Converts some [`Shaping`] strategy to a [`cosmic_text::Shaping`] strategy.
+pub fn to_shaping_ascii(
+    shaping: Shaping,
+    is_ascii: bool,
+) -> cosmic_text::Shaping {
     match shaping {
         Shaping::Auto => {
-            if text.is_ascii() {
+            if is_ascii {
                 cosmic_text::Shaping::Basic
             } else {
                 cosmic_text::Shaping::Advanced

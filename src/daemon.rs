@@ -1,20 +1,24 @@
 //! Create and run daemons that run in the background.
 use crate::application;
 use crate::message;
-use crate::program::{self, Program};
+pub use crate::program::{self, Program};
+#[cfg(feature = "winit")]
 use crate::shell;
 use crate::theme;
 use crate::window;
 use crate::{
-    Element, Executor, Font, Preset, Result, Settings, Subscription, Task,
-    Theme,
+    Element, Executor, Font, Preset, Result, Settings, Subscription, Theme,
+    task::Task,
 };
 
 use iced_debug as debug;
 
+#[cfg(not(any(feature = "winit", feature = "wayland")))]
+use crate::runtime::{Appearance, DefaultStyle};
+
 use std::borrow::Cow;
 
-/// Creates an iced [`Daemon`] given its boot, update, and view logic.
+/// Creates an iced [`Daemon`] given its title, update, and view logic.
 ///
 /// A [`Daemon`] will not open a window by default, but will run silently
 /// instead until a [`Task`] from [`window::open`] is returned by its update logic.
@@ -77,23 +81,31 @@ where
             None
         }
 
-        fn boot(&self) -> (Self::State, Task<Self::Message>) {
+        fn boot(
+            &self,
+        ) -> (<Self as Program>::State, Task<<Self as Program>::Message>)
+        {
             self.boot.boot()
         }
 
         fn update(
             &self,
-            state: &mut Self::State,
-            message: Self::Message,
-        ) -> Task<Self::Message> {
+            state: &mut <Self as Program>::State,
+            message: <Self as Program>::Message,
+        ) -> Task<<Self as Program>::Message> {
             self.update.update(state, message)
         }
 
         fn view<'a>(
             &self,
-            state: &'a Self::State,
+            state: &'a <Self as Program>::State,
             window: window::Id,
-        ) -> Element<'a, Self::Message, Self::Theme, Self::Renderer> {
+        ) -> Element<
+            'a,
+            <Self as Program>::Message,
+            <Self as Program>::Theme,
+            <Self as Program>::Renderer,
+        > {
             self.view.view(state, window)
         }
     }
@@ -128,6 +140,7 @@ pub struct Daemon<P: Program> {
 }
 
 impl<P: Program> Daemon<P> {
+    #[cfg(feature = "winit")]
     /// Runs the [`Daemon`].
     pub fn run(self) -> Result
     where
@@ -249,7 +262,7 @@ impl<P: Program> Daemon<P> {
     /// Sets the scale factor of the [`Daemon`].
     pub fn scale_factor(
         self,
-        f: impl Fn(&P::State, window::Id) -> f32,
+        f: impl Fn(&P::State, window::Id) -> f64,
     ) -> Daemon<
         impl Program<State = P::State, Message = P::Message, Theme = P::Theme>,
     > {
@@ -311,51 +324,73 @@ impl<P: Program> Program for Daemon<P> {
         None
     }
 
-    fn boot(&self) -> (Self::State, Task<Self::Message>) {
+    fn boot(
+        &self,
+    ) -> (<Self as Program>::State, Task<<Self as Program>::Message>) {
         self.raw.boot()
     }
 
     fn update(
         &self,
-        state: &mut Self::State,
-        message: Self::Message,
-    ) -> Task<Self::Message> {
+        state: &mut <Self as Program>::State,
+        message: <Self as Program>::Message,
+    ) -> Task<<Self as Program>::Message> {
         debug::hot(|| self.raw.update(state, message))
     }
 
     fn view<'a>(
         &self,
-        state: &'a Self::State,
+        state: &'a <Self as Program>::State,
         window: window::Id,
-    ) -> Element<'a, Self::Message, Self::Theme, Self::Renderer> {
+    ) -> Element<
+        'a,
+        <Self as Program>::Message,
+        <Self as Program>::Theme,
+        <Self as Program>::Renderer,
+    > {
         debug::hot(|| self.raw.view(state, window))
     }
 
-    fn title(&self, state: &Self::State, window: window::Id) -> String {
+    fn title(
+        &self,
+        state: &<Self as Program>::State,
+        window: window::Id,
+    ) -> String {
         debug::hot(|| self.raw.title(state, window))
     }
 
-    fn subscription(&self, state: &Self::State) -> Subscription<Self::Message> {
+    fn subscription(
+        &self,
+        state: &<Self as Program>::State,
+    ) -> Subscription<<Self as Program>::Message> {
         debug::hot(|| self.raw.subscription(state))
     }
 
     fn theme(
         &self,
-        state: &Self::State,
+        state: &<Self as Program>::State,
         window: iced_core::window::Id,
-    ) -> Option<Self::Theme> {
+    ) -> Option<<Self as Program>::Theme> {
         debug::hot(|| self.raw.theme(state, window))
     }
 
-    fn style(&self, state: &Self::State, theme: &Self::Theme) -> theme::Style {
+    fn style(
+        &self,
+        state: &<Self as Program>::State,
+        theme: &<Self as Program>::Theme,
+    ) -> theme::Style {
         debug::hot(|| self.raw.style(state, theme))
     }
 
-    fn scale_factor(&self, state: &Self::State, window: window::Id) -> f32 {
+    fn scale_factor(
+        &self,
+        state: &<Self as Program>::State,
+        window: window::Id,
+    ) -> f64 {
         debug::hot(|| self.raw.scale_factor(state, window))
     }
 
-    fn presets(&self) -> &[Preset<Self::State, Self::Message>] {
+    fn presets(&self) -> &[Preset<<Self as Program>::State, Self::Message>] {
         &self.presets
     }
 }

@@ -214,7 +214,7 @@ impl LineHeight {
 
 impl Default for LineHeight {
     fn default() -> Self {
-        Self::Relative(1.3)
+        Self::Relative(1.4)
     }
 }
 
@@ -299,6 +299,9 @@ pub trait Renderer: crate::Renderer {
     /// The [`Editor`] of this [`Renderer`].
     type Editor: Editor<Font = Self::Font> + 'static;
 
+    /// The Raw of this [`Renderer`].
+    type Raw;
+
     /// The icon font of the backend.
     const ICON_FONT: Self::Font;
 
@@ -362,6 +365,9 @@ pub trait Renderer: crate::Renderer {
         color: Color,
         clip_bounds: Rectangle,
     );
+
+    /// Draws the given Raw
+    fn fill_raw(&mut self, raw: Self::Raw);
 
     /// Draws the given [`Text`] at the given position and with the given
     /// [`Color`].

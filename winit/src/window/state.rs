@@ -4,7 +4,8 @@ use crate::core::{mouse, theme, window};
 use crate::graphics::Viewport;
 use crate::program::{self, Program};
 
-use winit::event::{Touch, WindowEvent};
+use winit::dpi::LogicalPosition;
+use winit::event::WindowEvent;
 use winit::window::Window;
 
 use std::fmt::{Debug, Formatter};
@@ -14,8 +15,8 @@ pub struct State<P: Program>
 where
     P::Theme: theme::Base,
 {
-    title: String,
-    scale_factor: f32,
+    pub(crate) title: String,
+    scale_factor: f64,
     viewport: Viewport,
     surface_version: u64,
     cursor_position: Option<winit::dpi::PhysicalPosition<f64>>,
@@ -49,8 +50,8 @@ where
     pub fn new(
         program: &program::Instance<P>,
         window_id: window::Id,
-        window: &Window,
         system_theme: theme::Mode,
+        window: &dyn Window,
     ) -> Self {
         let title = program.title(window_id);
         let scale_factor = program.scale_factor(window_id);
@@ -61,11 +62,11 @@ where
         let style = program.style(theme.as_ref().unwrap_or(&default_theme));
 
         let viewport = {
-            let physical_size = window.inner_size();
+            let physical_size = window.surface_size();
 
             Viewport::with_physical_size(
                 Size::new(physical_size.width, physical_size.height),
-                window.scale_factor() as f32 * scale_factor,
+                window.scale_factor() as f64 * scale_factor,
             )
         };
 
@@ -99,10 +100,16 @@ where
         self.viewport.logical_size()
     }
 
-    pub fn scale_factor(&self) -> f32 {
+    pub fn scale_factor(&self) -> f64 {
         self.viewport.scale_factor()
     }
 
+    pub fn set_logical_cursor_pos(&mut self, pos: LogicalPosition<f64>) {
+        let physical = pos.to_physical(self.scale_factor());
+        self.cursor_position = Some(physical);
+    }
+
+    /// Returns the current cursor position of the [`State`].
     pub fn cursor(&self) -> mouse::Cursor {
         self.cursor_position
             .map(|cursor_position| {
@@ -135,19 +142,37 @@ where
         self.style.text_color
     }
 
+    /// Returns the current icon [`Color`] of the [`State`].
+    pub fn icon_color(&self) -> Color {
+        self.style.icon_color
+    }
+
+    /// Update the scale factor
+    pub(crate) fn update_scale_factor(&mut self, new_scale_factor: f64) {
+        let size = self.viewport.physical_size();
+
+        self.viewport = Viewport::with_physical_size(
+            size,
+            new_scale_factor * self.scale_factor,
+        );
+
+        self.surface_version = self.surface_version.wrapping_add(1);
+    }
+
+    /// Processes the provided window event and updates the [`State`] accordingly.
     pub fn update(
         &mut self,
         program: &program::Instance<P>,
-        window: &Window,
+        window: &dyn Window,
         event: &WindowEvent,
     ) {
         match event {
-            WindowEvent::Resized(new_size) => {
+            WindowEvent::SurfaceResized(new_size) => {
                 let size = Size::new(new_size.width, new_size.height);
 
                 self.viewport = Viewport::with_physical_size(
                     size,
-                    window.scale_factor() as f32 * self.scale_factor,
+                    window.scale_factor() * self.scale_factor,
                 );
                 self.surface_version += 1;
             }
@@ -155,21 +180,12 @@ where
                 scale_factor: new_scale_factor,
                 ..
             } => {
-                let size = self.viewport.physical_size();
-
-                self.viewport = Viewport::with_physical_size(
-                    size,
-                    *new_scale_factor as f32 * self.scale_factor,
-                );
-                self.surface_version += 1;
+                self.update_scale_factor(*new_scale_factor);
             }
-            WindowEvent::CursorMoved { position, .. }
-            | WindowEvent::Touch(Touch {
-                location: position, ..
-            }) => {
+            WindowEvent::PointerMoved { position, .. } => {
                 self.cursor_position = Some(*position);
             }
-            WindowEvent::CursorLeft { .. } => {
+            WindowEvent::PointerLeft { .. } => {
                 self.cursor_position = None;
             }
             WindowEvent::ModifiersChanged(new_modifiers) => {
@@ -193,7 +209,7 @@ where
         &mut self,
         program: &program::Instance<P>,
         window_id: window::Id,
-        window: &Window,
+        window: &dyn Window,
     ) {
         // Update window title
         let new_title = program.title(window_id);
@@ -203,13 +219,24 @@ where
             self.title = new_title;
         }
 
-        // Update scale factor
+        // Update scale factor and size
         let new_scale_factor = program.scale_factor(window_id);
-
-        if self.scale_factor != new_scale_factor {
+        let mut new_size = window.surface_size();
+        let current_size = self.viewport.physical_size();
+        if self.scale_factor != new_scale_factor
+            || (current_size.width, current_size.height)
+                != (new_size.width, new_size.height)
+                && !(new_size.width == 0 && new_size.height == 0)
+        {
+            if new_size.width == 0 {
+                new_size.width = current_size.width;
+            }
+            if new_size.height == 0 {
+                new_size.height = current_size.height;
+            }
             self.viewport = Viewport::with_physical_size(
                 self.viewport.physical_size(),
-                window.scale_factor() as f32 * new_scale_factor,
+                window.scale_factor() * new_scale_factor,
             );
 
             self.scale_factor = new_scale_factor;

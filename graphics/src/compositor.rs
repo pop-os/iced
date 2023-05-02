@@ -116,10 +116,9 @@ impl<T> Window for T where
 ///
 /// This is just a convenient super trait of the `raw-window-handle`
 /// trait.
-pub trait Display: HasDisplayHandle + MaybeSend + MaybeSync + 'static {}
+pub trait Display: HasDisplayHandle + 'static {}
 
-impl<T> Display for T where T: HasDisplayHandle + MaybeSend + MaybeSync + 'static
-{}
+impl<T> Display for T where T: HasDisplayHandle + 'static {}
 
 /// Defines the default compositor of a renderer.
 pub trait Default {
@@ -147,6 +146,18 @@ pub enum SurfaceError {
     /// Acquiring a texture failed with a generic error.
     #[error("Acquiring a texture failed with a generic error")]
     Other,
+    /// Resize Error
+    #[error("Resize Error")]
+    Resize,
+    /// Invalid dimensions
+    #[error("Invalid dimensions")]
+    InvalidDimensions,
+    /// Present Error
+    #[error("Present Error")]
+    Present(String),
+    /// Present Error
+    #[error("No damage to present")]
+    NoDamage,
 }
 
 /// Contains information about the graphics (e.g. graphics adapter, graphics backend).

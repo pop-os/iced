@@ -1,6 +1,7 @@
 mod state;
 
 use state::State;
+use winit::dpi::PhysicalPosition;
 
 pub use crate::core::window::{Event, Id, RedrawRequest, Settings};
 
@@ -51,13 +52,13 @@ where
     pub fn insert(
         &mut self,
         id: Id,
-        window: Arc<winit::window::Window>,
+        window: Arc<dyn winit::window::Window>,
         program: &program::Instance<P>,
         compositor: &mut C,
         exit_on_close_request: bool,
         system_theme: theme::Mode,
     ) -> &mut Window<P, C> {
-        let state = State::new(program, id, &window, system_theme);
+        let state = State::new(program, id, system_theme, window.as_ref());
         let surface_size = state.physical_size();
         let surface_version = state.surface_version();
         let surface = compositor.create_surface(
@@ -82,6 +83,9 @@ where
                 redraw_at: None,
                 preedit: None,
                 ime_state: None,
+                drag_resize_window_func: None,
+                prev_dnd_destination_rectangles_count: 0,
+                viewport_version: 0,
             },
         );
 
@@ -125,6 +129,10 @@ where
         self.entries.get_mut(&id)
     }
 
+    pub fn ids(&self) -> impl Iterator<Item = Id> + '_ {
+        self.entries.keys().cloned()
+    }
+
     pub fn get_mut_alias(
         &mut self,
         id: winit::window::WindowId,
@@ -163,8 +171,18 @@ where
     C: Compositor<Renderer = P::Renderer>,
     P::Theme: theme::Base,
 {
-    pub raw: Arc<winit::window::Window>,
+    pub raw: Arc<dyn winit::window::Window>,
     pub state: State<P>,
+    pub viewport_version: u64,
+    pub drag_resize_window_func: Option<
+        Box<
+            dyn FnMut(
+                &dyn winit::window::Window,
+                &winit::event::WindowEvent,
+            ) -> bool,
+        >,
+    >,
+    pub prev_dnd_destination_rectangles_count: usize,
     pub exit_on_close_request: bool,
     pub mouse_interaction: mouse::Interaction,
     pub surface: C::Surface,
@@ -185,10 +203,12 @@ where
         self.raw
             .outer_position()
             .ok()
-            .map(|position| position.to_logical(self.raw.scale_factor()))
-            .map(|position| Point {
-                x: position.x,
-                y: position.y,
+            .map(|position: PhysicalPosition<i32>| {
+                position.to_logical(self.raw.scale_factor())
+            })
+            .map(|position: LogicalPosition<f32>| Point {
+                x: position.x as f32,
+                y: position.y as f32,
             })
     }
 
@@ -247,7 +267,7 @@ where
     pub fn update_mouse(&mut self, interaction: mouse::Interaction) {
         if interaction != self.mouse_interaction {
             if let Some(icon) = conversion::mouse_interaction(interaction) {
-                self.raw.set_cursor(icon);
+                self.raw.set_cursor(icon.into());
 
                 if self.mouse_interaction == mouse::Interaction::Hidden {
                     self.raw.set_cursor_visible(true);
@@ -285,8 +305,8 @@ where
 
         if self.ime_state != Some((cursor, purpose)) {
             self.raw.set_ime_cursor_area(
-                LogicalPosition::new(cursor.x, cursor.y),
-                LogicalSize::new(cursor.width, cursor.height),
+                LogicalPosition::new(cursor.x, cursor.y).into(),
+                LogicalSize::new(cursor.width, cursor.height).into(),
             );
             self.raw.set_ime_purpose(conversion::ime_purpose(purpose));
 

@@ -32,7 +32,8 @@ where
     Theme: Catalog,
 {
     Rule {
-        thickness: Length::Fixed(height.into().0),
+        width: Length::Fill,
+        height: Length::Fixed(height.into().0),
         is_vertical: false,
         class: Theme::default(),
     }
@@ -44,7 +45,8 @@ where
     Theme: Catalog,
 {
     Rule {
-        thickness: Length::Fixed(width.into().0),
+        width: Length::Fixed(width.into().0),
+        height: Length::Fill,
         is_vertical: true,
         class: Theme::default(),
     }
@@ -72,7 +74,8 @@ pub struct Rule<'a, Theme = crate::Theme>
 where
     Theme: Catalog,
 {
-    thickness: Length,
+    width: Length,
+    height: Length,
     is_vertical: bool,
     class: Theme::Class<'a>,
 }
@@ -81,6 +84,44 @@ impl<'a, Theme> Rule<'a, Theme>
 where
     Theme: Catalog,
 {
+    /// Creates a horizontal [`Rule`] with the given height.
+    pub fn horizontal(height: impl Into<Pixels>) -> Self {
+        Rule {
+            width: Length::Fill,
+            height: Length::Fixed(height.into().0),
+            is_vertical: false,
+            class: Theme::default(),
+        }
+    }
+
+    /// Creates a vertical [`Rule`] with the given width.
+    pub fn vertical(width: impl Into<Pixels>) -> Self {
+        Rule {
+            width: Length::Fixed(width.into().0),
+            height: Length::Fill,
+            is_vertical: true,
+            class: Theme::default(),
+        }
+    }
+
+    /// Set the width of the rule
+    /// Will not be applied if it is vertical
+    pub fn width(mut self, width: impl Into<Length>) -> Self {
+        if !self.is_vertical {
+            self.width = width.into();
+        }
+        self
+    }
+
+    /// Set the height of the rule
+    /// Will not be applied if it is horizontal
+    pub fn height(mut self, height: impl Into<Length>) -> Self {
+        if self.is_vertical {
+            self.height = height.into();
+        }
+        self
+    }
+
     /// Sets the style of the [`Rule`].
     #[must_use]
     pub fn style(mut self, style: impl Fn(&Theme) -> Style + 'a) -> Self
@@ -107,16 +148,9 @@ where
     Theme: Catalog,
 {
     fn size(&self) -> Size<Length> {
-        if self.is_vertical {
-            Size {
-                width: self.thickness,
-                height: Length::Fill,
-            }
-        } else {
-            Size {
-                width: Length::Fill,
-                height: self.thickness,
-            }
+        Size {
+            width: self.width,
+            height: self.height,
         }
     }
 

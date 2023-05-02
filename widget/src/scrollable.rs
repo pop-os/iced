@@ -22,6 +22,12 @@
 use crate::container;
 use crate::core::alignment;
 use crate::core::border::{self, Border};
+use crate::core::clipboard::DndDestinationRectangles;
+use iced_runtime::core::widget::Id;
+#[cfg(feature = "a11y")]
+use std::borrow::Cow;
+
+use crate::core::event;
 use crate::core::keyboard;
 use crate::core::layout;
 use crate::core::mouse;
@@ -30,18 +36,17 @@ use crate::core::renderer;
 use crate::core::text;
 use crate::core::time::{Duration, Instant};
 use crate::core::touch;
-use crate::core::widget;
 use crate::core::widget::operation::{self, Operation};
 use crate::core::widget::tree::{self, Tree};
 use crate::core::window;
 use crate::core::{
     self, Background, Clipboard, Color, Element, Event, InputMethod, Layout,
     Length, Padding, Pixels, Point, Rectangle, Shadow, Shell, Size, Theme,
-    Vector, Widget,
+    Vector, Widget, id::Internal,
 };
 
+use iced_runtime::{Action, Task, task};
 pub use operation::scrollable::{AbsoluteOffset, RelativeOffset};
-
 /// A widget that can vertically display an infinite amount of content with a
 /// scrollbar.
 ///
@@ -73,7 +78,14 @@ pub struct Scrollable<
     Theme: Catalog,
     Renderer: text::Renderer,
 {
-    id: Option<widget::Id>,
+    id: Id,
+    scrollbar_id: Id,
+    #[cfg(feature = "a11y")]
+    name: Option<Cow<'a, str>>,
+    #[cfg(feature = "a11y")]
+    description: Option<iced_accessibility::Description<'a>>,
+    #[cfg(feature = "a11y")]
+    label: Option<Vec<iced_accessibility::accesskit::NodeId>>,
     width: Length,
     height: Length,
     direction: Direction,
@@ -102,7 +114,14 @@ where
         direction: impl Into<Direction>,
     ) -> Self {
         Scrollable {
-            id: None,
+            id: Id::unique(),
+            scrollbar_id: Id::unique(),
+            #[cfg(feature = "a11y")]
+            name: None,
+            #[cfg(feature = "a11y")]
+            description: None,
+            #[cfg(feature = "a11y")]
+            label: None,
             width: Length::Shrink,
             height: Length::Shrink,
             direction: direction.into(),
@@ -141,8 +160,8 @@ where
     }
 
     /// Sets the [`widget::Id`] of the [`Scrollable`].
-    pub fn id(mut self, id: impl Into<widget::Id>) -> Self {
-        self.id = Some(id.into());
+    pub fn id(mut self, id: impl Into<core::widget::Id>) -> Self {
+        self.id = id.into();
         self
     }
 
@@ -253,6 +272,41 @@ where
     #[must_use]
     pub fn class(mut self, class: impl Into<Theme::Class<'a>>) -> Self {
         self.class = class.into();
+        self
+    }
+
+    #[cfg(feature = "a11y")]
+    /// Sets the name of the [`Button`].
+    pub fn name(mut self, name: impl Into<Cow<'a, str>>) -> Self {
+        self.name = Some(name.into());
+        self
+    }
+
+    #[cfg(feature = "a11y")]
+    /// Sets the description of the [`Button`].
+    pub fn description_widget(
+        mut self,
+        description: &impl iced_accessibility::Describes,
+    ) -> Self {
+        self.description = Some(iced_accessibility::Description::Id(
+            description.description(),
+        ));
+        self
+    }
+
+    #[cfg(feature = "a11y")]
+    /// Sets the description of the [`Button`].
+    pub fn description(mut self, description: impl Into<Cow<'a, str>>) -> Self {
+        self.description =
+            Some(iced_accessibility::Description::Text(description.into()));
+        self
+    }
+
+    #[cfg(feature = "a11y")]
+    /// Sets the label of the [`Button`].
+    pub fn label(mut self, label: &dyn iced_accessibility::Labels) -> Self {
+        self.label =
+            Some(label.label().into_iter().map(|l| l.into()).collect());
         self
     }
 }
@@ -415,8 +469,8 @@ where
         vec![Tree::new(&self.content)]
     }
 
-    fn diff(&self, tree: &mut Tree) {
-        tree.diff_children(std::slice::from_ref(&self.content));
+    fn diff(&mut self, tree: &mut Tree) {
+        tree.diff_children(std::slice::from_mut(&mut self.content))
     }
 
     fn size(&self) -> Size<Length> {
@@ -552,7 +606,7 @@ where
             state.translation(self.direction, bounds, content_bounds);
 
         operation.scrollable(
-            self.id.as_ref(),
+            Some(&self.id),
             bounds,
             content_bounds,
             translation,
@@ -1406,6 +1460,183 @@ where
             )),
         }
     }
+
+    #[cfg(feature = "a11y")]
+    fn a11y_nodes(
+        &self,
+        layout: Layout<'_>,
+        state: &Tree,
+        cursor: mouse::Cursor,
+    ) -> iced_accessibility::A11yTree {
+        use iced_accessibility::{
+            A11yId, A11yNode, A11yTree,
+            accesskit::{Node, NodeId, Rect, Role},
+        };
+
+        let child_layout = layout.children().next().unwrap();
+        let child_tree = &state.children[0];
+        let child_tree = self.content.as_widget().a11y_nodes(
+            child_layout,
+            &child_tree,
+            cursor,
+        );
+
+        let window = layout.bounds();
+        let is_hovered = cursor.is_over(window);
+        let Rectangle {
+            x,
+            y,
+            width,
+            height,
+        } = window;
+        let bounds = Rect::new(
+            x as f64,
+            y as f64,
+            (x + width) as f64,
+            (y + height) as f64,
+        );
+        let mut node = Node::new(Role::ScrollView);
+        node.set_bounds(bounds);
+        if let Some(name) = self.name.as_ref() {
+            node.set_label(name.clone());
+        }
+        match self.description.as_ref() {
+            Some(iced_accessibility::Description::Id(id)) => {
+                node.set_described_by(
+                    id.iter()
+                        .cloned()
+                        .map(|id| NodeId::from(id))
+                        .collect::<Vec<_>>(),
+                );
+            }
+            Some(iced_accessibility::Description::Text(text)) => {
+                node.set_description(text.clone());
+            }
+            None => {}
+        }
+
+        // TODO hover
+        // if is_hovered {
+        //     node.set_hovered();
+        // }
+
+        if let Some(label) = self.label.as_ref() {
+            node.set_labelled_by(label.clone());
+        }
+
+        let content = layout.children().next().unwrap();
+        let content_bounds = content.bounds();
+
+        let mut scrollbar_node = Node::new(Role::ScrollBar);
+        if matches!(state.state, tree::State::Some(_)) {
+            let state = state.state.downcast_ref::<State>();
+            let scrollbars = Scrollbars::new(
+                state,
+                self.direction,
+                content_bounds,
+                content_bounds,
+            );
+            for (window, content, offset, scrollbar) in scrollbars
+                .x
+                .iter()
+                .map(|s| {
+                    (window.width, content_bounds.width, state.offset_x, s)
+                })
+                .chain(scrollbars.y.iter().map(|s| {
+                    (window.height, content_bounds.height, state.offset_y, s)
+                }))
+            {
+                let scrollbar_bounds = scrollbar.total_bounds;
+                let is_hovered = cursor.is_over(scrollbar_bounds);
+                let Rectangle {
+                    x,
+                    y,
+                    width,
+                    height,
+                } = scrollbar_bounds;
+                let bounds = Rect::new(
+                    x as f64,
+                    y as f64,
+                    (x + width) as f64,
+                    (y + height) as f64,
+                );
+                scrollbar_node.set_bounds(bounds);
+                // TODO: hover
+                // if is_hovered {
+                //     scrollbar_node.set_hovered();
+                // }
+                scrollbar_node
+                    .set_controls(vec![A11yId::Widget(self.id.clone()).into()]);
+                scrollbar_node.set_numeric_value(
+                    100.0 * offset.absolute(window, content) as f64
+                        / scrollbar_bounds.height as f64,
+                );
+            }
+        }
+
+        let child_tree = A11yTree::join(
+            [
+                child_tree,
+                A11yTree::leaf(scrollbar_node, self.scrollbar_id.clone()),
+            ]
+            .into_iter(),
+        );
+        A11yTree::node_with_child_tree(
+            A11yNode::new(node, self.id.clone()),
+            child_tree,
+        )
+    }
+
+    fn id(&self) -> Option<Id> {
+        Some(Id(Internal::Set(vec![
+            self.id.0.clone(),
+            self.scrollbar_id.0.clone(),
+        ])))
+    }
+
+    fn set_id(&mut self, id: Id) {
+        if let Id(Internal::Set(list)) = id {
+            if list.len() == 2 {
+                self.id.0 = list[0].clone();
+                self.scrollbar_id.0 = list[1].clone();
+            }
+        }
+    }
+
+    fn drag_destinations(
+        &self,
+        tree: &Tree,
+        layout: Layout<'_>,
+        renderer: &Renderer,
+        dnd_rectangles: &mut crate::core::clipboard::DndDestinationRectangles,
+    ) {
+        let my_state = tree.state.downcast_ref::<State>();
+        if let Some((c_layout, c_state)) =
+            layout.children().zip(tree.children.iter()).next()
+        {
+            let mut my_dnd_rectangles = DndDestinationRectangles::new();
+            self.content.as_widget().drag_destinations(
+                c_state,
+                c_layout,
+                renderer,
+                &mut my_dnd_rectangles,
+            );
+            let mut my_dnd_rectangles = my_dnd_rectangles.into_rectangles();
+
+            let bounds = layout.bounds();
+            let content_bounds = c_layout.bounds();
+            for r in &mut my_dnd_rectangles {
+                let translation = my_state.translation(
+                    self.direction,
+                    bounds,
+                    content_bounds,
+                );
+                r.rectangle.x -= translation.x as f64;
+                r.rectangle.y -= translation.y as f64;
+            }
+            dnd_rectangles.append(&mut my_dnd_rectangles);
+        }
+    }
 }
 
 struct AutoScrollIcon<'a, Class> {
@@ -1565,6 +1796,24 @@ where
     ) -> Element<'a, Message, Theme, Renderer> {
         Element::new(text_input)
     }
+}
+
+/// Produces a [`Task`] that snaps the [`Scrollable`] with the given [`Id`]
+/// to the provided [`RelativeOffset`].
+pub fn snap_to<T>(id: Id, offset: RelativeOffset<Option<f32>>) -> Task<T> {
+    task::effect(Action::widget(operation::scrollable::snap_to(id, offset)))
+}
+
+/// Produces a [`Task`] that scrolls the [`Scrollable`] with the given [`Id`]
+/// to the provided [`AbsoluteOffset`].
+pub fn scroll_to<T>(id: Id, offset: AbsoluteOffset<Option<f32>>) -> Task<T> {
+    task::effect(Action::widget(operation::scrollable::scroll_to(id, offset)))
+}
+
+/// Produces a [`Task`] that scrolls the [`Scrollable`] with the given [`Id`]
+/// by the provided [`AbsoluteOffset`].
+pub fn scroll_by<T>(id: Id, offset: AbsoluteOffset) -> Task<T> {
+    task::effect(Action::widget(operation::scrollable::scroll_by(id, offset)))
 }
 
 fn notify_scroll<Message>(

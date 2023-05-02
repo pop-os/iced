@@ -60,6 +60,8 @@
 //!     }
 //! }
 //! ```
+//! Display a dropdown list of selectable values.
+
 use crate::core::alignment;
 use crate::core::keyboard;
 use crate::core::layout;
@@ -168,6 +170,7 @@ pub struct PickList<
     text_size: Option<Pixels>,
     text_line_height: text::LineHeight,
     text_shaping: text::Shaping,
+    text_wrap: text::Wrapping,
     font: Option<Renderer::Font>,
     handle: Handle<Renderer::Font>,
     class: <Theme as Catalog>::Class<'a>,
@@ -204,7 +207,8 @@ where
             padding: crate::button::DEFAULT_PADDING,
             text_size: None,
             text_line_height: text::LineHeight::default(),
-            text_shaping: text::Shaping::default(),
+            text_shaping: text::Shaping::Advanced,
+            text_wrap: text::Wrapping::default(),
             font: None,
             handle: Handle::default(),
             class: <Theme as Catalog>::default(),
@@ -256,6 +260,12 @@ where
     /// Sets the [`text::Shaping`] strategy of the [`PickList`].
     pub fn text_shaping(mut self, shaping: text::Shaping) -> Self {
         self.text_shaping = shaping;
+        self
+    }
+
+    /// Sets the [`text::Wrap`] mode of the [`PickList`].
+    pub fn text_wrap(mut self, wrap: text::Wrapping) -> Self {
+        self.text_wrap = wrap;
         self
     }
 
@@ -381,7 +391,7 @@ where
             align_x: text::Alignment::Default,
             align_y: alignment::Vertical::Center,
             shaping: self.text_shaping,
-            wrapping: text::Wrapping::default(),
+            wrapping: self.text_wrap,
         };
 
         for (option, paragraph) in options.iter().zip(state.options.iter_mut())
@@ -603,6 +613,7 @@ where
                 *size,
                 text::LineHeight::default(),
                 text::Shaping::Basic,
+                text::Wrapping::default(),
             )),
             Handle::Static(Icon {
                 font,
@@ -610,7 +621,10 @@ where
                 size,
                 line_height,
                 shaping,
-            }) => Some((*font, *code_point, *size, *line_height, *shaping)),
+                wrap,
+            }) => {
+                Some((*font, *code_point, *size, *line_height, *shaping, *wrap))
+            }
             Handle::Dynamic { open, closed } => {
                 if state.is_open {
                     Some((
@@ -619,6 +633,7 @@ where
                         open.size,
                         open.line_height,
                         open.shaping,
+                        open.wrap,
                     ))
                 } else {
                     Some((
@@ -627,13 +642,16 @@ where
                         closed.size,
                         closed.line_height,
                         closed.shaping,
+                        closed.wrap,
                     ))
                 }
             }
             Handle::None => None,
         };
 
-        if let Some((font, code_point, size, line_height, shaping)) = handle {
+        if let Some((font, code_point, size, line_height, shaping, wrap)) =
+            handle
+        {
             let size = size.unwrap_or_else(|| renderer.default_size());
 
             renderer.fill_text(
@@ -649,7 +667,7 @@ where
                     align_x: text::Alignment::Right,
                     align_y: alignment::Vertical::Center,
                     shaping,
-                    wrapping: text::Wrapping::default(),
+                    wrapping: wrap,
                 },
                 Point::new(
                     bounds.x + bounds.width - self.padding.right,
@@ -679,7 +697,7 @@ where
                     align_x: text::Alignment::Default,
                     align_y: alignment::Vertical::Center,
                     shaping: self.text_shaping,
-                    wrapping: text::Wrapping::default(),
+                    wrapping: self.text_wrap,
                 },
                 Point::new(bounds.x + self.padding.left, bounds.center_y()),
                 if selected.is_some() {
@@ -831,6 +849,8 @@ pub struct Icon<Font> {
     pub line_height: text::LineHeight,
     /// The shaping strategy of the icon.
     pub shaping: text::Shaping,
+    /// The wrap mode of the icon.
+    pub wrap: text::Wrapping,
 }
 
 /// The possible status of a [`PickList`].

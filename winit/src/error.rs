@@ -10,11 +10,15 @@ pub enum Error {
 
     /// The application window could not be created.
     #[error("the application window could not be created")]
-    WindowCreationFailed(winit::error::OsError),
+    WindowCreationFailed(winit::error::RequestError),
 
     /// The application graphics context could not be created.
     #[error("the application graphics context could not be created")]
     GraphicsCreationFailed(graphics::Error),
+
+    /// There was an event loop error.
+    #[error("there was an event loop error")]
+    EventLoop(winit::error::EventLoopError),
 }
 
 impl From<graphics::Error> for Error {

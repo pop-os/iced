@@ -1,8 +1,10 @@
+use iced::widget::scrollable::{self, Properties, Scrollbar, Scroller};
 use iced::widget::{
     button, column, container, operation, progress_bar, radio, row, scrollable,
     slider, space, text,
 };
 use iced::{Border, Center, Color, Element, Fill, Task, Theme};
+use iced_core::id::Id;
 
 pub fn main() -> iced::Result {
     iced::application(

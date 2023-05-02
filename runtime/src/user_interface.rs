@@ -1,4 +1,9 @@
 //! Implement your own event loop to drive a user interface.
+
+use iced_core::clipboard::DndDestinationRectangles;
+use iced_core::widget::Operation;
+use iced_core::widget::tree::NAMED;
+
 use crate::core::event::{self, Event};
 use crate::core::layout;
 use crate::core::mouse;
@@ -99,13 +104,22 @@ where
         let mut root = root.into();
 
         let Cache { mut state } = cache;
-        state.diff(root.as_widget());
+        NAMED.with(|named| {
+            let mut guard = named.borrow_mut();
+            *guard = state.take_all_named();
+        });
+
+        state.diff(root.as_widget_mut());
 
         let base = root.as_widget_mut().layout(
             &mut state,
             renderer,
             &layout::Limits::new(Size::ZERO, bounds),
         );
+
+        NAMED.with(|named| {
+            named.borrow_mut().clear();
+        });
 
         UserInterface {
             root,
@@ -588,6 +602,40 @@ where
     pub fn into_cache(self) -> Cache {
         Cache { state: self.state }
     }
+
+    /// get a11y nodes
+    #[cfg(feature = "a11y")]
+    pub fn a11y_nodes(
+        &self,
+        cursor: mouse::Cursor,
+    ) -> iced_accessibility::A11yTree {
+        self.root.as_widget().a11y_nodes(
+            Layout::new(&self.base),
+            &self.state,
+            cursor,
+        )
+    }
+
+    /// Find widget with given id
+    pub fn find(&self, id: &widget::Id) -> Option<&widget::Tree> {
+        self.state.find(id)
+    }
+
+    /// Get the destination rectangles for the user interface.
+    pub fn dnd_rectangles(
+        &self,
+        prev_capacity: usize,
+        renderer: &Renderer,
+    ) -> DndDestinationRectangles {
+        let mut ret = DndDestinationRectangles::with_capacity(prev_capacity);
+        self.root.as_widget().drag_destinations(
+            &self.state,
+            Layout::new(&self.base),
+            renderer,
+            &mut ret,
+        );
+        ret
+    }
 }
 
 /// Reusable data of a specific [`UserInterface`].
@@ -615,7 +663,7 @@ impl Default for Cache {
 }
 
 /// The resulting state after updating a [`UserInterface`].
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum State {
     /// The [`UserInterface`] is outdated and needs to be rebuilt.
     Outdated,

@@ -18,6 +18,8 @@ advanced = []
 crisp = []
 basic-shaping = []
 advanced-shaping = []
+a11y = ["iced_accessibility"]
+wayland = ["sctk"]
 
 [dependencies]
 bitflags.workspace = true
@@ -34,3 +36,22 @@ web-time.workspace = true
 serde.workspace = true
 serde.optional = true
 serde.features = ["derive"]
+# TODO(POP): I think some of these dependencies were removed. Check on that
+# xxhash-rust.workspace = true
+window_clipboard.workspace = true
+dnd.workspace = true
+mime.workspace = true
+
+sctk.workspace = true
+sctk.optional = true
+# /TODO(POP)
+[dependencies.iced_accessibility]
+version = "0.1.0"
+path = "../accessibility"
+optional = true
+
+[target.'cfg(windows)'.dependencies]
+raw-window-handle.workspace = true
+
+[dev-dependencies]
+approx = "0.5"

@@ -6,6 +6,6 @@ publish = false
 
 [dependencies]
 iced.workspace = true
-iced.features = ["debug"]
+iced.features = ["debug", "winit", "wgpu"]
 
 tracing-subscriber = "0.3"

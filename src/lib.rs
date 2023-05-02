@@ -476,13 +476,21 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 use iced_widget::graphics;
 use iced_widget::renderer;
-use iced_winit as shell;
-use iced_winit::core;
-use iced_winit::program;
-use iced_winit::runtime;
+// use iced_winit as shell;
+// use iced_winit::core;
+// use iced_winit::program;
+// use iced_winit::runtime;
+
+// #[cfg(all(feature = "wayland", feature = "winit"))]
+// compile_error!("cannot use `wayland` feature with `winit");
 
 pub use iced_futures::futures;
 pub use iced_futures::stream;
+pub use iced_runtime as runtime;
+pub use iced_widget::core;
+
+#[cfg(feature = "winit")]
+use iced_winit as shell;
 
 #[cfg(not(any(
     target_arch = "wasm32",
@@ -514,19 +522,47 @@ pub use iced_highlighter as highlighter;
 #[cfg(feature = "wgpu")]
 pub use iced_renderer::wgpu::wgpu;
 
+pub use iced_program as program;
+
 mod error;
+// pub mod program;
 
 pub mod application;
 pub mod daemon;
 pub mod time;
 pub mod window;
 
+#[cfg(feature = "winit")]
+pub mod platform_specific {
+    pub use iced_winit::{
+        platform_specific as shell, runtime::platform_specific as runtime,
+    };
+}
+
+#[cfg(feature = "winit")]
+pub use application::Application;
+#[cfg(feature = "winit")]
+pub use program::Program;
+
+// wayland application
+// #[cfg(feature = "wayland")]
+// pub mod wayland;
+// #[cfg(feature = "wayland")]
+// pub use wayland::application;
+// #[cfg(feature = "wayland")]
+// pub use wayland::application::Application;
+// #[cfg(feature = "wayland")]
+// pub use wayland::program;
+// #[doc(inline)]
+// #[cfg(feature = "wayland")]
+// pub use wayland::program::Program;
+
 #[cfg(feature = "advanced")]
 pub mod advanced;
 
 pub use crate::core::alignment;
 pub use crate::core::animation;
-pub use crate::core::border;
+pub use crate::core::border::{self, Radius};
 pub use crate::core::color;
 pub use crate::core::gradient;
 pub use crate::core::padding;
@@ -535,10 +571,9 @@ pub use crate::core::{
     Alignment, Animation, Background, Border, Color, ContentFit, Degrees,
     Function, Gradient, Length, Never, Padding, Pixels, Point, Radians,
     Rectangle, Rotation, Settings, Shadow, Size, Theme, Transformation, Vector,
-    never,
+    id, layout::Limits, never,
 };
-pub use crate::program::Preset;
-pub use crate::program::message;
+pub use crate::program::{Preset, message};
 pub use crate::runtime::exit;
 pub use iced_futures::Subscription;
 
@@ -563,8 +598,11 @@ pub mod task {
 pub mod clipboard {
     //! Access the clipboard.
     pub use crate::runtime::clipboard::{
-        read, read_primary, write, write_primary,
+        read, read_data, read_primary, read_primary_data, write, write_data,
+        write_primary, write_primary_data,
     };
+    pub use dnd;
+    pub use mime;
 }
 
 pub mod executor {
@@ -581,6 +619,9 @@ pub mod font {
 
 pub mod event {
     //! Handle events of a user interface.
+    pub use crate::core::event::PlatformSpecific;
+    #[cfg(feature = "wayland")]
+    pub use crate::core::event::wayland;
     pub use crate::core::event::{Event, Status};
     pub use iced_futures::event::{listen, listen_raw, listen_with};
 }
@@ -649,21 +690,15 @@ pub mod widget {
     mod renderer {}
 }
 
-pub use application::Application;
-pub use daemon::Daemon;
+pub use application::application;
+pub use daemon::{Daemon, daemon};
 pub use error::Error;
 pub use event::Event;
 pub use executor::Executor;
 pub use font::Font;
-pub use program::Program;
 pub use renderer::Renderer;
 pub use task::Task;
 pub use window::Window;
-
-#[doc(inline)]
-pub use application::application;
-#[doc(inline)]
-pub use daemon::daemon;
 
 /// A generic widget.
 ///
@@ -678,8 +713,9 @@ pub type Element<
 /// The result of running an iced program.
 pub type Result = std::result::Result<(), Error>;
 
-/// Runs a basic iced application with default [`Settings`] given its update
-/// and view logic.
+#[cfg(any(feature = "winit"))]
+/// Runs a basic iced application with default [`Settings`] given its title,
+/// update, and view logic.
 ///
 /// This is equivalent to chaining [`application()`] with [`Application::run`].
 ///

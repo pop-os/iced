@@ -3,18 +3,31 @@
 //! [`winit`]: https://github.com/rust-windowing/winit
 //! [`iced_runtime`]: https://github.com/iced-rs/iced/tree/0.14/runtime
 use crate::core::input_method;
+use std::hash::DefaultHasher;
+use std::hash::Hash;
+use std::hash::Hasher;
+use std::sync::Arc;
+
 use crate::core::keyboard;
 use crate::core::mouse;
 use crate::core::theme;
 use crate::core::touch;
 use crate::core::window;
 use crate::core::{Event, Point, Size};
+use iced_futures::core::event::PlatformSpecific;
+use winit::dpi::PhysicalPosition;
+use winit::event::ButtonSource;
+use winit::event::ElementState;
+use winit::event::FingerId;
+use winit::event::Force;
+use winit::icon::IconProvider;
+use winit::keyboard::SmolStr;
 
 /// Converts some [`window::Settings`] into some `WindowAttributes` from `winit`.
 pub fn window_attributes(
     settings: window::Settings,
     title: &str,
-    scale_factor: f32,
+    scale_factor: f64,
     primary_monitor: Option<winit::monitor::MonitorHandle>,
     _id: Option<String>,
 ) -> winit::window::WindowAttributes {
@@ -36,15 +49,15 @@ pub fn window_attributes(
 
     attributes = attributes
         .with_title(title)
-        .with_inner_size(winit::dpi::LogicalSize {
-            width: settings.size.width * scale_factor,
-            height: settings.size.height * scale_factor,
+        .with_surface_size(winit::dpi::LogicalSize {
+            width: settings.size.width,
+            height: settings.size.height,
         })
         .with_maximized(settings.maximized)
         .with_fullscreen(
             settings
                 .fullscreen
-                .then_some(winit::window::Fullscreen::Borderless(None)),
+                .then_some(winit_core::monitor::Fullscreen::Borderless(None)),
         )
         .with_resizable(settings.resizable)
         .with_enabled_buttons(buttons)
@@ -62,17 +75,19 @@ pub fn window_attributes(
     }
 
     if let Some(min_size) = settings.min_size {
-        attributes = attributes.with_min_inner_size(winit::dpi::LogicalSize {
-            width: min_size.width,
-            height: min_size.height,
-        });
+        attributes =
+            attributes.with_min_surface_size(winit::dpi::LogicalSize {
+                width: min_size.width,
+                height: min_size.height,
+            });
     }
 
     if let Some(max_size) = settings.max_size {
-        attributes = attributes.with_max_inner_size(winit::dpi::LogicalSize {
-            width: max_size.width,
-            height: max_size.height,
-        });
+        attributes =
+            attributes.with_max_surface_size(winit::dpi::LogicalSize {
+                width: max_size.width,
+                height: max_size.height,
+            });
     }
 
     #[cfg(any(
@@ -85,7 +100,12 @@ pub fn window_attributes(
         use ::winit::platform::wayland::WindowAttributesExtWayland;
 
         if let Some(id) = _id {
-            attributes = attributes.with_name(id.clone(), id);
+            attributes = attributes.with_platform_attributes(Box::new(
+                WindowAttributesWayland::default().with_name(
+                    &settings.platform_specific.application_id,
+                    &settings.platform_specific.application_id,
+                ),
+            ));
         }
     }
 
@@ -93,20 +113,21 @@ pub fn window_attributes(
     {
         use window::settings::platform;
         use winit::platform::windows::{
-            CornerPreference, WindowAttributesExtWindows,
+            CornerPreference, WindowAttributesWindows,
         };
+        let mut w_attributes = WindowAttributesWindows::default();
 
-        attributes = attributes
+        w_attributes = w_attributes
             .with_drag_and_drop(settings.platform_specific.drag_and_drop);
 
-        attributes = attributes
+        w_attributes = w_attributes
             .with_skip_taskbar(settings.platform_specific.skip_taskbar);
 
-        attributes = attributes.with_undecorated_shadow(
+        w_attributes = w_attributes.with_undecorated_shadow(
             settings.platform_specific.undecorated_shadow,
         );
 
-        attributes = attributes.with_corner_preference(
+        w_attributes = w_attributes.with_corner_preference(
             match settings.platform_specific.corner_preference {
                 platform::CornerPreference::Default => {
                     CornerPreference::Default
@@ -120,45 +141,53 @@ pub fn window_attributes(
                 }
             },
         );
+        attributes =
+            attributes.with_platform_attributes(Box::new(w_attributes));
     }
 
     #[cfg(target_os = "macos")]
     {
-        use winit::platform::macos::WindowAttributesExtMacOS;
+        use winit::platform::macos::WindowAttributesMacOS;
 
-        attributes = attributes
-            .with_title_hidden(settings.platform_specific.title_hidden)
-            .with_titlebar_transparent(
-                settings.platform_specific.titlebar_transparent,
-            )
-            .with_fullsize_content_view(
-                settings.platform_specific.fullsize_content_view,
-            );
+        attributes = attributes.with_platform_attributes(Box::new(
+            WindowAttributesMacOS::default()
+                .with_title_hidden(settings.platform_specific.title_hidden)
+                .with_titlebar_transparent(
+                    settings.platform_specific.titlebar_transparent,
+                )
+                .with_fullsize_content_view(
+                    settings.platform_specific.fullsize_content_view,
+                ),
+        ));
     }
 
     #[cfg(target_os = "linux")]
     {
         #[cfg(feature = "x11")]
         {
-            use winit::platform::x11::WindowAttributesExtX11;
+            use winit::platform::x11::WindowAttributesX11;
 
-            attributes = attributes
-                .with_override_redirect(
-                    settings.platform_specific.override_redirect,
-                )
-                .with_name(
-                    &settings.platform_specific.application_id,
-                    &settings.platform_specific.application_id,
-                );
+            attributes = attributes.with_platform_attributes(Box::new(
+                WindowAttributesX11::default()
+                    .with_override_redirect(
+                        settings.platform_specific.override_redirect,
+                    )
+                    .with_name(
+                        &settings.platform_specific.application_id,
+                        &settings.platform_specific.application_id,
+                    ),
+            ));
         }
         #[cfg(feature = "wayland")]
         {
-            use winit::platform::wayland::WindowAttributesExtWayland;
+            use winit::platform::wayland::WindowAttributesWayland;
 
-            attributes = attributes.with_name(
-                &settings.platform_specific.application_id,
-                &settings.platform_specific.application_id,
-            );
+            attributes = attributes.with_platform_attributes(Box::new(
+                WindowAttributesWayland::default().with_name(
+                    &settings.platform_specific.application_id,
+                    &settings.platform_specific.application_id,
+                ),
+            ));
         }
     }
 
@@ -168,15 +197,15 @@ pub fn window_attributes(
 /// Converts a winit window event into an iced event.
 pub fn window_event(
     event: winit::event::WindowEvent,
-    scale_factor: f32,
+    scale_factor: f64,
     modifiers: winit::keyboard::ModifiersState,
 ) -> Option<Event> {
     use winit::event::Ime;
     use winit::event::WindowEvent;
 
     match event {
-        WindowEvent::Resized(new_size) => {
-            let logical_size = new_size.to_logical(f64::from(scale_factor));
+        WindowEvent::SurfaceResized(new_size) => {
+            let logical_size = new_size.to_logical(scale_factor);
 
             Some(Event::Window(window::Event::Resized(Size {
                 width: logical_size.width,
@@ -186,20 +215,51 @@ pub fn window_event(
         WindowEvent::CloseRequested => {
             Some(Event::Window(window::Event::CloseRequested))
         }
-        WindowEvent::CursorMoved { position, .. } => {
-            let position = position.to_logical::<f64>(f64::from(scale_factor));
+        WindowEvent::PointerMoved {
+            position, source, ..
+        } => match source {
+            winit::event::PointerSource::Mouse => {
+                let position = position.to_logical::<f64>(scale_factor);
 
-            Some(Event::Mouse(mouse::Event::CursorMoved {
-                position: Point::new(position.x as f32, position.y as f32),
-            }))
-        }
-        WindowEvent::CursorEntered { .. } => {
+                Some(Event::Mouse(mouse::Event::CursorMoved {
+                    position: Point::new(position.x as f32, position.y as f32),
+                }))
+            }
+            winit::event::PointerSource::Touch { finger_id, force } => {
+                Some(Event::Touch(touch_event(
+                    finger_id,
+                    TouchInternal::Moved,
+                    force,
+                    Some(position),
+                    scale_factor,
+                )))
+            }
+            _ => None,
+        },
+        // TODO how to handle this for Touch? Is it different than a press? Need to double check winit impl
+        WindowEvent::PointerEntered { .. } => {
             Some(Event::Mouse(mouse::Event::CursorEntered))
         }
-        WindowEvent::CursorLeft { .. } => {
-            Some(Event::Mouse(mouse::Event::CursorLeft))
-        }
-        WindowEvent::MouseInput { button, state, .. } => {
+        WindowEvent::PointerLeft { kind, position, .. } => match kind {
+            winit::event::PointerKind::Mouse => {
+                Some(Event::Mouse(mouse::Event::CursorLeft))
+            }
+            winit::event::PointerKind::Touch(finger_id) => {
+                Some(Event::Touch(touch_event(
+                    finger_id,
+                    TouchInternal::Left,
+                    None,
+                    position,
+                    scale_factor,
+                )))
+            }
+            _ => None,
+        },
+        WindowEvent::PointerButton {
+            button: ButtonSource::Mouse(button),
+            state,
+            ..
+        } => {
             let button = mouse_button(button);
 
             Some(Event::Mouse(match state {
@@ -211,6 +271,18 @@ pub fn window_event(
                 }
             }))
         }
+        WindowEvent::PointerButton {
+            button: ButtonSource::Touch { finger_id, force },
+            state,
+            position,
+            ..
+        } => Some(Event::Touch(touch_event(
+            finger_id,
+            TouchInternal::ElementState(state),
+            force,
+            Some(position),
+            scale_factor,
+        ))),
         WindowEvent::MouseWheel { delta, .. } => match delta {
             winit::event::MouseScrollDelta::LineDelta(delta_x, delta_y) => {
                 Some(Event::Mouse(mouse::Event::WheelScrolled {
@@ -235,8 +307,7 @@ pub fn window_event(
             let key = {
                 #[cfg(not(target_arch = "wasm32"))]
                 {
-                    use winit::platform::modifier_supplement::KeyEventExtModifierSupplement;
-                    event.key_without_modifiers()
+                    event.key_without_modifiers
                 }
 
                 #[cfg(target_arch = "wasm32")]
@@ -246,13 +317,10 @@ pub fn window_event(
                 }
             };
 
-            let text = {
+            let text: Option<winit::keyboard::SmolStr> = {
                 #[cfg(not(target_arch = "wasm32"))]
                 {
-                    use crate::core::SmolStr;
-                    use winit::platform::modifier_supplement::KeyEventExtModifierSupplement;
-
-                    event.text_with_all_modifiers().map(SmolStr::new)
+                    event.text_with_all_modifiers.map(SmolStr::new)
                 }
 
                 #[cfg(target_arch = "wasm32")]
@@ -260,7 +328,8 @@ pub fn window_event(
                     // TODO: Fix inconsistent API on Wasm
                     event.text
                 }
-            }.filter(|text| !text.as_str().chars().any(is_private_use));
+            }
+            .filter(|text| !text.as_str().chars().any(is_private_use));
 
             let winit::event::KeyEvent {
                 state,
@@ -325,24 +394,26 @@ pub fn window_event(
             ),
             Ime::Commit(content) => input_method::Event::Commit(content),
             Ime::Disabled => input_method::Event::Closed,
+            Ime::DeleteSurrounding {
+                before_bytes,
+                after_bytes,
+            } => todo!(),
         })),
         WindowEvent::Focused(focused) => Some(Event::Window(if focused {
             window::Event::Focused
         } else {
             window::Event::Unfocused
         })),
-        WindowEvent::HoveredFile(path) => {
-            Some(Event::Window(window::Event::FileHovered(path.clone())))
+        WindowEvent::DragEntered { paths, .. } => {
+            Some(Event::Window(window::Event::FileHovered(paths.clone())))
         }
-        WindowEvent::DroppedFile(path) => {
-            Some(Event::Window(window::Event::FileDropped(path.clone())))
+        WindowEvent::DragDropped { paths, .. } => {
+            Some(Event::Window(window::Event::FileDropped(paths.clone())))
         }
-        WindowEvent::HoveredFileCancelled => {
+        WindowEvent::DragLeft { position } => {
             Some(Event::Window(window::Event::FilesHoveredLeft))
         }
-        WindowEvent::Touch(touch) => {
-            Some(Event::Touch(touch_event(touch, scale_factor)))
-        }
+
         WindowEvent::Moved(position) => {
             let winit::dpi::LogicalPosition { x, y } =
                 position.to_logical(f64::from(scale_factor));
@@ -352,6 +423,20 @@ pub fn window_event(
         WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
             Some(Event::Window(window::Event::Rescaled(scale_factor as f32)))
         }
+        #[cfg(feature = "wayland")]
+        WindowEvent::SuggestedBounds(bounds) => {
+            let size = bounds.map(|bounds| {
+                let size = bounds.to_logical(scale_factor);
+                Size::new(size.width, size.height)
+            });
+
+            Some(Event::PlatformSpecific(PlatformSpecific::Wayland(
+                iced_runtime::core::event::wayland::Event::Window(
+                    iced_runtime::core::event::wayland::WindowEvent::SuggestedBounds(size),
+                ),
+            )))
+        }
+
         _ => None,
     }
 }
@@ -387,10 +472,12 @@ pub fn position(
         }
         window::Position::SpecificWith(to_position) => {
             if let Some(monitor) = monitor {
-                let start = monitor.position();
+                let start = monitor.position().unwrap_or_default();
 
-                let resolution: winit::dpi::LogicalSize<f32> =
-                    monitor.size().to_logical(monitor.scale_factor());
+                let resolution: winit::dpi::LogicalSize<f32> = monitor
+                    .current_video_mode()
+                    .map(|m| m.size().to_logical(monitor.scale_factor()))
+                    .unwrap_or_default();
 
                 let position = to_position(
                     size,
@@ -416,10 +503,12 @@ pub fn position(
         }
         window::Position::Centered => {
             if let Some(monitor) = monitor {
-                let start = monitor.position();
+                let start = monitor.position().unwrap_or_default();
 
-                let resolution: winit::dpi::LogicalSize<f64> =
-                    monitor.size().to_logical(monitor.scale_factor());
+                let resolution: winit::dpi::LogicalSize<f64> = monitor
+                    .current_video_mode()
+                    .map(|m| m.size().to_logical(monitor.scale_factor()))
+                    .unwrap_or_default();
 
                 let centered: winit::dpi::PhysicalPosition<i32> =
                     winit::dpi::LogicalPosition {
@@ -447,11 +536,11 @@ pub fn position(
 pub fn fullscreen(
     monitor: Option<winit::monitor::MonitorHandle>,
     mode: window::Mode,
-) -> Option<winit::window::Fullscreen> {
+) -> Option<winit_core::monitor::Fullscreen> {
     match mode {
         window::Mode::Windowed | window::Mode::Hidden => None,
         window::Mode::Fullscreen => {
-            Some(winit::window::Fullscreen::Borderless(monitor))
+            Some(winit_core::monitor::Fullscreen::Borderless(monitor))
         }
     }
 }
@@ -467,7 +556,7 @@ pub fn visible(mode: window::Mode) -> bool {
 /// Converts a [`winit`] fullscreen mode into a [`window::Mode`].
 ///
 /// [`winit`]: https://github.com/rust-windowing/winit
-pub fn mode(mode: Option<winit::window::Fullscreen>) -> window::Mode {
+pub fn mode(mode: Option<winit_core::monitor::Fullscreen>) -> window::Mode {
     match mode {
         None => window::Mode::Windowed,
         Some(_) => window::Mode::Fullscreen,
@@ -500,49 +589,55 @@ pub fn window_theme(mode: theme::Mode) -> Option<winit::window::Theme> {
 /// [`winit`]: https://github.com/rust-windowing/winit
 pub fn mouse_interaction(
     interaction: mouse::Interaction,
-) -> Option<winit::window::CursorIcon> {
+) -> Option<winit_core::cursor::CursorIcon> {
     use mouse::Interaction;
 
-    let icon = match interaction {
+    Some(match interaction {
+        Interaction::None | Interaction::Idle => {
+            winit_core::cursor::CursorIcon::Default
+        }
+        Interaction::ContextMenu => winit_core::cursor::CursorIcon::ContextMenu,
+        Interaction::Help => winit_core::cursor::CursorIcon::Help,
+        Interaction::Pointer => winit_core::cursor::CursorIcon::Pointer,
+        Interaction::Progress => winit_core::cursor::CursorIcon::Progress,
+        Interaction::Wait => winit_core::cursor::CursorIcon::Wait,
+        Interaction::Cell => winit_core::cursor::CursorIcon::Cell,
+        Interaction::Crosshair => winit_core::cursor::CursorIcon::Crosshair,
+        Interaction::Text => winit_core::cursor::CursorIcon::Text,
+        Interaction::Alias => winit_core::cursor::CursorIcon::Alias,
+        Interaction::Copy => winit_core::cursor::CursorIcon::Copy,
+        Interaction::Move => winit_core::cursor::CursorIcon::Move,
+        Interaction::NoDrop => winit_core::cursor::CursorIcon::NoDrop,
+        Interaction::NotAllowed => winit_core::cursor::CursorIcon::NotAllowed,
+        Interaction::Grab => winit_core::cursor::CursorIcon::Grab,
+        Interaction::Grabbing => winit_core::cursor::CursorIcon::Grabbing,
+        Interaction::ResizingHorizontally => {
+            winit_core::cursor::CursorIcon::EwResize
+        }
+        Interaction::ResizingVertically => {
+            winit_core::cursor::CursorIcon::NsResize
+        }
+        Interaction::ResizingDiagonallyUp => {
+            winit_core::cursor::CursorIcon::NeswResize
+        }
+        Interaction::ResizingDiagonallyDown => {
+            winit_core::cursor::CursorIcon::NwseResize
+        }
+        Interaction::ResizingColumn => {
+            winit_core::cursor::CursorIcon::ColResize
+        }
+        Interaction::ResizingRow => winit_core::cursor::CursorIcon::RowResize,
+        Interaction::AllScroll => winit_core::cursor::CursorIcon::AllScroll,
+        Interaction::ZoomIn => winit_core::cursor::CursorIcon::ZoomIn,
+        Interaction::ZoomOut => winit_core::cursor::CursorIcon::ZoomOut,
+        Interaction::Cell => winit_core::cursor::CursorIcon::Cell,
+        Interaction::Move => winit_core::cursor::CursorIcon::Move,
+        Interaction::Copy => winit_core::cursor::CursorIcon::Copy,
+        Interaction::Help => winit_core::cursor::CursorIcon::Help,
         Interaction::Hidden => {
             return None;
         }
-        Interaction::None | Interaction::Idle => {
-            winit::window::CursorIcon::Default
-        }
-        Interaction::ContextMenu => winit::window::CursorIcon::ContextMenu,
-        Interaction::Help => winit::window::CursorIcon::Help,
-        Interaction::Pointer => winit::window::CursorIcon::Pointer,
-        Interaction::Progress => winit::window::CursorIcon::Progress,
-        Interaction::Wait => winit::window::CursorIcon::Wait,
-        Interaction::Cell => winit::window::CursorIcon::Cell,
-        Interaction::Crosshair => winit::window::CursorIcon::Crosshair,
-        Interaction::Text => winit::window::CursorIcon::Text,
-        Interaction::Alias => winit::window::CursorIcon::Alias,
-        Interaction::Copy => winit::window::CursorIcon::Copy,
-        Interaction::Move => winit::window::CursorIcon::Move,
-        Interaction::NoDrop => winit::window::CursorIcon::NoDrop,
-        Interaction::NotAllowed => winit::window::CursorIcon::NotAllowed,
-        Interaction::Grab => winit::window::CursorIcon::Grab,
-        Interaction::Grabbing => winit::window::CursorIcon::Grabbing,
-        Interaction::ResizingHorizontally => {
-            winit::window::CursorIcon::EwResize
-        }
-        Interaction::ResizingVertically => winit::window::CursorIcon::NsResize,
-        Interaction::ResizingDiagonallyUp => {
-            winit::window::CursorIcon::NeswResize
-        }
-        Interaction::ResizingDiagonallyDown => {
-            winit::window::CursorIcon::NwseResize
-        }
-        Interaction::ResizingColumn => winit::window::CursorIcon::ColResize,
-        Interaction::ResizingRow => winit::window::CursorIcon::RowResize,
-        Interaction::AllScroll => winit::window::CursorIcon::AllScroll,
-        Interaction::ZoomIn => winit::window::CursorIcon::ZoomIn,
-        Interaction::ZoomOut => winit::window::CursorIcon::ZoomOut,
-    };
-
-    Some(icon)
+    })
 }
 
 /// Converts a `MouseButton` from [`winit`] to an [`iced`] mouse button.
@@ -556,7 +651,7 @@ pub fn mouse_button(mouse_button: winit::event::MouseButton) -> mouse::Button {
         winit::event::MouseButton::Middle => mouse::Button::Middle,
         winit::event::MouseButton::Back => mouse::Button::Back,
         winit::event::MouseButton::Forward => mouse::Button::Forward,
-        winit::event::MouseButton::Other(other) => mouse::Button::Other(other),
+        other => mouse::Button::Other(other as u16),
     }
 }
 
@@ -573,7 +668,7 @@ pub fn modifiers(
     result.set(keyboard::Modifiers::SHIFT, modifiers.shift_key());
     result.set(keyboard::Modifiers::CTRL, modifiers.control_key());
     result.set(keyboard::Modifiers::ALT, modifiers.alt_key());
-    result.set(keyboard::Modifiers::LOGO, modifiers.super_key());
+    result.set(keyboard::Modifiers::LOGO, modifiers.meta_key());
 
     result
 }
@@ -581,42 +676,47 @@ pub fn modifiers(
 /// Converts a physical cursor position into a logical `Point`.
 pub fn cursor_position(
     position: winit::dpi::PhysicalPosition<f64>,
-    scale_factor: f32,
+    scale_factor: f64,
 ) -> Point {
     let logical_position = position.to_logical(f64::from(scale_factor));
 
     Point::new(logical_position.x, logical_position.y)
 }
 
+enum TouchInternal {
+    Moved,
+    ElementState(ElementState),
+    Left,
+}
 /// Converts a `Touch` from [`winit`] to an [`iced`] touch event.
 ///
 /// [`winit`]: https://github.com/rust-windowing/winit
 /// [`iced`]: https://github.com/iced-rs/iced/tree/0.12
 pub fn touch_event(
-    touch: winit::event::Touch,
-    scale_factor: f32,
+    finger: FingerId,
+    state: TouchInternal,
+    force: Option<Force>,
+    position: Option<PhysicalPosition<f64>>,
+    scale_factor: f64,
 ) -> touch::Event {
-    let id = touch::Finger(touch.id);
+    let s = finger.into_raw() as u64;
+    let id = touch::Finger(s);
+
     let position = {
         let location =
-            touch.location.to_logical::<f64>(f64::from(scale_factor));
+            position.unwrap_or_default().to_logical::<f64>(scale_factor);
 
         Point::new(location.x as f32, location.y as f32)
     };
-
-    match touch.phase {
-        winit::event::TouchPhase::Started => {
+    match state {
+        TouchInternal::ElementState(ElementState::Pressed) => {
             touch::Event::FingerPressed { id, position }
         }
-        winit::event::TouchPhase::Moved => {
-            touch::Event::FingerMoved { id, position }
-        }
-        winit::event::TouchPhase::Ended => {
+        TouchInternal::ElementState(ElementState::Released) => {
             touch::Event::FingerLifted { id, position }
         }
-        winit::event::TouchPhase::Cancelled => {
-            touch::Event::FingerLost { id, position }
-        }
+        TouchInternal::Left => touch::Event::FingerLost { id, position },
+        TouchInternal::Moved => touch::Event::FingerMoved { id, position },
     }
 }
 
@@ -643,12 +743,9 @@ pub fn key(key: winit::keyboard::Key) -> keyboard::Key {
                 NamedKey::Shift => Named::Shift,
                 NamedKey::Symbol => Named::Symbol,
                 NamedKey::SymbolLock => Named::SymbolLock,
-                NamedKey::Meta => Named::Meta,
-                NamedKey::Hyper => Named::Hyper,
-                NamedKey::Super => Named::Super,
+                NamedKey::Meta => Named::Super,
                 NamedKey::Enter => Named::Enter,
                 NamedKey::Tab => Named::Tab,
-                NamedKey::Space => Named::Space,
                 NamedKey::ArrowDown => Named::ArrowDown,
                 NamedKey::ArrowLeft => Named::ArrowLeft,
                 NamedKey::ArrowRight => Named::ArrowRight,
@@ -1036,8 +1133,8 @@ pub fn key_code(
         KeyCode::ControlLeft => keyboard::key::Code::ControlLeft,
         KeyCode::ControlRight => keyboard::key::Code::ControlRight,
         KeyCode::Enter => keyboard::key::Code::Enter,
-        KeyCode::SuperLeft => keyboard::key::Code::SuperLeft,
-        KeyCode::SuperRight => keyboard::key::Code::SuperRight,
+        KeyCode::MetaLeft => keyboard::key::Code::SuperLeft,
+        KeyCode::MetaRight => keyboard::key::Code::SuperRight,
         KeyCode::ShiftLeft => keyboard::key::Code::ShiftLeft,
         KeyCode::ShiftRight => keyboard::key::Code::ShiftRight,
         KeyCode::Space => keyboard::key::Code::Space,
@@ -1122,9 +1219,7 @@ pub fn key_code(
         KeyCode::AudioVolumeMute => keyboard::key::Code::AudioVolumeMute,
         KeyCode::AudioVolumeUp => keyboard::key::Code::AudioVolumeUp,
         KeyCode::WakeUp => keyboard::key::Code::WakeUp,
-        KeyCode::Meta => keyboard::key::Code::Meta,
-        KeyCode::Hyper => keyboard::key::Code::Hyper,
-        KeyCode::Turbo => keyboard::key::Code::Turbo,
+        KeyCode::Super => keyboard::key::Code::Meta,
         KeyCode::Abort => keyboard::key::Code::Abort,
         KeyCode::Resume => keyboard::key::Code::Resume,
         KeyCode::Suspend => keyboard::key::Code::Suspend,
@@ -1240,13 +1335,21 @@ pub fn resize_direction(
     }
 }
 
+#[derive(Debug)]
+pub struct RawImage(Vec<u8>, Size<u32>);
+impl IconProvider for RawImage {}
+impl From<RawImage> for winit_core::icon::Icon {
+    fn from(value: RawImage) -> Self {
+        winit_core::icon::Icon(Arc::new(value))
+    }
+}
+
 /// Converts some [`window::Icon`] into its `winit` counterpart.
 ///
 /// Returns `None` if there is an error during the conversion.
-pub fn icon(icon: window::Icon) -> Option<winit::window::Icon> {
+pub fn icon(icon: window::Icon) -> Option<winit_core::icon::Icon> {
     let (pixels, size) = icon.into_raw();
-
-    winit::window::Icon::from_rgba(pixels, size.width, size.height).ok()
+    Some(winit_core::icon::Icon::from(RawImage(pixels, size)))
 }
 
 /// Converts some [`input_method::Purpose`] into its `winit` counterpart.
@@ -1263,4 +1366,15 @@ pub fn ime_purpose(
 // See: https://en.wikipedia.org/wiki/Private_Use_Areas
 fn is_private_use(c: char) -> bool {
     ('\u{E000}'..='\u{F8FF}').contains(&c)
+}
+
+#[cfg(feature = "a11y")]
+pub(crate) fn a11y(
+    event: iced_accessibility::accesskit::ActionRequest,
+) -> Event {
+    // TODO include newly added target tree
+    let id = iced_runtime::core::id::Id::from(
+        u128::from(event.target_node.0) as u64
+    );
+    Event::A11y(id, event)
 }

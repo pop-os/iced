@@ -40,6 +40,9 @@ pub struct Settings {
     ///
     /// By default, it is enabled.
     pub vsync: bool,
+
+    /// If set to true the application will exit when the main window is closed.
+    pub exit_on_close_request: bool,
 }
 
 impl Default for Settings {
@@ -48,9 +51,20 @@ impl Default for Settings {
             id: None,
             fonts: Vec::new(),
             default_font: Font::default(),
-            default_text_size: Pixels(16.0),
-            antialiasing: true,
-            vsync: true,
+            vsync: false,
+            default_text_size: Pixels(14.0),
+            antialiasing: false,
+            exit_on_close_request: false,
+        }
+    }
+}
+
+#[cfg(feature = "winit")]
+impl From<Settings> for iced_winit::Settings {
+    fn from(settings: Settings) -> iced_winit::Settings {
+        iced_winit::Settings {
+            id: settings.id,
+            fonts: settings.fonts,
         }
     }
 }

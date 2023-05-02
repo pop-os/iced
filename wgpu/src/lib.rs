@@ -50,6 +50,7 @@ use buffer::Buffer;
 use iced_debug as debug;
 pub use iced_graphics as graphics;
 pub use iced_graphics::core;
+use iced_graphics::text::Raw;
 
 pub use wgpu;
 
@@ -63,7 +64,8 @@ pub use geometry::Geometry;
 
 use crate::core::renderer;
 use crate::core::{
-    Background, Color, Font, Pixels, Point, Rectangle, Size, Transformation,
+    Background, Color, Font, Pixels, Point, Radians, Rectangle, Size,
+    Transformation, Vector, image::FilterMethod,
 };
 use crate::graphics::mesh;
 use crate::graphics::text::{Editor, Paragraph};
@@ -312,7 +314,7 @@ impl Renderer {
         self.layers.merge();
 
         for layer in self.layers.iter() {
-            let clip_bounds = layer.bounds * scale_factor;
+            let clip_bounds = layer.bounds * scale_factor as f32;
 
             if physical_bounds
                 .intersection(&clip_bounds)
@@ -332,7 +334,7 @@ impl Renderer {
                     encoder,
                     &layer.quads,
                     viewport.projection(),
-                    scale_factor,
+                    scale_factor as f32,
                 );
 
                 prepare_span.finish();
@@ -347,7 +349,7 @@ impl Renderer {
                     &mut self.staging_belt,
                     encoder,
                     &layer.triangles,
-                    Transformation::scale(scale_factor),
+                    Transformation::scale(scale_factor as f32),
                     viewport.physical_size(),
                 );
 
@@ -389,7 +391,7 @@ impl Renderer {
                     &mut self.image_cache.borrow_mut(),
                     &layer.images,
                     viewport.projection(),
-                    scale_factor,
+                    scale_factor as f32,
                 );
 
                 prepare_span.finish();
@@ -406,7 +408,7 @@ impl Renderer {
                     encoder,
                     &layer.text,
                     layer.bounds,
-                    Transformation::scale(scale_factor),
+                    Transformation::scale(scale_factor as f32),
                 );
 
                 prepare_span.finish();
@@ -467,11 +469,11 @@ impl Renderer {
             viewport.physical_size(),
         ));
 
-        let scale = Transformation::scale(scale_factor);
+        let scale = Transformation::scale(scale_factor as f32);
 
         for layer in self.layers.iter() {
-            let Some(physical_bounds) =
-                physical_bounds.intersection(&(layer.bounds * scale_factor))
+            let Some(physical_bounds) = physical_bounds
+                .intersection(&(layer.bounds * scale_factor as f32))
             else {
                 continue;
             };
@@ -662,11 +664,55 @@ impl Renderer {
                 .filter(|layer| {
                     !layer.is_empty()
                         && physical_bounds
-                            .intersection(&(layer.bounds * scale_factor))
+                            .intersection(&(layer.bounds * scale_factor as f32))
                             .is_some_and(|viewport| viewport.snap().is_some())
                 })
                 .count()
         });
+    }
+
+    fn draw_overlay(
+        &mut self,
+        overlay: &[impl AsRef<str>],
+        viewport: &Viewport,
+    ) {
+        use crate::core::Renderer as _;
+        use crate::core::alignment;
+        use crate::core::text::Renderer as _;
+
+        self.with_layer(
+            Rectangle::with_size(viewport.logical_size()),
+            |renderer| {
+                for (i, line) in overlay.iter().enumerate() {
+                    let text = crate::core::Text {
+                        content: line.as_ref().to_owned(),
+                        bounds: viewport.logical_size(),
+                        size: Pixels(20.0),
+                        line_height: core::text::LineHeight::default(),
+                        font: Font::MONOSPACE,
+                        align_x: core::text::Alignment::Left,
+                        align_y: alignment::Vertical::Top,
+                        shaping: core::text::Shaping::Advanced,
+                        wrapping: core::text::Wrapping::Word,
+                    };
+
+                    renderer.fill_text(
+                        text.clone(),
+                        Point::new(11.0, 11.0 + 25.0 * i as f32),
+                        Color::from_rgba(0.9, 0.9, 0.9, 1.0),
+                        Rectangle::with_size(Size::INFINITE),
+                    );
+
+                    renderer.fill_text(
+                        text,
+                        Point::new(11.0, 11.0 + 25.0 * i as f32)
+                            + Vector::new(-1.0, -1.0),
+                        Color::BLACK,
+                        Rectangle::with_size(Size::INFINITE),
+                    );
+                }
+            },
+        );
     }
 }
 
@@ -718,6 +764,7 @@ impl core::text::Renderer for Renderer {
     type Font = Font;
     type Paragraph = Paragraph;
     type Editor = Editor;
+    type Raw = Raw;
 
     const ICON_FONT: Font = Font::with_name("Iced-Icons");
     const CHECKMARK_ICON: char = '\u{f00c}';
@@ -774,6 +821,10 @@ impl core::text::Renderer for Renderer {
     ) {
         let (layer, transformation) = self.layers.current_mut();
         layer.draw_text(text, position, color, clip_bounds, transformation);
+    }
+
+    fn fill_raw(&mut self, raw: Self::Raw) {
+        // TODO
     }
 }
 
@@ -977,7 +1028,7 @@ impl renderer::Headless for Renderer {
         background_color: Color,
     ) -> Vec<u8> {
         self.screenshot(
-            &Viewport::with_physical_size(size, scale_factor),
+            &Viewport::with_physical_size(size, scale_factor as f64),
             background_color,
         )
     }

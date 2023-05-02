@@ -53,7 +53,7 @@ pub enum Event {
     /// ## Platform-specific
     ///
     /// - **Wayland:** Not implemented.
-    FileHovered(PathBuf),
+    FileHovered(Vec<PathBuf>),
 
     /// A file has been dropped into the window.
     ///
@@ -63,7 +63,7 @@ pub enum Event {
     /// ## Platform-specific
     ///
     /// - **Wayland:** Not implemented.
-    FileDropped(PathBuf),
+    FileDropped(Vec<PathBuf>),
 
     /// A file was hovered, but has exited the window.
     ///

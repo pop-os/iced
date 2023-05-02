@@ -7,7 +7,7 @@ publish = false
 
 [dependencies]
 iced.workspace = true
-iced.features = ["image", "debug"]
+iced.features = ["image", "debug", "winit"]
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tracing-subscriber = "0.3"

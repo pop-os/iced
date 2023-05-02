@@ -31,6 +31,11 @@
 //! }
 //! ```
 //! ![Checkbox drawn by `iced_wgpu`](https://github.com/iced-rs/iced/blob/7760618fb112074bc40b148944521f312152012a/docs/images/checkbox.png?raw=true)
+//! Show toggle controls using checkboxes.
+use iced_runtime::core::widget::Id;
+#[cfg(feature = "a11y")]
+use std::borrow::Cow;
+
 use crate::core::alignment;
 use crate::core::layout;
 use crate::core::mouse;
@@ -43,7 +48,7 @@ use crate::core::widget::tree::{self, Tree};
 use crate::core::window;
 use crate::core::{
     Background, Border, Clipboard, Color, Element, Event, Layout, Length,
-    Pixels, Rectangle, Shell, Size, Theme, Widget,
+    Pixels, Rectangle, Shell, Size, Theme, Widget, id::Internal,
 };
 
 /// A box that can be checked.
@@ -88,6 +93,12 @@ pub struct Checkbox<
     Renderer: text::Renderer,
     Theme: Catalog,
 {
+    id: Id,
+    label_id: Id,
+    #[cfg(feature = "a11y")]
+    name: Option<Cow<'a, str>>,
+    #[cfg(feature = "a11y")]
+    description: Option<iced_accessibility::Description<'a>>,
     is_checked: bool,
     on_toggle: Option<Box<dyn Fn(bool) -> Message + 'a>>,
     label: Option<text::Fragment<'a>>,
@@ -118,6 +129,12 @@ where
     ///   * a boolean describing whether the [`Checkbox`] is checked or not
     pub fn new(is_checked: bool) -> Self {
         Checkbox {
+            id: Id::unique(),
+            label_id: Id::unique(),
+            #[cfg(feature = "a11y")]
+            name: None,
+            #[cfg(feature = "a11y")]
+            description: None,
             is_checked,
             on_toggle: None,
             label: None,
@@ -134,7 +151,8 @@ where
                 code_point: Renderer::CHECKMARK_ICON,
                 size: None,
                 line_height: text::LineHeight::default(),
-                shaping: text::Shaping::Basic,
+                shaping: text::Shaping::Advanced,
+                wrap: text::Wrapping::default(),
             },
             class: Theme::default(),
             last_status: None,
@@ -246,6 +264,33 @@ where
     #[must_use]
     pub fn class(mut self, class: impl Into<Theme::Class<'a>>) -> Self {
         self.class = class.into();
+        self
+    }
+
+    #[cfg(feature = "a11y")]
+    /// Sets the name of the [`Button`].
+    pub fn name(mut self, name: impl Into<Cow<'a, str>>) -> Self {
+        self.name = Some(name.into());
+        self
+    }
+
+    #[cfg(feature = "a11y")]
+    /// Sets the description of the [`Button`].
+    pub fn description_widget<T: iced_accessibility::Describes>(
+        mut self,
+        description: &T,
+    ) -> Self {
+        self.description = Some(iced_accessibility::Description::Id(
+            description.description(),
+        ));
+        self
+    }
+
+    #[cfg(feature = "a11y")]
+    /// Sets the description of the [`Button`].
+    pub fn description(mut self, description: impl Into<Cow<'a, str>>) -> Self {
+        self.description =
+            Some(iced_accessibility::Description::Text(description.into()));
         self
     }
 }
@@ -416,6 +461,7 @@ where
                 size,
                 line_height,
                 shaping,
+                wrap,
             } = &self.icon;
             let size = size.unwrap_or(Pixels(bounds.height * 0.7));
 
@@ -472,6 +518,89 @@ where
             operation.text(None, layout.bounds(), label);
         }
     }
+    #[cfg(feature = "a11y")]
+    /// get the a11y nodes for the widget
+    fn a11y_nodes(
+        &self,
+        layout: Layout<'_>,
+        _state: &Tree,
+        cursor: mouse::Cursor,
+    ) -> iced_accessibility::A11yTree {
+        use iced_accessibility::{
+            A11yNode, A11yTree,
+            accesskit::{Action, Node, NodeId, Rect, Role},
+        };
+
+        let bounds = layout.bounds();
+        let is_hovered = cursor.is_over(bounds);
+        let Rectangle {
+            x,
+            y,
+            width,
+            height,
+        } = bounds;
+
+        let bounds = Rect::new(
+            x as f64,
+            y as f64,
+            (x + width) as f64,
+            (y + height) as f64,
+        );
+
+        let mut node = Node::new(Role::CheckBox);
+        node.add_action(Action::Focus);
+        node.add_action(Action::Click);
+        node.set_bounds(bounds);
+        if let Some(name) = self.name.as_ref() {
+            node.set_label(name.clone());
+        }
+        match self.description.as_ref() {
+            Some(iced_accessibility::Description::Id(id)) => {
+                node.set_described_by(
+                    id.iter()
+                        .cloned()
+                        .map(|id| NodeId::from(id))
+                        .collect::<Vec<_>>(),
+                );
+            }
+            Some(iced_accessibility::Description::Text(text)) => {
+                node.set_description(text.clone());
+            }
+            None => {}
+        }
+        node.set_selected(self.is_checked);
+        // TODO hover
+        // if is_hovered {
+        //     node.set_hovered();
+        // }
+        node.add_action(Action::Click);
+        let mut label_node = Node::new(Role::Label);
+        if let Some(label) = self.label.as_ref() {
+            label_node.set_label(label.clone());
+        }
+        // TODO proper label bounds
+        label_node.set_bounds(bounds);
+
+        A11yTree::node_with_child_tree(
+            A11yNode::new(node, self.id.clone()),
+            A11yTree::leaf(label_node, self.label_id.clone()),
+        )
+    }
+    fn id(&self) -> Option<Id> {
+        Some(Id(Internal::Set(vec![
+            self.id.0.clone(),
+            self.label_id.0.clone(),
+        ])))
+    }
+
+    fn set_id(&mut self, id: Id) {
+        if let Id(Internal::Set(list)) = id {
+            if list.len() == 2 {
+                self.id.0 = list[0].clone();
+                self.label_id.0 = list[1].clone();
+            }
+        }
+    }
 }
 
 impl<'a, Message, Theme, Renderer> From<Checkbox<'a, Message, Theme, Renderer>>
@@ -501,6 +630,8 @@ pub struct Icon<Font> {
     pub line_height: text::LineHeight,
     /// The shaping strategy of the icon.
     pub shaping: text::Shaping,
+    /// The wrap mode of the icon.
+    pub wrap: text::Wrapping,
 }
 
 /// The possible status of a [`Checkbox`].

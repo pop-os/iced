@@ -227,6 +227,9 @@ pub struct Style {
 
     /// The default text [`Color`] of the application.
     pub text_color: Color,
+
+    /// The default icon [`iced_core::Color`] of the application.
+    pub icon_color: Color,
 }
 
 /// The default blank style of a theme.
@@ -332,5 +335,6 @@ pub fn default(theme: &Theme) -> Style {
     Style {
         background_color: palette.background.base.color,
         text_color: palette.background.base.text,
+        icon_color: palette.background.base.text,
     }
 }

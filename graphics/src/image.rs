@@ -2,6 +2,8 @@
 #[cfg(feature = "image")]
 use crate::core::Bytes;
 
+use crate::core::Color;
+use crate::core::Radians;
 use crate::core::Rectangle;
 use crate::core::image;
 use crate::core::svg;
@@ -117,7 +119,14 @@ pub fn load(handle: &image::Handle) -> Result<Buffer, image::Error> {
 
     let (width, height, pixels) = match handle {
         image::Handle::Path(_, path) => {
-            let image = ::image::open(path).map_err(to_error)?;
+            use std::sync::Arc;
+
+            let image = ::image::ImageReader::open(&path)
+                .map_err(|e| image::Error::Inaccessible(Arc::new(e)))?
+                .with_guessed_format()
+                .map_err(|e| image::Error::Invalid(Arc::new(e)))?
+                .decode()
+                .map_err(|e| image::Error::Invalid(Arc::new(e)))?;
 
             let operation = std::fs::File::open(path)
                 .ok()

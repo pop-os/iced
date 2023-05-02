@@ -1,3 +1,4 @@
+use crate::Event;
 use crate::futures::futures::{
     Future, Sink, StreamExt,
     channel::mpsc,
@@ -7,13 +8,14 @@ use crate::futures::futures::{
 use crate::graphics::shell;
 use crate::runtime::Action;
 use crate::runtime::window;
+use std::hash::DefaultHasher;
 use std::pin::Pin;
 
 /// An event loop proxy with backpressure that implements `Sink`.
-#[derive(Debug)]
 pub struct Proxy<T: 'static> {
-    raw: winit::event_loop::EventLoopProxy<Action<T>>,
+    pub(crate) raw: winit::event_loop::EventLoopProxy,
     sender: mpsc::Sender<Action<T>>,
+    event_sender: mpsc::UnboundedSender<Event<T>>,
     notifier: mpsc::Sender<usize>,
 }
 
@@ -23,6 +25,7 @@ impl<T: 'static> Clone for Proxy<T> {
             raw: self.raw.clone(),
             sender: self.sender.clone(),
             notifier: self.notifier.clone(),
+            event_sender: self.event_sender.clone(),
         }
     }
 }
@@ -32,11 +35,14 @@ impl<T: 'static> Proxy<T> {
 
     /// Creates a new [`Proxy`] from an `EventLoopProxy`.
     pub fn new(
-        raw: winit::event_loop::EventLoopProxy<Action<T>>,
+        raw: winit::event_loop::EventLoopProxy,
+        event_sender: mpsc::UnboundedSender<Event<T>>,
     ) -> (Self, impl Future<Output = ()>) {
         let (notifier, mut processed) = mpsc::channel(Self::MAX_SIZE);
-        let (sender, mut receiver) = mpsc::channel(Self::MAX_SIZE);
+        let (sender, mut receiver): (mpsc::Sender<Action<T>>, _) =
+            mpsc::channel(Self::MAX_SIZE);
         let proxy = raw.clone();
+        let event_sender_clone = event_sender.clone();
 
         let worker = async move {
             let mut count = 0;
@@ -45,7 +51,8 @@ impl<T: 'static> Proxy<T> {
                 if count < Self::MAX_SIZE {
                     select! {
                         message = receiver.select_next_some() => {
-                            let _ = proxy.send_event(message);
+                            let _ = event_sender_clone.unbounded_send(Event::UserEvent(message));
+                            let _ = proxy.wake_up();
                             count += 1;
 
                         }
@@ -70,6 +77,7 @@ impl<T: 'static> Proxy<T> {
                 raw,
                 sender,
                 notifier,
+                event_sender,
             },
             worker,
         )
@@ -88,7 +96,9 @@ impl<T: 'static> Proxy<T> {
     /// Note: This skips the backpressure mechanism with an unbounded
     /// channel. Use sparingly!
     pub fn send_action(&self, action: Action<T>) {
-        let _ = self.raw.send_event(action);
+        self.event_sender
+            .unbounded_send(Event::UserEvent(action))
+            .expect("Send message to event loop");
     }
 
     /// Frees an amount of slots for additional messages to be queued in

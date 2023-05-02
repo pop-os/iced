@@ -6,4 +6,11 @@ edition = "2024"
 publish = false
 
 [dependencies]
-iced = { path = "../..", features = ["debug"] }
+iced = { path = "../..", default-features = false, features = [
+    "a11y",
+    "tokio",
+    "debug",
+    "winit",
+    "multi-window",
+    "tiny-skia",
+] }

@@ -10,11 +10,15 @@ homepage.workspace = true
 categories.workspace = true
 keywords.workspace = true
 
-[features]
-selector = ["dep:iced_selector"]
-
 [lints]
 workspace = true
+
+[features]
+debug = []
+selector = ["dep:iced_selector"]
+multi-window = []
+a11y = ["iced_accessibility", "iced_core/a11y"]
+wayland = ["iced_core/wayland", "sctk"]
 
 [dependencies]
 bytes.workspace = true
@@ -29,3 +33,10 @@ sipper.optional = true
 
 iced_selector.workspace = true
 iced_selector.optional = true
+iced_futures.features = ["thread-pool"]
+sctk.workspace = true
+sctk.optional = true
+iced_accessibility.workspace = true
+iced_accessibility.optional = true
+window_clipboard.workspace = true
+dnd.workspace = true

@@ -84,7 +84,6 @@ use crate::core::mouse;
 use crate::core::overlay::{self, Group};
 use crate::core::renderer;
 use crate::core::touch;
-use crate::core::widget;
 use crate::core::widget::tree::{self, Tree};
 use crate::core::window;
 use crate::core::{
@@ -165,6 +164,7 @@ pub struct PaneGrid<
     min_size: f32,
     on_click: Option<Box<dyn Fn(Pane) -> Message + 'a>>,
     on_drag: Option<Box<dyn Fn(DragEvent) -> Message + 'a>>,
+    #[allow(clippy::type_complexity)]
     on_resize: Option<(f32, Box<dyn Fn(ResizeEvent) -> Message + 'a>)>,
     class: <Theme as Catalog>::Class<'a>,
     last_mouse_interaction: Option<mouse::Interaction>,
@@ -377,8 +377,8 @@ where
         self.contents.iter().map(Content::state).collect()
     }
 
-    fn diff(&self, tree: &mut Tree) {
-        let Memory { order, .. } = tree.state.downcast_ref();
+    fn diff(&mut self, tree: &mut Tree) {
+        let Memory { order, .. } = tree.state.downcast_mut();
 
         // `Pane` always increments and is iterated by Ord so new
         // states are always added at the end. We can simply remove
@@ -399,11 +399,13 @@ where
             retain
         });
 
-        tree.diff_children_custom(
-            &self.contents,
-            |state, content| content.diff(state),
-            Content::state,
-        );
+        // let ids = self.contents.iter().map(|_| None).collect(); // TODO
+        // tree.diff_children_custom(
+        //     &mut self.contents,
+        //     ids,
+        //     |state, (_, content): (_, _)| content.diff(state),
+        //     |(_, content): (_, _)| content.state(),
+        // );
 
         let Memory { order, .. } = tree.state.downcast_mut();
         order.clone_from(&self.panes);
@@ -464,7 +466,7 @@ where
         tree: &mut Tree,
         layout: Layout<'_>,
         renderer: &Renderer,
-        operation: &mut dyn widget::Operation,
+        operation: &mut dyn crate::core::widget::Operation,
     ) {
         operation.container(None, layout.bounds());
         operation.traverse(&mut |operation| {

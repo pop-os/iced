@@ -1,5 +1,6 @@
 //! Operate on widgets that can be focused.
 use crate::Rectangle;
+use crate::id::IdEq;
 use crate::widget::Id;
 use crate::widget::operation::{self, Operation, Outcome};
 
@@ -39,7 +40,7 @@ pub fn focus<T>(target: Id) -> impl Operation<T> {
             state: &mut dyn Focusable,
         ) {
             match id {
-                Some(id) if id == &self.target => {
+                Some(id) if IdEq::eq(&id.0, &self.target.0) => {
                     state.focus();
                 }
                 _ => {

@@ -68,7 +68,7 @@ where
         let sender = self.sender.clone();
         let future =
             stream.map(Ok).forward(sender).map(|result| match result {
-                Ok(()) => (),
+                Ok(()) => {}
                 Err(error) => {
                     log::warn!(
                         "Stream could not run until completion: {error}"

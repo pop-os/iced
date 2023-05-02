@@ -28,6 +28,7 @@ struct Window {
     scale_input: String,
     current_scale: f32,
     theme: Theme,
+    input_id: text_input::Id,
 }
 
 #[derive(Debug, Clone)]

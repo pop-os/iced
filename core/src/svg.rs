@@ -29,6 +29,9 @@ pub struct Svg<H = Handle> {
     ///
     /// 0 means transparent. 1 means opaque.
     pub opacity: f32,
+
+    /// The border radius for the svg
+    pub border_radius: [f32; 4],
 }
 
 impl Svg<Handle> {
@@ -39,6 +42,7 @@ impl Svg<Handle> {
             color: None,
             rotation: Radians(0.0),
             opacity: 1.0,
+            border_radius: [0.0; 4],
         }
     }
 
@@ -57,6 +61,12 @@ impl Svg<Handle> {
     /// Sets the opacity of the [`Svg`].
     pub fn opacity(mut self, opacity: impl Into<f32>) -> Self {
         self.opacity = opacity.into();
+        self
+    }
+
+    /// Sets the border radius of the [`Svg`]
+    pub fn border_radius(mut self, border_radius: impl Into<[f32; 4]>) -> Self {
+        self.border_radius = border_radius.into();
         self
     }
 }

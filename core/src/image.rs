@@ -48,6 +48,7 @@ impl Image<Handle> {
             border_radius: border::Radius::default(),
             opacity: 1.0,
             snap: false,
+            // border_radius: [0.0; 4],
         }
     }
 
@@ -83,7 +84,7 @@ impl From<&Handle> for Image {
 }
 
 /// A handle of some image data.
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub enum Handle {
     /// A file handle. The image data will be read
     /// from the file path.

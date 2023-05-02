@@ -101,8 +101,8 @@ pub struct Settings {
 }
 
 impl Default for Settings {
-    fn default() -> Self {
-        Self {
+    fn default() -> Settings {
+        Settings {
             size: Size::new(1024.0, 768.0),
             maximized: false,
             fullscreen: false,

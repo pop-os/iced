@@ -72,7 +72,7 @@ where
         vec![widget::Tree::new(&self.content)]
     }
 
-    fn diff(&self, tree: &mut tree::Tree) {
+    fn diff(&mut self, tree: &mut tree::Tree) {
         tree.diff_children(std::slice::from_ref(&self.content));
     }
 

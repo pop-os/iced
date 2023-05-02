@@ -35,6 +35,7 @@ use crate::core::layout;
 use crate::core::mouse;
 use crate::core::renderer;
 use crate::core::touch;
+use crate::core::widget::Id;
 use crate::core::widget::tree::{self, Tree};
 use crate::core::window;
 use crate::core::{
@@ -43,6 +44,12 @@ use crate::core::{
 };
 
 use std::ops::RangeInclusive;
+
+use iced_renderer::core::border::Radius;
+use iced_runtime::core::gradient::Linear;
+
+#[cfg(feature = "a11y")]
+use std::borrow::Cow;
 
 /// An horizontal bar and a handle that selects a single value from a range of
 /// values.
@@ -84,11 +91,19 @@ pub struct Slider<'a, T, Message, Theme = crate::Theme>
 where
     Theme: Catalog,
 {
+    id: Id,
+    #[cfg(feature = "a11y")]
+    name: Option<Cow<'a, str>>,
+    #[cfg(feature = "a11y")]
+    description: Option<iced_accessibility::Description<'a>>,
+    #[cfg(feature = "a11y")]
+    label: Option<Vec<iced_accessibility::accesskit::NodeId>>,
     range: RangeInclusive<T>,
     step: T,
     shift_step: Option<T>,
     value: T,
     default: Option<T>,
+    breakpoints: &'a [T],
     on_change: Box<dyn Fn(T) -> Message + 'a>,
     on_release: Option<Message>,
     width: Length,
@@ -131,11 +146,19 @@ where
         };
 
         Slider {
+            id: Id::unique(),
+            #[cfg(feature = "a11y")]
+            name: None,
+            #[cfg(feature = "a11y")]
+            description: None,
+            #[cfg(feature = "a11y")]
+            label: None,
             value,
             default: None,
             range,
             step: T::from(1),
             shift_step: None,
+            breakpoints: &[],
             on_change: Box::new(on_change),
             on_release: None,
             width: Length::Fill,
@@ -153,12 +176,20 @@ where
         self
     }
 
+    /// Defines breakpoints to visibly mark on the slider.
+    ///
+    /// The slider will gravitate towards a breakpoint when near it.
+    pub fn breakpoints(mut self, breakpoints: &'a [T]) -> Self {
+        self.breakpoints = breakpoints;
+        self
+    }
+
     /// Sets the release message of the [`Slider`].
     /// This is called when the mouse is released from the slider.
     ///
     /// Typically, the user's interaction with the slider is finished when this message is produced.
     /// This is useful if you need to spawn a long-running task from the slider's result, where
-    /// the default on_change message could create too many events.
+    /// the default `on_change` message could create too many events.
     pub fn on_release(mut self, on_release: Message) -> Self {
         self.on_release = Some(on_release);
         self
@@ -205,6 +236,41 @@ where
     #[must_use]
     pub fn class(mut self, class: impl Into<Theme::Class<'a>>) -> Self {
         self.class = class.into();
+        self
+    }
+
+    #[cfg(feature = "a11y")]
+    /// Sets the name of the [`Button`].
+    pub fn name(mut self, name: impl Into<Cow<'a, str>>) -> Self {
+        self.name = Some(name.into());
+        self
+    }
+
+    #[cfg(feature = "a11y")]
+    /// Sets the description of the [`Button`].
+    pub fn description_widget(
+        mut self,
+        description: &impl iced_accessibility::Describes,
+    ) -> Self {
+        self.description = Some(iced_accessibility::Description::Id(
+            description.description(),
+        ));
+        self
+    }
+
+    #[cfg(feature = "a11y")]
+    /// Sets the description of the [`Button`].
+    pub fn description(mut self, description: impl Into<Cow<'a, str>>) -> Self {
+        self.description =
+            Some(iced_accessibility::Description::Text(description.into()));
+        self
+    }
+
+    #[cfg(feature = "a11y")]
+    /// Sets the label of the [`Button`].
+    pub fn label(mut self, label: &dyn iced_accessibility::Labels) -> Self {
+        self.label =
+            Some(label.label().into_iter().map(|l| l.into()).collect());
         self
     }
 }
@@ -448,15 +514,51 @@ where
         let style =
             theme.style(&self.class, self.status.unwrap_or(Status::Active));
 
+        let border_width = style
+            .handle
+            .border_width
+            .min(bounds.height / 2.0)
+            .min(bounds.width / 2.0);
+
         let (handle_width, handle_height, handle_border_radius) =
             match style.handle.shape {
                 HandleShape::Circle { radius } => {
-                    (radius * 2.0, radius * 2.0, radius.into())
+                    let radius = (radius)
+                        .max(2.0 * border_width)
+                        .min(bounds.height / 2.0)
+                        .min(bounds.width / 2.0);
+                    (radius * 2.0, radius * 2.0, Radius::from(radius))
                 }
                 HandleShape::Rectangle {
+                    height,
                     width,
                     border_radius,
-                } => (f32::from(width), bounds.height, border_radius),
+                } => {
+                    let width = (f32::from(width))
+                        .max(2.0 * border_width)
+                        .min(bounds.width);
+                    let height = (f32::from(height))
+                        .max(2.0 * border_width)
+                        .min(bounds.height);
+                    let mut border_radius: [f32; 4] = border_radius.into();
+                    for r in &mut border_radius {
+                        *r = (*r)
+                            .min(height / 2.0)
+                            .min(width / 2.0)
+                            .max(*r * (width + border_width * 2.0) / width);
+                    }
+
+                    (
+                        width,
+                        height,
+                        Radius {
+                            top_left: border_radius[0],
+                            top_right: border_radius[1],
+                            bottom_right: border_radius[2],
+                            bottom_left: border_radius[3],
+                        },
+                    )
+                }
             };
 
         let value = self.value.into() as f32;
@@ -475,6 +577,52 @@ where
 
         let rail_y = bounds.y + bounds.height / 2.0;
 
+        // Draw the breakpoint indicators beneath the slider.
+        const BREAKPOINT_WIDTH: f32 = 2.0;
+        for &value in self.breakpoints {
+            let value: f64 = value.into();
+            let offset = if range_start >= range_end {
+                0.0
+            } else {
+                (bounds.width - BREAKPOINT_WIDTH) * (value as f32 - range_start)
+                    / (range_end - range_start)
+            };
+
+            renderer.fill_quad(
+                renderer::Quad {
+                    bounds: Rectangle {
+                        x: bounds.x + offset,
+                        y: rail_y + 6.0,
+                        width: BREAKPOINT_WIDTH,
+                        height: 8.0,
+                    },
+                    border: Border {
+                        radius: 0.0.into(),
+                        width: 0.0,
+                        color: Color::TRANSPARENT,
+                    },
+                    ..renderer::Quad::default()
+                },
+                crate::core::Background::Color(style.breakpoint.color),
+            );
+        }
+
+        renderer.fill_quad(
+            renderer::Quad {
+                bounds: Rectangle {
+                    x: bounds.x,
+                    y: rail_y - style.rail.width / 2.0,
+                    width: offset + handle_width / 2.0,
+                    height: style.rail.width,
+                },
+                border: style.rail.border,
+                ..renderer::Quad::default()
+            },
+            style.rail.backgrounds.0,
+        );
+
+        // TODO align the angle of the gradient for the slider?
+
         renderer.fill_quad(
             renderer::Quad {
                 bounds: Rectangle {
@@ -492,9 +640,9 @@ where
         renderer.fill_quad(
             renderer::Quad {
                 bounds: Rectangle {
-                    x: bounds.x + offset + handle_width / 2.0,
+                    x: bounds.x,
                     y: rail_y - style.rail.width / 2.0,
-                    width: bounds.width - offset - handle_width / 2.0,
+                    width: offset + handle_width / 2.0,
                     height: style.rail.width,
                 },
                 border: style.rail.border,
@@ -503,11 +651,12 @@ where
             style.rail.backgrounds.1,
         );
 
+        // handle
         renderer.fill_quad(
             renderer::Quad {
                 bounds: Rectangle {
                     x: bounds.x + offset,
-                    y: rail_y - handle_height / 2.0,
+                    y: rail_y - (handle_height / 2.0),
                     width: handle_width,
                     height: handle_height,
                 },
@@ -550,6 +699,83 @@ where
             mouse::Interaction::default()
         }
     }
+
+    #[cfg(feature = "a11y")]
+    fn a11y_nodes(
+        &self,
+        layout: Layout<'_>,
+        _state: &Tree,
+        cursor: mouse::Cursor,
+    ) -> iced_accessibility::A11yTree {
+        use iced_accessibility::{
+            A11yTree,
+            accesskit::{Node, NodeId, Rect, Role},
+        };
+
+        let bounds = layout.bounds();
+        let is_hovered = cursor.is_over(bounds);
+        let Rectangle {
+            x,
+            y,
+            width,
+            height,
+        } = bounds;
+        let bounds = Rect::new(
+            x as f64,
+            y as f64,
+            (x + width) as f64,
+            (y + height) as f64,
+        );
+        let mut node = Node::new(Role::Slider);
+        node.set_bounds(bounds);
+        if let Some(name) = self.name.as_ref() {
+            node.set_label(name.clone());
+        }
+        match self.description.as_ref() {
+            Some(iced_accessibility::Description::Id(id)) => {
+                node.set_described_by(
+                    id.iter()
+                        .cloned()
+                        .map(|id| NodeId::from(id))
+                        .collect::<Vec<_>>(),
+                );
+            }
+            Some(iced_accessibility::Description::Text(text)) => {
+                node.set_description(text.clone());
+            }
+            None => {}
+        }
+
+        if let Some(label) = self.label.as_ref() {
+            node.set_labelled_by(label.clone());
+        }
+
+        if let Ok(min) = self.range.start().clone().try_into() {
+            node.set_min_numeric_value(min);
+        }
+        if let Ok(max) = self.range.end().clone().try_into() {
+            node.set_max_numeric_value(max);
+        }
+        if let Ok(value) = self.value.clone().try_into() {
+            node.set_numeric_value(value);
+        }
+        if let Ok(step) = self.step.clone().try_into() {
+            node.set_numeric_value_step(step);
+        }
+
+        // TODO: This could be a setting on the slider
+        node.set_live(iced_accessibility::accesskit::Live::Polite);
+
+        A11yTree::leaf(node, self.id.clone())
+    }
+
+    fn id(&self) -> Option<Id> {
+        Some(self.id.clone())
+    }
+
+    fn set_id(&mut self, id: Id) {
+        self.id = id;
+    }
 }
 
 impl<'a, T, Message, Theme, Renderer> From<Slider<'a, T, Message, Theme>>
@@ -591,6 +817,15 @@ pub struct Style {
     pub rail: Rail,
     /// The appearance of the [`Handle`] of the slider.
     pub handle: Handle,
+    /// The appearance of breakpoints.
+    pub breakpoint: Breakpoint,
+}
+
+/// The appearance of slider breakpoints.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Breakpoint {
+    /// The color of the slider breakpoint.
+    pub color: Color,
 }
 
 impl Style {
@@ -613,6 +848,21 @@ pub struct Rail {
     pub width: f32,
     /// The border of the rail.
     pub border: Border,
+}
+
+/// The background color of the rail
+#[derive(Debug, Clone, Copy)]
+pub enum RailBackground {
+    /// Start and end colors of the rail
+    Pair(Color, Color),
+    /// Linear gradient for the background of the rail
+    /// includes an option for auto-selecting the angle
+    Gradient {
+        /// the linear gradient of the slider
+        gradient: Linear,
+        /// Let the widget determin the angle of the gradient
+        auto_angle: bool,
+    },
 }
 
 /// The appearance of the handle of a slider.
@@ -640,6 +890,8 @@ pub enum HandleShape {
     Rectangle {
         /// The width of the rectangle.
         width: u16,
+        /// The height of the rectangle.
+        height: u16,
         /// The border radius of the corners of the rectangle.
         border_radius: border::Radius,
     },
@@ -697,6 +949,9 @@ pub fn default(theme: &Theme, status: Status) -> Style {
             background: color.into(),
             border_color: Color::TRANSPARENT,
             border_width: 0.0,
+        },
+        breakpoint: Breakpoint {
+            color: palette.background.weak.text,
         },
     }
 }

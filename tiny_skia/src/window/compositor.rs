@@ -71,7 +71,7 @@ impl crate::graphics::Compositor for Compositor {
             window,
             clip_mask: tiny_skia::Mask::new(1, 1).expect("Create clip mask"),
             layer_stack: VecDeque::new(),
-            background_color: Color::BLACK,
+            background_color: Color::TRANSPARENT,
             max_age: 0,
         };
 
@@ -186,6 +186,7 @@ pub fn present(
         })
         .unwrap_or_else(|| vec![Rectangle::with_size(viewport.logical_size())]);
 
+    /// XXX winit shell does not handle skipped present well.
     if damage.is_empty() {
         if let Some(last_layers) = last_layers {
             surface.layer_stack.push_front(last_layers.clone());

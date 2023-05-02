@@ -155,12 +155,17 @@ impl core::text::Paragraph for Paragraph {
                 } else {
                     attrs
                 };
-
                 (span.text.as_ref(), attrs.metadata(i))
             }),
             &text::to_attributes(text.font),
-            cosmic_text::Shaping::Advanced,
-            None,
+            text::to_shaping_ascii(text.shaping, false), // TODO iterate over spans and check if is ascii, if default shaping is chosen
+            match text.align_x {
+                Alignment::Default => None,
+                Alignment::Left => Some(cosmic_text::Align::Left),
+                Alignment::Center => Some(cosmic_text::Align::Center),
+                Alignment::Right => Some(cosmic_text::Align::Right),
+                Alignment::Justified => Some(cosmic_text::Align::Justified),
+            },
         );
 
         let min_bounds =

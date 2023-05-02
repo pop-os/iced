@@ -30,6 +30,12 @@
 //!     }
 //! }
 //! ```
+//! Show toggle controls using togglers.
+#[cfg(feature = "a11y")]
+use std::borrow::Cow;
+
+use iced_runtime::core::border::Radius;
+
 use crate::core::alignment;
 use crate::core::border;
 use crate::core::layout;
@@ -37,12 +43,14 @@ use crate::core::mouse;
 use crate::core::renderer;
 use crate::core::text;
 use crate::core::touch;
-use crate::core::widget;
 use crate::core::widget::tree::{self, Tree};
-use crate::core::window;
 use crate::core::{
     Background, Border, Clipboard, Color, Element, Event, Layout, Length,
-    Pixels, Rectangle, Shell, Size, Theme, Widget,
+    Pixels, Rectangle, Shell, Size, Theme, Widget, id,
+};
+use crate::core::{
+    widget::{self, Id},
+    window,
 };
 
 /// A toggler widget.
@@ -86,6 +94,14 @@ pub struct Toggler<
     Theme: Catalog,
     Renderer: text::Renderer,
 {
+    id: Id,
+    label_id: Option<Id>,
+    #[cfg(feature = "a11y")]
+    name: Option<Cow<'a, str>>,
+    #[cfg(feature = "a11y")]
+    description: Option<iced_accessibility::Description<'a>>,
+    #[cfg(feature = "a11y")]
+    labeled_by_widget: Option<Vec<iced_accessibility::accesskit::NodeId>>,
     is_toggled: bool,
     on_toggle: Option<Box<dyn Fn(bool) -> Message + 'a>>,
     label: Option<text::Fragment<'a>>,
@@ -115,11 +131,16 @@ where
     /// It expects:
     ///   * a boolean describing whether the [`Toggler`] is checked or not
     ///   * An optional label for the [`Toggler`]
-    ///   * a function that will be called when the [`Toggler`] is toggled. It
-    ///     will receive the new state of the [`Toggler`] and must produce a
-    ///     `Message`.
     pub fn new(is_toggled: bool) -> Self {
         Toggler {
+            id: Id::unique(),
+            label_id: None,
+            #[cfg(feature = "a11y")]
+            name: None,
+            #[cfg(feature = "a11y")]
+            description: None,
+            #[cfg(feature = "a11y")]
+            labeled_by_widget: None,
             is_toggled,
             on_toggle: None,
             label: None,
@@ -128,9 +149,9 @@ where
             text_size: None,
             text_line_height: text::LineHeight::default(),
             text_alignment: text::Alignment::Default,
-            text_shaping: text::Shaping::default(),
             text_wrapping: text::Wrapping::default(),
             spacing: Self::DEFAULT_SIZE / 2.0,
+            text_shaping: text::Shaping::Advanced,
             font: None,
             class: Theme::default(),
             last_status: None,
@@ -140,6 +161,7 @@ where
     /// Sets the label of the [`Toggler`].
     pub fn label(mut self, label: impl text::IntoFragment<'a>) -> Self {
         self.label = Some(label.into_fragment());
+        self.label_id = Some(Id::unique());
         self
     }
 
@@ -246,6 +268,44 @@ where
         self.class = class.into();
         self
     }
+
+    #[cfg(feature = "a11y")]
+    /// Sets the name of the [`Button`].
+    pub fn name(mut self, name: impl Into<Cow<'a, str>>) -> Self {
+        self.name = Some(name.into());
+        self
+    }
+
+    #[cfg(feature = "a11y")]
+    /// Sets the description of the [`Button`].
+    pub fn description_widget<T: iced_accessibility::Describes>(
+        mut self,
+        description: &T,
+    ) -> Self {
+        self.description = Some(iced_accessibility::Description::Id(
+            description.description(),
+        ));
+        self
+    }
+
+    #[cfg(feature = "a11y")]
+    /// Sets the description of the [`Button`].
+    pub fn description(mut self, description: impl Into<Cow<'a, str>>) -> Self {
+        self.description =
+            Some(iced_accessibility::Description::Text(description.into()));
+        self
+    }
+
+    #[cfg(feature = "a11y")]
+    /// Sets the label of the [`Button`] using another widget.
+    pub fn labeled_by_widget(
+        mut self,
+        label: &dyn iced_accessibility::Labels,
+    ) -> Self {
+        self.labeled_by_widget =
+            Some(label.label().into_iter().map(|l| l.into()).collect());
+        self
+    }
 }
 
 impl<Message, Theme, Renderer> Widget<Message, Theme, Renderer>
@@ -279,12 +339,8 @@ where
 
         layout::next_to_each_other(
             &limits,
-            if self.label.is_some() {
-                self.spacing
-            } else {
-                0.0
-            },
-            |_| layout::Node::new(Size::new(2.0 * self.size, self.size)),
+            self.spacing,
+            |_| layout::Node::new(crate::core::Size::new(48., 24.)),
             |limits| {
                 if let Some(label) = self.label.as_deref() {
                     let state = tree
@@ -309,7 +365,7 @@ where
                         },
                     )
                 } else {
-                    layout::Node::new(Size::ZERO)
+                    layout::Node::new(crate::core::Size::ZERO)
                 }
             },
         )
@@ -393,7 +449,7 @@ where
         theme: &Theme,
         defaults: &renderer::Style,
         layout: Layout<'_>,
-        _cursor: mouse::Cursor,
+        cursor: mouse::Cursor,
         viewport: &Rectangle,
     ) {
         let mut children = layout.children();
@@ -424,15 +480,38 @@ where
         }
 
         let bounds = toggler_layout.bounds();
-        let border_radius = style
-            .border_radius
-            .unwrap_or_else(|| border::Radius::new(bounds.height / 2.0));
+        let is_mouse_over = cursor.is_over(layout.bounds());
+
+        let status = if self.on_toggle.is_none() {
+            Status::Disabled {
+                is_toggled: self.is_toggled,
+            }
+        } else if is_mouse_over {
+            Status::Hovered {
+                is_toggled: self.is_toggled,
+            }
+        } else {
+            Status::Active {
+                is_toggled: self.is_toggled,
+            }
+        };
+
+        let style = theme.style(&self.class, status);
+
+        let space = style.handle_margin;
+
+        let toggler_background_bounds = Rectangle {
+            x: bounds.x,
+            y: bounds.y,
+            width: bounds.width,
+            height: bounds.height,
+        };
 
         renderer.fill_quad(
             renderer::Quad {
                 bounds,
                 border: Border {
-                    radius: border_radius,
+                    radius: style.border_radius,
                     width: style.background_border_width,
                     color: style.background_border_color,
                 },
@@ -445,20 +524,20 @@ where
         let toggler_foreground_bounds = Rectangle {
             x: bounds.x
                 + if self.is_toggled {
-                    bounds.width - bounds.height + padding
+                    bounds.width - space - (bounds.height - (2.0 * space))
                 } else {
-                    padding
+                    space
                 },
-            y: bounds.y + padding,
-            width: bounds.height - (2.0 * padding),
-            height: bounds.height - (2.0 * padding),
+            y: bounds.y + space,
+            width: bounds.height - (2.0 * space),
+            height: bounds.height - (2.0 * space),
         };
 
         renderer.fill_quad(
             renderer::Quad {
                 bounds: toggler_foreground_bounds,
                 border: Border {
-                    radius: border_radius,
+                    radius: style.handle_radius,
                     width: style.foreground_border_width,
                     color: style.foreground_border_color,
                 },
@@ -466,6 +545,103 @@ where
             },
             style.foreground,
         );
+    }
+
+    #[cfg(feature = "a11y")]
+    /// get the a11y nodes for the widget
+    fn a11y_nodes(
+        &self,
+        layout: Layout<'_>,
+        _state: &Tree,
+        cursor: mouse::Cursor,
+    ) -> iced_accessibility::A11yTree {
+        use iced_accessibility::{
+            A11yNode, A11yTree,
+            accesskit::{Action, Node, NodeId, Rect, Role},
+        };
+
+        let bounds = layout.bounds();
+        let is_hovered = cursor.is_over(bounds);
+        let Rectangle {
+            x,
+            y,
+            width,
+            height,
+        } = bounds;
+
+        let bounds = Rect::new(
+            x as f64,
+            y as f64,
+            (x + width) as f64,
+            (y + height) as f64,
+        );
+
+        let mut node = Node::new(Role::Switch);
+        node.add_action(Action::Focus);
+        node.add_action(Action::Click);
+        node.set_bounds(bounds);
+        if let Some(name) = self.name.as_ref() {
+            node.set_label(name.clone());
+        }
+        match self.description.as_ref() {
+            Some(iced_accessibility::Description::Id(id)) => {
+                node.set_described_by(
+                    id.iter()
+                        .cloned()
+                        .map(|id| NodeId::from(id))
+                        .collect::<Vec<_>>(),
+                );
+            }
+            Some(iced_accessibility::Description::Text(text)) => {
+                node.set_description(text.clone());
+            }
+            None => {}
+        }
+        node.set_selected(self.is_toggled);
+        // TODO hover
+        // if is_hovered {
+        //     node.set_hovered();
+        // }
+        node.add_action(Action::Click);
+        if let Some(label) = self.label.as_ref() {
+            let mut label_node = Node::new(Role::Label);
+
+            label_node.set_label(label.clone());
+            // TODO proper label bounds for the label
+            label_node.set_bounds(bounds);
+
+            A11yTree::node_with_child_tree(
+                A11yNode::new(node, self.id.clone()),
+                A11yTree::leaf(label_node, self.label_id.clone().unwrap()),
+            )
+        } else {
+            if let Some(labeled_by_widget) = self.labeled_by_widget.as_ref() {
+                node.set_labelled_by(labeled_by_widget.clone());
+            }
+            A11yTree::leaf(node, self.id.clone())
+        }
+    }
+
+    fn id(&self) -> Option<Id> {
+        if self.label.is_some() {
+            Some(Id(iced_runtime::core::id::Internal::Set(vec![
+                self.id.0.clone(),
+                self.label_id.clone().unwrap().0,
+            ])))
+        } else {
+            Some(self.id.clone())
+        }
+    }
+
+    fn set_id(&mut self, id: Id) {
+        if let Id(id::Internal::Set(list)) = id {
+            if list.len() == 2 && self.label.is_some() {
+                self.id.0 = list[0].clone();
+                self.label_id = Some(Id(list[1].clone()));
+            }
+        } else if self.label.is_none() {
+            self.id = id;
+        }
     }
 }
 
@@ -518,14 +694,16 @@ pub struct Style {
     pub foreground_border_width: f32,
     /// The [`Color`] of the foreground border of the toggler.
     pub foreground_border_color: Color,
-    /// The text [`Color`] of the toggler.
-    pub text_color: Option<Color>,
     /// The border radius of the toggler.
-    ///
-    /// If `None`, the toggler will be perfectly round.
-    pub border_radius: Option<border::Radius>,
+    pub border_radius: Radius,
+    /// the radius of the handle of the toggler
+    pub handle_radius: Radius,
+    /// the space between the handle and the border of the toggler
+    pub handle_margin: f32,
     /// The ratio of separation between the background and the toggle in relative height.
     pub padding_ratio: f32,
+    /// The text [`Color`] of the toggler.
+    pub text_color: Option<Color>,
 }
 
 /// The theme catalog of a [`Toggler`].
@@ -606,8 +784,10 @@ pub fn default(theme: &Theme, status: Status) -> Style {
         foreground_border_color: Color::TRANSPARENT,
         background_border_width: 0.0,
         background_border_color: Color::TRANSPARENT,
-        text_color: None,
-        border_radius: None,
+        border_radius: Radius::from(8.0),
+        handle_radius: Radius::from(8.0),
+        handle_margin: 2.0,
         padding_ratio: 0.1,
+        text_color: None,
     }
 }

@@ -37,6 +37,8 @@ mod background;
 mod color;
 mod content_fit;
 mod element;
+#[cfg(not(feature = "a11y"))]
+pub mod id;
 mod length;
 mod pixels;
 mod point;
@@ -61,6 +63,9 @@ pub use element::Element;
 pub use event::Event;
 pub use font::Font;
 pub use gradient::Gradient;
+
+#[cfg(feature = "a11y")]
+pub use iced_accessibility::id;
 pub use image::Image;
 pub use input_method::InputMethod;
 pub use layout::Layout;

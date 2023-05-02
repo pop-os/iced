@@ -12,7 +12,7 @@ pub use crate::core::time::*;
 )]
 pub use iced_futures::backend::default::time::*;
 
-use crate::Task;
+use crate::task::Task;
 
 /// Returns a [`Task`] that produces the current [`Instant`]
 /// by calling [`Instant::now`].

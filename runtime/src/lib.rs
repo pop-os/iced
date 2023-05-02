@@ -10,9 +10,11 @@
 )]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 pub mod clipboard;
+pub mod dnd;
 pub mod font;
 pub mod image;
 pub mod keyboard;
+pub mod platform_specific;
 pub mod system;
 pub mod task;
 pub mod user_interface;
@@ -27,6 +29,7 @@ pub use user_interface::UserInterface;
 pub use window::Window;
 
 use crate::futures::futures::channel::oneshot;
+use dnd::DndAction;
 
 use std::borrow::Cow;
 use std::fmt;
@@ -67,6 +70,11 @@ pub enum Action<T> {
     /// This will normally close any application windows and
     /// terminate the runtime loop.
     Exit,
+    /// Run a Dnd action.
+    Dnd(crate::dnd::DndAction),
+
+    /// Run a platform specific action
+    PlatformSpecific(crate::platform_specific::Action),
 }
 
 impl<T> Action<T> {
@@ -88,6 +96,8 @@ impl<T> Action<T> {
             Action::Image(action) => Err(Action::Image(action)),
             Action::Reload => Err(Action::Reload),
             Action::Exit => Err(Action::Exit),
+            Action::Dnd(a) => Err(Action::Dnd(a)),
+            Action::PlatformSpecific(a) => Err(Action::PlatformSpecific(a)),
         }
     }
 }
@@ -113,6 +123,10 @@ where
             Action::Image(_) => write!(f, "Action::Image"),
             Action::Reload => write!(f, "Action::Reload"),
             Action::Exit => write!(f, "Action::Exit"),
+            Action::PlatformSpecific(action) => {
+                write!(f, "Action::PlatformSpecific({:?})", action)
+            }
+            Action::Dnd(action) => write!(f, "Action::Dnd({:?})", action),
         }
     }
 }
@@ -123,4 +137,40 @@ where
 /// terminate the runtime loop.
 pub fn exit<T>() -> Task<T> {
     task::effect(Action::Exit)
+}
+
+/// The appearance of a program.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Appearance {
+    /// The background [`Color`] of the application.
+    pub background_color: iced_core::Color,
+
+    /// The default text [`Color`] of the application.
+    pub text_color: iced_core::Color,
+
+    /// The default icon [`Color`] of the application.
+    pub icon_color: iced_core::Color,
+}
+
+/// The default style of a [`Program`].
+pub trait DefaultStyle {
+    /// Returns the default style of a [`Program`].
+    fn default_style(&self) -> Appearance;
+}
+
+impl DefaultStyle for iced_core::Theme {
+    fn default_style(&self) -> Appearance {
+        default(self)
+    }
+}
+
+/// The default [`Appearance`] of a [`Program`] with the built-in [`Theme`].
+pub fn default(theme: &iced_core::Theme) -> Appearance {
+    let palette = theme.extended_palette();
+
+    Appearance {
+        background_color: palette.background.base.color,
+        text_color: palette.background.base.text,
+        icon_color: palette.background.base.text,
+    }
 }

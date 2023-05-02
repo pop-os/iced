@@ -226,8 +226,8 @@ where
             .collect()
     }
 
-    fn diff(&self, tree: &mut widget::Tree) {
-        tree.diff_children(&self.cells);
+    fn diff(&mut self, tree: &mut widget::Tree) {
+        tree.diff_children(&mut self.cells);
     }
 
     fn layout(

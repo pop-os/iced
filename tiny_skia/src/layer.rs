@@ -1,7 +1,7 @@
 use crate::Primitive;
 use crate::core::renderer::Quad;
 use crate::core::{
-    self, Background, Color, Point, Rectangle, Svg, Transformation,
+    self, Background, Color, Point, Radians, Rectangle, Svg, Transformation,
 };
 use crate::graphics::damage;
 use crate::graphics::layer;

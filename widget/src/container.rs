@@ -28,12 +28,14 @@ use crate::core::overlay;
 use crate::core::renderer;
 use crate::core::theme;
 use crate::core::widget::tree::{self, Tree};
-use crate::core::widget::{self, Operation};
+use crate::core::widget::{self, Id, Operation};
 use crate::core::{
     self, Background, Clipboard, Color, Element, Event, Layout, Length,
     Padding, Pixels, Rectangle, Shadow, Shell, Size, Theme, Vector, Widget,
     color,
 };
+
+use iced_runtime::{Action, Task, task};
 
 /// A widget that aligns its contents inside of its boundaries.
 ///
@@ -245,8 +247,8 @@ where
         self.content.as_widget().children()
     }
 
-    fn diff(&self, tree: &mut Tree) {
-        self.content.as_widget().diff(tree);
+    fn diff(&mut self, tree: &mut Tree) {
+        self.content.as_widget_mut().diff(tree);
     }
 
     fn size(&self) -> Size<Length> {
@@ -356,9 +358,13 @@ where
                 renderer,
                 theme,
                 &renderer::Style {
+                    icon_color: style
+                        .icon_color
+                        .unwrap_or(renderer_style.icon_color),
                     text_color: style
                         .text_color
                         .unwrap_or(renderer_style.text_color),
+                    scale_factor: renderer_style.scale_factor,
                 },
                 layout.children().next().unwrap(),
                 cursor,
@@ -386,6 +392,49 @@ where
             viewport,
             translation,
         )
+    }
+
+    #[cfg(feature = "a11y")]
+    /// get the a11y nodes for the widget
+    fn a11y_nodes(
+        &self,
+        layout: Layout<'_>,
+        state: &Tree,
+        cursor: mouse::Cursor,
+    ) -> iced_accessibility::A11yTree {
+        let c_layout = layout.children().next().unwrap();
+        let c_state = state.children.get(0);
+
+        self.content.as_widget().a11y_nodes(
+            c_layout,
+            c_state.unwrap_or(&Tree::empty()),
+            cursor,
+        )
+    }
+
+    fn drag_destinations(
+        &self,
+        state: &Tree,
+        layout: Layout<'_>,
+        renderer: &Renderer,
+        dnd_rectangles: &mut crate::core::clipboard::DndDestinationRectangles,
+    ) {
+        if let Some(l) = layout.children().next() {
+            self.content.as_widget().drag_destinations(
+                state,
+                l,
+                renderer,
+                dnd_rectangles,
+            );
+        }
+    }
+
+    fn id(&self) -> Option<Id> {
+        self.content.as_widget().id().clone()
+    }
+
+    fn set_id(&mut self, id: Id) {
+        self.content.as_widget_mut().set_id(id);
     }
 }
 
@@ -457,9 +506,104 @@ pub fn draw_background<Renderer>(
     }
 }
 
+/// Produces a [`Task`] that queries the visible screen bounds of the
+/// [`Container`] with the given [`Id`].
+pub fn visible_bounds(id: Id) -> Task<Option<Rectangle>> {
+    struct VisibleBounds {
+        target: widget::Id,
+        depth: usize,
+        scrollables: Vec<(Vector, Rectangle, usize)>,
+        bounds: Option<Rectangle>,
+    }
+
+    impl Operation<Option<Rectangle>> for VisibleBounds {
+        fn scrollable(
+            &mut self,
+            _id: Option<&widget::Id>,
+            bounds: Rectangle,
+            _content_bounds: Rectangle,
+            translation: Vector,
+            _state: &mut dyn widget::operation::Scrollable,
+        ) {
+            match self.scrollables.last() {
+                Some((last_translation, last_viewport, _depth)) => {
+                    let viewport = last_viewport
+                        .intersection(&(bounds - *last_translation))
+                        .unwrap_or(Rectangle::new(
+                            crate::core::Point::ORIGIN,
+                            Size::ZERO,
+                        ));
+
+                    self.scrollables.push((
+                        translation + *last_translation,
+                        viewport,
+                        self.depth,
+                    ));
+                }
+                None => {
+                    self.scrollables.push((translation, bounds, self.depth));
+                }
+            }
+        }
+
+        fn container(&mut self, id: Option<&Id>, bounds: Rectangle) {
+            if self.bounds.is_some() {
+                return;
+            }
+
+            if id == Some(&self.target) {
+                match self.scrollables.last() {
+                    Some((translation, viewport, _)) => {
+                        self.bounds =
+                            viewport.intersection(&(bounds - *translation));
+                    }
+                    None => {
+                        self.bounds = Some(bounds);
+                    }
+                }
+
+                return;
+            }
+
+            self.depth += 1;
+            // TODO do we need to traverse here??
+            self.depth -= 1;
+
+            match self.scrollables.last() {
+                Some((_, _, depth)) if self.depth == *depth => {
+                    let _ = self.scrollables.pop();
+                }
+                _ => {}
+            }
+        }
+
+        fn traverse(
+            &mut self,
+            operate: &mut dyn FnMut(&mut dyn Operation<Option<Rectangle>>),
+        ) {
+            self.depth += 1;
+            self.traverse(operate);
+            self.depth -= 1;
+        }
+
+        fn finish(&self) -> widget::operation::Outcome<Option<Rectangle>> {
+            widget::operation::Outcome::Some(self.bounds)
+        }
+    }
+
+    task::widget(VisibleBounds {
+        target: id.into(),
+        depth: 0,
+        scrollables: Vec::new(),
+        bounds: None,
+    })
+}
+
 /// The appearance of a container.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Style {
+    /// The icon [`Color`] of the container.
+    pub icon_color: Option<Color>,
     /// The text [`Color`] of the container.
     pub text_color: Option<Color>,
     /// The [`Background`] of the container.
@@ -475,6 +619,7 @@ pub struct Style {
 impl Default for Style {
     fn default() -> Self {
         Self {
+            icon_color: None,
             text_color: None,
             background: None,
             border: Border::default(),
@@ -505,6 +650,8 @@ impl Style {
     pub fn background(self, background: impl Into<Background>) -> Self {
         Self {
             background: Some(background.into()),
+            icon_color: None,
+            text_color: None,
             ..self
         }
     }
@@ -584,6 +731,7 @@ pub fn rounded_box(theme: &Theme) -> Style {
     let palette = theme.extended_palette();
 
     Style {
+        icon_color: None,
         background: Some(palette.background.weak.color.into()),
         text_color: Some(palette.background.weak.text),
         border: border::rounded(2),
@@ -612,6 +760,7 @@ pub fn dark(_theme: &Theme) -> Style {
     style(theme::palette::Pair {
         color: color!(0x111111),
         text: Color::WHITE,
+        icon: Color::WHITE,
     })
 }
 

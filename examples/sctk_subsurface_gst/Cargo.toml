@@ -1,0 +1,21 @@
+[package]
+name = "sctk_subsurface_gst"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+sctk = { package = "smithay-client-toolkit", git = "https://github.com/smithay/client-toolkit", rev = "828b1eb" }
+iced = { path = "../..", default-features = false, features = [
+    "wayland",
+    "debug",
+    "a11y",
+] }
+iced_runtime = { path = "../../runtime" }
+env_logger = "0.10"
+futures-channel = "0.3.29"
+calloop = "0.12.3"
+gst = { package = "gstreamer", version = "0.21.3" }
+gst-app = { package = "gstreamer-app", version = "0.21.2" }
+gst-video = { package = "gstreamer-video", version = "0.21.2" }
+gst-allocators = { package = "gstreamer-allocators", version = "0.21.2" }
+drm-fourcc = "2.2.0"

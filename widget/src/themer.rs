@@ -1,4 +1,6 @@
 use crate::container;
+
+use crate::core::event;
 use crate::core::layout;
 use crate::core::mouse;
 use crate::core::overlay;
@@ -75,8 +77,8 @@ where
         self.content.as_widget().children()
     }
 
-    fn diff(&self, tree: &mut Tree) {
-        self.content.as_widget().diff(tree);
+    fn diff(&mut self, tree: &mut Tree) {
+        self.content.as_widget_mut().diff(tree);
     }
 
     fn size(&self) -> Size<Length> {
@@ -159,7 +161,9 @@ where
 
         let style = if let Some(text_color) = self.text_color {
             renderer::Style {
-                text_color: text_color(theme),
+                text_color: text_color(&theme),
+                icon_color: style.icon_color, // TODO(POP): Is this correct?
+                scale_factor: style.scale_factor, // TODO(POP): Is this correct?
             }
         } else {
             *style

@@ -58,12 +58,41 @@ impl Text {
             wrapping: Wrapping::default(),
         });
 
+        let mut buffer = cosmic_text::BufferLine::new(
+            &self.content,
+            cosmic_text::LineEnding::default(),
+            cosmic_text::AttrsList::new(&text::to_attributes(self.font)),
+            text::to_shaping(self.shaping, &self.content),
+        );
+
+        let mut font_system = text::font_system().write().unwrap();
+        let layout = buffer.layout(
+            font_system.raw(),
+            self.size.0,
+            None,
+            cosmic_text::Wrap::None,
+            None,
+            8,
+            cosmic_text::Hinting::Disabled,
+        );
+
         let translation_x = match self.align_x {
-            Alignment::Default | Alignment::Left | Alignment::Justified => {
+            Alignment::Left | Alignment::Default | Alignment::Justified => {
                 self.position.x
             }
-            Alignment::Center => self.position.x - paragraph.min_width() / 2.0,
-            Alignment::Right => self.position.x - paragraph.min_width(),
+            Alignment::Center | Alignment::Right => {
+                let mut line_width = 0.0f32;
+
+                for line in layout.iter() {
+                    line_width = line_width.max(line.w);
+                }
+
+                if self.align_x == Alignment::Center {
+                    self.position.x - line_width / 2.0
+                } else {
+                    self.position.x - line_width
+                }
+            }
         };
 
         let translation_y = {
@@ -171,12 +200,12 @@ impl Default for Text {
             position: Point::ORIGIN,
             max_width: f32::INFINITY,
             color: Color::BLACK,
-            size: Pixels(16.0),
-            line_height: LineHeight::Relative(1.2),
+            size: Pixels(14.0),
+            line_height: LineHeight::default(),
             font: Font::default(),
             align_x: Alignment::Default,
             align_y: alignment::Vertical::Top,
-            shaping: Shaping::default(),
+            shaping: Shaping::Advanced,
         }
     }
 }

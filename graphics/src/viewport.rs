@@ -5,19 +5,36 @@ use crate::core::{Size, Transformation};
 pub struct Viewport {
     physical_size: Size<u32>,
     logical_size: Size<f32>,
-    scale_factor: f32,
+    scale_factor: f64,
     projection: Transformation,
 }
 
 impl Viewport {
+    /// Creates a new [`Viewport`] with the given logical dimensions and scale factor
+    pub fn with_logical_size(size: Size<f32>, scale_factor: f64) -> Viewport {
+        let physical_size = Size::new(
+            (size.width as f64 * scale_factor as f64).ceil() as u32,
+            (size.height as f64 * scale_factor as f64).ceil() as u32,
+        );
+        Viewport {
+            physical_size,
+            logical_size: size,
+            scale_factor,
+            projection: Transformation::orthographic(
+                physical_size.width,
+                physical_size.height,
+            ),
+        }
+    }
+
     /// Creates a new [`Viewport`] with the given physical dimensions and scale
     /// factor.
-    pub fn with_physical_size(size: Size<u32>, scale_factor: f32) -> Viewport {
+    pub fn with_physical_size(size: Size<u32>, scale_factor: f64) -> Viewport {
         Viewport {
             physical_size: size,
             logical_size: Size::new(
-                size.width as f32 / scale_factor,
-                size.height as f32 / scale_factor,
+                (size.width as f64 / scale_factor) as f32,
+                (size.height as f64 / scale_factor) as f32,
             ),
             scale_factor,
             projection: Transformation::orthographic(size.width, size.height),
@@ -45,7 +62,7 @@ impl Viewport {
     }
 
     /// Returns the scale factor of the [`Viewport`].
-    pub fn scale_factor(&self) -> f32 {
+    pub fn scale_factor(&self) -> f64 {
         self.scale_factor
     }
 

@@ -35,7 +35,7 @@ use crate::core::{
 use crate::engine::Engine;
 use crate::graphics::Viewport;
 use crate::graphics::compositor;
-use crate::graphics::text::{Editor, Paragraph};
+use crate::graphics::text::{Editor, Paragraph, Raw};
 
 /// A [`tiny-skia`] graphics renderer for [`iced`].
 ///
@@ -72,7 +72,7 @@ impl Renderer {
         damage: &[Rectangle],
         background_color: Color,
     ) {
-        let scale_factor = viewport.scale_factor();
+        let scale_factor = viewport.scale_factor() as f32;
 
         self.layers.flush();
 
@@ -251,6 +251,7 @@ impl core::text::Renderer for Renderer {
     type Font = Font;
     type Paragraph = Paragraph;
     type Editor = Editor;
+    type Raw = Raw;
 
     const ICON_FONT: Font = Font::with_name("Iced-Icons");
     const CHECKMARK_ICON: char = '\u{f00c}';
@@ -277,7 +278,6 @@ impl core::text::Renderer for Renderer {
         clip_bounds: Rectangle,
     ) {
         let (layer, transformation) = self.layers.current_mut();
-
         layer.draw_paragraph(
             text,
             position,
@@ -308,6 +308,8 @@ impl core::text::Renderer for Renderer {
         let (layer, transformation) = self.layers.current_mut();
         layer.draw_text(text, position, color, clip_bounds, transformation);
     }
+
+    fn fill_raw(&mut self, _raw: Self::Raw) {}
 }
 
 impl graphics::text::Renderer for Renderer {
@@ -457,7 +459,7 @@ impl renderer::Headless for Renderer {
         scale_factor: f32,
         background_color: Color,
     ) -> Vec<u8> {
-        let viewport = Viewport::with_physical_size(size, scale_factor);
+        let viewport = Viewport::with_physical_size(size, scale_factor as f64);
 
         window::compositor::screenshot(self, &viewport, background_color)
     }

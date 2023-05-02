@@ -87,7 +87,7 @@ mod loupe {
             self.content.as_widget().children()
         }
 
-        fn diff(&self, tree: &mut widget::Tree) {
+        fn diff(&mut self, tree: &mut widget::Tree) {
             self.content.as_widget().diff(tree);
         }
 

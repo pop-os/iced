@@ -104,14 +104,20 @@ impl Default for Quad {
 /// The styling attributes of a [`Renderer`].
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Style {
+    /// The color to apply to symbolic icons.
+    pub icon_color: Color,
     /// The text color
     pub text_color: Color,
+    /// The scale factor
+    pub scale_factor: f64,
 }
 
 impl Default for Style {
     fn default() -> Self {
         Style {
+            icon_color: Color::BLACK,
             text_color: Color::BLACK,
+            scale_factor: 1.0,
         }
     }
 }

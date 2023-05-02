@@ -110,7 +110,7 @@ where
         state.style(&self.program, theme)
     }
 
-    fn scale_factor(&self, state: &Self::State, window: window::Id) -> f32 {
+    fn scale_factor(&self, state: &Self::State, window: window::Id) -> f64 {
         state.scale_factor(&self.program, window)
     }
 }
@@ -405,7 +405,7 @@ where
         program.style(self.state(), theme)
     }
 
-    pub fn scale_factor(&self, program: &P, window: window::Id) -> f32 {
+    pub fn scale_factor(&self, program: &P, window: window::Id) -> f64 {
         program.scale_factor(self.state(), window)
     }
 
