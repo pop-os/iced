@@ -6,4 +6,9 @@ edition = "2021"
 publish = false
 
 [dependencies]
-iced = { path = "../..", features = ["debug", "multi-window"] }
+iced = { path = "../..", features = [
+    "debug",
+    "winit",
+    "multi-window",
+    "tiny-skia",
+] }

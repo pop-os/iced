@@ -16,6 +16,8 @@ workspace = true
 [features]
 auto-detect-theme = ["dep:dark-light"]
 advanced = []
+a11y = ["iced_accessibility"]
+wayland = ["iced_accessibility?/accesskit_unix", "sctk"]
 
 [dependencies]
 bitflags.workspace = true
@@ -30,8 +32,31 @@ smol_str.workspace = true
 thiserror.workspace = true
 web-time.workspace = true
 
+# TODO(POP): I think some of these dependencies were removed. Check on that
+# xxhash-rust.workspace = true
+window_clipboard.workspace = true
+dnd.workspace = true
+mime.workspace = true
+
+sctk.workspace = true
+sctk.optional = true
+# /TODO(POP)
+
 dark-light.workspace = true
 dark-light.optional = true
 
+[dependencies.serde]
+version = "1"
+optional = true
+features = ["serde_derive"]
+
+
+[target.'cfg(windows)'.dependencies]
+raw-window-handle.workspace = true
+
 [dev-dependencies]
 approx = "0.5"
+[dependencies.iced_accessibility]
+version = "0.1.0"
+path = "../accessibility"
+optional = true

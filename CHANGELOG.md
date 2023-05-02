@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Many thanks to...
 
 - @n1ght-hunter
+- @ryanabx
+- @edfloreshz
 
 ## [0.12.1] - 2024-02-22
 ### Added
@@ -196,6 +198,10 @@ Many thanks to...
 - @VAWVAW
 - @william-shere
 - @wyatt-herkamp
+
+Many thanks to...
+- @jackpot51
+- @wash2
 
 ## [0.10.0] - 2023-07-28
 ### Added

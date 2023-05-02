@@ -1,4 +1,5 @@
 //! Distribute content horizontally.
+
 use crate::core::event::{self, Event};
 use crate::core::layout::{self, Layout};
 use crate::core::mouse;
@@ -174,8 +175,8 @@ where
         self.children.iter().map(Tree::new).collect()
     }
 
-    fn diff(&self, tree: &mut Tree) {
-        tree.diff_children(&self.children);
+    fn diff(&mut self, tree: &mut Tree) {
+        tree.diff_children(&mut self.children)
     }
 
     fn size(&self) -> Size<Length> {
@@ -324,6 +325,48 @@ where
             renderer,
             translation,
         )
+    }
+
+    #[cfg(feature = "a11y")]
+    /// get the a11y nodes for the widget
+    fn a11y_nodes(
+        &self,
+        layout: Layout<'_>,
+        state: &Tree,
+        cursor: mouse::Cursor,
+    ) -> iced_accessibility::A11yTree {
+        use iced_accessibility::A11yTree;
+        A11yTree::join(
+            self.children
+                .iter()
+                .zip(layout.children())
+                .zip(state.children.iter())
+                .map(|((c, c_layout), state)| {
+                    c.as_widget().a11y_nodes(c_layout, state, cursor)
+                }),
+        )
+    }
+
+    fn drag_destinations(
+        &self,
+        state: &Tree,
+        layout: Layout<'_>,
+        renderer: &Renderer,
+        dnd_rectangles: &mut crate::core::clipboard::DndDestinationRectangles,
+    ) {
+        for ((e, layout), state) in self
+            .children
+            .iter()
+            .zip(layout.children())
+            .zip(state.children.iter())
+        {
+            e.as_widget().drag_destinations(
+                state,
+                layout,
+                renderer,
+                dnd_rectangles,
+            );
+        }
     }
 }
 

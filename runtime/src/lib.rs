@@ -10,9 +10,11 @@
 )]
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 pub mod clipboard;
+pub mod dnd;
 pub mod font;
 pub mod keyboard;
 pub mod overlay;
+pub mod platform_specific;
 pub mod program;
 pub mod system;
 pub mod user_interface;
@@ -42,6 +44,7 @@ pub use user_interface::UserInterface;
 
 use crate::core::widget;
 use crate::futures::futures::channel::oneshot;
+use dnd::DndAction;
 
 use std::borrow::Cow;
 use std::fmt;
@@ -76,6 +79,11 @@ pub enum Action<T> {
     /// This will normally close any application windows and
     /// terminate the runtime loop.
     Exit,
+    /// Run a Dnd action.
+    Dnd(crate::dnd::DndAction),
+
+    /// Run a platform specific action
+    PlatformSpecific(crate::platform_specific::Action),
 }
 
 impl<T> Action<T> {
@@ -95,6 +103,8 @@ impl<T> Action<T> {
             Action::Window(action) => Err(Action::Window(action)),
             Action::System(action) => Err(Action::System(action)),
             Action::Exit => Err(Action::Exit),
+            Action::Dnd(a) => Err(Action::Dnd(a)),
+            Action::PlatformSpecific(a) => Err(Action::PlatformSpecific(a)),
         }
     }
 }
@@ -118,6 +128,10 @@ where
             Action::Window(_) => write!(f, "Action::Window"),
             Action::System(action) => write!(f, "Action::System({action:?})"),
             Action::Exit => write!(f, "Action::Exit"),
+            Action::PlatformSpecific(action) => {
+                write!(f, "Action::PlatformSpecific({:?})", action)
+            }
+            Action::Dnd(action) => write!(f, "Action::Dnd"),
         }
     }
 }

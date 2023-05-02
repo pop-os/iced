@@ -45,6 +45,24 @@ where
         }
     }
 
+    /// Set the width of the rule
+    /// Will not be applied if it is vertical
+    pub fn width(mut self, width: impl Into<Length>) -> Self {
+        if self.is_horizontal {
+            self.width = width.into();
+        }
+        self
+    }
+
+    /// Set the height of the rule
+    /// Will not be applied if it is horizontal
+    pub fn height(mut self, height: impl Into<Length>) -> Self {
+        if !self.is_horizontal {
+            self.height = height.into();
+        }
+        self
+    }
+
     /// Sets the style of the [`Rule`].
     #[must_use]
     pub fn style(mut self, style: impl Fn(&Theme) -> Style + 'a) -> Self

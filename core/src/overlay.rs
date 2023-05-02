@@ -9,7 +9,7 @@ use crate::event::{self, Event};
 use crate::layout;
 use crate::mouse;
 use crate::renderer;
-use crate::widget;
+use crate::widget::Operation;
 use crate::widget::Tree;
 use crate::{Clipboard, Layout, Point, Rectangle, Shell, Size, Vector};
 
@@ -36,12 +36,12 @@ where
         cursor: mouse::Cursor,
     );
 
-    /// Applies a [`widget::Operation`] to the [`Overlay`].
+    /// Applies an [`Operation`] to the [`Overlay`].
     fn operate(
         &mut self,
         _layout: Layout<'_>,
         _renderer: &Renderer,
-        _operation: &mut dyn widget::Operation<()>,
+        _operation: &mut dyn Operation<()>,
     ) {
     }
 

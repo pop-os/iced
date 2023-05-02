@@ -25,15 +25,22 @@ canvas = ["iced_renderer/geometry"]
 qr_code = ["canvas", "qrcode"]
 wgpu = ["iced_renderer/wgpu"]
 advanced = []
+a11y = ["iced_accessibility"]
+wayland = ["sctk", "iced_runtime/wayland"]
 
 [dependencies]
 iced_renderer.workspace = true
 iced_runtime.workspace = true
-
+iced_accessibility.workspace = true
+iced_accessibility.optional = true
+sctk.workspace = true
+sctk.optional = true
 num-traits.workspace = true
 rustc-hash.workspace = true
 thiserror.workspace = true
 unicode-segmentation.workspace = true
+window_clipboard.workspace = true
+dnd.workspace = true
 
 ouroboros.workspace = true
 ouroboros.optional = true

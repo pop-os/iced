@@ -581,11 +581,17 @@ fn prepare(
                         return None;
                     };
 
-                    let (width, height) = buffer.size();
+                    let (width_opt, height_opt) = buffer.size();
 
                     (
                         buffer.as_ref(),
-                        Rectangle::new(raw.position, Size::new(width, height)),
+                        Rectangle::new(
+                            raw.position,
+                            Size::new(
+                                width_opt.unwrap_or(0.0),
+                                height_opt.unwrap_or(0.0),
+                            ),
+                        ),
                         alignment::Horizontal::Left,
                         alignment::Vertical::Top,
                         raw.color,

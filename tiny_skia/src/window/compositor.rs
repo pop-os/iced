@@ -181,11 +181,12 @@ pub fn present<T: AsRef<str>>(
         })
         .unwrap_or_else(|| vec![Rectangle::with_size(viewport.logical_size())]);
 
+    // TODO(POP): I tried to adapt this to what I saw in the diff, which was essentially making sure this is called
+    // before the damage.is_empty() check
+    surface.layer_stack.push_front(renderer.layers().to_vec());
     if damage.is_empty() {
         return Ok(());
     }
-
-    surface.layer_stack.push_front(renderer.layers().to_vec());
     surface.background_color = background_color;
 
     let damage =
@@ -197,6 +198,9 @@ pub fn present<T: AsRef<str>>(
         physical_size.height,
     )
     .expect("Create pixel map");
+
+    // let damage = damage::group(damage, scale_factor, physical_size);
+    // TODO(POP): Is this something that needs to be adapted?
 
     renderer.draw(
         &mut pixels,

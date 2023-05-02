@@ -140,6 +140,7 @@ impl Layer {
         transformation: Transformation,
         rotation: Radians,
         opacity: f32,
+        border_radius: [f32; 4],
     ) {
         let svg = Image::Vector {
             handle,
@@ -147,6 +148,7 @@ impl Layer {
             bounds: bounds * transformation,
             rotation,
             opacity,
+            border_radius,
         };
 
         self.images.push(svg);

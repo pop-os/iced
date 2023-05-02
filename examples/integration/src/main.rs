@@ -4,6 +4,7 @@ mod scene;
 use controls::Controls;
 use scene::Scene;
 
+use iced_wgpu::core::window::Id;
 use iced_wgpu::graphics::Viewport;
 use iced_wgpu::{wgpu, Engine, Renderer};
 use iced_winit::conversion;

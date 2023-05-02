@@ -33,7 +33,7 @@ use crate::core::{
 };
 use crate::engine::Engine;
 use crate::graphics::compositor;
-use crate::graphics::text::{Editor, Paragraph};
+use crate::graphics::text::{Editor, Paragraph, Raw};
 use crate::graphics::Viewport;
 
 /// A [`tiny-skia`] graphics renderer for [`iced`].
@@ -261,6 +261,7 @@ impl core::text::Renderer for Renderer {
     type Font = Font;
     type Paragraph = Paragraph;
     type Editor = Editor;
+    type Raw = Raw;
 
     const ICON_FONT: Font = Font::with_name("Iced-Icons");
     const CHECKMARK_ICON: char = '\u{f00c}';
@@ -282,7 +283,6 @@ impl core::text::Renderer for Renderer {
         clip_bounds: Rectangle,
     ) {
         let (layer, transformation) = self.layers.current_mut();
-
         layer.draw_paragraph(
             text,
             position,
@@ -313,6 +313,8 @@ impl core::text::Renderer for Renderer {
         let (layer, transformation) = self.layers.current_mut();
         layer.draw_text(text, position, color, clip_bounds, transformation);
     }
+
+    fn fill_raw(&mut self, _raw: Self::Raw) {}
 }
 
 #[cfg(feature = "geometry")]
@@ -379,6 +381,7 @@ impl core::image::Renderer for Renderer {
         bounds: Rectangle,
         rotation: core::Radians,
         opacity: f32,
+        border_radius: [f32; 4],
     ) {
         let (layer, transformation) = self.layers.current_mut();
         layer.draw_image(
@@ -388,6 +391,7 @@ impl core::image::Renderer for Renderer {
             transformation,
             rotation,
             opacity,
+            border_radius,
         );
     }
 }
@@ -408,6 +412,7 @@ impl core::svg::Renderer for Renderer {
         bounds: Rectangle,
         rotation: core::Radians,
         opacity: f32,
+        border_radius: [f32; 4],
     ) {
         let (layer, transformation) = self.layers.current_mut();
         layer.draw_svg(
@@ -417,6 +422,7 @@ impl core::svg::Renderer for Renderer {
             transformation,
             rotation,
             opacity,
+            border_radius,
         );
     }
 }

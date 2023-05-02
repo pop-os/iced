@@ -1,10 +1,12 @@
+use iced_renderer::core::widget::Operation;
+
 use crate::container;
 use crate::core::event::{self, Event};
 use crate::core::layout;
 use crate::core::mouse;
 use crate::core::overlay;
 use crate::core::renderer;
-use crate::core::widget::{self, Tree};
+use crate::core::widget::Tree;
 use crate::core::{
     self, Clipboard, Element, Layout, Padding, Point, Rectangle, Shell, Size,
     Vector,
@@ -116,13 +118,13 @@ where
         }
     }
 
-    pub(super) fn diff(&self, tree: &mut Tree) {
+    pub(super) fn diff(&mut self, tree: &mut Tree) {
         if tree.children.len() == 2 {
-            if let Some(controls) = self.controls.as_ref() {
+            if let Some(controls) = self.controls.as_mut() {
                 tree.children[1].diff(controls);
             }
 
-            tree.children[0].diff(&self.content);
+            tree.children[0].diff(&mut self.content);
         } else {
             *tree = self.state();
         }
@@ -146,7 +148,9 @@ where
         let style = theme.style(&self.class);
 
         let inherited_style = renderer::Style {
+            icon_color: style.icon_color.unwrap_or(inherited_style.icon_color),
             text_color: style.text_color.unwrap_or(inherited_style.text_color),
+            scale_factor: inherited_style.scale_factor,
         };
 
         container::draw_background(renderer, &style, bounds);
@@ -278,7 +282,7 @@ where
         tree: &mut Tree,
         layout: Layout<'_>,
         renderer: &Renderer,
-        operation: &mut dyn widget::Operation<()>,
+        operation: &mut dyn Operation<()>,
     ) {
         let mut children = layout.children();
         let padded = children.next().unwrap();

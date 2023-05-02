@@ -39,6 +39,7 @@ where
         application: &P,
         compositor: &mut C,
         exit_on_close_request: bool,
+        resize_border: u32,
     ) -> &mut Window<P, C> {
         let state = State::new(application, id, &window);
         let viewport_version = state.viewport_version();
@@ -52,6 +53,11 @@ where
 
         let _ = self.aliases.insert(window.id(), id);
 
+        let drag_resize_window_func = super::drag_resize::event_func(
+            &window,
+            resize_border as f64 * window.scale_factor(),
+        );
+
         let _ = self.entries.insert(
             id,
             Window {
@@ -59,9 +65,11 @@ where
                 state,
                 viewport_version,
                 exit_on_close_request,
+                drag_resize_window_func,
                 surface,
                 renderer,
                 mouse_interaction: mouse::Interaction::None,
+                prev_dnd_destination_rectangles_count: 0,
             },
         );
 
@@ -82,6 +90,10 @@ where
 
     pub fn get_mut(&mut self, id: Id) -> Option<&mut Window<P, C>> {
         self.entries.get_mut(&id)
+    }
+
+    pub fn ids(&self) -> impl Iterator<Item = Id> + '_ {
+        self.entries.keys().cloned()
     }
 
     pub fn get_mut_alias(
@@ -127,6 +139,15 @@ where
     pub state: State<P>,
     pub viewport_version: u64,
     pub exit_on_close_request: bool,
+    pub drag_resize_window_func: Option<
+        Box<
+            dyn FnMut(
+                &winit::window::Window,
+                &winit::event::WindowEvent,
+            ) -> bool,
+        >,
+    >,
+    pub prev_dnd_destination_rectangles_count: usize,
     pub mouse_interaction: mouse::Interaction,
     pub surface: C::Surface,
     pub renderer: P::Renderer,
