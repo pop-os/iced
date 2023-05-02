@@ -1,15 +1,12 @@
 //! Display fields that can be filled with text.
 //!
 //! A [`TextInput`] has some local [`State`].
-mod editor;
-mod value;
+pub use super::cursor::Cursor;
+pub use super::value::Value;
 
-pub mod cursor;
+use super::cursor;
 
-pub use cursor::Cursor;
-pub use value::Value;
-
-use editor::Editor;
+use super::editor::Editor;
 
 use crate::core::alignment;
 use crate::core::clipboard::{self, Clipboard};
@@ -22,9 +19,9 @@ use crate::core::renderer;
 use crate::core::text::{self, Paragraph as _, Text};
 use crate::core::time::{Duration, Instant};
 use crate::core::touch;
-use crate::core::widget;
 use crate::core::widget::operation::{self, Operation};
 use crate::core::widget::tree::{self, Tree};
+use crate::core::widget::Id;
 use crate::core::window;
 use crate::core::{
     Background, Border, Color, Element, Layout, Length, Padding, Pixels, Point,
@@ -238,6 +235,7 @@ where
             horizontal_alignment: alignment::Horizontal::Left,
             vertical_alignment: alignment::Vertical::Center,
             shaping: text::Shaping::Advanced,
+            wrap: text::Wrap::default(),
         };
 
         state.placeholder.update(placeholder_text);
@@ -262,6 +260,7 @@ where
                 horizontal_alignment: alignment::Horizontal::Center,
                 vertical_alignment: alignment::Vertical::Center,
                 shaping: text::Shaping::Advanced,
+                wrap: text::Wrap::default(),
             };
 
             state.icon.update(icon_text);
@@ -507,7 +506,7 @@ where
         tree::State::new(State::<Renderer::Paragraph>::new())
     }
 
-    fn diff(&self, tree: &mut Tree) {
+    fn diff(&mut self, tree: &mut Tree) {
         let state = tree.state.downcast_mut::<State<Renderer::Paragraph>>();
 
         // Unfocus text input if it becomes disabled
@@ -544,8 +543,8 @@ where
     ) {
         let state = tree.state.downcast_mut::<State<Renderer::Paragraph>>();
 
-        operation.focusable(state, self.id.as_ref().map(|id| &id.0));
-        operation.text_input(state, self.id.as_ref().map(|id| &id.0));
+        operation.focusable(state, self.id.as_ref());
+        operation.text_input(state, self.id.as_ref());
     }
 
     fn on_event(
@@ -1116,40 +1115,16 @@ pub enum Side {
     Right,
 }
 
-/// The identifier of a [`TextInput`].
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Id(widget::Id);
-
-impl Id {
-    /// Creates a custom [`Id`].
-    pub fn new(id: impl Into<std::borrow::Cow<'static, str>>) -> Self {
-        Self(widget::Id::new(id))
-    }
-
-    /// Creates a unique [`Id`].
-    ///
-    /// This function produces a different [`Id`] every time it is called.
-    pub fn unique() -> Self {
-        Self(widget::Id::unique())
-    }
-}
-
-impl From<Id> for widget::Id {
-    fn from(id: Id) -> Self {
-        id.0
-    }
-}
-
 /// Produces a [`Task`] that focuses the [`TextInput`] with the given [`Id`].
 pub fn focus<T>(id: Id) -> Task<T> {
-    Task::effect(Action::widget(operation::focusable::focus(id.0)))
+    Task::effect(Action::widget(operation::focusable::focus(id)))
 }
 
 /// Produces a [`Task`] that moves the cursor of the [`TextInput`] with the given [`Id`] to the
 /// end.
 pub fn move_cursor_to_end<T>(id: Id) -> Task<T> {
     Task::effect(Action::widget(operation::text_input::move_cursor_to_end(
-        id.0,
+        id,
     )))
 }
 
@@ -1157,7 +1132,7 @@ pub fn move_cursor_to_end<T>(id: Id) -> Task<T> {
 /// front.
 pub fn move_cursor_to_front<T>(id: Id) -> Task<T> {
     Task::effect(Action::widget(operation::text_input::move_cursor_to_front(
-        id.0,
+        id,
     )))
 }
 
@@ -1165,28 +1140,12 @@ pub fn move_cursor_to_front<T>(id: Id) -> Task<T> {
 /// provided position.
 pub fn move_cursor_to<T>(id: Id, position: usize) -> Task<T> {
     Task::effect(Action::widget(operation::text_input::move_cursor_to(
-        id.0, position,
+        id, position,
     )))
 }
-
 /// Produces a [`Task`] that selects all the content of the [`TextInput`] with the given [`Id`].
 pub fn select_all<T>(id: Id) -> Task<T> {
-    Task::effect(Action::widget(operation::text_input::select_all(id.0)))
-}
-
-/// The state of a [`TextInput`].
-#[derive(Debug, Default, Clone)]
-pub struct State<P: text::Paragraph> {
-    value: P,
-    placeholder: P,
-    icon: P,
-    is_focused: Option<Focus>,
-    is_dragging: bool,
-    is_pasting: Option<Value>,
-    last_click: Option<mouse::Click>,
-    cursor: Cursor,
-    keyboard_modifiers: keyboard::Modifiers,
-    // TODO: Add stateful horizontal scrolling offset
+    Task::effect(Action::widget(operation::text_input::select_all(id)))
 }
 
 fn state<Renderer: text::Renderer>(
@@ -1270,6 +1229,21 @@ impl<P: text::Paragraph> State<P> {
     pub fn select_all(&mut self) {
         self.cursor.select_range(0, usize::MAX);
     }
+}
+
+/// The state of a [`TextInput`].
+#[derive(Debug, Default, Clone)]
+pub struct State<P: text::Paragraph> {
+    value: P,
+    placeholder: P,
+    icon: P,
+    is_focused: Option<Focus>,
+    is_dragging: bool,
+    is_pasting: Option<Value>,
+    last_click: Option<mouse::Click>,
+    cursor: Cursor,
+    keyboard_modifiers: keyboard::Modifiers,
+    // TODO: Add stateful horizontal scrolling offset
 }
 
 impl<P: text::Paragraph> operation::Focusable for State<P> {
@@ -1394,6 +1368,7 @@ fn replace_paragraph<Renderer>(
         horizontal_alignment: alignment::Horizontal::Left,
         vertical_alignment: alignment::Vertical::Top,
         shaping: text::Shaping::Advanced,
+        wrap: text::Wrap::default(),
     });
 }
 

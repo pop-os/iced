@@ -24,8 +24,6 @@ pub use application::{Appearance, DefaultStyle};
 /// # Examples
 /// [The repository has a bunch of examples] that use the [`Application`] trait:
 ///
-/// - [`clock`], an application that uses the [`Canvas`] widget to draw a clock
-/// and its hands to display the current time.
 /// - [`download_progress`], a basic application that asynchronously downloads
 /// a dummy file of 100 MB and tracks the download progress.
 /// - [`events`], a log of native events displayed using a conditional
@@ -34,8 +32,6 @@ pub use application::{Appearance, DefaultStyle};
 /// by [John Horton Conway].
 /// - [`pokedex`], an application that displays a random Pokédex entry (sprite
 /// included!) by using the [PokéAPI].
-/// - [`solar_system`], an animated solar system drawn using the [`Canvas`] widget
-/// and showcasing how to compose different transforms.
 /// - [`stopwatch`], a watch with start/stop and reset buttons showcasing how
 /// to listen to time.
 /// - [`todos`], a todos tracker inspired by [TodoMVC].
@@ -50,7 +46,6 @@ pub use application::{Appearance, DefaultStyle};
 /// [`stopwatch`]: https://github.com/iced-rs/iced/tree/0.12/examples/stopwatch
 /// [`todos`]: https://github.com/iced-rs/iced/tree/0.12/examples/todos
 /// [`Sandbox`]: crate::Sandbox
-/// [`Canvas`]: crate::widget::Canvas
 /// [PokéAPI]: https://pokeapi.co/
 /// [TodoMVC]: http://todomvc.com/
 ///
@@ -107,7 +102,7 @@ where
     type Executor: Executor;
 
     /// The type of __messages__ your [`Application`] will produce.
-    type Message: std::fmt::Debug + Send;
+    type Message: std::fmt::Debug + Send + 'static;
 
     /// The theme of your [`Application`].
     type Theme: Default;

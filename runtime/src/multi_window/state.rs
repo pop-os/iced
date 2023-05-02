@@ -231,6 +231,7 @@ where
                     operation::Outcome::Chain(next) => {
                         current_operation = Some(next);
                     }
+                    _ => {}
                 };
             }
         }

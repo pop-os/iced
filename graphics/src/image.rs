@@ -23,6 +23,9 @@ pub enum Image {
 
         /// The opacity of the image.
         opacity: f32,
+
+        /// The border radii of the image
+        border_radius: [f32; 4],
     },
     /// A vector image.
     Vector {
@@ -40,6 +43,9 @@ pub enum Image {
 
         /// The opacity of the image.
         opacity: f32,
+
+        /// The border radii of the image
+        border_radius: [f32; 4],
     },
 }
 
@@ -116,7 +122,9 @@ pub fn load(
 
     let (width, height, pixels) = match handle {
         image::Handle::Path(_, path) => {
-            let image = ::image::open(path)?;
+            let image = ::image::io::Reader::open(&path)?
+                .with_guessed_format()?
+                .decode()?;
 
             let operation = std::fs::File::open(path)
                 .ok()

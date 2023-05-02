@@ -1,17 +1,22 @@
-use crate::futures::futures::{
-    channel::mpsc,
-    select,
-    task::{Context, Poll},
-    Future, Sink, StreamExt,
-};
+use dnd::{DndEvent, DndSurface};
+
 use crate::runtime::Action;
+use crate::{
+    application::UserEventWrapper,
+    futures::futures::{
+        channel::mpsc,
+        select,
+        task::{Context, Poll},
+        Future, Sink, StreamExt,
+    },
+};
 use std::pin::Pin;
 
 /// An event loop proxy with backpressure that implements `Sink`.
 #[derive(Debug)]
 pub struct Proxy<T: 'static> {
-    raw: winit::event_loop::EventLoopProxy<Action<T>>,
-    sender: mpsc::Sender<Action<T>>,
+    pub(crate) raw: winit::event_loop::EventLoopProxy<T>,
+    sender: mpsc::Sender<T>,
     notifier: mpsc::Sender<usize>,
 }
 
@@ -30,7 +35,7 @@ impl<T: 'static> Proxy<T> {
 
     /// Creates a new [`Proxy`] from an `EventLoopProxy`.
     pub fn new(
-        raw: winit::event_loop::EventLoopProxy<Action<T>>,
+        raw: winit::event_loop::EventLoopProxy<T>,
     ) -> (Self, impl Future<Output = ()>) {
         let (notifier, mut processed) = mpsc::channel(Self::MAX_SIZE);
         let (sender, mut receiver) = mpsc::channel(Self::MAX_SIZE);
@@ -82,7 +87,7 @@ impl<T: 'static> Proxy<T> {
         T: std::fmt::Debug,
     {
         self.raw
-            .send_event(Action::Output(value))
+            .send_event(value)
             .expect("Send message to event loop");
     }
 
@@ -93,7 +98,7 @@ impl<T: 'static> Proxy<T> {
     }
 }
 
-impl<T: 'static> Sink<Action<T>> for Proxy<T> {
+impl<T: 'static> Sink<T> for Proxy<T> {
     type Error = mpsc::SendError;
 
     fn poll_ready(
@@ -105,7 +110,7 @@ impl<T: 'static> Sink<Action<T>> for Proxy<T> {
 
     fn start_send(
         mut self: Pin<&mut Self>,
-        action: Action<T>,
+        action: T,
     ) -> Result<(), Self::Error> {
         self.sender.start_send(action)
     }
@@ -129,5 +134,21 @@ impl<T: 'static> Sink<Action<T>> for Proxy<T> {
     ) -> Poll<Result<(), Self::Error>> {
         self.sender.disconnect();
         Poll::Ready(Ok(()))
+    }
+}
+
+impl<M> dnd::Sender<DndSurface> for Proxy<UserEventWrapper<M>> {
+    fn send(
+        &self,
+        event: DndEvent<DndSurface>,
+    ) -> Result<(), std::sync::mpsc::SendError<DndEvent<DndSurface>>> {
+        self.raw
+            .send_event(UserEventWrapper::Dnd(event))
+            .map_err(|_err| {
+                std::sync::mpsc::SendError(DndEvent::Offer(
+                    None,
+                    dnd::OfferEvent::Leave,
+                ))
+            })
     }
 }

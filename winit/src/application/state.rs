@@ -110,9 +110,19 @@ where
         &self.theme
     }
 
+    /// Returns the current title of the [`State`].
+    pub fn title(&self) -> &str {
+        &self.title
+    }
+
     /// Returns the current background [`Color`] of the [`State`].
     pub fn background_color(&self) -> Color {
         self.appearance.background_color
+    }
+
+    /// Returns the current icon [`Color`] of the [`State`].
+    pub fn icon_color(&self) -> Color {
+        self.appearance.icon_color
     }
 
     /// Returns the current text [`Color`] of the [`State`].

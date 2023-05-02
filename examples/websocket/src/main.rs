@@ -13,6 +13,7 @@ pub fn main() -> iced::Result {
         .subscription(WebSocket::subscription)
         .run()
 }
+use iced::id::Id;
 
 #[derive(Default)]
 struct WebSocket {
@@ -146,4 +147,4 @@ impl Default for State {
     }
 }
 
-static MESSAGE_LOG: Lazy<scrollable::Id> = Lazy::new(scrollable::Id::unique);
+static MESSAGE_LOG: Lazy<Id> = Lazy::new(|| Id::new("message_log"));

@@ -560,6 +560,7 @@ impl core::svg::Renderer for Renderer {
         bounds: Rectangle,
         rotation: core::Radians,
         opacity: f32,
+        border_radius: [f32; 4],
     ) {
         let (layer, transformation) = self.layers.current_mut();
         layer.draw_svg(
@@ -569,6 +570,7 @@ impl core::svg::Renderer for Renderer {
             transformation,
             rotation,
             opacity,
+            border_radius,
         );
     }
 }

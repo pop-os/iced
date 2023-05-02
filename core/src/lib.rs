@@ -34,6 +34,9 @@ mod background;
 mod color;
 mod content_fit;
 mod element;
+mod hasher;
+#[cfg(not(feature = "a11y"))]
+pub mod id;
 mod length;
 mod maybe;
 mod padding;
@@ -58,6 +61,9 @@ pub use element::Element;
 pub use event::Event;
 pub use font::Font;
 pub use gradient::Gradient;
+pub use hasher::Hasher;
+#[cfg(feature = "a11y")]
+pub use iced_accessibility::id;
 pub use layout::Layout;
 pub use length::Length;
 pub use maybe::{MaybeSend, MaybeSync};

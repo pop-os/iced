@@ -1,0 +1,24 @@
+[package]
+name = "iced_accessibility"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+# TODO Ashley re-export more platform adapters
+
+[dependencies]
+# accesskit = { git = "https://github.com/wash2/accesskit.git", branch = "winit-0.29" }
+# accesskit_unix = { git = "https://github.com/wash2/accesskit.git", branch = "winit-0.29", optional = true, default-features = false, features = [
+#    "tokio",
+# ] }
+# accesskit_windows = { git = "https://github.com/wash2/accesskit.git", branch = "winit-0.29", optional = true }
+# accesskit_macos = { git = "https://github.com/wash2/accesskit.git", branch = "winit-0.29", optional = true }
+# accesskit_winit = { git = "https://github.com/wash2/accesskit.git", branch = "winit-0.29", optional = true }
+
+accesskit = { git = "https://github.com/accesskit/accesskit", branch = "winit-0.29-backport" }
+accesskit_unix = { git = "https://github.com/accesskit/accesskit", branch = "winit-0.29-backport", optional = true, default-features = false, features = [
+    "tokio",
+] }
+accesskit_windows = { git = "https://github.com/accesskit/accesskit", branch = "winit-0.29-backport", optional = true }
+accesskit_macos = { git = "https://github.com/accesskit/accesskit", branch = "winit-0.29-backport", optional = true }
+accesskit_winit = { git = "https://github.com/accesskit/accesskit", branch = "winit-0.29-backport", optional = true }

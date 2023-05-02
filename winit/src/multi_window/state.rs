@@ -135,6 +135,11 @@ where
         self.appearance.text_color
     }
 
+    /// Returns the current icon [`Color`] of the [`State`].
+    pub fn icon_color(&self) -> Color {
+        self.appearance.icon_color
+    }
+
     /// Processes the provided window event and updates the [`State`] accordingly.
     pub fn update(
         &mut self,

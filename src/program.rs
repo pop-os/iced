@@ -252,6 +252,7 @@ impl<P: Definition> Program<P> {
             default_font: settings.default_font,
             default_text_size: settings.default_text_size,
             antialiasing: settings.antialiasing,
+            exit_on_close_request: settings.exit_on_close_request,
         })
     }
 

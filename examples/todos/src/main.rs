@@ -1,17 +1,24 @@
+use std::{borrow::Cow, convert::Infallible};
+
 use iced::alignment::{self, Alignment};
-use iced::keyboard;
+use iced::clipboard::mime::{AllowedMimeTypes, AsMimeTypes};
+use iced::font::{self, Font};
+use iced::futures::task;
+use iced::keyboard::{self, Modifiers};
 use iced::widget::{
     self, button, center, checkbox, column, container, keyed_column, row,
     scrollable, text, text_input, Text,
 };
 use iced::window;
-use iced::{Element, Font, Length, Subscription, Task as Command};
+use iced::{clipboard, subscription};
+use iced::{Element, Length, Subscription, Task as Command};
+use iced_core::widget::Id;
 
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-static INPUT_ID: Lazy<text_input::Id> = Lazy::new(text_input::Id::unique);
+static INPUT_ID: Lazy<Id> = Lazy::new(Id::unique);
 
 pub fn main() -> iced::Result {
     #[cfg(not(target_arch = "wasm32"))]
@@ -51,6 +58,37 @@ enum Message {
     TaskMessage(usize, TaskMessage),
     TabPressed { shift: bool },
     ToggleFullscreen(window::Mode),
+    Dbg(Option<String>),
+}
+
+pub struct MyText(pub String);
+impl AllowedMimeTypes for MyText {
+    fn allowed() -> std::borrow::Cow<'static, [String]> {
+        Cow::Owned(vec!["text/plain".to_string()].into())
+    }
+}
+
+impl TryFrom<(Vec<u8>, String)> for MyText {
+    type Error = Infallible;
+
+    fn try_from(value: (Vec<u8>, String)) -> Result<Self, Self::Error> {
+        Ok(MyText(
+            String::from_utf8_lossy(value.0.as_ref()).to_string(),
+        ))
+    }
+}
+
+impl AsMimeTypes for MyText {
+    fn available(&self) -> std::borrow::Cow<'static, [String]> {
+        Cow::Owned(vec!["text/plain".to_string()])
+    }
+
+    fn as_bytes(
+        &self,
+        mime_type: &str,
+    ) -> Option<std::borrow::Cow<'static, [u8]>> {
+        (mime_type == "text/plain").then(|| self.0.clone().into_bytes().into())
+    }
 }
 
 impl Todos {
@@ -92,9 +130,12 @@ impl Todos {
 
                 let command = match message {
                     Message::InputChanged(value) => {
-                        state.input_value = value;
-
-                        Command::none()
+                        state.input_value = value.clone();
+                        Command::batch(vec![
+                            clipboard::write_data(MyText(value)),
+                            clipboard::read_data()
+                                .map(|s| Message::Dbg(s.map(|s: MyText| s.0))),
+                        ])
                     }
                     Message::CreateTask => {
                         if !state.input_value.is_empty() {
@@ -104,6 +145,10 @@ impl Todos {
                             state.input_value.clear();
                         }
 
+                        Command::none()
+                    }
+                    Message::Dbg(s) => {
+                        dbg!(s);
                         Command::none()
                     }
                     Message::FilterChanged(filter) => {
@@ -182,6 +227,9 @@ impl Todos {
     }
 
     fn view(&self) -> Element<Message> {
+        // row![
+        // button("Press me").on_press(Message::ToggleFullscreen(window::Mode::Fullscreen))
+        // ].into()
         match self {
             Todos::Loading => loading_message(),
             Todos::Loaded(State {
@@ -233,8 +281,9 @@ impl Todos {
                         }
                     })
                 };
+                let test = row![container(text("0000 0000 00000 000000000000 000000000000000 00000 0000 00000000 000000 000000000 l00000")).width(Length::Fill), container(text("a")).width(Length::Fixed(100.0))];
 
-                let content = column![title, input, controls, tasks]
+                let content = column![title, input, controls, tasks, test]
                     .spacing(20)
                     .max_width(800);
 
@@ -303,8 +352,8 @@ pub enum TaskMessage {
 }
 
 impl Task {
-    fn text_input_id(i: usize) -> text_input::Id {
-        text_input::Id::new(format!("task-{i}"))
+    fn text_input_id(i: usize) -> Id {
+        Id::new(format!("task-{i}"))
     }
 
     fn new(description: String) -> Self {
