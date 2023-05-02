@@ -13,7 +13,10 @@ use std::path::Path;
 /// This will return an error in case the file is missing at run-time. You may prefer [`from_file_data`] instead.
 #[cfg(feature = "image")]
 pub fn from_file<P: AsRef<Path>>(icon_path: P) -> Result<Icon, Error> {
-    let icon = image::io::Reader::open(icon_path)?.decode()?.to_rgba8();
+    let icon = ::image::io::Reader::open(icon_path)?
+        .with_guessed_format()?
+        .decode()?
+        .to_rgba8();
 
     Ok(icon::from_rgba(icon.to_vec(), icon.width(), icon.height())?)
 }

@@ -318,6 +318,7 @@ struct Map<A, B, F>
 where
     F: Fn(A) -> B + 'static,
 {
+    id: TypeId,
     recipe: Box<dyn Recipe<Output = A>>,
     mapper: F,
 }
@@ -327,7 +328,11 @@ where
     F: Fn(A) -> B + 'static,
 {
     fn new(recipe: Box<dyn Recipe<Output = A>>, mapper: F) -> Self {
-        Map { recipe, mapper }
+        Map {
+            id: TypeId::of::<F>(),
+            recipe,
+            mapper,
+        }
     }
 }
 
@@ -340,7 +345,7 @@ where
     type Output = B;
 
     fn hash(&self, state: &mut Hasher) {
-        TypeId::of::<F>().hash(state);
+        self.id.hash(state);
         self.recipe.hash(state);
     }
 

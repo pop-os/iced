@@ -1,16 +1,22 @@
 //! Create interactive, native cross-platform applications for WGPU.
+#[path = "application/drag_resize.rs"]
+mod drag_resize;
 mod state;
 mod window_manager;
 
-pub use state::State;
+pub use runtime::{default, Appearance, DefaultStyle};
 
 use crate::conversion;
 use crate::core;
+use crate::core::clipboard::Kind;
 use crate::core::mouse;
 use crate::core::renderer;
 use crate::core::time::Instant;
 use crate::core::widget::operation;
+use crate::core::widget::Operation;
 use crate::core::window;
+use crate::core::Clipboard as CoreClipboard;
+use crate::core::Length;
 use crate::core::{Color, Element, Point, Size, Theme};
 use crate::futures::futures::channel::mpsc;
 use crate::futures::futures::channel::oneshot;
@@ -24,10 +30,19 @@ use crate::runtime::user_interface::{self, UserInterface};
 use crate::runtime::Debug;
 use crate::runtime::{self, Action, Task};
 use crate::{Clipboard, Error, Proxy, Settings};
+use dnd::DndSurface;
+use dnd::Icon;
+use iced_futures::core::widget::operation::search_id;
+use iced_graphics::Viewport;
+use iced_runtime::futures::futures::FutureExt;
+pub use state::State;
+use window_clipboard::mime::ClipboardStoreData;
+use winit::raw_window_handle::HasWindowHandle;
 
 use window_manager::WindowManager;
 
 use rustc_hash::FxHashMap;
+use std::any::Any;
 use std::borrow::Cow;
 use std::mem::ManuallyDrop;
 use std::sync::Arc;
@@ -138,37 +153,6 @@ where
     }
 }
 
-/// The appearance of a program.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Appearance {
-    /// The background [`Color`] of the application.
-    pub background_color: Color,
-
-    /// The default text [`Color`] of the application.
-    pub text_color: Color,
-}
-
-/// The default style of a [`Program`].
-pub trait DefaultStyle {
-    /// Returns the default style of a [`Program`].
-    fn default_style(&self) -> Appearance;
-}
-
-impl DefaultStyle for Theme {
-    fn default_style(&self) -> Appearance {
-        default(self)
-    }
-}
-
-/// The default [`Appearance`] of a [`Program`] with the built-in [`Theme`].
-pub fn default(theme: &Theme) -> Appearance {
-    let palette = theme.extended_palette();
-
-    Appearance {
-        background_color: palette.background.base.color,
-        text_color: palette.background.base.text,
-    }
-}
 /// Runs a [`Program`] with an executor, compositor, and the provided
 /// settings.
 pub fn run<P, C>(
@@ -233,7 +217,7 @@ where
         debug,
         boot_receiver,
         event_receiver,
-        control_sender,
+        control_sender.clone(),
         is_daemon,
     ));
 
@@ -258,6 +242,7 @@ where
         sender: oneshot::Sender<Boot<C>>,
         fonts: Vec<Cow<'static, [u8]>>,
         graphics_settings: graphics::Settings,
+        control_sender: mpsc::UnboundedSender<Control>,
     }
 
     let runner = Runner {
@@ -268,6 +253,7 @@ where
             sender: boot_sender,
             fonts: settings.fonts,
             graphics_settings,
+            control_sender,
         }),
         sender: event_sender,
         receiver: control_receiver,
@@ -291,6 +277,7 @@ where
                 sender,
                 fonts,
                 graphics_settings,
+                control_sender,
             }) = self.boot.take()
             else {
                 return;
@@ -320,6 +307,10 @@ where
                 use winit::platform::web::WindowExtWebSys;
                 self.canvas = window.canvas();
             }
+            let clipboard = Clipboard::connect(
+                window.clone(),
+                crate::clipboard::ControlSender(control_sender.clone()),
+            );
 
             let finish_boot = async move {
                 let mut compositor =
@@ -495,6 +486,7 @@ where
                             } => {
                                 let exit_on_close_request =
                                     settings.exit_on_close_request;
+                                let resize_border = settings.resize_border;
 
                                 let visible = settings.visible;
 
@@ -579,11 +571,29 @@ where
                                         exit_on_close_request,
                                         make_visible: visible,
                                         on_open,
+                                        resize_border,
                                     },
                                 );
                             }
                             Control::Exit => {
                                 event_loop.exit();
+                            }
+                            Control::Dnd(e) => {
+                                self.process_event(event_loop, Event::Dnd(e));
+                            }
+                            #[cfg(feature = "a11y")]
+                            Control::Accessibility(event) => {
+                                self.process_event(
+                                    event_loop,
+                                    Event::Accessibility(event),
+                                );
+                            }
+                            #[cfg(feature = "a11y")]
+                            Control::AccessibilityEnabled(event) => {
+                                self.process_event(
+                                    event_loop,
+                                    Event::AccessibilityEnabled(event),
+                                );
                             }
                         },
                         _ => {
@@ -628,12 +638,18 @@ enum Event<Message: 'static> {
         exit_on_close_request: bool,
         make_visible: bool,
         on_open: oneshot::Sender<window::Id>,
+        resize_border: u32,
     },
+    Dnd(dnd::DndEvent<dnd::DndSurface>),
+    #[cfg(feature = "a11y")]
+    Accessibility(iced_accessibility::accesskit_winit::ActionRequestEvent),
+    #[cfg(feature = "a11y")]
+    AccessibilityEnabled(bool),
     EventLoopAwakened(winit::event::Event<Message>),
 }
 
 #[derive(Debug)]
-enum Control {
+pub(crate) enum Control {
     ChangeFlow(winit::event_loop::ControlFlow),
     Exit,
     CreateWindow {
@@ -643,6 +659,11 @@ enum Control {
         monitor: Option<winit::monitor::MonitorHandle>,
         on_open: oneshot::Sender<window::Id>,
     },
+    Dnd(dnd::DndEvent<dnd::DndSurface>),
+    #[cfg(feature = "a11y")]
+    Accessibility(iced_accessibility::accesskit_winit::ActionRequestEvent),
+    #[cfg(feature = "a11y")]
+    AccessibilityEnabled(bool),
 }
 
 async fn run_instance<P, C>(
@@ -671,9 +692,45 @@ async fn run_instance<P, C>(
     let mut messages = Vec::new();
     let mut actions = 0;
 
+    #[cfg(feature = "a11y")]
+    let (window_a11y_id, adapter, mut a11y_enabled) = {
+        let node_id = core::id::window_node_id();
+
+        use iced_accessibility::accesskit::{
+            NodeBuilder, NodeId, Role, Tree, TreeUpdate,
+        };
+        use iced_accessibility::accesskit_winit::Adapter;
+
+        let title = main_window.raw.title().to_string();
+        let proxy_clone = proxy.clone();
+        (
+            node_id,
+            Adapter::new(
+                &main_window.raw,
+                move || {
+                    let _ =
+                        proxy_clone.send_event(UserEventWrapper::A11yEnabled);
+                    let mut node = NodeBuilder::new(Role::Window);
+                    node.set_name(title.clone());
+                    let node = node.build(&mut iced_accessibility::accesskit::NodeClassSet::lock_global());
+                    let root = NodeId(node_id);
+                    TreeUpdate {
+                        nodes: vec![(root, node)],
+                        tree: Some(Tree::new(root)),
+                        focus: root,
+                    }
+                },
+                proxy.clone(),
+            ),
+            false,
+        )
+    };
+
     let mut ui_caches = FxHashMap::default();
     let mut user_interfaces = ManuallyDrop::new(FxHashMap::default());
     let mut clipboard = Clipboard::unconnected();
+
+    let mut cur_dnd_surface = None;
 
     debug.startup_finished();
 
@@ -696,6 +753,7 @@ async fn run_instance<P, C>(
                 exit_on_close_request,
                 make_visible,
                 on_open,
+                resize_border,
             } => {
                 let window = window_manager.insert(
                     id,
@@ -703,6 +761,7 @@ async fn run_instance<P, C>(
                     &program,
                     &mut compositor,
                     exit_on_close_request,
+                    resize_border,
                 );
 
                 let logical_size = window.state.logical_size();
@@ -805,7 +864,9 @@ async fn run_instance<P, C>(
                             &mut window.renderer,
                             window.state.theme(),
                             &renderer::Style {
+                                icon_color: window.state.icon_color(),
                                 text_color: window.state.text_color(),
+                                scale_factor: window.state.scale_factor(),
                             },
                             cursor,
                         );
@@ -876,7 +937,11 @@ async fn run_instance<P, C>(
                                     &mut window.renderer,
                                     window.state.theme(),
                                     &renderer::Style {
+                                        icon_color: window.state.icon_color(),
                                         text_color: window.state.text_color(),
+                                        scale_factor: window
+                                            .state
+                                            .scale_factor(),
                                     },
                                     window.state.cursor(),
                                 );
@@ -962,6 +1027,15 @@ async fn run_instance<P, C>(
                         else {
                             continue;
                         };
+
+                        // Initiates a drag resize window state when found.
+                        if let Some(func) =
+                            window.drag_resize_window_func.as_mut()
+                        {
+                            if func(&window.raw, &window_event) {
+                                continue;
+                            }
+                        }
 
                         if matches!(
                             window_event,
@@ -1102,6 +1176,7 @@ async fn run_instance<P, C>(
                                     &mut debug,
                                     &mut window_manager,
                                     cached_interfaces,
+                                    &mut clipboard,
                                 ));
 
                             if actions > 0 {
@@ -1109,9 +1184,231 @@ async fn run_instance<P, C>(
                                 actions = 0;
                             }
                         }
+
+                        debug.draw_started();
+
+                        for (id, window) in window_manager.iter_mut() {
+                            // TODO: Avoid redrawing all the time by forcing widgets to
+                            //  request redraws on state changes
+                            //
+                            // Then, we can use the `interface_state` here to decide if a redraw
+                            // is needed right away, or simply wait until a specific time.
+                            let redraw_event = core::Event::Window(
+                                window::Event::RedrawRequested(Instant::now()),
+                            );
+
+                            let cursor = window.state.cursor();
+
+                            let ui = user_interfaces
+                                .get_mut(&id)
+                                .expect("Get user interface");
+
+                            let (ui_state, _) = ui.update(
+                                &[redraw_event.clone()],
+                                cursor,
+                                &mut window.renderer,
+                                &mut clipboard,
+                                &mut messages,
+                            );
+
+                            let new_mouse_interaction = {
+                                let state = &window.state;
+
+                                ui.draw(
+                                    &mut window.renderer,
+                                    state.theme(),
+                                    &renderer::Style {
+                                        icon_color: state.icon_color(),
+                                        text_color: state.text_color(),
+                                        scale_factor: state.scale_factor(),
+                                    },
+                                    cursor,
+                                )
+                            };
+
+                            if new_mouse_interaction != window.mouse_interaction
+                            {
+                                window.raw.set_cursor_icon(
+                                    conversion::mouse_interaction(
+                                        new_mouse_interaction,
+                                    ),
+                                );
+
+                                window.mouse_interaction =
+                                    new_mouse_interaction;
+                            }
+
+                            // TODO once widgets can request to be redrawn, we can avoid always requesting a
+                            // redraw
+                            window.raw.request_redraw();
+                            runtime.broadcast(
+                                subscription::Event::Interaction {
+                                    window: id,
+                                    event: redraw_event,
+                                    status: core::event::Status::Ignored,
+                                },
+                            );
+
+                            let _ = control_sender.start_send(
+                                Control::ChangeFlow(match ui_state {
+                                    user_interface::State::Updated {
+                                        redraw_request: Some(redraw_request),
+                                    } => match redraw_request {
+                                        window::RedrawRequest::NextFrame => {
+                                            ControlFlow::Poll
+                                        }
+                                        window::RedrawRequest::At(at) => {
+                                            ControlFlow::WaitUntil(at)
+                                        }
+                                    },
+                                    _ => ControlFlow::Wait,
+                                }),
+                            );
+                        }
+
+                        debug.draw_finished();
+                    }
+                    event::Event::PlatformSpecific(
+                        event::PlatformSpecific::MacOS(
+                            event::MacOS::ReceivedUrl(url),
+                        ),
+                    ) => {
+                        use crate::core::event;
+
+                        // events.push((
+                        //     None,
+                        //     event::Event::PlatformSpecific(
+                        //         event::PlatformSpecific::MacOS(
+                        //             event::MacOS::ReceivedUrl(url),
+                        //         ),
+                        //     ),
+                        // ));
+                    }
+
+                    event::Event::WindowEvent {
+                        event: window_event,
+                        window_id,
+                    } => {
+                        let Some((id, window)) =
+                            window_manager.get_mut_alias(window_id)
+                        else {
+                            continue;
+                        };
+
+                        if matches!(
+                            window_event,
+                            winit::event::WindowEvent::CloseRequested
+                        ) {
+                            let w = window_manager.remove(id);
+                            let _ = user_interfaces.remove(&id);
+                            let _ = ui_caches.remove(&id);
+                            if let Some(w) = w.as_ref() {
+                                clipboard.register_dnd_destination(
+                                    DndSurface(Arc::new(Box::new(
+                                        w.raw.clone(),
+                                    ))),
+                                    Vec::new(),
+                                );
+                            }
+
+                            events.push((
+                                id,
+                                core::Event::Window(window::Event::Closed),
+                            ));
+
+                            if window_manager.is_empty()
+                                && w.is_some_and(|w| w.exit_on_close_request)
+                            {
+                                break;
+                            }
+                        } else {
+                            window.state.update(
+                                &window.raw,
+                                &window_event,
+                                &mut debug,
+                            );
+
+                            if let Some(event) = conversion::window_event(
+                                window_event,
+                                window.state.scale_factor(),
+                                window.state.modifiers(),
+                            ) {
+                                events.push((id, event));
+                            }
+                        }
                     }
                     _ => {}
                 }
+            }
+            Event::Dnd(e) => {
+                match &e {
+                    dnd::DndEvent::Offer(_, dnd::OfferEvent::Leave) => {
+                        let Some(some_cur_dnd_surface) =
+                            cur_dnd_surface.clone()
+                        else {
+                            continue;
+                        };
+                        events
+                            .push((some_cur_dnd_surface, core::Event::Dnd(e)));
+                        cur_dnd_surface = None;
+                    }
+                    dnd::DndEvent::Offer(
+                        _,
+                        dnd::OfferEvent::Enter { surface, .. },
+                    ) => {
+                        let window_handle = surface.0.window_handle().ok();
+                        let window_id = window_manager.iter_mut().find_map(
+                            |(id, window)| {
+                                if window
+                                    .raw
+                                    .window_handle()
+                                    .ok()
+                                    .zip(window_handle)
+                                    .map(|(a, b)| a == b)
+                                    .unwrap_or_default()
+                                {
+                                    Some(id)
+                                } else {
+                                    None
+                                }
+                            },
+                        );
+
+                        cur_dnd_surface = window_id;
+                        let Some(cur_dnd_surface) = cur_dnd_surface.clone()
+                        else {
+                            log::error!("Missing Id for Dnd Event {e:?}");
+                            continue;
+                        };
+                        events.push((cur_dnd_surface, core::Event::Dnd(e)));
+                    }
+                    dnd::DndEvent::Offer(..) => {
+                        let Some(cur_dnd_surface) = cur_dnd_surface.clone()
+                        else {
+                            continue;
+                        };
+                        events.push((cur_dnd_surface, core::Event::Dnd(e)));
+                    }
+                    dnd::DndEvent::Source(_) => {
+                        for id in window_manager.ids() {
+                            events.push((id, core::Event::Dnd(e.clone())))
+                        }
+                    }
+                };
+            }
+            #[cfg(feature = "a11y")]
+            Event::Accessibility(e) => {
+                match e.request.action {
+                    iced_accessibility::accesskit::Action::Focus => {
+                        // TODO send a command for this
+                    }
+                    _ => {}
+                }
+                events.push((None, conversion::a11y(e.request)));
+            }
+            #[cfg(feature = "a11y")]
+            Event::AccessibilityEnabled(enabled) => {
+                a11y_enabled = enabled;
             }
         }
     }
@@ -1201,6 +1498,13 @@ fn run_action<P, C>(
             }
             clipboard::Action::Write { target, contents } => {
                 clipboard.write(target, contents);
+            }
+            clipboard::Action::WriteData(contents, kind) => {
+                clipboard.write_data(kind, ClipboardStoreData(contents))
+            }
+            clipboard::Action::ReadData(allowed, tx, kind) => {
+                let contents = clipboard.read_data(kind, allowed);
+                _ = tx.send(contents);
             }
         },
         Action::Window(action) => match action {
@@ -1484,6 +1788,196 @@ fn run_action<P, C>(
                 .start_send(Control::Exit)
                 .expect("Send control action");
         }
+        Action::Dnd(a) => match a {
+            iced_runtime::dnd::DndAction::RegisterDndDestination {
+                surface,
+                rectangles,
+            } => {
+                clipboard.register_dnd_destination(surface, rectangles);
+            }
+            iced_runtime::dnd::DndAction::StartDnd {
+                internal,
+                source_surface,
+                icon_surface,
+                content,
+                actions,
+            } => {
+                let Some(window_id) = source_surface.and_then(|source| {
+                    match source {
+                        core::clipboard::DndSource::Surface(s) => Some(s),
+                        core::clipboard::DndSource::Widget(w) => {
+                            // search windows for widget with operation
+                            interfaces.iter_mut().find_map(|(ui_id, ui)| {
+                                let Some(ui_renderer) = window_manager
+                                    .get_mut(ui_id.clone())
+                                    .map(|w| &w.renderer)
+                                else {
+                                    return None;
+                                };
+
+                                let operation: Box<dyn Operation<()>> =
+                                    Box::new(operation::map(
+                                        Box::new(search_id::search_id(
+                                            w.clone(),
+                                        )),
+                                        |_| {},
+                                    ));
+                                let mut current_operation = Some(operation);
+
+                                while let Some(mut operation) =
+                                    current_operation.take()
+                                {
+                                    ui.operate(ui_renderer, operation.as_mut());
+
+                                    match operation.finish() {
+                                        operation::Outcome::None => {}
+                                        operation::Outcome::Some(()) => {
+                                            return Some(ui_id.clone());
+                                        }
+                                        operation::Outcome::Chain(next) => {
+                                            current_operation = Some(next);
+                                        }
+                                    }
+                                }
+                                None
+                            })
+                        }
+                    }
+                }) else {
+                    eprintln!("No source surface");
+                    return;
+                };
+
+                let Some(window) = window_manager.get_mut(window_id) else {
+                    eprintln!("No window");
+                    return;
+                };
+
+                let state = &window.state;
+                let icon_surface = icon_surface
+                    .map(|i| {
+                        let i: Box<dyn Any> = i;
+                        i
+                    })
+                    .and_then(|i| {
+                        None
+                        // i.downcast::<Arc<(
+                        //     core::Element<
+                        //         'static,
+                        //         P::Message,
+                        //         P::Theme,
+                        //         P::Renderer,
+                        //     >,
+                        //     core::widget::tree::State,
+                        // )>>()
+                        // .ok()
+                    })
+                    .map(
+                        |e: Box<
+                            Arc<(
+                                core::Element<
+                                    'static,
+                                    P::Message,
+                                    P::Theme,
+                                    P::Renderer,
+                                >,
+                                core::widget::tree::State,
+                            )>,
+                        >| {
+                            let mut renderer = compositor.create_renderer();
+
+                            let e = Arc::into_inner(*e).unwrap();
+                            let (mut e, widget_state) = e;
+                            let lim = core::layout::Limits::new(
+                                Size::new(1., 1.),
+                                Size::new(
+                                    state.viewport().physical_width() as f32,
+                                    state.viewport().physical_height() as f32,
+                                ),
+                            );
+
+                            let mut tree = core::widget::Tree {
+                                id: e.as_widget().id(),
+                                tag: e.as_widget().tag(),
+                                state: widget_state,
+                                children: e.as_widget().children(),
+                            };
+
+                            let size = e
+                                .as_widget()
+                                .layout(&mut tree, &renderer, &lim);
+                            e.as_widget_mut().diff(&mut tree);
+
+                            let size = lim.resolve(
+                                Length::Shrink,
+                                Length::Shrink,
+                                size.size(),
+                            );
+                            let mut surface = compositor.create_surface(
+                                window.raw.clone(),
+                                size.width.ceil() as u32,
+                                size.height.ceil() as u32,
+                            );
+                            let viewport = Viewport::with_logical_size(
+                                size,
+                                state.viewport().scale_factor(),
+                            );
+                            let mut ui = UserInterface::build(
+                                e,
+                                size,
+                                user_interface::Cache::default(),
+                                &mut renderer,
+                            );
+                            _ = ui.draw(
+                                &mut renderer,
+                                state.theme(),
+                                &renderer::Style {
+                                    icon_color: state.icon_color(),
+                                    text_color: state.text_color(),
+                                    scale_factor: state.scale_factor(),
+                                },
+                                Default::default(),
+                            );
+                            let mut bytes = compositor.screenshot(
+                                &mut renderer,
+                                &mut surface,
+                                &viewport,
+                                core::Color::TRANSPARENT,
+                                &debug.overlay(),
+                            );
+                            for pix in bytes.chunks_exact_mut(4) {
+                                // rgba -> argb little endian
+                                pix.swap(0, 2);
+                            }
+                            Icon::Buffer {
+                                data: Arc::new(bytes),
+                                width: viewport.physical_width(),
+                                height: viewport.physical_height(),
+                                transparent: true,
+                            }
+                        },
+                    );
+
+                clipboard.start_dnd_winit(
+                    internal,
+                    DndSurface(Arc::new(Box::new(window.raw.clone()))),
+                    icon_surface,
+                    content,
+                    actions,
+                );
+            }
+            iced_runtime::dnd::DndAction::EndDnd => {
+                clipboard.end_dnd();
+            }
+            iced_runtime::dnd::DndAction::PeekDnd(m, channel) => {
+                let data = clipboard.peek_dnd(m);
+                channel.send(data);
+            }
+            iced_runtime::dnd::DndAction::SetAction(a) => {
+                clipboard.set_action(a);
+            }
+        },
+        Action::PlatformSpecific(_) => todo!(),
     }
 }
 
@@ -1493,6 +1987,7 @@ pub fn build_user_interfaces<'a, P: Program, C>(
     debug: &mut Debug,
     window_manager: &mut WindowManager<P, C>,
     mut cached_user_interfaces: FxHashMap<window::Id, user_interface::Cache>,
+    clipboard: &mut Clipboard,
 ) -> FxHashMap<window::Id, UserInterface<'a, P::Message, P::Theme, P::Renderer>>
 where
     C: Compositor<Renderer = P::Renderer>,
@@ -1502,18 +1997,33 @@ where
         .drain()
         .filter_map(|(id, cache)| {
             let window = window_manager.get_mut(id)?;
-
-            Some((
+            let interface = build_user_interface(
+                program,
+                cache,
+                &mut window.renderer,
+                window.state.logical_size(),
+                debug,
                 id,
-                build_user_interface(
-                    program,
-                    cache,
-                    &mut window.renderer,
-                    window.state.logical_size(),
-                    debug,
-                    id,
-                ),
-            ))
+            );
+
+            let dnd_rectangles = interface.dnd_rectangles(
+                window.prev_dnd_destination_rectangles_count,
+                &window.renderer,
+            );
+            let new_dnd_rectangles_count = dnd_rectangles.as_ref().len();
+            if new_dnd_rectangles_count > 0
+                || window.prev_dnd_destination_rectangles_count > 0
+            {
+                clipboard.register_dnd_destination(
+                    DndSurface(Arc::new(Box::new(window.raw.clone()))),
+                    dnd_rectangles.into_rectangles(),
+                );
+            }
+
+            window.prev_dnd_destination_rectangles_count =
+                new_dnd_rectangles_count;
+
+            Some((id, interface))
         })
         .collect()
 }

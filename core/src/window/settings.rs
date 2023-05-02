@@ -34,6 +34,9 @@ pub struct Settings {
     /// The initial logical dimensions of the window.
     pub size: Size,
 
+    /// The border area for the drag resize handle.
+    pub resize_border: u32,
+
     /// The initial position of the window.
     pub position: Position,
 
@@ -76,9 +79,10 @@ pub struct Settings {
 }
 
 impl Default for Settings {
-    fn default() -> Self {
-        Self {
+    fn default() -> Settings {
+        Settings {
             size: Size::new(1024.0, 768.0),
+            resize_border: 8,
             position: Position::default(),
             min_size: None,
             max_size: None,

@@ -29,6 +29,9 @@ pub struct Image<H = Handle> {
     /// This can avoid graphical glitches, specially when using
     /// [`FilterMethod::Nearest`].
     pub snap: bool,
+
+    /// The border radii of the image
+    pub border_radius: [f32; 4],
 }
 
 impl Image<Handle> {
@@ -40,6 +43,7 @@ impl Image<Handle> {
             rotation: Radians(0.0),
             opacity: 1.0,
             snap: false,
+            border_radius: [0.0; 4],
         }
     }
 
@@ -239,6 +243,15 @@ pub trait Renderer: crate::Renderer {
     /// Returns the dimensions of an image for the given [`Handle`].
     fn measure_image(&self, handle: &Self::Handle) -> Size<u32>;
 
-    /// Draws an [`Image`] inside the provided `bounds`.
-    fn draw_image(&mut self, image: Image<Self::Handle>, bounds: Rectangle);
+    /// Draws an image with the given [`Handle`] and inside the provided
+    /// `bounds`.
+    fn draw_image(
+        &mut self,
+        handle: Self::Handle,
+        filter_method: FilterMethod,
+        bounds: Rectangle,
+        rotation: Radians,
+        opacity: f32,
+        border_radius: [f32; 4],
+    );
 }

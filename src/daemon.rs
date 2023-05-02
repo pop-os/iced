@@ -1,12 +1,15 @@
 //! Create and run daemons that run in the background.
 use crate::application;
 use crate::program::{self, Program};
+#[cfg(any(feature = "winit", feature = "wayland"))]
+pub use crate::shell::program::{Appearance, DefaultStyle};
 use crate::window;
 use crate::{Element, Font, Result, Settings, Subscription, Task};
 
-use std::borrow::Cow;
+#[cfg(not(any(feature = "winit", feature = "wayland")))]
+use crate::runtime::{Appearance, DefaultStyle};
 
-pub use crate::shell::program::{Appearance, DefaultStyle};
+use std::borrow::Cow;
 
 /// Creates an iced [`Daemon`] given its title, update, and view logic.
 ///
@@ -100,6 +103,7 @@ pub struct Daemon<P: Program> {
 }
 
 impl<P: Program> Daemon<P> {
+    #[cfg(any(feature = "winit", feature = "wayland"))]
     /// Runs the [`Daemon`].
     ///
     /// The state of the [`Daemon`] must implement [`Default`].
@@ -115,6 +119,7 @@ impl<P: Program> Daemon<P> {
         self.raw.run(self.settings, None)
     }
 
+    #[cfg(any(feature = "winit", feature = "wayland"))]
     /// Runs the [`Daemon`] with a closure that creates the initial state.
     pub fn run_with<I>(self, initialize: I) -> Result
     where

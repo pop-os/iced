@@ -210,6 +210,8 @@ Many thanks to...
 - @wiiznokes
 - @woelfman
 - @Zaubentrucker
+- @ryanabx
+- @edfloreshz
 
 ## [0.12.1] - 2024-02-22
 ### Added
@@ -395,6 +397,10 @@ Many thanks to...
 - @VAWVAW
 - @william-shere
 - @wyatt-herkamp
+
+Many thanks to...
+- @jackpot51
+- @wash2
 
 ## [0.10.0] - 2023-07-28
 ### Added

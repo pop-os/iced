@@ -23,17 +23,21 @@ wayland = ["winit/wayland"]
 wayland-dlopen = ["winit/wayland-dlopen"]
 wayland-csd-adwaita = ["winit/wayland-csd-adwaita"]
 multi-window = ["iced_runtime/multi-window"]
+a11y = ["iced_accessibility", "iced_runtime/a11y"]
 
 [dependencies]
 iced_futures.workspace = true
 iced_graphics.workspace = true
 iced_runtime.workspace = true
-
+iced_accessibility.workspace = true
+iced_accessibility.optional = true
+iced_accessibility.features = ["accesskit_winit"]
 log.workspace = true
 rustc-hash.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
 window_clipboard.workspace = true
+dnd.workspace = true
 winit.workspace = true
 
 sysinfo.workspace = true

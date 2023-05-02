@@ -3,7 +3,10 @@ use iced::widget::{
     text_input,
 };
 use iced::window;
-use iced::{Center, Element, Fill, Subscription, Task, Theme, Vector};
+use iced::{
+    id::Id, Alignment, Center, Element, Length, Point, Settings, Subscription,
+    Task, Theme, Vector,
+};
 
 use std::collections::BTreeMap;
 
@@ -25,7 +28,7 @@ struct Window {
     scale_input: String,
     current_scale: f64,
     theme: Theme,
-    input_id: iced::widget::text_input::Id,
+    input_id: Id,
 }
 
 #[derive(Debug, Clone)]
@@ -163,7 +166,7 @@ impl Window {
             scale_input: "1.0".to_string(),
             current_scale: 1.0,
             theme: Theme::ALL[count % Theme::ALL.len()].clone(),
-            input_id: text_input::Id::unique(),
+            input_id: Id::unique(),
         }
     }
 

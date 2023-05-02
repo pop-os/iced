@@ -139,8 +139,18 @@ impl Layer {
         svg: Svg,
         bounds: Rectangle,
         transformation: Transformation,
+        rotation: Radians,
+        opacity: f32,
+        border_radius: [f32; 4],
     ) {
-        let svg = Image::Vector(svg, bounds * transformation);
+        let svg = Image::Vector {
+            handle,
+            color,
+            bounds: bounds * transformation,
+            rotation,
+            opacity,
+            border_radius,
+        };
 
         self.images.push(svg);
     }

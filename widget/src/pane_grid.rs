@@ -26,6 +26,7 @@ pub use content::Content;
 pub use controls::Controls;
 pub use direction::Direction;
 pub use draggable::Draggable;
+use iced_renderer::core::widget::Operation;
 pub use node::Node;
 pub use pane::Pane;
 pub use split::Split;
@@ -39,7 +40,6 @@ use crate::core::mouse;
 use crate::core::overlay::{self, Group};
 use crate::core::renderer;
 use crate::core::touch;
-use crate::core::widget;
 use crate::core::widget::tree::{self, Tree};
 use crate::core::{
     self, Background, Border, Clipboard, Color, Element, Layout, Length,
@@ -113,6 +113,7 @@ pub struct PaneGrid<
     spacing: f32,
     on_click: Option<Box<dyn Fn(Pane) -> Message + 'a>>,
     on_drag: Option<Box<dyn Fn(DragEvent) -> Message + 'a>>,
+    #[allow(clippy::type_complexity)]
     on_resize: Option<(f32, Box<dyn Fn(ResizeEvent) -> Message + 'a>)>,
     class: <Theme as Catalog>::Class<'a>,
 }
@@ -268,15 +269,20 @@ where
             .collect()
     }
 
-    fn diff(&self, tree: &mut Tree) {
-        match &self.contents {
-            Contents::All(contents, _) => tree.diff_children_custom(
-                contents,
-                |state, (_, content)| content.diff(state),
-                |(_, content)| content.state(),
-            ),
+    fn diff(&mut self, tree: &mut Tree) {
+        match &mut self.contents {
+            Contents::All(contents, _) => {
+                let ids = contents.iter().map(|_| None).collect(); // TODO
+                tree.diff_children_custom(
+                    contents,
+                    ids,
+                    |state, (_, content)| content.diff(state),
+                    |(_, content)| content.state(),
+                )
+            }
             Contents::Maximized(_, content, _) => tree.diff_children_custom(
-                &[content],
+                &mut [content],
+                vec![None], // TODO
                 |state, content| content.diff(state),
                 |content| content.state(),
             ),
@@ -326,7 +332,7 @@ where
         tree: &mut Tree,
         layout: Layout<'_>,
         renderer: &Renderer,
-        operation: &mut dyn widget::Operation,
+        operation: &mut dyn crate::core::widget::Operation,
     ) {
         operation.container(None, layout.bounds(), &mut |operation| {
             self.contents

@@ -7,6 +7,8 @@ use crate::core::mouse;
 use crate::core::touch;
 use crate::core::window;
 use crate::core::{Event, Point, Size};
+use winit::keyboard::SmolStr;
+use winit::platform::modifier_supplement::KeyEventExtModifierSupplement;
 
 /// Converts some [`window::Settings`] into some `WindowAttributes` from `winit`.
 pub fn window_attributes(
@@ -222,6 +224,8 @@ pub fn window_event(
                 }
             }.filter(|text| !text.as_str().chars().any(is_private_use));
 
+            let text_with_modifiers =
+                event.text_with_all_modifiers().map(|t| SmolStr::new(t));
             let winit::event::KeyEvent {
                 state,
                 location,
@@ -1138,4 +1142,14 @@ pub fn icon(icon: window::Icon) -> Option<winit::window::Icon> {
 // See: https://en.wikipedia.org/wiki/Private_Use_Areas
 fn is_private_use(c: char) -> bool {
     ('\u{E000}'..='\u{F8FF}').contains(&c)
+}
+
+#[cfg(feature = "a11y")]
+pub(crate) fn a11y(
+    event: iced_accessibility::accesskit::ActionRequest,
+) -> Event {
+    // XXX
+    let id =
+        iced_runtime::core::id::Id::from(u128::from(event.target.0) as u64);
+    Event::A11y(id, event)
 }

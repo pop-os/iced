@@ -581,7 +581,7 @@ fn prepare(
                         return None;
                     };
 
-                    let (width, height) = buffer.size();
+                    let (width_opt, height_opt) = buffer.size();
 
                     (
                         buffer.as_ref(),

@@ -30,6 +30,7 @@ impl text::Renderer for () {
     type Font = Font;
     type Paragraph = ();
     type Editor = ();
+    type Raw = ();
 
     const ICON_FONT: Font = Font::DEFAULT;
     const CHECKMARK_ICON: char = '0';
@@ -40,7 +41,7 @@ impl text::Renderer for () {
     }
 
     fn default_size(&self) -> Pixels {
-        Pixels(16.0)
+        Pixels(14.0)
     }
 
     fn fill_paragraph(
@@ -60,6 +61,8 @@ impl text::Renderer for () {
         _clip_bounds: Rectangle,
     ) {
     }
+
+    fn fill_raw(&mut self, _raw: Self::Raw) {}
 
     fn fill_text(
         &mut self,
@@ -184,7 +187,16 @@ impl image::Renderer for () {
         Size::default()
     }
 
-    fn draw_image(&mut self, _image: Image, _bounds: Rectangle) {}
+    fn draw_image(
+        &mut self,
+        _handle: Self::Handle,
+        _filter_method: image::FilterMethod,
+        _bounds: Rectangle,
+        _rotation: crate::Radians,
+        _opacity: f32,
+        _border_radius: [f32; 4],
+    ) {
+    }
 }
 
 impl svg::Renderer for () {

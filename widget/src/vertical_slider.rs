@@ -2,8 +2,10 @@
 use std::ops::RangeInclusive;
 
 pub use crate::slider::{
-    default, Catalog, Handle, HandleShape, Status, Style, StyleFn,
+    default, Catalog, Handle, HandleShape, RailBackground, Status, Style,
+    StyleFn,
 };
+use iced_renderer::core::{Degrees, Radians};
 
 use crate::core::border::Border;
 use crate::core::event::{self, Event};
@@ -404,7 +406,8 @@ where
                 HandleShape::Rectangle {
                     width,
                     border_radius,
-                } => (f32::from(width), bounds.width, border_radius),
+                    height,
+                } => (f32::from(width), f32::from(height), border_radius),
             };
 
         let value = self.value.into() as f32;

@@ -126,7 +126,7 @@ where
             spacing: Self::DEFAULT_SPACING,
             text_size: None,
             text_line_height: text::LineHeight::default(),
-            text_shaping: text::Shaping::default(),
+            text_shaping: text::Shaping::Advanced,
             text_wrapping: text::Wrapping::default(),
             font: None,
             class: Theme::default(),

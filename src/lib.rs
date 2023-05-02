@@ -449,17 +449,30 @@
 )]
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![cfg_attr(docsrs, feature(doc_cfg))]
-use iced_widget::graphics;
-use iced_widget::renderer;
-use iced_winit as shell;
-use iced_winit::core;
-use iced_winit::runtime;
+
+#[cfg(all(feature = "wayland", feature = "winit"))]
+compile_error!("cannot use `wayland` feature with `winit");
 
 pub use iced_futures::futures;
 pub use iced_futures::stream;
+use iced_widget::graphics;
+use iced_widget::renderer;
+
+#[cfg(feature = "wayland")]
+use iced_sctk as shell;
+#[cfg(feature = "winit")]
+use iced_winit as shell;
+#[cfg(any(feature = "winit", feature = "wayland"))]
+use shell::core;
+#[cfg(any(feature = "winit", feature = "wayland"))]
+use shell::runtime;
 
 #[cfg(feature = "highlighter")]
 pub use iced_highlighter as highlighter;
+#[cfg(not(any(feature = "winit", feature = "wayland")))]
+pub use iced_widget::core;
+#[cfg(not(any(feature = "winit", feature = "wayland")))]
+pub use iced_widget::runtime;
 
 mod error;
 mod program;
@@ -470,17 +483,35 @@ pub mod settings;
 pub mod time;
 pub mod window;
 
+#[cfg(feature = "winit")]
+pub use application::Application;
+#[cfg(feature = "winit")]
+pub use program::Program;
+
+/// wayland application
+#[cfg(feature = "wayland")]
+pub mod wayland;
+#[cfg(feature = "wayland")]
+pub use wayland::application;
+#[cfg(feature = "wayland")]
+pub use wayland::application::Application;
+#[cfg(feature = "wayland")]
+pub use wayland::program;
+#[doc(inline)]
+#[cfg(feature = "wayland")]
+pub use wayland::program::Program;
+
 #[cfg(feature = "advanced")]
 pub mod advanced;
 
 pub use crate::core::alignment;
-pub use crate::core::border;
+pub use crate::core::border::{self, Radius};
 pub use crate::core::color;
 pub use crate::core::gradient;
 pub use crate::core::padding;
 pub use crate::core::theme;
 pub use crate::core::{
-    Alignment, Background, Border, Color, ContentFit, Degrees, Gradient,
+    id, Alignment, Background, Border, Color, ContentFit, Degrees, Gradient,
     Length, Padding, Pixels, Point, Radians, Rectangle, Rotation, Shadow, Size,
     Theme, Transformation, Vector,
 };
@@ -500,8 +531,11 @@ pub mod task {
 pub mod clipboard {
     //! Access the clipboard.
     pub use crate::runtime::clipboard::{
-        read, read_primary, write, write_primary,
+        read, read_data, read_primary, read_primary_data, write, write_data,
+        write_primary, write_primary_data,
     };
+    pub use dnd;
+    pub use mime;
 }
 
 pub mod executor {
@@ -529,6 +563,9 @@ pub mod font {
 
 pub mod event {
     //! Handle events of a user interface.
+    #[cfg(feature = "wayland")]
+    pub use crate::core::event::wayland;
+    pub use crate::core::event::PlatformSpecific;
     pub use crate::core::event::{Event, Status};
     pub use iced_futures::event::{listen, listen_raw, listen_with};
 }
@@ -551,6 +588,7 @@ pub mod mouse {
 pub mod system {
     //! Retrieve system information.
     pub use crate::runtime::system::Information;
+    #[cfg(any(feature = "winit", feature = "wayland"))]
     pub use crate::shell::system::*;
 }
 
@@ -591,8 +629,8 @@ pub mod widget {
     mod runtime {}
 }
 
-pub use application::Application;
-pub use daemon::Daemon;
+pub use application::application;
+pub use daemon::{daemon, Daemon};
 pub use error::Error;
 pub use event::Event;
 pub use executor::Executor;
@@ -600,11 +638,6 @@ pub use font::Font;
 pub use renderer::Renderer;
 pub use settings::Settings;
 pub use task::Task;
-
-#[doc(inline)]
-pub use application::application;
-#[doc(inline)]
-pub use daemon::daemon;
 
 /// A generic widget.
 ///
@@ -619,6 +652,7 @@ pub type Element<
 /// The result of running an iced program.
 pub type Result = std::result::Result<(), Error>;
 
+#[cfg(any(feature = "winit", feature = "wayland"))]
 /// Runs a basic iced application with default [`Settings`] given its title,
 /// update, and view logic.
 ///
