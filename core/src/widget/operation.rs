@@ -1,6 +1,7 @@
 //! Query or update internal widget state.
 pub mod focusable;
 pub mod scrollable;
+pub mod search_id;
 pub mod text_input;
 
 pub use focusable::Focusable;
@@ -46,7 +47,7 @@ pub trait Operation<T = ()>: Send {
     /// Operates on a widget that has text input.
     fn text_input(&mut self, _state: &mut dyn TextInput, _id: Option<&Id>) {}
 
-    /// Operates on a custom widget with some state.
+    /// Operates on a custom widget.
     fn custom(&mut self, _state: &mut dyn Any, _id: Option<&Id>) {}
 
     /// Finishes the [`Operation`] and returns its [`Outcome`].
@@ -412,7 +413,7 @@ where
 
 /// Produces an [`Operation`] that applies the given [`Operation`] to the
 /// children of a container with the given [`Id`].
-pub fn scope<T: 'static>(
+pub fn scoped<T: 'static>(
     target: Id,
     operation: impl Operation<T> + 'static,
 ) -> impl Operation<T> {

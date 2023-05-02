@@ -1,0 +1,19 @@
+[package]
+name = "sctk_drag"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+iced_core = { path = "../../core" }
+iced = { path = "../..", default-features = false, features = [
+    "tiny-skia",
+    "tokio",
+    "winit",
+    "wayland",
+    "debug",
+] }
+env_logger = "0.10"
+# sctk = { package = "smithay-client-toolkit", path = "../../../fork/client-toolkit/" }
+sctk.workspace = true

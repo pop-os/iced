@@ -349,14 +349,12 @@ where
         let render = |renderer: &mut Renderer| {
             renderer.with_translation(translation, |renderer| {
                 renderer.draw_image(
-                    Image {
-                        handle: self.handle.clone(),
-                        filter_method: self.filter_method,
-                        rotation: Radians(0.0),
-                        opacity: 1.0,
-                        snap: true,
-                    },
+                    self.handle.clone(),
+                    self.filter_method,
                     drawing_bounds,
+                    Radians(0.0),
+                    1.0,
+                    [0.0; 4],
                 );
             });
         };

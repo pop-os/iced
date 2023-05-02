@@ -225,18 +225,18 @@ impl Pipeline {
         for image in images {
             match &image {
                 #[cfg(feature = "image")]
-                Image::Raster(image, bounds) => {
+                Image::Raster { handle, bounds } => {
                     if let Some(atlas_entry) =
-                        cache.upload_raster(device, encoder, &image.handle)
+                        cache.upload_raster(device, encoder, &handle.handle)
                     {
                         add_instances(
                             [bounds.x, bounds.y],
                             [bounds.width, bounds.height],
-                            f32::from(image.rotation),
-                            image.opacity,
-                            image.snap,
+                            f32::from(handle.rotation),
+                            handle.opacity,
+                            handle.snap,
                             atlas_entry,
-                            match image.filter_method {
+                            match handle.filter_method {
                                 crate::core::image::FilterMethod::Nearest => {
                                     nearest_instances
                                 }
@@ -251,22 +251,22 @@ impl Pipeline {
                 Image::Raster { .. } => {}
 
                 #[cfg(feature = "svg")]
-                Image::Vector(svg, bounds) => {
+                Image::Vector { handle, bounds } => {
                     let size = [bounds.width, bounds.height];
 
                     if let Some(atlas_entry) = cache.upload_vector(
                         device,
                         encoder,
-                        &svg.handle,
-                        svg.color,
+                        &handle.handle,
+                        handle.color,
                         size,
                         scale,
                     ) {
                         add_instances(
                             [bounds.x, bounds.y],
                             size,
-                            f32::from(svg.rotation),
-                            svg.opacity,
+                            f32::from(handle.rotation),
+                            handle.opacity,
                             true,
                             atlas_entry,
                             nearest_instances,
@@ -595,12 +595,12 @@ fn add_instance(
         _rotation: rotation,
         _opacity: opacity,
         _position_in_atlas: [
-            (x as f32 + 0.5) / atlas::SIZE as f32,
-            (y as f32 + 0.5) / atlas::SIZE as f32,
+            x as f32 / atlas::SIZE as f32,
+            y as f32 / atlas::SIZE as f32,
         ],
         _size_in_atlas: [
-            (width as f32 - 1.0) / atlas::SIZE as f32,
-            (height as f32 - 1.0) / atlas::SIZE as f32,
+            width as f32 / atlas::SIZE as f32,
+            height as f32 / atlas::SIZE as f32,
         ],
         _layer: layer as u32,
         _snap: snap as u32,

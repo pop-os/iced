@@ -49,6 +49,7 @@ use buffer::Buffer;
 
 pub use iced_graphics as graphics;
 pub use iced_graphics::core;
+use iced_graphics::text::Raw;
 
 pub use wgpu;
 
@@ -61,8 +62,8 @@ pub use settings::Settings;
 pub use geometry::Geometry;
 
 use crate::core::{
-    Background, Color, Font, Pixels, Point, Rectangle, Size, Transformation,
-    Vector,
+    image::FilterMethod, Background, Color, Font, Pixels, Point, Radians,
+    Rectangle, Size, Transformation, Vector,
 };
 use crate::graphics::text::{Editor, Paragraph};
 use crate::graphics::Viewport;
@@ -407,7 +408,7 @@ impl Renderer {
                         font: Font::MONOSPACE,
                         horizontal_alignment: alignment::Horizontal::Left,
                         vertical_alignment: alignment::Vertical::Top,
-                        shaping: core::text::Shaping::Basic,
+                        shaping: core::text::Shaping::Advanced,
                         wrapping: core::text::Wrapping::Word,
                     };
 
@@ -466,6 +467,7 @@ impl core::text::Renderer for Renderer {
     type Font = Font;
     type Paragraph = Paragraph;
     type Editor = Editor;
+    type Raw = Raw;
 
     const ICON_FONT: Font = Font::with_name("Iced-Icons");
     const CHECKMARK_ICON: char = '\u{f00c}';
@@ -518,6 +520,10 @@ impl core::text::Renderer for Renderer {
         let (layer, transformation) = self.layers.current_mut();
         layer.draw_text(text, position, color, clip_bounds, transformation);
     }
+
+    fn fill_raw(&mut self, raw: Self::Raw) {
+        // TODO
+    }
 }
 
 #[cfg(feature = "image")]
@@ -528,9 +534,28 @@ impl core::image::Renderer for Renderer {
         self.image_cache.borrow_mut().measure_image(handle)
     }
 
-    fn draw_image(&mut self, image: core::Image, bounds: Rectangle) {
+    fn draw_image(
+        &mut self,
+        handle: Self::Handle,
+        filter_method: FilterMethod,
+        bounds: Rectangle,
+        rotation: Radians,
+        opacity: f32,
+        border_radius: [f32; 4],
+    ) {
         let (layer, transformation) = self.layers.current_mut();
-        layer.draw_raster(image, bounds, transformation);
+        layer.draw_raster(
+            crate::core::Image {
+                handle,
+                filter_method,
+                rotation,
+                opacity,
+                snap: true,
+                border_radius,
+            },
+            bounds,
+            transformation,
+        );
     }
 }
 
@@ -540,9 +565,9 @@ impl core::svg::Renderer for Renderer {
         self.image_cache.borrow_mut().measure_svg(handle)
     }
 
-    fn draw_svg(&mut self, svg: core::Svg, bounds: Rectangle) {
+    fn draw_svg(&mut self, handle: core::svg::Svg, bounds: Rectangle) {
         let (layer, transformation) = self.layers.current_mut();
-        layer.draw_svg(svg, bounds, transformation);
+        layer.draw_svg(handle, bounds, transformation);
     }
 }
 

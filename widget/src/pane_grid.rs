@@ -85,7 +85,6 @@ use crate::core::mouse;
 use crate::core::overlay::{self, Group};
 use crate::core::renderer;
 use crate::core::touch;
-use crate::core::widget;
 use crate::core::widget::tree::{self, Tree};
 use crate::core::{
     self, Background, Border, Clipboard, Color, Element, Layout, Length,
@@ -165,6 +164,7 @@ pub struct PaneGrid<
     spacing: f32,
     on_click: Option<Box<dyn Fn(Pane) -> Message + 'a>>,
     on_drag: Option<Box<dyn Fn(DragEvent) -> Message + 'a>>,
+    #[allow(clippy::type_complexity)]
     on_resize: Option<(f32, Box<dyn Fn(ResizeEvent) -> Message + 'a>)>,
     class: <Theme as Catalog>::Class<'a>,
 }
@@ -319,7 +319,7 @@ where
         self.contents.iter().map(Content::state).collect()
     }
 
-    fn diff(&self, tree: &mut Tree) {
+    fn diff(&mut self, tree: &mut Tree) {
         let Memory { order, .. } = tree.state.downcast_ref();
 
         // `Pane` always increments and is iterated by Ord so new
@@ -341,8 +341,11 @@ where
             retain
         });
 
+        let ids = self.contents.iter().map(|_| None).collect(); // TODO
+
         tree.diff_children_custom(
-            &self.contents,
+            &mut self.contents,
+            ids,
             |state, content| content.diff(state),
             Content::state,
         );
@@ -403,7 +406,7 @@ where
         tree: &mut Tree,
         layout: Layout<'_>,
         renderer: &Renderer,
-        operation: &mut dyn widget::Operation,
+        operation: &mut dyn crate::core::widget::Operation,
     ) {
         operation.container(None, layout.bounds(), &mut |operation| {
             self.panes

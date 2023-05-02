@@ -22,4 +22,5 @@ pub enum Interaction {
     Move,
     Copy,
     Help,
+    Hide,
 }

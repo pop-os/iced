@@ -238,8 +238,15 @@ pub fn measure(buffer: &cosmic_text::Buffer) -> Size {
             .fold((0.0, 0.0), |(width, height), run| {
                 (run.line_w.max(width), height + run.line_height)
             });
-
     Size::new(width, height)
+
+    // let (max_width_opt, max_height_opt) = buffer.size();
+
+    // Size::new(
+    //     width.min(max_width_opt.unwrap_or(f32::MAX)),
+    //     (buffer.total_lines as f32 * buffer.metrics().line_height)
+    //         .min(max_height_opt.unwrap_or(f32::MAX)),
+    // )
 }
 
 /// Returns the attributes of the given [`Font`].

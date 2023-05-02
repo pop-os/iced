@@ -136,6 +136,18 @@ pub enum SurfaceError {
     /// There is no more memory left to allocate a new frame.
     #[error("There is no more memory left to allocate a new frame")]
     OutOfMemory,
+    /// Resize Error
+    #[error("Resize Error")]
+    Resize,
+    /// Invalid dimensions
+    #[error("Invalid dimensions")]
+    InvalidDimensions,
+    /// Present Error
+    #[error("Present Error")]
+    Present(String),
+    /// Present Error
+    #[error("No damage to present")]
+    NoDamage,
 }
 
 /// Contains information about the graphics (e.g. graphics adapter, graphics backend).

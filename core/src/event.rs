@@ -1,9 +1,14 @@
 //! Handle events of a user interface.
+use dnd::DndEvent;
+use dnd::DndSurface;
+
 use crate::keyboard;
 use crate::mouse;
 use crate::touch;
 use crate::window;
-
+#[cfg(feature = "wayland")]
+/// A platform specific event for wayland
+pub mod wayland;
 /// A user interface event.
 ///
 /// _**Note:** This type is largely incomplete! If you need to track
@@ -23,6 +28,27 @@ pub enum Event {
 
     /// A touch event
     Touch(touch::Event),
+
+    #[cfg(feature = "a11y")]
+    /// An Accesskit event for a specific Accesskit Node in an accessible widget
+    A11y(
+        crate::widget::Id,
+        iced_accessibility::accesskit::ActionRequest,
+    ),
+
+    /// A DnD event.
+    Dnd(DndEvent<DndSurface>),
+
+    /// Platform specific events
+    PlatformSpecific(PlatformSpecific),
+}
+
+/// A platform specific event
+#[derive(Debug, Clone, PartialEq)]
+pub enum PlatformSpecific {
+    #[cfg(feature = "wayland")]
+    /// A Wayland specific event
+    Wayland(wayland::Event),
 }
 
 /// The status of an [`Event`] after being processed.

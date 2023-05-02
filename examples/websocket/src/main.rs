@@ -11,6 +11,7 @@ pub fn main() -> iced::Result {
         .subscription(WebSocket::subscription)
         .run_with(WebSocket::new)
 }
+use iced::id::Id;
 
 struct WebSocket {
     messages: Vec<echo::Message>,

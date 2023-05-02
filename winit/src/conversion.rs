@@ -2,11 +2,16 @@
 //!
 //! [`winit`]: https://github.com/rust-windowing/winit
 //! [`iced_runtime`]: https://github.com/iced-rs/iced/tree/0.13/runtime
+use std::hash::DefaultHasher;
+use std::hash::Hash;
+use std::hash::Hasher;
+
 use crate::core::keyboard;
 use crate::core::mouse;
 use crate::core::touch;
 use crate::core::window;
 use crate::core::{Event, Point, Size};
+use iced_futures::core::event::PlatformSpecific;
 
 /// Converts some [`window::Settings`] into some `WindowAttributes` from `winit`.
 pub fn window_attributes(
@@ -19,7 +24,7 @@ pub fn window_attributes(
 
     attributes = attributes
         .with_title(title)
-        .with_inner_size(winit::dpi::LogicalSize {
+        .with_surface_size(winit::dpi::LogicalSize {
             width: settings.size.width,
             height: settings.size.height,
         })
@@ -43,17 +48,19 @@ pub fn window_attributes(
     }
 
     if let Some(min_size) = settings.min_size {
-        attributes = attributes.with_min_inner_size(winit::dpi::LogicalSize {
-            width: min_size.width,
-            height: min_size.height,
-        });
+        attributes =
+            attributes.with_min_surface_size(winit::dpi::LogicalSize {
+                width: min_size.width,
+                height: min_size.height,
+            });
     }
 
     if let Some(max_size) = settings.max_size {
-        attributes = attributes.with_max_inner_size(winit::dpi::LogicalSize {
-            width: max_size.width,
-            height: max_size.height,
-        });
+        attributes =
+            attributes.with_max_surface_size(winit::dpi::LogicalSize {
+                width: max_size.width,
+                height: max_size.height,
+            });
     }
 
     #[cfg(any(
@@ -137,7 +144,7 @@ pub fn window_event(
     use winit::event::WindowEvent;
 
     match event {
-        WindowEvent::Resized(new_size) => {
+        WindowEvent::SurfaceResized(new_size) => {
             let logical_size = new_size.to_logical(scale_factor);
 
             Some(Event::Window(window::Event::Resized(Size {
@@ -300,6 +307,20 @@ pub fn window_event(
 
             Some(Event::Window(window::Event::Moved(Point::new(x, y))))
         }
+        #[cfg(feature = "wayland")]
+        WindowEvent::SuggestedBounds(bounds) => {
+            let size = bounds.map(|bounds| {
+                let size = bounds.to_logical(scale_factor);
+                Size::new(size.width, size.height)
+            });
+
+            Some(Event::PlatformSpecific(PlatformSpecific::Wayland(
+                iced_runtime::core::event::wayland::Event::Window(
+                    iced_runtime::core::event::wayland::WindowEvent::SuggestedBounds(size),
+                ),
+            )))
+        }
+
         _ => None,
     }
 }
@@ -335,10 +356,12 @@ pub fn position(
         }
         window::Position::SpecificWith(to_position) => {
             if let Some(monitor) = monitor {
-                let start = monitor.position();
+                let start = monitor.position().unwrap_or_default();
 
-                let resolution: winit::dpi::LogicalSize<f32> =
-                    monitor.size().to_logical(monitor.scale_factor());
+                let resolution: winit::dpi::LogicalSize<f32> = monitor
+                    .current_video_mode()
+                    .map(|m| m.size().to_logical(monitor.scale_factor()))
+                    .unwrap_or_default();
 
                 let position = to_position(
                     size,
@@ -364,10 +387,12 @@ pub fn position(
         }
         window::Position::Centered => {
             if let Some(monitor) = monitor {
-                let start = monitor.position();
+                let start = monitor.position().unwrap_or_default();
 
-                let resolution: winit::dpi::LogicalSize<f64> =
-                    monitor.size().to_logical(monitor.scale_factor());
+                let resolution: winit::dpi::LogicalSize<f64> = monitor
+                    .current_video_mode()
+                    .map(|m| m.size().to_logical(monitor.scale_factor()))
+                    .unwrap_or_default();
 
                 let centered: winit::dpi::PhysicalPosition<i32> =
                     winit::dpi::LogicalPosition {
@@ -427,10 +452,10 @@ pub fn mode(mode: Option<winit::window::Fullscreen>) -> window::Mode {
 /// [`winit`]: https://github.com/rust-windowing/winit
 pub fn mouse_interaction(
     interaction: mouse::Interaction,
-) -> winit::window::CursorIcon {
+) -> Option<winit::window::CursorIcon> {
     use mouse::Interaction;
 
-    match interaction {
+    Some(match interaction {
         Interaction::None | Interaction::Idle => {
             winit::window::CursorIcon::Default
         }
@@ -457,7 +482,10 @@ pub fn mouse_interaction(
         Interaction::Move => winit::window::CursorIcon::Move,
         Interaction::Copy => winit::window::CursorIcon::Copy,
         Interaction::Help => winit::window::CursorIcon::Help,
-    }
+        Interaction::Hide => {
+            return None;
+        }
+    })
 }
 
 /// Converts a `MouseButton` from [`winit`] to an [`iced`] mouse button.
@@ -511,7 +539,11 @@ pub fn touch_event(
     touch: winit::event::Touch,
     scale_factor: f64,
 ) -> touch::Event {
-    let id = touch::Finger(touch.id);
+    // TODO we probably should get the actual internal id in some way instead
+    let mut s = DefaultHasher::new();
+    touch.finger_id.hash(&mut s);
+
+    let id = touch::Finger(s.finish());
     let position = {
         let location = touch.location.to_logical::<f64>(scale_factor);
 
@@ -1142,4 +1174,14 @@ pub fn icon(icon: window::Icon) -> Option<winit::window::Icon> {
 // See: https://en.wikipedia.org/wiki/Private_Use_Areas
 fn is_private_use(c: char) -> bool {
     ('\u{E000}'..='\u{F8FF}').contains(&c)
+}
+
+#[cfg(feature = "a11y")]
+pub(crate) fn a11y(
+    event: iced_accessibility::accesskit::ActionRequest,
+) -> Event {
+    // XXX
+    let id =
+        iced_runtime::core::id::Id::from(u128::from(event.target.0) as u64);
+    Event::A11y(id, event)
 }

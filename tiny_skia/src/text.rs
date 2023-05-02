@@ -163,7 +163,7 @@ impl Pipeline {
     ) {
         let mut font_system = font_system().write().expect("Write font system");
 
-        let (width, height) = buffer.size();
+        let (width_opt, height_opt) = buffer.size();
 
         draw(
             font_system.raw(),
@@ -172,8 +172,8 @@ impl Pipeline {
             Rectangle::new(
                 position,
                 Size::new(
-                    width.unwrap_or(pixels.width() as f32),
-                    height.unwrap_or(pixels.height() as f32),
+                    width_opt.unwrap_or(pixels.width() as f32),
+                    height_opt.unwrap_or(pixels.height() as f32),
                 ),
             ),
             color,
