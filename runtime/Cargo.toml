@@ -12,6 +12,8 @@ keywords.workspace = true
 
 [features]
 debug = []
+a11y = ["iced_accessibility", "iced_core/a11y"]
+
 
 [dependencies]
 iced_core.workspace = true
@@ -19,3 +21,5 @@ iced_futures.workspace = true
 iced_futures.features = ["thread-pool"]
 
 thiserror.workspace = true
+iced_accessibility.workspace = true
+iced_accessibility.optional = true

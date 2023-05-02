@@ -19,12 +19,15 @@ x11 = ["winit/x11"]
 wayland = ["winit/wayland"]
 wayland-dlopen = ["winit/wayland-dlopen"]
 wayland-csd-adwaita = ["winit/wayland-csd-adwaita"]
+a11y = ["iced_accessibility", "iced_runtime/a11y"]
 
 [dependencies]
 iced_graphics.workspace = true
 iced_runtime.workspace = true
 iced_style.workspace = true
-
+iced_accessibility.workspace = true
+iced_accessibility.optional = true
+iced_accessibility.features = ["accesskit_winit"]
 log.workspace = true
 raw-window-handle.workspace = true
 thiserror.workspace = true

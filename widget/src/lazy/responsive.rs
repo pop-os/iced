@@ -3,7 +3,6 @@ use crate::core::layout::{self, Layout};
 use crate::core::mouse;
 use crate::core::overlay;
 use crate::core::renderer;
-use crate::core::widget;
 use crate::core::widget::tree::{self, Tree};
 use crate::core::{
     self, Clipboard, Element, Length, Point, Rectangle, Shell, Size, Vector,
@@ -12,6 +11,7 @@ use crate::core::{
 use crate::horizontal_space;
 use crate::runtime::overlay::Nested;
 
+use iced_renderer::core::widget::{Operation, OperationOutputWrapper};
 use ouroboros::self_referencing;
 use std::cell::{RefCell, RefMut};
 use std::marker::PhantomData;
@@ -157,7 +157,7 @@ where
         tree: &mut Tree,
         layout: Layout<'_>,
         renderer: &Renderer,
-        operation: &mut dyn widget::Operation<Message>,
+        operation: &mut dyn Operation<OperationOutputWrapper<Message>>,
     ) {
         let state = tree.state.downcast_mut::<State>();
         let mut content = self.content.borrow_mut();

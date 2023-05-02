@@ -352,7 +352,10 @@ where
 ///
 /// [`Image`]: crate::Image
 #[cfg(feature = "image")]
-pub fn image<Handle>(handle: impl Into<Handle>) -> crate::Image<Handle> {
+#[cfg_attr(docsrs, doc(cfg(feature = "image")))]
+pub fn image<'a, Handle>(
+    handle: impl Into<Handle>,
+) -> crate::Image<'a, Handle> {
     crate::Image::new(handle.into())
 }
 
@@ -361,9 +364,10 @@ pub fn image<Handle>(handle: impl Into<Handle>) -> crate::Image<Handle> {
 /// [`Svg`]: crate::Svg
 /// [`Handle`]: crate::svg::Handle
 #[cfg(feature = "svg")]
-pub fn svg<Renderer>(
+#[cfg_attr(docsrs, doc(cfg(feature = "svg")))]
+pub fn svg<'a, Renderer>(
     handle: impl Into<core::svg::Handle>,
-) -> crate::Svg<Renderer>
+) -> crate::Svg<'a, Renderer>
 where
     Renderer: core::svg::Renderer,
     Renderer::Theme: crate::svg::StyleSheet,

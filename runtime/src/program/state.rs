@@ -1,3 +1,5 @@
+use iced_core::widget::OperationOutputWrapper;
+
 use crate::core::event::{self, Event};
 use crate::core::mouse;
 use crate::core::renderer;
@@ -179,7 +181,9 @@ where
     pub fn operate(
         &mut self,
         renderer: &mut P::Renderer,
-        operations: impl Iterator<Item = Box<dyn Operation<P::Message>>>,
+        operations: impl Iterator<
+            Item = Box<dyn Operation<OperationOutputWrapper<P::Message>>>,
+        >,
         bounds: Size,
         debug: &mut Debug,
     ) {
@@ -199,12 +203,15 @@ where
 
                 match operation.finish() {
                     operation::Outcome::None => {}
-                    operation::Outcome::Some(message) => {
+                    operation::Outcome::Some(
+                        OperationOutputWrapper::Message(message),
+                    ) => {
                         self.queued_messages.push(message);
                     }
                     operation::Outcome::Chain(next) => {
                         current_operation = Some(next);
                     }
+                    _ => {}
                 };
             }
         }

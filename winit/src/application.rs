@@ -3,6 +3,10 @@
 mod profiler;
 mod state;
 
+use iced_graphics::core::widget::operation::focusable::focus;
+use iced_graphics::core::widget::operation::OperationWrapper;
+use iced_graphics::core::widget::Operation;
+use iced_runtime::futures::futures::FutureExt;
 pub use state::State;
 
 use crate::conversion;
@@ -31,6 +35,30 @@ use std::mem::ManuallyDrop;
 pub use profiler::Profiler;
 #[cfg(feature = "trace")]
 use tracing::{info_span, instrument::Instrument};
+
+#[derive(Debug)]
+/// Wrapper aroun application Messages to allow for more UserEvent variants
+pub enum UserEventWrapper<Message> {
+    /// Application Message
+    Message(Message),
+    #[cfg(feature = "a11y")]
+    /// A11y Action Request
+    A11y(iced_accessibility::accesskit_winit::ActionRequestEvent),
+    #[cfg(feature = "a11y")]
+    /// A11y was enabled
+    A11yEnabled,
+}
+
+#[cfg(feature = "a11y")]
+impl<Message> From<iced_accessibility::accesskit_winit::ActionRequestEvent>
+    for UserEventWrapper<Message>
+{
+    fn from(
+        action_request: iced_accessibility::accesskit_winit::ActionRequestEvent,
+    ) -> Self {
+        UserEventWrapper::A11y(action_request)
+    }
+}
 
 /// An interactive, native cross-platform application.
 ///
@@ -275,11 +303,15 @@ async fn run_instance<A, E, C>(
     mut application: A,
     mut compositor: C,
     mut renderer: A::Renderer,
-    mut runtime: Runtime<E, Proxy<A::Message>, A::Message>,
-    mut proxy: winit::event_loop::EventLoopProxy<A::Message>,
+    mut runtime: Runtime<
+        E,
+        Proxy<UserEventWrapper<A::Message>>,
+        UserEventWrapper<A::Message>,
+    >,
+    mut proxy: winit::event_loop::EventLoopProxy<UserEventWrapper<A::Message>>,
     mut debug: Debug,
     mut event_receiver: mpsc::UnboundedReceiver<
-        winit::event::Event<'_, A::Message>,
+        winit::event::Event<'_, UserEventWrapper<A::Message>>,
     >,
     mut control_sender: mpsc::UnboundedSender<winit::event_loop::ControlFlow>,
     init_command: Command<A::Message>,
@@ -328,7 +360,12 @@ async fn run_instance<A, E, C>(
         &mut debug,
         &window,
     );
-    runtime.track(application.subscription().into_recipes());
+    runtime.track(
+        application
+            .subscription()
+            .map(subscription_map::<A, E>)
+            .into_recipes(),
+    );
 
     let mut user_interface = ManuallyDrop::new(build_user_interface(
         &application,
@@ -342,6 +379,39 @@ async fn run_instance<A, E, C>(
     let mut events = Vec::new();
     let mut messages = Vec::new();
     let mut redraw_pending = false;
+    let mut commands: Vec<Command<A::Message>> = Vec::new();
+
+    #[cfg(feature = "a11y")]
+    let (window_a11y_id, adapter, mut a11y_enabled) = {
+        let node_id = core::id::window_node_id();
+
+        use iced_accessibility::accesskit::{
+            NodeBuilder, NodeId, Role, Tree, TreeUpdate,
+        };
+        use iced_accessibility::accesskit_winit::Adapter;
+        let title = state.title().to_string();
+        let proxy_clone = proxy.clone();
+        (
+            node_id,
+            Adapter::new(
+                &window,
+                move || {
+                    let _ =
+                        proxy_clone.send_event(UserEventWrapper::A11yEnabled);
+                    let mut node = NodeBuilder::new(Role::Window);
+                    node.set_name(title.clone());
+                    let node = node.build(&mut iced_accessibility::accesskit::NodeClassSet::lock_global());
+                    TreeUpdate {
+                        nodes: vec![(NodeId(node_id), node)],
+                        tree: Some(Tree::new(NodeId(node_id))),
+                        focus: None,
+                    }
+                },
+                proxy.clone(),
+            ),
+            false,
+        )
+    };
 
     debug.startup_finished();
 
@@ -485,7 +555,26 @@ async fn run_instance<A, E, C>(
                 ));
             }
             event::Event::UserEvent(message) => {
-                messages.push(message);
+                match message {
+                    UserEventWrapper::Message(m) => messages.push(m),
+                    #[cfg(feature = "a11y")]
+                    UserEventWrapper::A11y(request) => {
+                        match request.request.action {
+                            iced_accessibility::accesskit::Action::Focus => {
+                                commands.push(Command::widget(focus(
+                                    core::widget::Id::from(u128::from(
+                                        request.request.target.0,
+                                    )
+                                        as u64),
+                                )));
+                            }
+                            _ => {}
+                        }
+                        events.push(conversion::a11y(request.request));
+                    }
+                    #[cfg(feature = "a11y")]
+                    UserEventWrapper::A11yEnabled => a11y_enabled = true,
+                };
             }
             event::Event::RedrawRequested(_) => {
                 #[cfg(feature = "trace")]
@@ -495,6 +584,78 @@ async fn run_instance<A, E, C>(
 
                 if physical_size.width == 0 || physical_size.height == 0 {
                     continue;
+                }
+
+                #[cfg(feature = "a11y")]
+                if a11y_enabled {
+                    use iced_accessibility::{
+                        accesskit::{
+                            NodeBuilder, NodeId, Role, Tree, TreeUpdate,
+                        },
+                        A11yId, A11yNode, A11yTree,
+                    };
+                    // TODO send a11y tree
+                    let child_tree = user_interface.a11y_nodes(state.cursor());
+                    let mut root = NodeBuilder::new(Role::Window);
+                    root.set_name(state.title());
+
+                    let window_tree = A11yTree::node_with_child_tree(
+                        A11yNode::new(root, window_a11y_id),
+                        child_tree,
+                    );
+                    let tree = Tree::new(NodeId(window_a11y_id));
+                    let mut current_operation =
+                        Some(Box::new(OperationWrapper::Id(Box::new(
+                            operation::focusable::find_focused(),
+                        ))));
+
+                    let mut focus = None;
+                    while let Some(mut operation) = current_operation.take() {
+                        user_interface.operate(&renderer, operation.as_mut());
+
+                        match operation.finish() {
+                            operation::Outcome::None => {}
+                            operation::Outcome::Some(message) => match message {
+                                operation::OperationOutputWrapper::Message(
+                                    _,
+                                ) => {
+                                    unimplemented!();
+                                }
+                                operation::OperationOutputWrapper::Id(id) => {
+                                    focus = Some(A11yId::from(id));
+                                }
+                            },
+                            operation::Outcome::Chain(next) => {
+                                current_operation = Some(Box::new(
+                                    OperationWrapper::Wrapper(next),
+                                ));
+                            }
+                        }
+                    }
+
+                    log::debug!(
+                        "focus: {:?}\ntree root: {:?}\n children: {:?}",
+                        &focus,
+                        window_tree
+                            .root()
+                            .iter()
+                            .map(|n| (n.node().role(), n.id()))
+                            .collect::<Vec<_>>(),
+                        window_tree
+                            .children()
+                            .iter()
+                            .map(|n| (n.node().role(), n.id()))
+                            .collect::<Vec<_>>()
+                    );
+                    // TODO maybe optimize this?
+                    let focus = focus
+                        .filter(|f_id| window_tree.contains(f_id))
+                        .map(|id| id.into());
+                    adapter.update(TreeUpdate {
+                        nodes: window_tree.into(),
+                        tree: Some(tree),
+                        focus,
+                    });
                 }
 
                 debug.render_started();
@@ -629,6 +790,11 @@ pub fn build_user_interface<'a, A: Application>(
 where
     <A::Renderer as core::Renderer>::Theme: StyleSheet,
 {
+    // XXX Ashley: for multi-window this should be moved to build_user_interfaces
+    // TODO refactor:
+    #[cfg(feature = "a11y")]
+    core::widget::Id::reset();
+
     #[cfg(feature = "trace")]
     let view_span = info_span!("Application", "VIEW").entered();
 
@@ -652,6 +818,16 @@ where
     user_interface
 }
 
+/// subscription mapper helper
+pub fn subscription_map<A, E>(e: A::Message) -> UserEventWrapper<A::Message>
+where
+    A: Application,
+    E: Executor,
+    <A::Renderer as core::Renderer>::Theme: StyleSheet,
+{
+    UserEventWrapper::Message(e)
+}
+
 /// Updates an [`Application`] by feeding it the provided messages, spawning any
 /// resulting [`Command`], and tracking its [`Subscription`].
 pub fn update<A: Application, C, E: Executor>(
@@ -661,10 +837,14 @@ pub fn update<A: Application, C, E: Executor>(
     cache: &mut user_interface::Cache,
     state: &State<A>,
     renderer: &mut A::Renderer,
-    runtime: &mut Runtime<E, Proxy<A::Message>, A::Message>,
+    runtime: &mut Runtime<
+        E,
+        Proxy<UserEventWrapper<A::Message>>,
+        UserEventWrapper<A::Message>,
+    >,
     clipboard: &mut Clipboard,
     should_exit: &mut bool,
-    proxy: &mut winit::event_loop::EventLoopProxy<A::Message>,
+    proxy: &mut winit::event_loop::EventLoopProxy<UserEventWrapper<A::Message>>,
     debug: &mut Debug,
     messages: &mut Vec<A::Message>,
     window: &winit::window::Window,
@@ -702,8 +882,12 @@ pub fn update<A: Application, C, E: Executor>(
         );
     }
 
-    let subscription = application.subscription();
-    runtime.track(subscription.into_recipes());
+    runtime.track(
+        application
+            .subscription()
+            .map(subscription_map::<A, E>)
+            .into_recipes(),
+    );
 }
 
 /// Runs the actions of a [`Command`].
@@ -715,10 +899,14 @@ pub fn run_command<A, C, E>(
     state: &State<A>,
     renderer: &mut A::Renderer,
     command: Command<A::Message>,
-    runtime: &mut Runtime<E, Proxy<A::Message>, A::Message>,
+    runtime: &mut Runtime<
+        E,
+        Proxy<UserEventWrapper<A::Message>>,
+        UserEventWrapper<A::Message>,
+    >,
     clipboard: &mut Clipboard,
     should_exit: &mut bool,
-    proxy: &mut winit::event_loop::EventLoopProxy<A::Message>,
+    proxy: &mut winit::event_loop::EventLoopProxy<UserEventWrapper<A::Message>>,
     debug: &mut Debug,
     window: &winit::window::Window,
 ) where
@@ -734,7 +922,9 @@ pub fn run_command<A, C, E>(
     for action in command.actions() {
         match action {
             command::Action::Future(future) => {
-                runtime.spawn(future);
+                runtime.spawn(Box::pin(
+                    future.map(|e| UserEventWrapper::Message(e)),
+                ));
             }
             command::Action::Stream(stream) => {
                 runtime.run(stream);
@@ -744,7 +934,7 @@ pub fn run_command<A, C, E>(
                     let message = tag(clipboard.read());
 
                     proxy
-                        .send_event(message)
+                        .send_event(UserEventWrapper::Message(message))
                         .expect("Send message to event loop");
                 }
                 clipboard::Action::Write(contents) => {
@@ -768,9 +958,8 @@ pub fn run_command<A, C, E>(
                     let size = window.inner_size();
 
                     proxy
-                        .send_event(callback(Size::new(
-                            size.width,
-                            size.height,
+                        .send_event(UserEventWrapper::Message(callback(
+                            Size::new(size.width, size.height),
                         )))
                         .expect("Send message to event loop");
                 }
@@ -804,7 +993,7 @@ pub fn run_command<A, C, E>(
                     };
 
                     proxy
-                        .send_event(tag(mode))
+                        .send_event(UserEventWrapper::Message(tag(mode)))
                         .expect("Send message to event loop");
                 }
                 window::Action::ToggleMaximize => {
@@ -826,7 +1015,9 @@ pub fn run_command<A, C, E>(
                 }
                 window::Action::FetchId(tag) => {
                     proxy
-                        .send_event(tag(window.id().into()))
+                        .send_event(UserEventWrapper::Message(tag(window
+                            .id()
+                            .into())))
                         .expect("Send message to event loop");
                 }
                 window::Action::Screenshot(tag) => {
@@ -839,9 +1030,11 @@ pub fn run_command<A, C, E>(
                     );
 
                     proxy
-                        .send_event(tag(window::Screenshot::new(
-                            bytes,
-                            state.physical_size(),
+                        .send_event(UserEventWrapper::Message(tag(
+                            window::Screenshot::new(
+                                bytes,
+                                state.physical_size(),
+                            ),
                         )))
                         .expect("Send message to event loop.");
                 }
@@ -860,16 +1053,16 @@ pub fn run_command<A, C, E>(
                             let message = _tag(information);
 
                             proxy
-                                .send_event(message)
-                                .expect("Send message to event loop");
+                                .send_event(UserEventWrapper::Message(message))
+                                .expect("Send message to event loop")
                         });
                     }
                 }
             },
             command::Action::Widget(action) => {
                 let mut current_cache = std::mem::take(cache);
-                let mut current_operation = Some(action);
-
+                let mut current_operation =
+                    Some(Box::new(OperationWrapper::Message(action)));
                 let mut user_interface = build_user_interface(
                     application,
                     current_cache,
@@ -884,12 +1077,24 @@ pub fn run_command<A, C, E>(
                     match operation.finish() {
                         operation::Outcome::None => {}
                         operation::Outcome::Some(message) => {
-                            proxy
-                                .send_event(message)
-                                .expect("Send message to event loop");
+                            match message {
+                                operation::OperationOutputWrapper::Message(
+                                    m,
+                                ) => {
+                                    proxy
+                                        .send_event(UserEventWrapper::Message(
+                                            m,
+                                        ))
+                                        .expect("Send message to event loop");
+                                }
+                                operation::OperationOutputWrapper::Id(_) => {
+                                    // TODO ASHLEY should not ever happen, should this panic!()?
+                                }
+                            }
                         }
                         operation::Outcome::Chain(next) => {
-                            current_operation = Some(next);
+                            current_operation =
+                                Some(Box::new(OperationWrapper::Wrapper(next)));
                         }
                     }
                 }
@@ -904,9 +1109,10 @@ pub fn run_command<A, C, E>(
                 renderer.load_font(bytes);
 
                 proxy
-                    .send_event(tagger(Ok(())))
+                    .send_event(UserEventWrapper::Message(tagger(Ok(()))))
                     .expect("Send message to event loop");
             }
+            command::Action::PlatformSpecific(_) => todo!(),
         }
     }
 }

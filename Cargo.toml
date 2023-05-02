@@ -18,7 +18,7 @@ all-features = true
 maintenance = { status = "actively-developed" }
 
 [features]
-default = ["wgpu"]
+default = ["wgpu", "winit", "a11y"]
 # Enable the `wgpu` GPU-accelerated renderer backend
 wgpu = ["iced_renderer/wgpu", "iced_widget/wgpu"]
 # Enables the `Image` widget
@@ -51,6 +51,10 @@ webgl = ["iced_renderer/webgl"]
 highlighter = ["iced_highlighter"]
 # Enables the advanced module
 advanced = []
+# Enables the `accesskit` accessibility library
+a11y = ["iced_accessibility", "iced_widget/a11y", "iced_winit?/a11y"]
+# Enables the winit shell. Conflicts with `wayland` and `glutin`.
+winit = ["iced_winit"]
 
 [dependencies]
 iced_core.workspace = true
@@ -59,14 +63,32 @@ iced_renderer.workspace = true
 iced_widget.workspace = true
 iced_winit.features = ["application"]
 iced_winit.workspace = true
-
+iced_winit.optional = true
 iced_highlighter.workspace = true
 iced_highlighter.optional = true
-
+iced_accessibility.workspace = true
+iced_accessibility.optional = true
 thiserror.workspace = true
 
 image.workspace = true
 image.optional = true
+
+
+[workspace]
+members = [
+    "core",
+    "futures",
+    "graphics",
+    "runtime",
+    "renderer",
+    "style",
+    "tiny_skia",
+    "wgpu",
+    "widget",
+    "winit",
+    "examples/*",
+    "accessibility",
+]
 
 [profile.release-opt]
 inherits = "release"
@@ -77,22 +99,6 @@ incremental = false
 opt-level = 3
 overflow-checks = false
 strip = "debuginfo"
-
-[workspace]
-members = [
-    "core",
-    "futures",
-    "graphics",
-    "highlighter",
-    "renderer",
-    "runtime",
-    "style",
-    "tiny_skia",
-    "wgpu",
-    "widget",
-    "winit",
-    "examples/*",
-]
 
 [workspace.package]
 version = "0.12.0"
@@ -116,7 +122,8 @@ iced_style = { version = "0.12", path = "style" }
 iced_tiny_skia = { version = "0.12", path = "tiny_skia" }
 iced_wgpu = { version = "0.12", path = "wgpu" }
 iced_widget = { version = "0.12", path = "widget" }
-iced_winit = { version = "0.12", path = "winit" }
+iced_winit = { version = "0.12", path = "winit", features = ["application"] }
+iced_accessibility = { version = "0.1", path = "accessibility" }
 
 async-std = "1.0"
 bitflags = "1.0"
@@ -158,4 +165,6 @@ web-sys = "0.3"
 wgpu = "0.18"
 winapi = "0.3"
 window_clipboard = "0.3"
-winit = { git = "https://github.com/iced-rs/winit.git", rev = "c52db2045d0a2f1b8d9923870de1d4ab1994146e", default-features = false }
+[workspace.dependencies.winit]
+git = "https://github.com/pop-os/winit.git"
+branch = "master"

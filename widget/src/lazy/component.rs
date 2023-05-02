@@ -12,6 +12,7 @@ use crate::core::{
 };
 use crate::runtime::overlay::Nested;
 
+use iced_renderer::core::widget::{Operation, OperationOutputWrapper};
 use ouroboros::self_referencing;
 use std::cell::RefCell;
 use std::marker::PhantomData;
@@ -56,7 +57,7 @@ pub trait Component<Message, Renderer> {
     fn operate(
         &self,
         _state: &mut Self::State,
-        _operation: &mut dyn widget::Operation<Message>,
+        _operation: &mut dyn Operation<OperationOutputWrapper<Message>>,
     ) {
     }
 }
@@ -155,7 +156,7 @@ where
 
     fn rebuild_element_with_operation(
         &self,
-        operation: &mut dyn widget::Operation<Message>,
+        operation: &mut dyn Operation<OperationOutputWrapper<Message>>,
     ) {
         let heads = self.state.borrow_mut().take().unwrap().into_heads();
 
@@ -336,7 +337,7 @@ where
         tree: &mut Tree,
         layout: Layout<'_>,
         renderer: &Renderer,
-        operation: &mut dyn widget::Operation<Message>,
+        operation: &mut dyn Operation<OperationOutputWrapper<Message>>,
     ) {
         self.rebuild_element_with_operation(operation);
 

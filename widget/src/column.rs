@@ -1,4 +1,6 @@
 //! Distribute content vertically.
+use iced_renderer::core::widget::OperationOutputWrapper;
+
 use crate::core::event::{self, Event};
 use crate::core::layout;
 use crate::core::mouse;
@@ -148,7 +150,7 @@ where
         tree: &mut Tree,
         layout: Layout<'_>,
         renderer: &Renderer,
-        operation: &mut dyn Operation<Message>,
+        operation: &mut dyn Operation<OperationOutputWrapper<Message>>,
     ) {
         operation.container(None, layout.bounds(), &mut |operation| {
             self.children
@@ -245,6 +247,26 @@ where
         renderer: &Renderer,
     ) -> Option<overlay::Element<'b, Message, Renderer>> {
         overlay::from_children(&mut self.children, tree, layout, renderer)
+    }
+
+    #[cfg(feature = "a11y")]
+    /// get the a11y nodes for the widget
+    fn a11y_nodes(
+        &self,
+        layout: Layout<'_>,
+        state: &Tree,
+        cursor: mouse::Cursor,
+    ) -> iced_accessibility::A11yTree {
+        use iced_accessibility::A11yTree;
+        A11yTree::join(
+            self.children
+                .iter()
+                .zip(layout.children())
+                .zip(state.children.iter())
+                .map(|((c, c_layout), state)| {
+                    c.as_widget().a11y_nodes(c_layout, state, cursor)
+                }),
+        )
     }
 }
 
