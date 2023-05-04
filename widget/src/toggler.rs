@@ -11,8 +11,8 @@ use crate::core::touch;
 use crate::core::widget::tree::{self, Tree};
 use crate::core::widget::{self, Id};
 use crate::core::{
-    Clipboard, Element, Event, Layout, Length, Pixels, Rectangle, Shell, Size,
-    Widget,
+    id, Alignment, Clipboard, Element, Event, Layout, Length, Pixels, Point,
+    Rectangle, Shell, Widget,
 };
 
 pub use crate::style::toggler::{Appearance, StyleSheet};
@@ -242,7 +242,12 @@ where
         layout::next_to_each_other(
             &limits,
             self.spacing,
-            |_| layout::Node::new(Size::new(2.0 * self.size, self.size)),
+            |_| {
+                layout::Node::new(crate::core::Size::new(
+                    2.0 * self.size,
+                    self.size,
+                ))
+            },
             |limits| {
                 if let Some(label) = self.label.as_deref() {
                     let state = tree
@@ -264,7 +269,7 @@ where
                         self.text_shaping,
                     )
                 } else {
-                    layout::Node::new(Size::ZERO)
+                    layout::Node::new(crate::core::Size::ZERO)
                 }
             },
         )
@@ -490,6 +495,17 @@ where
             ])))
         } else {
             Some(self.id.clone())
+        }
+    }
+
+    fn set_id(&mut self, id: Id) {
+        if let Id(id::Internal::Set(list)) = id {
+            if list.len() == 2 && self.label.is_some() {
+                self.id.0 = list[0].clone();
+                self.label_id = Some(Id(list[1].clone()));
+            }
+        } else if self.label.is_none() {
+            self.id = id;
         }
     }
 }

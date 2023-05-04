@@ -12,7 +12,8 @@ use crate::core::touch;
 use crate::core::widget;
 use crate::core::widget::tree::{self, Tree};
 use crate::core::{
-    Clipboard, Element, Layout, Length, Pixels, Rectangle, Shell, Size, Widget,
+    id::Internal, Alignment, Clipboard, Element, Layout, Length, Pixels, Point,
+    Rectangle, Shell, Widget,
 };
 
 pub use iced_style::checkbox::{Appearance, StyleSheet};
@@ -233,7 +234,7 @@ where
         layout::next_to_each_other(
             &limits.width(self.width),
             self.spacing,
-            |_| layout::Node::new(Size::new(self.size, self.size)),
+            |_| layout::Node::new(crate::core::Size::new(self.size, self.size)),
             |limits| {
                 let state = tree
                     .state
@@ -450,13 +451,20 @@ where
             A11yTree::leaf(label_node, self.label_id.clone()),
         )
     }
-
     fn id(&self) -> Option<Id> {
-        use iced_runtime::core::id::Internal;
         Some(Id(Internal::Set(vec![
             self.id.0.clone(),
             self.label_id.0.clone(),
         ])))
+    }
+
+    fn set_id(&mut self, id: Id) {
+        if let Id(Internal::Set(list)) = id {
+            if list.len() == 2 {
+                self.id.0 = list[0].clone();
+                self.label_id.0 = list[1].clone();
+            }
+        }
     }
 }
 

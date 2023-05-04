@@ -1,6 +1,7 @@
 use crate::event::{self, Event};
+use crate::id::Id;
 use crate::layout;
-use crate::mouse;
+use crate::mouse::{self, Cursor};
 use crate::overlay;
 use crate::renderer;
 use crate::widget;
@@ -10,7 +11,7 @@ use crate::{
 };
 
 use std::any::Any;
-use std::borrow::Borrow;
+use std::borrow::{Borrow, BorrowMut};
 
 /// A generic [`Widget`].
 ///
@@ -254,6 +255,66 @@ impl<'a, Message, Renderer> Borrow<dyn Widget<Message, Renderer> + 'a>
     }
 }
 
+impl<'a, Message, Renderer> Borrow<dyn Widget<Message, Renderer> + 'a>
+    for &mut Element<'a, Message, Renderer>
+{
+    fn borrow(&self) -> &(dyn Widget<Message, Renderer> + 'a) {
+        self.widget.borrow()
+    }
+}
+
+impl<'a, Message, Renderer> BorrowMut<dyn Widget<Message, Renderer> + 'a>
+    for &mut Element<'a, Message, Renderer>
+{
+    fn borrow_mut(&mut self) -> &mut (dyn Widget<Message, Renderer> + 'a) {
+        self.widget.borrow_mut()
+    }
+}
+
+impl<'a, Message, Renderer> BorrowMut<dyn Widget<Message, Renderer> + 'a>
+    for Element<'a, Message, Renderer>
+{
+    fn borrow_mut(&mut self) -> &mut (dyn Widget<Message, Renderer> + 'a) {
+        self.widget.borrow_mut()
+    }
+}
+
+impl<'a, Message, Renderer> Widget<Message, Renderer>
+    for Element<'a, Message, Renderer>
+where
+    Renderer: crate::Renderer,
+{
+    fn width(&self) -> Length {
+        self.widget.width()
+    }
+
+    fn height(&self) -> Length {
+        self.widget.height()
+    }
+
+    fn layout(
+        &self,
+        tree: &mut Tree,
+        renderer: &Renderer,
+        limits: &layout::Limits,
+    ) -> layout::Node {
+        todo!()
+    }
+
+    fn draw(
+        &self,
+        _state: &Tree,
+        _renderer: &mut Renderer,
+        _theme: &<Renderer as crate::Renderer>::Theme,
+        _style: &renderer::Style,
+        _layout: Layout<'_>,
+        _cursor: Cursor,
+        _viewport: &Rectangle,
+    ) {
+        todo!()
+    }
+}
+
 struct Map<'a, A, B, Renderer> {
     widget: Box<dyn Widget<A, Renderer> + 'a>,
     mapper: Box<dyn Fn(A) -> B + 'a>,
@@ -292,8 +353,8 @@ where
         self.widget.children()
     }
 
-    fn diff(&self, tree: &mut Tree) {
-        self.widget.diff(tree);
+    fn diff(&mut self, tree: &mut Tree) {
+        self.widget.diff(tree)
     }
 
     fn width(&self) -> Length {
@@ -447,6 +508,24 @@ where
             .overlay(tree, layout, renderer)
             .map(move |overlay| overlay.map(mapper))
     }
+
+    #[cfg(feature = "a11y")]
+    fn a11y_nodes(
+        &self,
+        _layout: Layout<'_>,
+        _state: &Tree,
+        _cursor_position: Cursor,
+    ) -> iced_accessibility::A11yTree {
+        self.widget.a11y_nodes(_layout, _state, _cursor_position)
+    }
+
+    fn id(&self) -> Option<Id> {
+        self.widget.id()
+    }
+
+    fn set_id(&mut self, id: Id) {
+        self.widget.set_id(id);
+    }
 }
 
 struct Explain<'a, Message, Renderer: crate::Renderer> {
@@ -488,7 +567,7 @@ where
         self.element.widget.children()
     }
 
-    fn diff(&self, tree: &mut Tree) {
+    fn diff(&mut self, tree: &mut Tree) {
         self.element.widget.diff(tree);
     }
 
@@ -589,4 +668,13 @@ where
     ) -> Option<overlay::Element<'b, Message, Renderer>> {
         self.element.widget.overlay(state, layout, renderer)
     }
+
+    fn id(&self) -> Option<Id> {
+        self.element.widget.id()
+    }
+
+    fn set_id(&mut self, id: Id) {
+        self.element.widget.set_id(id);
+    }
+    // TODO maybe a11y_nodes
 }
