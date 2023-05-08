@@ -1285,13 +1285,13 @@ where
     let mut view = application.view(id.inner());
     debug.view_finished();
 
+    view.diff(&mut Tree::empty());
     let size = if let Some((prev_w, prev_h, limits, dirty)) =
         auto_size_surfaces.remove(&id)
     {
         let view = view.as_widget_mut();
         let _state = view.state();
         // TODO would it be ok to diff against the current cache?
-        view.diff(&mut Tree::empty());
         let bounds = view.layout(renderer, &limits).bounds().size();
         // XXX add a small number to make sure it doesn't get truncated...
         let (w, h) = (
