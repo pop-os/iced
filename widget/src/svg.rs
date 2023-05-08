@@ -39,6 +39,7 @@ where
     height: Length,
     content_fit: ContentFit,
     style: <Renderer::Theme as StyleSheet>::Style,
+    _phantom_data: std::marker::PhantomData<&'a ()>,
 }
 
 impl<'a, Renderer> Svg<'a, Renderer>
@@ -61,6 +62,7 @@ where
             height: Length::Shrink,
             content_fit: ContentFit::Contain,
             style: Default::default(),
+            _phantom_data: std::marker::PhantomData,
         }
     }
 
