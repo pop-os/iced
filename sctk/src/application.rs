@@ -9,13 +9,29 @@ use crate::{
         DataSourceEvent, IcedSctkEvent, KeyboardEventVariant,
         LayerSurfaceEventVariant, PopupEventVariant, SctkEvent,
     },
-    settings
+    settings,
 };
 use float_cmp::approx_eq;
 use futures::{channel::mpsc, task, Future, FutureExt, StreamExt};
 #[cfg(feature = "a11y")]
-use iced_accessibility::{A11yId, accesskit::{NodeId, NodeBuilder}, A11yNode};
-use iced_futures::{Executor, Runtime, core::{renderer::Style, widget::{operation::{self, OperationWrapper, focusable::focus}, tree, Tree, self, Operation}, layout::Limits, Widget, event::{Status, self}}, Subscription};
+use iced_accessibility::{
+    accesskit::{NodeBuilder, NodeId},
+    A11yId, A11yNode,
+};
+use iced_futures::{
+    core::{
+        event::{self, Status},
+        layout::Limits,
+        renderer::Style,
+        widget::{
+            self,
+            operation::{self, focusable::focus, OperationWrapper},
+            tree, Operation, Tree,
+        },
+        Widget,
+    },
+    Executor, Runtime, Subscription,
+};
 // use iced_native::{
 //     application::{self, StyleSheet},
 //     clipboard,
@@ -39,21 +55,37 @@ use std::{collections::HashMap, ffi::c_void, hash::Hash, marker::PhantomData};
 use wayland_backend::client::ObjectId;
 
 use iced_graphics::{
-    compositor, renderer, Viewport, Compositor,
+    compositor,
+    renderer,
+    Compositor,
     // window::{self, Compositor},
     // Color, Point, Viewport,
+    Viewport,
 };
 // use iced_native::user_interface::{self, UserInterface};
 // use iced_native::window::Id as SurfaceId;
 use itertools::Itertools;
 // use iced_native::widget::Operation;
-use std::mem::ManuallyDrop;
+use iced_runtime::{
+    clipboard,
+    command::{
+        self,
+        platform_specific::{
+            self,
+            wayland::{data_device::DndIcon, popup},
+        },
+    },
+    core::{mouse::Interaction, Color, Element, Point, Renderer, Size},
+    system, user_interface,
+    window::Id as SurfaceId,
+    Command, Debug, Program, UserInterface,
+};
+use iced_style::application::{self, StyleSheet};
 use raw_window_handle::{
     HasRawDisplayHandle, HasRawWindowHandle, RawDisplayHandle, RawWindowHandle,
     WaylandDisplayHandle, WaylandWindowHandle,
 };
-use iced_style::application::{StyleSheet, self};
-use iced_runtime::{core::{mouse::Interaction, Element, Renderer, Point, Size, Color}, command::{platform_specific::{self, wayland::{data_device::DndIcon, popup}}, self}, window::Id as SurfaceId, Command, user_interface, UserInterface, system, clipboard, Debug, Program};
+use std::mem::ManuallyDrop;
 // use iced_native::widget::operation::OperationWrapper;
 
 pub enum Event<Message> {
@@ -339,7 +371,12 @@ where
             &mut auto_size_surfaces,
         );
     }
-    runtime.track(application.subscription().map(subscription_map::<A, E, C>).into_recipes(),);
+    runtime.track(
+        application
+            .subscription()
+            .map(subscription_map::<A, E, C>)
+            .into_recipes(),
+    );
 
     let _mouse_interaction = Interaction::default();
     let mut sctk_events: Vec<SctkEvent> = Vec::new();
@@ -700,11 +737,14 @@ where
                         (id, e)
                     }
                 };
+
                 let node =
                     Widget::layout(e.as_widget(), &renderer, &Limits::NONE);
                 let bounds = node.bounds();
-                let w = bounds.width.ceil() as u32;
-                let h = bounds.height.ceil() as u32;
+                let (w, h) = (
+                    (bounds.width.ceil() + 0.1) as u32,
+                    (bounds.height.ceil() + 0.1) as u32,
+                );
                 if w == 0 || h == 0 {
                     error!("Dnd surface has zero size, ignoring");
                     continue;
@@ -831,7 +871,8 @@ where
                         if matches!(surface_id, SurfaceIdWrapper::Dnd(_)) {
                             continue;
                         }
-                        let mut filtered_sctk = Vec::with_capacity(sctk_events.len());
+                        let mut filtered_sctk =
+                            Vec::with_capacity(sctk_events.len());
 
                         let mut i = 0;
                         while i < sctk_events.len() {
@@ -876,10 +917,18 @@ where
                                 } else {
                                     i += 1;
                                 }
-                            }                        
-                            native_events.extend(filtered_a11y.into_iter().map(|e| {
-                                event::Event::A11y(widget::Id::from(u128::from(e.request.target.0) as u64), e.request)
-                            }));
+                            }
+                            native_events.extend(
+                                filtered_a11y.into_iter().map(|e| {
+                                    event::Event::A11y(
+                                        widget::Id::from(u128::from(
+                                            e.request.target.0,
+                                        )
+                                            as u64),
+                                        e.request,
+                                    )
+                                }),
+                            );
                         }
                         let has_events =
                             has_events || !native_events.is_empty();
@@ -1010,19 +1059,33 @@ where
                 }) {
                     debug.render_started();
                     #[cfg(feature = "a11y")]
-                    if let Some(Some(adapter)) = a11y_enabled.then(|| adapters.get_mut(&native_id.inner())) {
-                        use iced_accessibility::{A11yTree, accesskit::{TreeUpdate, Tree, Role}};
+                    if let Some(Some(adapter)) = a11y_enabled
+                        .then(|| adapters.get_mut(&native_id.inner()))
+                    {
+                        use iced_accessibility::{
+                            accesskit::{Role, Tree, TreeUpdate},
+                            A11yTree,
+                        };
                         // TODO send a11y tree
-                        let child_tree = user_interface.a11y_nodes(state.cursor_position());
+                        let child_tree =
+                            user_interface.a11y_nodes(state.cursor_position());
                         let mut root = NodeBuilder::new(Role::Window);
                         root.set_name(state.title().to_string());
-                        let window_tree = A11yTree::node_with_child_tree(A11yNode::new(root, adapter.id), child_tree);
+                        let window_tree = A11yTree::node_with_child_tree(
+                            A11yNode::new(root, adapter.id),
+                            child_tree,
+                        );
                         let tree = Tree::new(NodeId(adapter.id));
-                        let mut current_operation = Some(Box::new(OperationWrapper::Id(Box::new(operation::focusable::find_focused()))));
+                        let mut current_operation =
+                            Some(Box::new(OperationWrapper::Id(Box::new(
+                                operation::focusable::find_focused(),
+                            ))));
                         let mut focus = None;
-                        while let Some(mut operation) = current_operation.take() {
-                            user_interface.operate(&renderer, operation.as_mut());
-        
+                        while let Some(mut operation) = current_operation.take()
+                        {
+                            user_interface
+                                .operate(&renderer, operation.as_mut());
+
                             match operation.finish() {
                                 operation::Outcome::None => {
                                 }
@@ -1035,14 +1098,26 @@ where
                                             focus = Some(A11yId::from(id));
                                         },
                                     }
-                                   
                                 }
                                 operation::Outcome::Chain(mut next) => {
                                     current_operation = Some(Box::new(OperationWrapper::Wrapper(next)));
                                 }
                             }
                         }
-                        log::debug!("focus: {:?}\ntree root: {:?}\n children: {:?}", &focus, window_tree.root().iter().map(|n| (n.node().role(), n.id())).collect::<Vec<_>>(), window_tree.children().iter().map(|n| (n.node().role(), n.id())).collect::<Vec<_>>());
+                        log::debug!(
+                            "focus: {:?}\ntree root: {:?}\n children: {:?}",
+                            &focus,
+                            window_tree
+                                .root()
+                                .iter()
+                                .map(|n| (n.node().role(), n.id()))
+                                .collect::<Vec<_>>(),
+                            window_tree
+                                .children()
+                                .iter()
+                                .map(|n| (n.node().role(), n.id()))
+                                .collect::<Vec<_>>()
+                        );
                         let focus = focus
                             .filter(|f_id| window_tree.contains(f_id))
                             .map(|id| id.into());
@@ -1070,41 +1145,24 @@ where
                         user_interface = user_interface
                             .relayout(logical_size, &mut renderer);
                         debug.layout_finished();
-
-                        debug.draw_started();
-                        let new_mouse_interaction = user_interface.draw(
-                            &mut renderer,
-                            state.theme(),
-                            &Style {
-                                text_color: state.text_color(),
-                            },
-                            state.cursor_position(),
-                        );
-                        debug.draw_finished();
-                        ev_proxy.send_event(Event::SetCursor(
-                            new_mouse_interaction,
-                        ));
-
-                        let _ = interfaces
-                            .insert(native_id.inner(), user_interface);
-
                         state.viewport_changed = false;
-                    } else {
-                        debug.draw_started();
-                        let new_mouse_interaction = user_interface.draw(
-                            &mut renderer,
-                            state.theme(),
-                            &Style {
-                                text_color: state.text_color(),
-                            },
-                            state.cursor_position(),
-                        );
-                        debug.draw_finished();
-                        ev_proxy.send_event(Event::SetCursor(
-                            new_mouse_interaction,
-                        ));
-                        interfaces.insert(native_id.inner(), user_interface);
                     }
+
+                    debug.draw_started();
+                    let new_mouse_interaction = user_interface.draw(
+                        &mut renderer,
+                        state.theme(),
+                        &Style {
+                            text_color: state.text_color(),
+                        },
+                        state.cursor_position(),
+                    );
+                    debug.draw_finished();
+                    ev_proxy
+                        .send_event(Event::SetCursor(new_mouse_interaction));
+
+                    let _ =
+                        interfaces.insert(native_id.inner(), user_interface);
 
                     let _ = compositor.present(
                         &mut renderer,
@@ -1126,16 +1184,23 @@ where
                 surface_id,
                 request,
             }) => {
-                use iced_accessibility::accesskit::Action;  
+                use iced_accessibility::accesskit::Action;
                 match request.action {
                     Action::Default => {
                         // TODO default operation?
                         // messages.push(focus(request.target.into()));
-                        a11y_events.push(ActionRequestEvent { surface_id, request });
-                    },
+                        a11y_events.push(ActionRequestEvent {
+                            surface_id,
+                            request,
+                        });
+                    }
                     Action::Focus => {
-                        commands.push(Command::widget(focus(widget::Id::from(u128::from(request.target.0) as u64))));
-                    },
+                        commands.push(Command::widget(focus(
+                            widget::Id::from(
+                                u128::from(request.target.0) as u64
+                            ),
+                        )));
+                    }
                     Action::Blur => todo!(),
                     Action::Collapse => todo!(),
                     Action::Expand => todo!(),
@@ -1157,7 +1222,9 @@ where
                     Action::ScrollToPoint => todo!(),
                     Action::SetScrollOffset => todo!(),
                     Action::SetTextSelection => todo!(),
-                    Action::SetSequentialFocusNavigationStartingPoint => todo!(),
+                    Action::SetSequentialFocusNavigationStartingPoint => {
+                        todo!()
+                    }
                     Action::SetValue => todo!(),
                     Action::ShowContextMenu => todo!(),
                 }
@@ -1226,7 +1293,11 @@ where
         // TODO would it be ok to diff against the current cache?
         view.diff(&mut Tree::empty());
         let bounds = view.layout(renderer, &limits).bounds().size();
-        let (w, h) = (bounds.width.ceil() as u32, bounds.height.ceil() as u32);
+        // XXX add a small number to make sure it doesn't get truncated...
+        let (w, h) = (
+            (bounds.width.ceil() + 0.1) as u32,
+            (bounds.height.ceil() + 0.1) as u32,
+        );
         let dirty = dirty || w != prev_w || h != prev_h;
         auto_size_surfaces.insert(id, (w, h, limits, dirty));
         if dirty {
@@ -1454,7 +1525,12 @@ pub(crate) fn update<A, E, C>(
         );
     }
 
-    runtime.track(application.subscription().map(subscription_map::<A, E, C>).into_recipes(),);
+    runtime.track(
+        application
+            .subscription()
+            .map(subscription_map::<A, E, C>)
+            .into_recipes(),
+    );
 }
 
 type MyRuntime<'a, E, M> = &'a mut Runtime<E, proxy::Proxy<Event<M>>, Event<M>>;
@@ -1556,7 +1632,6 @@ fn run_command<A, E>(
                                     // should not happen
                                 },
                             }
-                           
                         }
                         operation::Outcome::Chain(mut next) => {
                             current_operation = Some(Box::new(OperationWrapper::Wrapper(next)));
@@ -1581,8 +1656,7 @@ fn run_command<A, E>(
                         e.as_widget_mut().diff(&mut Tree::empty());
                         let node = Widget::layout(e.as_widget(), renderer, &builder.size_limits);
                         let bounds = node.bounds();
-                        let w = bounds.width.ceil() as u32;
-                        let h = bounds.height.ceil() as u32;
+                        let (w, h) = ((bounds.width.ceil() + 0.1) as u32, (bounds.height.ceil() + 0.1) as u32);
                         auto_size_surfaces.insert(SurfaceIdWrapper::LayerSurface(builder.id), (w, h, builder.size_limits, false));
                         builder.size = Some((Some(bounds.width as u32), Some(bounds.height as u32)));
                     }
@@ -1603,8 +1677,7 @@ fn run_command<A, E>(
                         e.as_widget_mut().diff(&mut Tree::empty());
                         let node = Widget::layout(e.as_widget(), renderer, &builder.size_limits);
                         let bounds = node.bounds();
-                        let w = bounds.width.ceil() as u32;
-                        let h = bounds.height.ceil() as u32;
+                        let (w, h) = ((bounds.width.ceil() + 0.1) as u32, (bounds.height.ceil() + 0.1) as u32);
                         auto_size_surfaces.insert(SurfaceIdWrapper::Window(builder.window_id), (w, h, builder.size_limits, false));
                         builder.size = (bounds.width as u32, bounds.height as u32);
                     }
@@ -1625,8 +1698,7 @@ fn run_command<A, E>(
                         e.as_widget_mut().diff(&mut Tree::empty());
                         let node = Widget::layout(e.as_widget(), renderer, &popup.positioner.size_limits);
                         let bounds = node.bounds();
-                        let w = bounds.width.ceil().ceil() as u32;
-                        let h = bounds.height.ceil().ceil() as u32;
+                        let (w, h) = ((bounds.width.ceil() + 0.1) as u32, (bounds.height.ceil() + 0.1) as u32);
                         auto_size_surfaces.insert(SurfaceIdWrapper::Popup(popup.id), (w, h, popup.positioner.size_limits, false));
                         popup.positioner.size = Some((bounds.width as u32, bounds.height as u32));
                     }
@@ -1656,11 +1728,7 @@ pub fn build_user_interfaces<'a, A>(
     ev_proxy: &mut proxy::Proxy<Event<A::Message>>,
 ) -> HashMap<
     SurfaceId,
-    UserInterface<
-        'a,
-        <A as Program>::Message,
-        <A as Program>::Renderer,
-    >,
+    UserInterface<'a, <A as Program>::Message, <A as Program>::Renderer>,
 >
 where
     A: Application + 'static,

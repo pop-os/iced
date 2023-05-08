@@ -8,6 +8,7 @@ use crate::{
     Color, Element, Layout, Length, Pixels, Point, Rectangle, Size, Widget,
 };
 
+use log::debug;
 use std::borrow::Cow;
 
 /// A paragraph of text.
@@ -230,6 +231,11 @@ pub fn draw<Renderer>(
     Renderer: text::Renderer,
 {
     let bounds = layout.bounds();
+
+    if bounds.width <= 0.0 || bounds.height <= 0.0 {
+        debug!("Skipping text with no area");
+        return;
+    }
 
     let x = match horizontal_alignment {
         alignment::Horizontal::Left => bounds.x,

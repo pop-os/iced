@@ -28,7 +28,11 @@ impl<T> DataOfferHandler for SctkState<T> {
         offer: &mut DragOffer,
         actions: DndAction,
     ) {
-        if self.dnd_offer.as_ref().map(|o| o.offer.inner() == offer.inner()).unwrap_or(false)
+        if self
+            .dnd_offer
+            .as_ref()
+            .map(|o| o.offer.inner() == offer.inner())
+            .unwrap_or(false)
         {
             self.sctk_events
                 .push(crate::sctk_event::SctkEvent::DndOffer {
@@ -47,7 +51,11 @@ impl<T> DataOfferHandler for SctkState<T> {
         offer: &mut DragOffer,
         actions: DndAction,
     ) {
-        if self.dnd_offer.as_ref().map(|o| o.offer.inner() == offer.inner()).unwrap_or(false)
+        if self
+            .dnd_offer
+            .as_ref()
+            .map(|o| o.offer.inner() == offer.inner())
+            .unwrap_or(false)
         {
             self.sctk_events
                 .push(crate::sctk_event::SctkEvent::DndOffer {

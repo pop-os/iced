@@ -12,13 +12,25 @@ use iced::{
         InitialSurface,
     },
     widget::{self, column, container, dnd_listener, dnd_source, text},
-    window, Application, Color, Command, Element, Subscription, Theme,
+    window, Application, Color, Command, Element, Length, Subscription, Theme,
 };
 use iced_style::{application, theme};
 use sctk::reexports::client::protocol::wl_data_device_manager::DndAction;
 
 fn main() {
-    DndTest::run(iced::Settings::default()).unwrap();
+    let mut settings = iced::Settings::default();
+    match &mut settings.initial_surface {
+        InitialSurface::LayerSurface(s) => {
+            s.size_limits = s
+                .size_limits
+                .min_width(100.0)
+                .max_width(400.0)
+                .min_height(100.0)
+                .max_height(400.0);
+        }
+        _ => {}
+    };
+    DndTest::run(settings).unwrap();
 }
 
 const SUPPORTED_MIME_TYPES: &'static [&'static str; 6] = &[
@@ -171,6 +183,7 @@ impl Application for DndTest {
                     "Drag text here: {}",
                     &self.current_text
                 )))
+                .width(Length::Fill)
                 .style(if matches!(self.target, DndState::Some(_)) {
                     <iced_style::Theme as container::StyleSheet>::Style::Custom(
                         Box::new(CustomTheme),
@@ -178,7 +191,7 @@ impl Application for DndTest {
                 } else {
                     Default::default()
                 })
-                .padding(20)
+                .padding(80)
             )
             .on_enter(|_, mime_types: Vec<String>, _| {
                 if mime_types.iter().any(|mime_type| {
@@ -203,6 +216,7 @@ impl Application for DndTest {
                     "Drag me: {}",
                     &self.current_text.chars().rev().collect::<String>()
                 )))
+                .width(Length::Fill)
                 .style(if self.source.is_some() {
                     <iced_style::Theme as container::StyleSheet>::Style::Custom(
                         Box::new(CustomTheme),
@@ -210,7 +224,7 @@ impl Application for DndTest {
                 } else {
                     Default::default()
                 })
-                .padding(20)
+                .padding(80)
             )
             .drag_threshold(5.0)
             .on_drag(Message::StartDnd)

@@ -179,9 +179,7 @@ impl<T> DataSourceHandler for SctkState<T> {
             }) {
                 Ok(s) => {
                     source.cur_write = Some((
-                        data
-                            .from_mime_type(&mime)
-                            .unwrap_or_default(),
+                        data.from_mime_type(&mime).unwrap_or_default(),
                         0,
                         s,
                     ));

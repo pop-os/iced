@@ -1,16 +1,15 @@
+#[cfg(feature = "a11y")]
+pub mod adapter;
 pub mod control_flow;
 pub mod proxy;
 pub mod state;
-#[cfg(feature = "a11y")]
-pub mod adapter;
-
 
 use crate::{
     application::{Event, SurfaceIdWrapper},
     sctk_event::{
-        DndOfferEvent, IcedSctkEvent,
-        LayerSurfaceEventVariant, PopupEventVariant, SctkEvent,
-        SelectionOfferEvent, StartCause, WindowEventVariant,
+        DndOfferEvent, IcedSctkEvent, LayerSurfaceEventVariant,
+        PopupEventVariant, SctkEvent, SelectionOfferEvent, StartCause,
+        WindowEventVariant,
     },
     settings,
 };
@@ -49,9 +48,8 @@ use std::{
     fmt::Debug,
     io::{BufRead, BufReader, BufWriter, Write},
     num::NonZeroU32,
+    sync::{Arc, Mutex},
     time::{Duration, Instant},
-    sync::{Arc, Mutex}
-
 };
 use wayland_backend::client::WaylandError;
 
@@ -79,8 +77,7 @@ pub struct SctkEventLoop<T> {
     pub(crate) state: SctkState<T>,
 
     #[cfg(feature = "a11y")]
-    pub(crate) a11y_events:
-        Arc<Mutex<Vec<adapter::A11yWrapper>>>,
+    pub(crate) a11y_events: Arc<Mutex<Vec<adapter::A11yWrapper>>>,
 }
 
 impl<T> SctkEventLoop<T>
@@ -207,34 +204,52 @@ where
 
     // TODO Ashley provide users a reasonable method of setting the role for the surface
     #[cfg(feature = "a11y")]
-    pub fn init_a11y_adapter(&mut self, surface: &WlSurface, app_id: Option<String>, surface_title: Option<String>, role: iced_accessibility::accesskit::Role) -> adapter::IcedSctkAdapter {
-        use iced_accessibility::{accesskit_unix::Adapter, accesskit::{Node, Tree, TreeUpdate, Role, NodeId, NodeBuilder, NodeClassSet}, window_node_id};
+    pub fn init_a11y_adapter(
+        &mut self,
+        surface: &WlSurface,
+        app_id: Option<String>,
+        surface_title: Option<String>,
+        role: iced_accessibility::accesskit::Role,
+    ) -> adapter::IcedSctkAdapter {
+        use iced_accessibility::{
+            accesskit::{
+                Node, NodeBuilder, NodeClassSet, NodeId, Role, Tree, TreeUpdate,
+            },
+            accesskit_unix::Adapter,
+            window_node_id,
+        };
         let node_id = window_node_id();
         // let node_id_clone = node_id.clone();
         let event_list = self.a11y_events.clone();
         adapter::IcedSctkAdapter {
-            adapter: Adapter::new(app_id.unwrap_or_else(|| String::from("None")), "Iced".to_string(), env!("CARGO_PKG_VERSION").to_string(), move || {
-                event_list.lock().unwrap().push(adapter::A11yWrapper::Enabled);
-                let mut node = NodeBuilder::new(Role::Window);
-                if let Some(name) = surface_title {
-                    node.set_name(name);
-                }
-                let node = node.build(&mut NodeClassSet::lock_global());
-                TreeUpdate {
-                    nodes: vec![(
-                        NodeId(node_id),
-                        node,
-                    )],
-                    tree: Some(Tree::new(NodeId(node_id))),
-                    focus: None,
-                }
-            }, Box::new(adapter::IcedSctkActionHandler {
-                wl_surface: surface.clone(),
-                event_list: self.a11y_events.clone(),
-            })).unwrap(),
-            id: node_id
+            adapter: Adapter::new(
+                app_id.unwrap_or_else(|| String::from("None")),
+                "Iced".to_string(),
+                env!("CARGO_PKG_VERSION").to_string(),
+                move || {
+                    event_list
+                        .lock()
+                        .unwrap()
+                        .push(adapter::A11yWrapper::Enabled);
+                    let mut node = NodeBuilder::new(Role::Window);
+                    if let Some(name) = surface_title {
+                        node.set_name(name);
+                    }
+                    let node = node.build(&mut NodeClassSet::lock_global());
+                    TreeUpdate {
+                        nodes: vec![(NodeId(node_id), node)],
+                        tree: Some(Tree::new(NodeId(node_id))),
+                        focus: None,
+                    }
+                },
+                Box::new(adapter::IcedSctkActionHandler {
+                    wl_surface: surface.clone(),
+                    event_list: self.a11y_events.clone(),
+                }),
+            )
+            .unwrap(),
+            id: node_id,
         }
-        
     }
 
     pub fn run_return<F>(&mut self, mut callback: F) -> i32
@@ -388,7 +403,7 @@ where
                 &mut sctk_event_sink_back_buffer,
                 &mut self.state.sctk_events,
             );
-            
+
             // handle a11y events
             #[cfg(feature = "a11y")]
             if let Ok(mut events) = self.a11y_events.lock() {
@@ -400,12 +415,14 @@ where
                             &mut control_flow,
                             &mut callback,
                         ),
-                        adapter::A11yWrapper::Event(event) => sticky_exit_callback(
-                            IcedSctkEvent::A11yEvent(event),
-                            &self.state,
-                            &mut control_flow,
-                            &mut callback,
-                        ),
+                        adapter::A11yWrapper::Event(event) => {
+                            sticky_exit_callback(
+                                IcedSctkEvent::A11yEvent(event),
+                                &self.state,
+                                &mut control_flow,
+                                &mut callback,
+                            )
+                        }
                     }
                 }
             }
@@ -650,7 +667,7 @@ where
                             let (id, wl_surface) = self.state.get_window(builder);
                             let object_id = wl_surface.id();
                             sticky_exit_callback(
-                                IcedSctkEvent::SctkEvent(SctkEvent::WindowEvent { 
+                                IcedSctkEvent::SctkEvent(SctkEvent::WindowEvent {
                                     variant: WindowEventVariant::Created(object_id.clone(), id),
                                     id: wl_surface.clone() }),
                                 &self.state,

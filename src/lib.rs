@@ -183,9 +183,9 @@ pub mod time;
 pub mod window;
 
 #[cfg(feature = "winit")]
-mod sandbox;
-#[cfg(feature = "winit")]
 pub mod application;
+#[cfg(feature = "winit")]
+mod sandbox;
 
 /// wayland application
 #[cfg(feature = "wayland")]

@@ -1,9 +1,9 @@
 use sctk::{
-    data_device_manager::{data_offer::DragOffer, ReadPipe},
+    data_device_manager::ReadPipe,
     reexports::client::protocol::wl_data_device_manager::DndAction,
 };
 use std::{
-    os::fd::{AsRawFd, OwnedFd, RawFd},
+    os::fd::{AsRawFd, OwnedFd},
     sync::{Arc, Mutex},
 };
 

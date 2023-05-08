@@ -14,5 +14,3 @@ pub use text_input_wayland::*;
 mod text_input;
 #[cfg(not(feature = "wayland"))]
 pub use text_input::*;
-
-

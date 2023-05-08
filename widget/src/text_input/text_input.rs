@@ -1,14 +1,14 @@
 //! Display fields that can be filled with text.
 //!
 //! A [`TextInput`] has some local [`State`].
-pub use super::value::Value;
 pub use super::cursor::Cursor;
+pub use super::value::Value;
 
-use super::editor::Editor;
-use iced_renderer::core::widget::OperationOutputWrapper;
 use super::cursor;
-use super::value;
 use super::editor;
+use super::editor::Editor;
+use super::value;
+use iced_renderer::core::widget::OperationOutputWrapper;
 
 use crate::core::alignment;
 use crate::core::event::{self, Event};
