@@ -333,7 +333,7 @@ where
         self.content.borrow().element.as_widget().id()
     }
 
-    fn set_id(&mut self, _id: iced_accessibility::Id) {
+    fn set_id(&mut self, _id: crate::core::id::Id) {
         self.content
             .borrow_mut()
             .element
