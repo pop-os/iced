@@ -1,16 +1,14 @@
 //! Display fields that can be filled with text.
 //!
 //! A [`TextInput`] has some local [`State`].
-mod editor;
-mod value;
+pub use super::cursor::Cursor;
+pub use super::value::Value;
 
-pub mod cursor;
-
-pub use cursor::Cursor;
+use super::cursor;
+use super::editor;
+use super::editor::Editor;
+use super::value;
 use iced_renderer::core::widget::OperationOutputWrapper;
-pub use value::Value;
-
-use editor::Editor;
 
 use crate::core::alignment;
 use crate::core::event::{self, Event};
@@ -980,14 +978,14 @@ where
 
             state.keyboard_modifiers = modifiers;
         }
-        Event::Window(window::Event::Unfocused) => {
+        Event::Window(_, window::Event::Unfocused) => {
             let state = state();
 
             if let Some(focus) = &mut state.is_focused {
                 focus.is_window_focused = false;
             }
         }
-        Event::Window(window::Event::Focused) => {
+        Event::Window(_, window::Event::Focused) => {
             let state = state();
 
             if let Some(focus) = &mut state.is_focused {
@@ -997,7 +995,7 @@ where
                 shell.request_redraw(window::RedrawRequest::NextFrame);
             }
         }
-        Event::Window(window::Event::RedrawRequested(now)) => {
+        Event::Window(_, window::Event::RedrawRequested(now)) => {
             let state = state();
 
             if let Some(focus) = &mut state.is_focused {

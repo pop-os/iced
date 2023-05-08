@@ -16,6 +16,7 @@ all-features = true
 
 [features]
 thread-pool = ["futures/thread-pool"]
+a11y = ["iced_core/a11y"]
 
 [dependencies]
 iced_core.workspace = true

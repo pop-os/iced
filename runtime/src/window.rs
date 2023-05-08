@@ -3,6 +3,7 @@ mod action;
 
 pub mod screenshot;
 
+pub use crate::core::window::Id;
 pub use action::Action;
 pub use screenshot::Screenshot;
 
@@ -23,7 +24,7 @@ use crate::futures::Subscription;
 /// animations without missing any frames.
 pub fn frames() -> Subscription<Instant> {
     event::listen_raw(|event, _status| match event {
-        iced_core::Event::Window(Event::RedrawRequested(at)) => Some(at),
+        iced_core::Event::Window(_, Event::RedrawRequested(at)) => Some(at),
         _ => None,
     })
 }

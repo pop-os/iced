@@ -13,3 +13,7 @@ pub use level::Level;
 pub use mode::Mode;
 pub use redraw_request::RedrawRequest;
 pub use user_attention::UserAttention;
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+/// The identifier of a generic window.
+pub struct Id(pub u128);

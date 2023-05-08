@@ -12,6 +12,7 @@ keywords.workspace = true
 
 [features]
 a11y = ["iced_accessibility"]
+wayland = ["iced_accessibility?/accesskit_unix", "sctk"]
 
 [dependencies]
 bitflags.workspace = true
@@ -19,6 +20,7 @@ log.workspace = true
 thiserror.workspace = true
 xxhash-rust.workspace = true
 num-traits.workspace = true
+sctk = { package = "smithay-client-toolkit", git = "https://github.com/smithay/client-toolkit", rev = "389a4f2", optional = true }
 
 palette.workspace = true
 palette.optional = true

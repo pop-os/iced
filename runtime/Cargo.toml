@@ -13,13 +13,14 @@ keywords.workspace = true
 [features]
 debug = []
 a11y = ["iced_accessibility", "iced_core/a11y"]
-
+wayland = ["iced_accessibility?/accesskit_unix", "iced_core/wayland", "sctk"]
 
 [dependencies]
 iced_core.workspace = true
 iced_futures.workspace = true
 iced_futures.features = ["thread-pool"]
-
+sctk.workspace = true
+sctk.optional = true
 thiserror.workspace = true
 iced_accessibility.workspace = true
 iced_accessibility.optional = true

@@ -32,7 +32,7 @@ qr_code = ["iced_widget/qr_code"]
 # Enables lazy widgets
 lazy = ["iced_widget/lazy"]
 # Enables a debug view in native platforms (press F12)
-debug = ["iced_winit/debug"]
+debug = ["iced_winit?/debug", "iced_sctk?/debug"]
 # Enables `tokio` as the `executor::Default` on native platforms
 tokio = ["iced_futures/tokio"]
 # Enables `async-std` as the `executor::Default` on native platforms
@@ -41,8 +41,6 @@ async-std = ["iced_futures/async-std"]
 smol = ["iced_futures/smol"]
 # Enables advanced color conversion via `palette`
 palette = ["iced_core/palette"]
-# Enables querying system information
-system = ["iced_winit/system"]
 # Enables broken "sRGB linear" blending to reproduce color management of the Web
 web-colors = ["iced_renderer/web-colors"]
 # Enables the WebGL backend, replacing WebGPU
@@ -52,9 +50,11 @@ highlighter = ["iced_highlighter"]
 # Enables the advanced module
 advanced = []
 # Enables the `accesskit` accessibility library
-a11y = ["iced_accessibility", "iced_widget/a11y", "iced_winit?/a11y"]
+a11y = ["iced_accessibility", "iced_widget/a11y", "iced_winit?/a11y", "iced_sctk?/a11y"]
 # Enables the winit shell. Conflicts with `wayland` and `glutin`.
 winit = ["iced_winit"]
+# Enables the sctk shell. COnflicts with `winit` and `glutin`.
+wayland = ["iced_sctk", "iced_widget/wayland", "iced_accessibility?/accesskit_unix"]
 
 [dependencies]
 iced_core.workspace = true
@@ -64,6 +64,8 @@ iced_widget.workspace = true
 iced_winit.features = ["application"]
 iced_winit.workspace = true
 iced_winit.optional = true
+iced_sctk.workspace = true
+iced_sctk.optional = true
 iced_highlighter.workspace = true
 iced_highlighter.optional = true
 iced_accessibility.workspace = true
@@ -88,6 +90,7 @@ members = [
     "winit",
     "examples/*",
     "accessibility",
+    "sctk"
 ]
 
 [profile.release-opt]
@@ -123,6 +126,7 @@ iced_tiny_skia = { version = "0.12", path = "tiny_skia" }
 iced_wgpu = { version = "0.12", path = "wgpu" }
 iced_widget = { version = "0.12", path = "widget" }
 iced_winit = { version = "0.12", path = "winit", features = ["application"] }
+iced_sctk = { version = "0.1", path = "sctk" }
 iced_accessibility = { version = "0.1", path = "accessibility" }
 
 async-std = "1.0"
@@ -149,8 +153,9 @@ qrcode = { version = "0.12", default-features = false }
 raw-window-handle = "0.5"
 resvg = "0.36"
 rustc-hash = "1.0"
+sctk = { package = "smithay-client-toolkit", git = "https://github.com/smithay/client-toolkit", rev = "389a4f2" }
 smol = "1.0"
-softbuffer = "0.2"
+softbuffer = { git = "https://github.com/pop-os/softbuffer", tag = "cosmic-2.0-old" } 
 syntect = "5.1"
 sysinfo = "0.28"
 thiserror = "1.0"
