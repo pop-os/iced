@@ -44,7 +44,7 @@ impl Sandbox for Tiger {
         let svg = svg(handle).width(Length::Fill).height(Length::Fill).style(
             if self.apply_color_filter {
                 theme::Svg::custom_fn(|_theme| svg::Appearance {
-                    color: Some(color!(0x0000ff)),
+                    color: Some(color!(0x0000FF)),
                 })
             } else {
                 theme::Svg::Default
@@ -72,5 +72,9 @@ impl Sandbox for Tiger {
         .center_x()
         .center_y()
         .into()
+    }
+
+    fn theme(&self) -> iced::Theme {
+        iced::Theme::Dark
     }
 }
