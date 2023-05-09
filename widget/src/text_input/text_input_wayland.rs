@@ -79,6 +79,7 @@ where
     width: Length,
     padding: Padding,
     size: Option<f32>,
+    line_height: text::LineHeight,
     on_input: Option<Box<dyn Fn(String) -> Message + 'a>>,
     on_paste: Option<Box<dyn Fn(String) -> Message + 'a>>,
     on_submit: Option<Message>,
@@ -122,6 +123,7 @@ where
             on_create_dnd_source: None,
             surface_ids: None,
             dnd_icon: false,
+            line_height: text::LineHeight::default(),
         }
     }
 
@@ -171,6 +173,15 @@ where
     /// [`Font`]: text::Renderer::Font
     pub fn font(mut self, font: Renderer::Font) -> Self {
         self.font = Some(font);
+        self
+    }
+
+    /// Sets the [`LineHeight`] of the [`TextInput`].
+    pub fn line_height(
+        mut self,
+        line_height: impl Into<text::LineHeight>,
+    ) -> Self {
+        self.line_height = line_height.into();
         self
     }
 
@@ -229,6 +240,7 @@ where
             value.unwrap_or(&self.value),
             &self.placeholder,
             self.size,
+            self.line_height,
             self.font,
             self.on_input.is_none(),
             self.is_secure,
@@ -320,8 +332,14 @@ where
             let bounds = limits.max();
             let font = self.font.unwrap_or_else(|| renderer.default_font());
 
-            let (width, height) =
-                renderer.measure(&self.value.to_string(), size, font, bounds);
+            let (width, height) = renderer.measure(
+                &self.value.to_string(),
+                size,
+                self.line_height,
+                font,
+                bounds,
+                text::Shaping::Advanced,
+            );
 
             let size = limits.resolve(Size::new(width, height));
             layout::Node::with_children(size, vec![layout::Node::new(size)])
@@ -332,6 +350,7 @@ where
                 self.width,
                 self.padding,
                 self.size,
+                self.line_height,
                 self.icon.as_ref(),
             )
         }
@@ -369,6 +388,7 @@ where
             shell,
             &mut self.value,
             self.size,
+            self.line_height,
             self.font,
             self.is_secure,
             self.on_input.as_deref(),
@@ -401,6 +421,7 @@ where
             &self.value,
             &self.placeholder,
             self.size,
+            self.line_height,
             self.font,
             self.on_input.is_none(),
             self.is_secure,
@@ -498,6 +519,7 @@ pub fn layout<Renderer>(
     width: Length,
     padding: Padding,
     size: Option<f32>,
+    line_height: text::LineHeight,
     icon: Option<&Icon<Renderer::Font>>,
 ) -> layout::Node
 where
@@ -505,7 +527,10 @@ where
 {
     let text_size = size.unwrap_or_else(|| renderer.default_size());
     let padding = padding.fit(Size::ZERO, limits.max());
-    let limits = limits.width(width).pad(padding).height(text_size * 1.2);
+    let limits = limits
+        .width(width)
+        .pad(padding)
+        .height(line_height.to_absolute(Pixels(text_size)));
 
     let text_bounds = limits.resolve(Size::ZERO);
 
@@ -514,6 +539,7 @@ where
             &icon.code_point.to_string(),
             icon.size.unwrap_or_else(|| renderer.default_size()),
             icon.font,
+            text::Shaping::Advanced,
         );
 
         let mut text_node = layout::Node::new(
@@ -565,6 +591,7 @@ pub fn update<'a, Message, Renderer>(
     shell: &mut Shell<'_, Message>,
     value: &mut Value,
     size: Option<f32>,
+    line_height: text::LineHeight,
     font: Option<Renderer::Font>,
     is_secure: bool,
     on_input: Option<&dyn Fn(String) -> Message>,
@@ -572,7 +599,7 @@ pub fn update<'a, Message, Renderer>(
     on_submit: &Option<Message>,
     state: impl FnOnce() -> &'a mut State,
     on_start_dnd_source: Option<&dyn Fn(State) -> Message>,
-    dnd_icon: bool,
+    _dnd_icon: bool,
     on_dnd_command_produced: Option<
         &dyn Fn(
             Box<
@@ -723,6 +750,7 @@ where
                                         text_layout.bounds(),
                                         font.clone(),
                                         size,
+                                        line_height,
                                         &value,
                                         state,
                                         target,
@@ -757,6 +785,7 @@ where
                                 text_layout.bounds(),
                                 font.clone(),
                                 size,
+                                line_height,
                                 &value,
                                 state,
                                 target,
@@ -782,6 +811,7 @@ where
                                 text_layout.bounds(),
                                 font.clone(),
                                 size,
+                                line_height,
                                 value,
                                 state,
                                 target,
@@ -841,6 +871,7 @@ where
                     text_layout.bounds(),
                     font,
                     size,
+                    line_height,
                     &value,
                     state,
                     target,
@@ -1198,6 +1229,7 @@ where
                         text_layout.bounds(),
                         font.clone(),
                         size,
+                        line_height,
                         &value,
                         state,
                         target,
@@ -1270,6 +1302,7 @@ where
                     text_layout.bounds(),
                     font.clone(),
                     size,
+                    line_height,
                     &value,
                     state,
                     target,
@@ -1403,6 +1436,7 @@ pub fn draw<Renderer>(
     value: &Value,
     placeholder: &str,
     size: Option<f32>,
+    line_height: text::LineHeight,
     font: Option<Renderer::Font>,
     is_disabled: bool,
     is_secure: bool,
@@ -1454,6 +1488,8 @@ pub fn draw<Renderer>(
             bounds: icon_layout.bounds(),
             horizontal_alignment: alignment::Horizontal::Left,
             vertical_alignment: alignment::Vertical::Top,
+            shaping: text::Shaping::Advanced,
+            line_height,
         });
     }
 
@@ -1567,6 +1603,7 @@ pub fn draw<Renderer>(
         if text.is_empty() { placeholder } else { &text },
         size,
         font,
+        text::Shaping::Advanced,
     );
 
     let render = |renderer: &mut Renderer| {
@@ -1594,6 +1631,8 @@ pub fn draw<Renderer>(
             size,
             horizontal_alignment: alignment::Horizontal::Left,
             vertical_alignment: alignment::Vertical::Center,
+            shaping: text::Shaping::Advanced,
+            line_height,
         });
     };
 
@@ -1850,8 +1889,12 @@ where
 {
     let text_before_cursor = value.until(cursor_index).to_string();
 
-    let text_value_width =
-        renderer.measure_width(&text_before_cursor, size, font);
+    let text_value_width = renderer.measure_width(
+        &text_before_cursor,
+        size,
+        font,
+        text::Shaping::Advanced,
+    );
 
     let offset = ((text_value_width + 5.0) - text_bounds.width).max(0.0);
 
@@ -1865,6 +1908,7 @@ fn find_cursor_position<Renderer>(
     text_bounds: Rectangle,
     font: Renderer::Font,
     size: Option<f32>,
+    line_height: text::LineHeight,
     value: &Value,
     state: &State,
     x: f32,
@@ -1881,8 +1925,10 @@ where
         .hit_test(
             &value,
             size,
+            line_height,
             font,
             Size::INFINITY,
+            text::Shaping::Advanced,
             Point::new(x + offset, text_bounds.height / 2.0),
             true,
         )

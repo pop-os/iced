@@ -46,18 +46,26 @@ impl backend::Text for Backend {
         &self,
         contents: &str,
         size: f32,
+        line_height: text::LineHeight,
         font: Font,
         bounds: Size,
+        shaping: text::Shaping,
     ) -> (f32, f32) {
-        delegate!(self, backend, backend.measure(contents, size, font, bounds))
+        delegate!(
+            self,
+            backend,
+            backend.measure(contents, size, line_height, font, bounds, shaping)
+        )
     }
 
     fn hit_test(
         &self,
         contents: &str,
         size: f32,
+        line_height: text::LineHeight,
         font: Font,
         bounds: Size,
+        shaping: text::Shaping,
         position: Point,
         nearest_only: bool,
     ) -> Option<text::Hit> {
@@ -67,10 +75,12 @@ impl backend::Text for Backend {
             backend.hit_test(
                 contents,
                 size,
+                line_height,
                 font,
                 bounds,
+                shaping,
                 position,
-                nearest_only
+                nearest_only,
             )
         )
     }
