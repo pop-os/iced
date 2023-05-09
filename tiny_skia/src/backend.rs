@@ -157,6 +157,12 @@ impl Backend {
                 border_width,
                 border_color,
             } => {
+                let mut border_radius = border_radius.clone();
+                for radius in &mut border_radius {
+                    *radius =
+                        radius.min(bounds.width / 2.0).min(bounds.height / 2.0);
+                }
+
                 let physical_bounds = (*bounds + translation) * scale_factor;
 
                 if !clip_bounds.intersects(&physical_bounds) {
@@ -172,7 +178,7 @@ impl Backend {
                 )
                 .post_scale(scale_factor, scale_factor);
 
-                let path = rounded_rectangle(*bounds, *border_radius);
+                let path = rounded_rectangle(*bounds, border_radius);
 
                 pixels.fill_path(
                     &path,
