@@ -499,17 +499,28 @@ pub fn draw<T, R>(
     } else {
         style_sheet.active(style)
     };
-
-    let (handle_width, handle_height, handle_border_radius) = match style
+    let border_width = style
         .handle
-        .shape
-    {
-        HandleShape::Circle { radius } => (radius * 2.0, radius * 2.0, radius),
-        HandleShape::Rectangle {
-            width,
-            border_radius,
-        } => (f32::from(width), bounds.height, border_radius),
-    };
+        .border_width
+        .min(bounds.height / 2.0)
+        .min(bounds.width / 2.0);
+
+    let (handle_width, handle_height, handle_border_radius) =
+        match style.handle.shape {
+            HandleShape::Circle { radius } => {
+                (radius * 2.0, radius * 2.0, radius + border_width)
+            }
+            HandleShape::Rectangle {
+                width,
+                border_radius,
+            } => {
+                let width = f32::from(width);
+                let height = (bounds.height - border_width * 2.0).max(0.0);
+                let border_radius =
+                    border_radius.min(height / 2.0).min(width / 2.0).max(0.0);
+                (width, height, border_radius)
+            }
+        };
 
     let value = value.into() as f32;
     let (range_start, range_end) = {
@@ -527,6 +538,7 @@ pub fn draw<T, R>(
 
     let rail_y = bounds.y + bounds.height / 2.0;
 
+    // rail
     renderer.fill_quad(
         renderer::Quad {
             bounds: Rectangle {
@@ -542,6 +554,7 @@ pub fn draw<T, R>(
         style.rail.colors.0,
     );
 
+    // rail
     renderer.fill_quad(
         renderer::Quad {
             bounds: Rectangle {
@@ -557,16 +570,17 @@ pub fn draw<T, R>(
         style.rail.colors.1,
     );
 
+    // handle
     renderer.fill_quad(
         renderer::Quad {
             bounds: Rectangle {
-                x: bounds.x + offset,
-                y: rail_y - handle_height / 2.0,
-                width: handle_width,
-                height: handle_height,
+                x: bounds.x + offset - border_width,
+                y: rail_y - (handle_height / 2.0 + border_width),
+                width: handle_width + 2.0 * border_width,
+                height: handle_height + 2.0 * border_width,
             },
             border_radius: handle_border_radius.into(),
-            border_width: style.handle.border_width,
+            border_width: border_width,
             border_color: style.handle.border_color,
         },
         style.handle.color,
