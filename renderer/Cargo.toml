@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [features]
+default = ["tiny-skia"]
 wgpu = ["iced_wgpu"]
 tiny-skia = ["iced_tiny_skia"]
 image = ["iced_wgpu/image", "iced_tiny_skia/image"]

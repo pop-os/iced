@@ -5,7 +5,7 @@ pub mod proxy;
 pub mod state;
 
 use crate::{
-    application::{Event, SurfaceIdWrapper},
+    application::Event,
     sctk_event::{
         DndOfferEvent, IcedSctkEvent, LayerSurfaceEventVariant,
         PopupEventVariant, SctkEvent, SelectionOfferEvent, StartCause,
@@ -46,9 +46,8 @@ use sctk::{
 use std::{
     collections::HashMap,
     fmt::Debug,
-    io::{BufRead, BufReader, BufWriter, Write},
+    io::{BufRead, BufReader, Write},
     num::NonZeroU32,
-    sync::{Arc, Mutex},
     time::{Duration, Instant},
 };
 use wayland_backend::client::WaylandError;
@@ -662,8 +661,8 @@ where
                     }
                     Event::Window(action) => match action {
                         platform_specific::wayland::window::Action::Window { builder, _phantom } => {
-                            let app_id = builder.app_id.clone();
-                            let title = builder.title.clone();
+                            let _app_id = builder.app_id.clone();
+                            let _title = builder.title.clone();
                             let (id, wl_surface) = self.state.get_window(builder);
                             let object_id = wl_surface.id();
                             sticky_exit_callback(
@@ -779,7 +778,7 @@ where
                                 }
                             }
                         },
-                        platform_specific::wayland::window::Action::ShowWindowMenu { id, x, y } => todo!(),
+                        platform_specific::wayland::window::Action::ShowWindowMenu { id: _, x: _, y: _ } => todo!(),
                         platform_specific::wayland::window::Action::Destroy(id) => {
                             if let Some(i) = self.state.windows.iter().position(|l| l.id == id) {
                                 let window = self.state.windows.remove(i);

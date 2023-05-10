@@ -294,21 +294,21 @@ where
 
     fn layout(
         &self,
-        renderer: &Renderer,
-        limits: &layout::Limits,
+        _renderer: &Renderer,
+        _limits: &layout::Limits,
     ) -> layout::Node {
         todo!()
     }
 
     fn draw(
         &self,
-        state: &Tree,
-        renderer: &mut Renderer,
-        theme: &<Renderer as crate::Renderer>::Theme,
-        style: &renderer::Style,
-        layout: Layout<'_>,
-        cursor_position: Point,
-        viewport: &Rectangle,
+        _state: &Tree,
+        _renderer: &mut Renderer,
+        _theme: &<Renderer as crate::Renderer>::Theme,
+        _style: &renderer::Style,
+        _layout: Layout<'_>,
+        _cursor_position: Point,
+        _viewport: &Rectangle,
     ) {
         todo!()
     }

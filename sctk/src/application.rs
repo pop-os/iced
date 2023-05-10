@@ -20,12 +20,11 @@ use iced_accessibility::{
 };
 use iced_futures::{
     core::{
-        event::{self, Status},
+        event::Status,
         layout::Limits,
         renderer::Style,
         widget::{
-            self,
-            operation::{self, focusable::focus, OperationWrapper},
+            operation::{self, OperationWrapper},
             tree, Operation, Tree,
         },
         Widget,
@@ -56,7 +55,6 @@ use wayland_backend::client::ObjectId;
 
 use iced_graphics::{
     compositor,
-    renderer,
     Compositor,
     // window::{self, Compositor},
     // Color, Point, Viewport,
@@ -75,7 +73,7 @@ use iced_runtime::{
             wayland::{data_device::DndIcon, popup},
         },
     },
-    core::{mouse::Interaction, Color, Element, Point, Renderer, Size},
+    core::{mouse::Interaction, Color, Point, Renderer, Size},
     system, user_interface,
     window::Id as SurfaceId,
     Command, Debug, Program, UserInterface,
@@ -392,7 +390,7 @@ where
     > = HashMap::new();
 
     let mut messages: Vec<A::Message> = Vec::new();
-    let mut commands: Vec<Command<A::Message>> = Vec::new();
+    let _commands: Vec<Command<A::Message>> = Vec::new();
     debug.startup_finished();
 
     // let mut current_context_window = init_id_inner;
@@ -888,7 +886,7 @@ where
                                 i += 1;
                             }
                         }
-                        let mut has_events = !sctk_events.is_empty();
+                        let has_events = !sctk_events.is_empty();
 
                         let cursor_position =
                             match states.get(&surface_id.inner()) {
@@ -896,7 +894,7 @@ where
                                 None => continue,
                             };
                         debug.event_processing_started();
-                        let mut native_events: Vec<_> = filtered_sctk
+                        let native_events: Vec<_> = filtered_sctk
                             .into_iter()
                             .flat_map(|e| {
                                 e.to_native(
@@ -1269,7 +1267,7 @@ pub fn build_user_interface<'a, A: Application>(
     cache: user_interface::Cache,
     renderer: &mut A::Renderer,
     size: Size,
-    title: &str,
+    _title: &str,
     debug: &mut Debug,
     id: SurfaceIdWrapper,
     auto_size_surfaces: &mut HashMap<
@@ -1633,7 +1631,7 @@ fn run_command<A, E>(
                                 },
                             }
                         }
-                        operation::Outcome::Chain(mut next) => {
+                        operation::Outcome::Chain(next) => {
                             current_operation = Some(Box::new(OperationWrapper::Wrapper(next)));
                         }
                     }

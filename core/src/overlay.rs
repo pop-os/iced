@@ -9,7 +9,7 @@ use crate::event::{self, Event};
 use crate::layout;
 use crate::mouse;
 use crate::renderer;
-use crate::widget::{self, Operation};
+use crate::widget::Operation;
 use crate::widget::{OperationOutputWrapper, Tree};
 use crate::{Clipboard, Layout, Point, Rectangle, Shell, Size};
 

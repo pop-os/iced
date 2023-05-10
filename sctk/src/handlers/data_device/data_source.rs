@@ -51,9 +51,7 @@ impl<T> DataSourceHandler for SctkState<T> {
             || self
                 .dnd_source
                 .as_ref()
-                .and_then(|s| {
-                    (s.source.as_ref().map(|s| s.0.inner() == source))
-                })
+                .and_then(|s| s.source.as_ref().map(|s| s.0.inner() == source))
                 .unwrap_or(false);
 
         if !is_active_source {
@@ -130,7 +128,7 @@ impl<T> DataSourceHandler for SctkState<T> {
                 .map(|s| (s.0.inner() == source))
                 .unwrap_or(false)
         }) {
-            let (my_source, data) = match source.source.as_ref() {
+            let (_my_source, data) = match source.source.as_ref() {
                 Some((source, data)) => (source, data),
                 None => return,
             };
@@ -205,9 +203,7 @@ impl<T> DataSourceHandler for SctkState<T> {
             || self
                 .dnd_source
                 .as_ref()
-                .and_then(|s| {
-                    (s.source.as_ref().map(|s| s.0.inner() == source))
-                })
+                .and_then(|s| s.source.as_ref().map(|s| s.0.inner() == source))
                 .unwrap_or(false);
         if is_active_source {
             self.sctk_events

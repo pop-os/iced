@@ -17,7 +17,7 @@ impl<T: Debug> CompositorHandler for SctkState<T> {
         surface: &wl_surface::WlSurface,
         new_factor: i32,
     ) {
-        if let Some(w) = self
+        if let Some(_w) = self
             .windows
             .iter()
             .find(|w| w.window.wl_surface().id() == surface.id())
@@ -28,7 +28,7 @@ impl<T: Debug> CompositorHandler for SctkState<T> {
                 e.scale_factor = Some(new_factor)
             }
         }
-        if let Some(w) = self
+        if let Some(_w) = self
             .layer_surfaces
             .iter()
             .find(|w| w.surface.wl_surface().id() == surface.id())
@@ -39,7 +39,7 @@ impl<T: Debug> CompositorHandler for SctkState<T> {
                 e.scale_factor = Some(new_factor)
             }
         }
-        if let Some(w) = self
+        if let Some(_w) = self
             .popups
             .iter()
             .find(|w| w.popup.wl_surface().id() == surface.id())

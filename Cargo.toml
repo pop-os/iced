@@ -71,7 +71,7 @@ members = [
 [dependencies]
 iced_core = { version = "0.9", path = "core" }
 iced_futures = { version = "0.6", path = "futures" }
-iced_renderer = { version = "0.1", path = "renderer" }
+iced_renderer = { version = "0.1", path = "renderer", default-features = false }
 iced_widget = { version = "0.1", path = "widget" }
 iced_winit = { version = "0.9", path = "winit", features = ["application"], optional = true }
 iced_sctk = { path = "./sctk", optional = true }

@@ -3,10 +3,7 @@ use crate::{
     sctk_event::{KeyboardEventVariant, SctkEvent},
 };
 
-use sctk::{
-    delegate_keyboard, reexports::client::Proxy,
-    seat::keyboard::KeyboardHandler,
-};
+use sctk::{delegate_keyboard, seat::keyboard::KeyboardHandler};
 use std::fmt::Debug;
 
 impl<T: Debug> KeyboardHandler for SctkState<T> {

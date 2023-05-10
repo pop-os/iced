@@ -1,5 +1,4 @@
 use crate::{
-    commands::popup,
     event_loop::state::{self, SctkState, SctkSurface},
     sctk_event::{PopupEventVariant, SctkEvent},
 };
