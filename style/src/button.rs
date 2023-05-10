@@ -49,6 +49,11 @@ pub trait StyleSheet {
         }
     }
 
+    /// Produces the focused [`Appearance`] of a button.
+    fn focused(&self, style: &Self::Style) -> Appearance {
+        self.hovered(style)
+    }
+
     /// Produces the pressed [`Appearance`] of a button.
     fn pressed(&self, style: &Self::Style) -> Appearance {
         Appearance {

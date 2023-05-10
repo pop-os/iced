@@ -17,8 +17,8 @@ use crate::core::{
     Background, Clipboard, Color, Element, Layout, Length, Padding, Point,
     Rectangle, Shell, Vector, Widget,
 };
-
 use iced_renderer::core::widget::{operation, OperationOutputWrapper};
+
 pub use iced_style::button::{Appearance, StyleSheet};
 
 /// A generic widget that produces a message when pressed.
@@ -197,7 +197,6 @@ where
     }
 
     fn diff(&mut self, tree: &mut Tree) {
-        let children = std::slice::from_mut(&mut self.content);
         tree.diff_children(std::slice::from_mut(&mut self.content))
     }
 
@@ -241,6 +240,8 @@ where
                 operation,
             );
         });
+        let state = tree.state.downcast_mut::<State>();
+        operation.focusable(state, Some(&self.id));
     }
 
     fn on_event(
@@ -567,17 +568,18 @@ where
     Renderer::Theme: StyleSheet,
 {
     let is_mouse_over = bounds.contains(cursor_position);
+    let state: &State = state();
 
     let styling = if !is_enabled {
         style_sheet.disabled(style)
     } else if is_mouse_over {
-        let state = state();
-
         if state.is_pressed {
             style_sheet.pressed(style)
         } else {
             style_sheet.hovered(style)
         }
+    } else if state.is_focused {
+        style_sheet.focused(style)
     } else {
         style_sheet.active(style)
     };
