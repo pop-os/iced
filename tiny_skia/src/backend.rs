@@ -183,14 +183,21 @@ impl Backend {
                     .min(bounds.width / 2.0)
                     .min(bounds.height / 2.0);
 
+                // Offset the fill by the border width
+                let path_bounds = Rectangle {
+                    x: bounds.x + border_width,
+                    y: bounds.y + border_width,
+                    width: bounds.width - 2.0 * border_width,
+                    height: bounds.height - 2.0 * border_width,
+                };
                 // fill border radius is the border radius minus the border width
-                let mut fill_border_radius = border_radius.clone();
+                let mut fill_border_radius = *border_radius;
                 for radius in &mut fill_border_radius {
-                    *radius = (*radius)
-                        .min(bounds.width / 2.0)
-                        .min(bounds.height / 2.0);
+                    *radius = (*radius - border_width / 2.0)
+                        .min(path_bounds.width / 2.0)
+                        .min(path_bounds.height / 2.0);
                 }
-                let path = rounded_rectangle(*bounds, fill_border_radius);
+                let path = rounded_rectangle(path_bounds, fill_border_radius);
 
                 pixels.fill_path(
                     &path,
@@ -252,11 +259,6 @@ impl Backend {
                     clip_mask,
                 );
 
-                // if the border width is zero, we can skip the rest
-                if border_width <= 0.0 {
-                    return;
-                }
-
                 // border path is offset by half the border width
                 let path_bounds = Rectangle {
                     x: bounds.x + border_width / 2.0,
@@ -265,29 +267,17 @@ impl Backend {
                     height: bounds.height - border_width,
                 };
 
-                // Make sure the border radius is correct
-                let mut border_radius = border_radius.clone();
-                let mut border_radius_gt_half_border_width =
-                    [true, true, true, true];
-                for (i, radius) in &mut border_radius.iter_mut().enumerate() {
-                    *radius = if *radius == 0.0 {
-                        // Path should handle this fine
-                        0.0
-                    } else if *radius > border_width / 2.0 {
-                        *radius - border_width / 2.0
-                    } else {
-                        border_radius_gt_half_border_width[i] = false;
-                        0.0
-                    }
-                    .min(path_bounds.width / 2.0)
-                    .min(path_bounds.height / 2.0);
+                let mut border_radius = *border_radius;
+                for radius in &mut border_radius {
+                    *radius = radius
+                        .min(path_bounds.width / 2.0)
+                        .min(path_bounds.height / 2.0);
                 }
 
-                // Stroking a path works well in this case.
-                if border_radius_gt_half_border_width.iter().all(|b| *b) {
-                    let border_radius_path =
-                        rounded_rectangle(path_bounds, border_radius);
+                let border_radius_path =
+                    rounded_rectangle(path_bounds, border_radius);
 
+                if border_width > 0.0 {
                     pixels.stroke_path(
                         &border_radius_path,
                         &tiny_skia::Paint {
