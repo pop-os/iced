@@ -13,12 +13,14 @@ use crate::core::{
     Size, Widget,
 };
 
-use std::borrow::Cow;
 use std::ops::RangeInclusive;
 
 pub use iced_style::slider::{
     Appearance, Handle, HandleShape, Rail, StyleSheet,
 };
+
+#[cfg(feature = "a11y")]
+use std::borrow::Cow;
 
 /// An horizontal bar and a handle that selects a single value from a range of
 /// values.
@@ -515,8 +517,16 @@ pub fn draw<T, R>(
             } => {
                 let width = f32::from(width);
                 let height = (bounds.height - border_width * 2.0).max(0.0);
-                let border_radius =
-                    border_radius.min(height / 2.0).min(width / 2.0).max(0.0);
+                let br: [f32; 4] = border_radius.into();
+                let border_radius = br
+                    .into_iter()
+                    .min_by(|x, y| {
+                        x.partial_cmp(y).unwrap_or(std::cmp::Ordering::Equal)
+                    })
+                    .unwrap_or(0.0)
+                    .min(height / 2.0)
+                    .min(width / 2.0)
+                    .max(0.0);
                 (width, height, border_radius)
             }
         };

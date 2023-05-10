@@ -1,5 +1,5 @@
 use crate::{event_loop::state::SctkState, sctk_event::SctkEvent};
-use sctk::{delegate_output, output::OutputHandler, reexports::client::Proxy};
+use sctk::{delegate_output, output::OutputHandler};
 use std::fmt::Debug;
 
 impl<T: Debug> OutputHandler for SctkState<T> {

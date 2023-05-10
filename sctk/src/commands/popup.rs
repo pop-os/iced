@@ -1,4 +1,5 @@
 //! Interact with the popups of your application.
+use iced_runtime::command::Command;
 use iced_runtime::command::{
     self,
     platform_specific::{
@@ -7,7 +8,6 @@ use iced_runtime::command::{
     },
 };
 use iced_runtime::window::Id as SurfaceId;
-use iced_runtime::{command::Command, window};
 
 /// <https://wayland.app/protocols/wlr-layer-shell-unstable-v1#zwlr_layer_surface_v1:request:get_popup>
 /// <https://wayland.app/protocols/xdg-shell#xdg_surface:request:get_popup>

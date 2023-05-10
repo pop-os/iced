@@ -11,6 +11,7 @@ categories.workspace = true
 keywords.workspace = true
 
 [features]
+default = []
 wgpu = ["iced_wgpu"]
 image = ["iced_tiny_skia/image", "iced_wgpu?/image"]
 svg = ["iced_tiny_skia/svg", "iced_wgpu?/svg"]

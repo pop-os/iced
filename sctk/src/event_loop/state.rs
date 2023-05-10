@@ -476,11 +476,11 @@ where
         let SctkWindowSettings {
             size,
             decorations,
-            transparent,
+
             window_id,
             app_id,
             title,
-            parent,
+
             size_limits,
             ..
         } = settings;

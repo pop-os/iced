@@ -40,13 +40,8 @@ use wayland_backend::client::ObjectId;
 
 use iced_graphics::{
     compositor, renderer, Viewport, Compositor,
-    // window::{self, Compositor},
-    // Color, Point, Viewport,
 };
-// use iced_native::user_interface::{self, UserInterface};
-// use iced_native::window::Id as SurfaceId;
 use itertools::Itertools;
-// use iced_native::widget::Operation;
 use std::mem::ManuallyDrop;
 use raw_window_handle::{
     HasRawDisplayHandle, HasRawWindowHandle, RawDisplayHandle, RawWindowHandle,
@@ -54,7 +49,6 @@ use raw_window_handle::{
 };
 use iced_style::application::{StyleSheet, self};
 use iced_runtime::{core::{mouse::Interaction, Element, Renderer, Point, Size, Color}, command::{platform_specific::{self, wayland::{data_device::DndIcon, popup}}, self}, window::Id as SurfaceId, Command, user_interface, UserInterface, system, clipboard, Debug, Program};
-// use iced_native::widget::operation::OperationWrapper;
 
 pub enum Event<Message> {
     /// A normal sctk event
@@ -355,7 +349,7 @@ where
     > = HashMap::new();
 
     let mut messages: Vec<A::Message> = Vec::new();
-    let mut commands: Vec<Command<A::Message>> = Vec::new();
+    let _commands: Vec<Command<A::Message>> = Vec::new();
     debug.startup_finished();
 
     // let mut current_context_window = init_id_inner;
@@ -851,7 +845,7 @@ where
                                 i += 1;
                             }
                         }
-                        let mut has_events = !sctk_events.is_empty();
+                        let has_events = !sctk_events.is_empty();
 
                         let cursor_position =
                             match states.get(&surface_id.inner()) {
@@ -859,7 +853,7 @@ where
                                 None => continue,
                             };
                         debug.event_processing_started();
-                        let mut native_events: Vec<_> = filtered_sctk
+                        let native_events: Vec<_> = filtered_sctk
                             .into_iter()
                             .flat_map(|e| {
                                 e.to_native(
@@ -1206,7 +1200,7 @@ pub fn build_user_interface<'a, A: Application>(
     cache: user_interface::Cache,
     renderer: &mut A::Renderer,
     size: Size,
-    title: &str,
+    _title: &str,
     debug: &mut Debug,
     id: SurfaceIdWrapper,
     auto_size_surfaces: &mut HashMap<
@@ -1569,7 +1563,7 @@ fn run_command<A, E>(
                             }
                            
                         }
-                        operation::Outcome::Chain(mut next) => {
+                        operation::Outcome::Chain(next) => {
                             current_operation = Some(Box::new(OperationWrapper::Wrapper(next)));
                         }
                     }

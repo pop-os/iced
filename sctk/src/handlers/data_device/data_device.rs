@@ -42,7 +42,7 @@ impl<T> DataDeviceHandler for SctkState<T> {
         &mut self,
         _conn: &Connection,
         _qh: &QueueHandle<Self>,
-        data_device: DataDevice,
+        _data_device: DataDevice,
     ) {
         // ASHLEY TODO the dnd_offer should be removed when the leave event is received
         // but for now it is not if the offer was previously dropped.

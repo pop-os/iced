@@ -709,7 +709,7 @@ impl SctkEvent {
                     PopupEventVariant::Created(_, _) => Default::default(), // TODO
                     PopupEventVariant::WmCapabilities(_) => Default::default(), // TODO
                     PopupEventVariant::Configure(_, _, _) => Default::default(), // TODO
-                    PopupEventVariant::RepositionionedPopup { token } => {
+                    PopupEventVariant::RepositionionedPopup { token: _ } => {
                         Default::default()
                     }
                     PopupEventVariant::Size(_, _) => Default::default(), // TODO
@@ -745,9 +745,9 @@ impl SctkEvent {
             }
             SctkEvent::Frame(_) => Default::default(),
             SctkEvent::ScaleFactorChanged {
-                factor,
-                id,
-                inner_size,
+                factor: _,
+                id: _,
+                inner_size: _,
             } => Default::default(),
             SctkEvent::DndOffer { event, .. } => match event {
                 DndOfferEvent::Enter { mime_types, x, y } => {
