@@ -297,7 +297,7 @@ pub use application::Application;
 pub use error::Error;
 pub use event::Event;
 pub use executor::Executor;
-pub use font::Font;
+pub use iced_core::Font;
 pub use sandbox::Sandbox;
 pub use settings::Settings;
 pub use subscription::Subscription;
