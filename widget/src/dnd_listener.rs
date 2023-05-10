@@ -179,6 +179,7 @@ where
 
     fn layout(
         &self,
+        tree: &mut Tree,
         renderer: &Renderer,
         limits: &layout::Limits,
     ) -> layout::Node {
@@ -190,7 +191,7 @@ where
             u32::MAX,
             u32::MAX,
             |renderer, limits| {
-                self.content.as_widget().layout(renderer, limits)
+                self.content.as_widget().layout(tree, renderer, limits)
             },
         )
     }
@@ -202,7 +203,7 @@ where
         renderer: &Renderer,
         operation: &mut dyn Operation<OperationOutputWrapper<Message>>,
     ) {
-        operation.container(None, &mut |operation| {
+        operation.container(None, layout.bounds(), &mut |operation| {
             self.content.as_widget().operate(
                 &mut tree.children[0],
                 layout.children().next().unwrap(),
@@ -217,10 +218,11 @@ where
         tree: &mut Tree,
         event: Event,
         layout: Layout<'_>,
-        cursor_position: Point,
+        cursor_position: mouse::Cursor,
         renderer: &Renderer,
         clipboard: &mut dyn Clipboard,
         shell: &mut Shell<'_, Message>,
+        viewport: &Rectangle,
     ) -> event::Status {
         if let event::Status::Captured = self.content.as_widget_mut().on_event(
             &mut tree.children[0],
@@ -230,6 +232,7 @@ where
             renderer,
             clipboard,
             shell,
+            viewport,
         ) {
             return event::Status::Captured;
         }
@@ -247,7 +250,7 @@ where
         &self,
         tree: &Tree,
         layout: Layout<'_>,
-        cursor_position: Point,
+        cursor_position: mouse::Cursor,
         viewport: &Rectangle,
         renderer: &Renderer,
     ) -> mouse::Interaction {
@@ -267,7 +270,7 @@ where
         theme: &Renderer::Theme,
         renderer_style: &renderer::Style,
         layout: Layout<'_>,
-        cursor_position: Point,
+        cursor_position: mouse::Cursor,
         viewport: &Rectangle,
     ) {
         self.content.as_widget().draw(

@@ -6,13 +6,5 @@ pub(crate) mod value;
 
 pub mod cursor;
 
-#[cfg(feature = "wayland")]
-mod text_input_wayland;
-#[cfg(feature = "wayland")]
-pub use text_input_wayland::*;
-#[cfg(not(feature = "wayland"))]
 mod text_input;
-#[cfg(not(feature = "wayland"))]
 pub use text_input::*;
-
-

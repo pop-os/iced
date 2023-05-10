@@ -15,7 +15,7 @@ use float_cmp::approx_eq;
 use futures::{channel::mpsc, task, Future, FutureExt, StreamExt};
 #[cfg(feature = "a11y")]
 use iced_accessibility::{A11yId, accesskit::{NodeId, NodeBuilder}, A11yNode};
-use iced_futures::{Executor, Runtime, core::{renderer::Style, widget::{operation::{self, OperationWrapper, focusable::focus}, tree, Tree, self, Operation}, layout::Limits, Widget, event::{Status, self}}, Subscription};
+use iced_futures::{Executor, Runtime, core::{renderer::Style, widget::{operation::{self, OperationWrapper, focusable::focus}, tree, Tree, self, Operation}, layout::Limits, Widget, event::{Status, self}, mouse}, Subscription};
 // use iced_native::{
 //     application::{self, StyleSheet},
 //     clipboard,
@@ -674,7 +674,7 @@ where
                 // Dnd Surfaces are only drawn once
 
                 let id = wl_surface.id();
-                let (native_id, e) = match dnd_icon {
+                let (native_id, e, node) = match dnd_icon {
                     DndIcon::Custom(id) => {
                         let mut e = application.view(id);
                         let state = e.as_widget().state();
@@ -686,7 +686,9 @@ where
                             children: e.as_widget().children(),
                         };
                         e.as_widget_mut().diff(&mut tree);
-                        (id, e)
+                        let node =
+                          Widget::layout(e.as_widget(), &mut tree, &renderer, &Limits::NONE);
+                        (id, e, node)
                     }
                     DndIcon::Widget(id, widget_state) => {
                         let mut e = application.view(id);
@@ -697,12 +699,12 @@ where
                             children: e.as_widget().children(),
                         };
                         e.as_widget_mut().diff(&mut tree);
-                        (id, e)
+                        let node =
+                          Widget::layout(e.as_widget(), &mut tree, &renderer, &Limits::NONE);
+                        (id, e, node)
                     }
                 };
-                let node =
-                    Widget::layout(e.as_widget(), &renderer, &Limits::NONE);
-                let bounds = node.bounds();
+               let bounds = node.bounds();
                 let w = bounds.width.ceil() as u32;
                 let h = bounds.height.ceil() as u32;
                 if w == 0 || h == 0 {
@@ -749,7 +751,7 @@ where
                     &Style {
                         text_color: state.text_color(),
                     },
-                    state.cursor_position(),
+                    state.cursor(),
                 );
                 let _ = compositor.present(
                     &mut renderer,
@@ -832,7 +834,9 @@ where
                             continue;
                         }
                         let mut filtered_sctk = Vec::with_capacity(sctk_events.len());
-
+                        let Some(state) = states.get(&surface_id.inner()) else {
+                            continue;
+                        };
                         let mut i = 0;
                         while i < sctk_events.len() {
                             let has_kbd_focus =
@@ -890,7 +894,7 @@ where
                                 .unwrap();
                             user_interface.update(
                                 native_events.as_slice(),
-                                cursor_position,
+                                state.cursor(),
                                 &mut renderer,
                                 &mut simple_clipboard,
                                 &mut messages,
@@ -1013,7 +1017,7 @@ where
                     if let Some(Some(adapter)) = a11y_enabled.then(|| adapters.get_mut(&native_id.inner())) {
                         use iced_accessibility::{A11yTree, accesskit::{TreeUpdate, Tree, Role}};
                         // TODO send a11y tree
-                        let child_tree = user_interface.a11y_nodes(state.cursor_position());
+                        let child_tree = user_interface.a11y_nodes(state.cursor());
                         let mut root = NodeBuilder::new(Role::Window);
                         root.set_name(state.title().to_string());
                         let window_tree = A11yTree::node_with_child_tree(A11yNode::new(root, adapter.id), child_tree);
@@ -1078,7 +1082,7 @@ where
                             &Style {
                                 text_color: state.text_color(),
                             },
-                            state.cursor_position(),
+                            state.cursor(),
                         );
                         debug.draw_finished();
                         ev_proxy.send_event(Event::SetCursor(
@@ -1097,7 +1101,7 @@ where
                             &Style {
                                 text_color: state.text_color(),
                             },
-                            state.cursor_position(),
+                            state.cursor(),
                         );
                         debug.draw_finished();
                         ev_proxy.send_event(Event::SetCursor(
@@ -1225,7 +1229,7 @@ where
         let _state = view.state();
         // TODO would it be ok to diff against the current cache?
         view.diff(&mut Tree::empty());
-        let bounds = view.layout(renderer, &limits).bounds().size();
+        let bounds = view.layout(&mut Tree::empty(), renderer, &limits).bounds().size();
         let (w, h) = (bounds.width.ceil() as u32, bounds.height.ceil() as u32);
         let dirty = dirty || w != prev_w || h != prev_h;
         auto_size_surfaces.insert(id, (w, h, limits, dirty));
@@ -1378,7 +1382,14 @@ where
     pub fn cursor_position(&self) -> Point {
         self.cursor_position
     }
-
+    
+    /// Returns the current cursor position of the [`State`].
+    pub fn cursor(&self) -> mouse::Cursor {
+        mouse::Cursor::Available(Point {
+            x: self.cursor_position.x as f32,
+            y: self.cursor_position.y as f32,
+        })        
+    }
     /// Returns the current keyboard modifiers of the [`State`].
     pub fn modifiers(&self) -> Modifiers {
         self.modifiers
@@ -1579,7 +1590,7 @@ fn run_command<A, E>(
                         let mut e = application.view(builder.id);
                         let _state = Widget::state(e.as_widget());
                         e.as_widget_mut().diff(&mut Tree::empty());
-                        let node = Widget::layout(e.as_widget(), renderer, &builder.size_limits);
+                        let node = Widget::layout(e.as_widget(), &mut Tree::empty(), renderer, &builder.size_limits);
                         let bounds = node.bounds();
                         let w = bounds.width.ceil() as u32;
                         let h = bounds.height.ceil() as u32;
@@ -1601,7 +1612,7 @@ fn run_command<A, E>(
                         let mut e = application.view(builder.window_id);
                         let _state = Widget::state(e.as_widget());
                         e.as_widget_mut().diff(&mut Tree::empty());
-                        let node = Widget::layout(e.as_widget(), renderer, &builder.size_limits);
+                        let node = Widget::layout(e.as_widget(), &mut Tree::empty(), renderer, &builder.size_limits);
                         let bounds = node.bounds();
                         let w = bounds.width.ceil() as u32;
                         let h = bounds.height.ceil() as u32;
@@ -1623,7 +1634,7 @@ fn run_command<A, E>(
                         let mut e = application.view(popup.id);
                         let _state = Widget::state(e.as_widget());
                         e.as_widget_mut().diff(&mut Tree::empty());
-                        let node = Widget::layout(e.as_widget(), renderer, &popup.positioner.size_limits);
+                        let node = Widget::layout( e.as_widget(), &mut Tree::empty(), renderer, &popup.positioner.size_limits);
                         let bounds = node.bounds();
                         let w = bounds.width.ceil().ceil() as u32;
                         let h = bounds.height.ceil().ceil() as u32;

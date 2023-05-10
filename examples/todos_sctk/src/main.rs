@@ -1,7 +1,6 @@
 use env_logger::Env;
 use iced::alignment::{self, Alignment};
 use iced::event::{self, Event};
-use iced::id::Id;
 use iced::subscription;
 use iced::theme::{self, Theme};
 use iced::wayland::actions::data_device::ActionInner;
@@ -13,9 +12,10 @@ use iced::widget::{
     self, button, checkbox, column, container, row, scrollable, text,
     text_input, Text,
 };
-use iced::{id, keyboard};
 use iced::{window, Application, Element};
 use iced::{Color, Command, Font, Length, Settings, Subscription};
+use iced_core::id::Id;
+use iced_core::{id, keyboard};
 
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
@@ -42,14 +42,6 @@ enum Todos {
     Loaded(State),
 }
 
-#[derive(Debug, Default, Clone)]
-enum DndState {
-    #[default]
-    None,
-    // hold onto text input state and the id of the window being dragged
-    Dragging(text_input::State, window::Id),
-}
-
 #[derive(Debug, Default)]
 struct State {
     window_id_ctr: u128,
@@ -58,7 +50,6 @@ struct State {
     tasks: Vec<Task>,
     dirty: bool,
     saving: bool,
-    dnd_state: DndState,
 }
 
 #[derive(Clone)]
@@ -71,8 +62,6 @@ enum Message {
     TaskMessage(usize, TaskMessage),
     TabPressed { shift: bool },
     CloseRequested(window::Id),
-    TextInputDragged(text_input::State),
-    TextInputDndCommand(Arc<Box<dyn Send + Sync + Fn() -> ActionInner>>),
     Ignore,
 }
 
@@ -93,12 +82,7 @@ impl Debug for Message {
             Message::CloseRequested(_) => {
                 write!(f, "Message::CloseRequested(_)")
             }
-            Message::TextInputDragged(_) => {
-                write!(f, "Message::TextInputDragged(_)")
-            }
-            Message::TextInputDndCommand(_) => {
-                write!(f, "Message::TextInputDndCommand(_)")
-            }
+
             Message::Ignore => write!(f, "Message::Ignore"),
         }
     }
@@ -222,19 +206,6 @@ impl Application for Todos {
                         dbg!(s);
                         std::process::exit(0);
                     }
-                    Message::TextInputDragged(text_input_state) => {
-                        let icon_id = window::Id(state.window_id_ctr);
-
-                        state.dnd_state = DndState::Dragging(
-                            text_input_state.clone(),
-                            icon_id,
-                        );
-
-                        Command::none()
-                    }
-                    Message::TextInputDndCommand(action) => {
-                        data_device_action(action())
-                    }
                     _ => Command::none(),
                 };
 
@@ -271,23 +242,9 @@ impl Application for Todos {
                 input_value,
                 filter,
                 tasks,
-                dnd_state,
                 window_id_ctr,
                 ..
             }) => {
-                match dnd_state {
-                    DndState::Dragging(state, drag_id) if *drag_id == id => {
-                        return text_input(
-                            "What needs to be done?",
-                            &state.dragged_text().unwrap_or_default(),
-                        )
-                        .on_input(Message::InputChanged)
-                        .dnd_icon(true)
-                        .size(30)
-                        .into();
-                    }
-                    _ => {}
-                };
                 if window::Id(0) != id {
                     panic!("Wrong window id: {:?}", id)
                 }
@@ -304,12 +261,7 @@ impl Application for Todos {
                     .size(30)
                     .on_submit(Message::CreateTask)
                     .on_input(Message::InputChanged)
-                    .on_paste(Message::InputChanged)
-                    .surface_ids((window::Id(0), window::Id(*window_id_ctr)))
-                    .on_start_dnd(Message::TextInputDragged)
-                    .on_dnd_command_produced(|a| {
-                        Message::TextInputDndCommand(Arc::new(a))
-                    });
+                    .on_paste(Message::InputChanged);
 
                 let controls = view_controls(tasks, *filter);
                 let filtered_tasks =
@@ -356,19 +308,7 @@ impl Application for Todos {
     }
 
     fn subscription(&self) -> Subscription<Message> {
-        subscription::events_with(|event, status| match (event, status) {
-            (
-                Event::Keyboard(keyboard::Event::KeyPressed {
-                    key_code: keyboard::KeyCode::Tab,
-                    modifiers,
-                    ..
-                }),
-                event::Status::Ignored,
-            ) => Some(Message::TabPressed {
-                shift: modifiers.shift(),
-            }),
-            _ => None,
-        })
+        Subscription::none()
     }
 
     fn close_requested(&self, id: window::Id) -> Self::Message {

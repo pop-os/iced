@@ -133,6 +133,7 @@ impl<Flags> Settings<Flags> {
             default_text_size: default_settings.default_text_size,
             antialiasing: default_settings.antialiasing,
             exit_on_close_request: default_settings.exit_on_close_request,
+            fonts: default_settings.fonts,
         }
     }
 }
@@ -148,8 +149,9 @@ where
             initial_surface: Default::default(),
             flags: Default::default(),
             default_font: Default::default(),
-            default_text_size: 16.0,
+            default_text_size: Pixels(16.0),
             antialiasing: false,
+            fonts: Vec::new(),
             exit_on_close_request: true,
         }
     }
