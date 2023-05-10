@@ -349,7 +349,8 @@ where
     > = HashMap::new();
 
     let mut messages: Vec<A::Message> = Vec::new();
-    let _commands: Vec<Command<A::Message>> = Vec::new();
+    #[cfg(feature = "a11y")]
+    let mut commands: Vec<Command<A::Message>> = Vec::new();
     debug.startup_finished();
 
     // let mut current_context_window = init_id_inner;
@@ -853,7 +854,8 @@ where
                                 None => continue,
                             };
                         debug.event_processing_started();
-                        let native_events: Vec<_> = filtered_sctk
+                        #[allow(unused_mut)]
+                        let mut native_events: Vec<_> = filtered_sctk
                             .into_iter()
                             .flat_map(|e| {
                                 e.to_native(
@@ -1026,7 +1028,7 @@ where
                                 }
                                 operation::Outcome::Some(message) => {
                                     match message {
-                                        operation::OperationOutputWrapper::Message(m) => {
+                                        operation::OperationOutputWrapper::Message(_) => {
                                             unimplemented!();
                                         }
                                         operation::OperationOutputWrapper::Id(id) => {
@@ -1035,7 +1037,7 @@ where
                                     }
                                    
                                 }
-                                operation::Outcome::Chain(mut next) => {
+                                operation::Outcome::Chain(next) => {
                                     current_operation = Some(Box::new(OperationWrapper::Wrapper(next)));
                                 }
                             }

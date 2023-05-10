@@ -73,8 +73,8 @@ pub(crate) struct SctkSeat {
     pub(crate) ptr: Option<WlPointer>,
     pub(crate) ptr_focus: Option<WlSurface>,
     pub(crate) last_ptr_press: Option<(u32, u32, u32)>, // (time, button, serial)
-    pub(crate) touch: Option<WlTouch>,
-    pub(crate) modifiers: Modifiers,
+    pub(crate) _touch: Option<WlTouch>,
+    pub(crate) _modifiers: Modifiers,
     pub(crate) data_device: DataDevice,
 }
 
@@ -83,10 +83,10 @@ pub struct SctkWindow<T> {
     pub(crate) id: window::Id,
     pub(crate) window: Window,
     pub(crate) requested_size: Option<(u32, u32)>,
-    pub(crate) current_size: Option<(u32, u32)>,
+    pub(crate) _current_size: Option<(u32, u32)>,
     pub(crate) last_configure: Option<WindowConfigure>,
     /// Requests that SCTK window should perform.
-    pub(crate) pending_requests:
+    pub(crate) _pending_requests:
         Vec<platform_specific::wayland::window::Action<T>>,
 }
 
@@ -102,7 +102,7 @@ pub struct SctkLayerSurface<T> {
     pub(crate) margin: IcedMargin,
     pub(crate) exclusive_zone: i32,
     pub(crate) last_configure: Option<LayerSurfaceConfigure>,
-    pub(crate) pending_requests:
+    pub(crate) _pending_requests:
         Vec<platform_specific::wayland::layer_surface::Action<T>>,
 }
 
@@ -128,7 +128,7 @@ pub struct SctkPopup<T> {
     pub(crate) popup: Popup,
     pub(crate) last_configure: Option<PopupConfigure>,
     // pub(crate) positioner: XdgPositioner,
-    pub(crate) pending_requests:
+    pub(crate) _pending_requests:
         Vec<platform_specific::wayland::popup::Action<T>>,
     pub(crate) data: SctkPopupData,
 }
@@ -200,9 +200,9 @@ impl Debug for SctkCopyPasteSource {
 /// Wrapper to carry sctk state.
 pub struct SctkState<T> {
     /// the cursor wl_surface
-    pub(crate) cursor_surface: Option<wl_surface::WlSurface>,
+    pub(crate) _cursor_surface: Option<wl_surface::WlSurface>,
     /// a memory pool
-    pub(crate) multipool: Option<MultiPool<WlSurface>>,
+    pub(crate) _multipool: Option<MultiPool<WlSurface>>,
 
     // all present outputs
     pub(crate) outputs: Vec<WlOutput>,
@@ -218,7 +218,7 @@ pub struct SctkState<T> {
     pub(crate) layer_surfaces: Vec<SctkLayerSurface<T>>,
     pub(crate) popups: Vec<SctkPopup<T>>,
     pub(crate) dnd_source: Option<Dnd<T>>,
-    pub(crate) kbd_focus: Option<WlSurface>,
+    pub(crate) _kbd_focus: Option<WlSurface>,
 
     /// Window updates, which are coming from SCTK or the compositor, which require
     /// calling back to the sctk's downstream. They are handled right in the event loop,
@@ -238,7 +238,7 @@ pub struct SctkState<T> {
     pub(crate) selection_source: Option<SctkCopyPasteSource>,
     pub(crate) dnd_offer: Option<SctkDragOffer>,
     pub(crate) selection_offer: Option<SctkSelectionOffer>,
-    pub(crate) accept_counter: u32,
+    pub(crate) _accept_counter: u32,
     /// A sink for window and device events that is being filled during dispatching
     /// event loop and forwarded downstream afterwards.
     pub(crate) sctk_events: Vec<SctkEvent>,
@@ -458,7 +458,7 @@ where
                 positioner,
             },
             last_configure: None,
-            pending_requests: Default::default(),
+            _pending_requests: Default::default(),
         });
 
         Ok((
@@ -537,9 +537,9 @@ where
             id: window_id,
             window,
             requested_size: Some(size),
-            current_size: Some((1, 1)),
+            _current_size: Some((1, 1)),
             last_configure: None,
-            pending_requests: Vec::new(),
+            _pending_requests: Vec::new(),
         });
         (window_id, wl_surface)
     }
@@ -613,7 +613,7 @@ where
             margin,
             exclusive_zone,
             last_configure: None,
-            pending_requests: Vec::new(),
+            _pending_requests: Vec::new(),
         });
         Ok((id, wl_surface))
     }

@@ -2,10 +2,7 @@ use crate::{
     event_loop::state::{self, SctkState, SctkSurface},
     sctk_event::{PopupEventVariant, SctkEvent},
 };
-use sctk::{
-    delegate_xdg_popup, reexports::client::Proxy,
-    shell::xdg::popup::PopupHandler,
-};
+use sctk::{delegate_xdg_popup, shell::xdg::popup::PopupHandler};
 use std::fmt::Debug;
 
 impl<T: Debug> PopupHandler for SctkState<T> {
