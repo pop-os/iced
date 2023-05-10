@@ -4,6 +4,8 @@ pub mod control_flow;
 pub mod proxy;
 pub mod state;
 
+#[cfg(feature = "a11y")]
+use crate::application::SurfaceIdWrapper;
 use crate::{
     application::Event,
     sctk_event::{
@@ -43,10 +45,12 @@ use sctk::{
     },
     shm::Shm,
 };
+#[cfg(feature = "a11y")]
+use std::sync::{Arc, Mutex};
 use std::{
     collections::HashMap,
     fmt::Debug,
-    io::{BufRead, BufReader, Write},
+    io::{BufRead, BufReader},
     num::NonZeroU32,
     time::{Duration, Instant},
 };
@@ -68,7 +72,7 @@ pub struct SctkEventLoop<T> {
     pub(crate) event_loop: EventLoop<'static, SctkState<T>>,
     pub(crate) wayland_dispatcher:
         calloop::Dispatcher<'static, WaylandSource<SctkState<T>>, SctkState<T>>,
-    pub(crate) features: Features,
+    pub(crate) _features: Features,
     /// A proxy to wake up event loop.
     pub event_loop_awakener: calloop::ping::Ping,
     /// A sender for submitting user events in the event loop
@@ -151,15 +155,15 @@ where
                 queue_handle: qh,
                 loop_handle,
 
-                cursor_surface: None,
-                multipool: None,
+                _cursor_surface: None,
+                _multipool: None,
                 outputs: Vec::new(),
                 seats: Vec::new(),
                 windows: Vec::new(),
                 layer_surfaces: Vec::new(),
                 popups: Vec::new(),
                 dnd_source: None,
-                kbd_focus: None,
+                _kbd_focus: None,
                 window_compositor_updates: HashMap::new(),
                 sctk_events: Vec::new(),
                 popup_compositor_updates: Default::default(),
@@ -167,11 +171,11 @@ where
                 pending_user_events: Vec::new(),
                 token_ctr: 0,
                 selection_source: None,
-                accept_counter: 0,
+                _accept_counter: 0,
                 dnd_offer: None,
                 selection_offer: None,
             },
-            features: Default::default(),
+            _features: Default::default(),
             event_loop_awakener: ping,
             user_events_sender,
             #[cfg(feature = "a11y")]
@@ -208,11 +212,11 @@ where
         surface: &WlSurface,
         app_id: Option<String>,
         surface_title: Option<String>,
-        role: iced_accessibility::accesskit::Role,
+        _role: iced_accessibility::accesskit::Role,
     ) -> adapter::IcedSctkAdapter {
         use iced_accessibility::{
             accesskit::{
-                Node, NodeBuilder, NodeClassSet, NodeId, Role, Tree, TreeUpdate,
+                NodeBuilder, NodeClassSet, NodeId, Role, Tree, TreeUpdate,
             },
             accesskit_unix::Adapter,
             window_node_id,
@@ -661,8 +665,10 @@ where
                     }
                     Event::Window(action) => match action {
                         platform_specific::wayland::window::Action::Window { builder, _phantom } => {
-                            let _app_id = builder.app_id.clone();
-                            let _title = builder.title.clone();
+                            #[cfg(feature = "a11y")]
+                            let app_id = builder.app_id.clone();
+                            #[cfg(feature = "a11y")]
+                            let title = builder.title.clone();
                             let (id, wl_surface) = self.state.get_window(builder);
                             let object_id = wl_surface.id();
                             sticky_exit_callback(

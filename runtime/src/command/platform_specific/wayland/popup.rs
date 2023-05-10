@@ -1,6 +1,6 @@
+use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
-use std::{collections::hash_map::DefaultHasher, fmt};
 
 use iced_core::layout::Limits;
 use iced_core::window::Id;

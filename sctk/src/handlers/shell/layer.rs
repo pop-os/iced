@@ -83,6 +83,7 @@ impl<T: Debug> LayerShellHandler for SctkState<T> {
 
 delegate_layer!(@<T: 'static + Debug> SctkState<T>);
 
+#[allow(dead_code)]
 /// A request to SCTK window from Winit window.
 #[derive(Debug, Clone)]
 pub enum LayerSurfaceRequest {
