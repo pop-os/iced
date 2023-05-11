@@ -524,7 +524,7 @@ pub fn draw<T, R>(
                 let height = bounds.height;
                 let border_radius =
                     border_radius.min(height / 2.0).min(width / 2.0).max(0.0);
-                (width, height, border_radius + width)
+                (width, height, border_radius)
             }
         };
 

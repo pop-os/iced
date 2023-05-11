@@ -205,6 +205,11 @@ impl Backend {
                     clip_mask,
                 );
 
+                // if the border width is zero, we can skip the rest
+                if border_width <= 0.0 {
+                    return;
+                }
+
                 // border path is offset by half the border width
                 let path_bounds = Rectangle {
                     x: bounds.x + border_width / 2.0,
@@ -213,34 +218,42 @@ impl Backend {
                     height: bounds.height - border_width,
                 };
 
+                // Make sure the border radius is correct
                 let mut border_radius = border_radius.clone();
                 for radius in &mut border_radius {
-                    *radius = radius
-                        .min(path_bounds.width / 2.0)
-                        .min(path_bounds.height / 2.0);
+                    *radius = if *radius == 0.0 {
+                        // path should handle this fine
+                        0.0
+                    } else if *radius > border_width / 2.0 {
+                        *radius - border_width / 2.0
+                    } else {
+                        // FIXME What to do here
+                        *radius / border_width
+                    }
+                    .min(path_bounds.width / 2.0)
+                    .min(path_bounds.height / 2.0);
                 }
 
+                // Stroking a path works well in this case.
                 let border_radius_path =
                     rounded_rectangle(path_bounds, border_radius);
 
-                if border_width > 0.0 {
-                    pixels.stroke_path(
-                        &border_radius_path,
-                        &tiny_skia::Paint {
-                            shader: tiny_skia::Shader::SolidColor(into_color(
-                                *border_color,
-                            )),
-                            anti_alias: true,
-                            ..tiny_skia::Paint::default()
-                        },
-                        &tiny_skia::Stroke {
-                            width: border_width,
-                            ..tiny_skia::Stroke::default()
-                        },
-                        transform,
-                        clip_mask,
-                    );
-                }
+                pixels.stroke_path(
+                    &border_radius_path,
+                    &tiny_skia::Paint {
+                        shader: tiny_skia::Shader::SolidColor(into_color(
+                            *border_color,
+                        )),
+                        anti_alias: true,
+                        ..tiny_skia::Paint::default()
+                    },
+                    &tiny_skia::Stroke {
+                        width: border_width,
+                        ..tiny_skia::Stroke::default()
+                    },
+                    transform,
+                    clip_mask,
+                );
             }
             Primitive::Text {
                 content,
