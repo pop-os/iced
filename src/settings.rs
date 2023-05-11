@@ -60,6 +60,41 @@ pub struct Settings<Flags> {
     pub exit_on_close_request: bool,
 }
 
+#[cfg(not(any(feature = "winit", feature = "wayland")))]
+impl<Flags> Settings<Flags> {
+    /// Initialize [`Application`] settings using the given data.
+    ///
+    /// [`Application`]: crate::Application
+    pub fn with_flags(flags: Flags) -> Self {
+        let default_settings = Settings::<()>::default();
+        Self {
+            flags,
+            id: default_settings.id,
+            default_font: default_settings.default_font,
+            default_text_size: default_settings.default_text_size,
+            antialiasing: default_settings.antialiasing,
+            exit_on_close_request: default_settings.exit_on_close_request,
+        }
+    }
+}
+
+#[cfg(not(any(feature = "winit", feature = "wayland")))]
+impl<Flags> Default for Settings<Flags>
+where
+    Flags: Default,
+{
+    fn default() -> Self {
+        Self {
+            id: None,
+            flags: Default::default(),
+            default_font: Default::default(),
+            default_text_size: 16.0,
+            antialiasing: false,
+            exit_on_close_request: true,
+        }
+    }
+}
+
 #[cfg(feature = "winit")]
 impl<Flags> Settings<Flags> {
     /// Initialize [`Application`] settings using the given data.
