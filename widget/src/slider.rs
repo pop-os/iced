@@ -509,14 +509,20 @@ pub fn draw<T, R>(
     let (handle_width, handle_height, handle_border_radius) =
         match style.handle.shape {
             HandleShape::Circle { radius } => {
-                (radius * 2.0, radius * 2.0, radius + border_width)
+                let radius = (radius)
+                    .max(2.0 * border_width)
+                    .min(bounds.height / 2.0)
+                    .min(bounds.width / 2.0);
+                (radius * 2.0, radius * 2.0, radius)
             }
             HandleShape::Rectangle {
                 width,
                 border_radius,
             } => {
-                let width = f32::from(width);
-                let height = (bounds.height - border_width * 2.0).max(0.0);
+                let width = (f32::from(width))
+                    .max(2.0 * border_width)
+                    .min(bounds.width);
+                let height = bounds.height;
                 let br: [f32; 4] = border_radius.into();
                 let border_radius = br
                     .into_iter()
@@ -527,7 +533,7 @@ pub fn draw<T, R>(
                     .min(height / 2.0)
                     .min(width / 2.0)
                     .max(0.0);
-                (width, height, border_radius)
+                (width, height, border_radius + width)
             }
         };
 
@@ -563,7 +569,7 @@ pub fn draw<T, R>(
         style.rail.colors.0,
     );
 
-    // rail
+    // right rail
     renderer.fill_quad(
         renderer::Quad {
             bounds: Rectangle {
@@ -583,10 +589,10 @@ pub fn draw<T, R>(
     renderer.fill_quad(
         renderer::Quad {
             bounds: Rectangle {
-                x: bounds.x + offset - border_width,
-                y: rail_y - (handle_height / 2.0 + border_width),
-                width: handle_width + 2.0 * border_width,
-                height: handle_height + 2.0 * border_width,
+                x: bounds.x + offset,
+                y: rail_y - (handle_height / 2.0),
+                width: handle_width,
+                height: handle_height,
             },
             border_radius: handle_border_radius.into(),
             border_width: border_width,
