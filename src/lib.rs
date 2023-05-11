@@ -173,8 +173,15 @@ use iced_widget::style;
 use iced_sctk as shell;
 #[cfg(feature = "winit")]
 use iced_winit as shell;
+#[cfg(any(feature = "winit", feature = "wayland"))]
 use shell::core;
+#[cfg(any(feature = "winit", feature = "wayland"))]
 use shell::runtime;
+
+#[cfg(not(any(feature = "winit", feature = "wayland")))]
+pub use iced_widget::core;
+#[cfg(not(any(feature = "winit", feature = "wayland")))]
+pub use iced_widget::runtime;
 
 mod error;
 
@@ -298,6 +305,7 @@ pub use error::Error;
 pub use event::Event;
 pub use executor::Executor;
 pub use iced_core::Font;
+#[cfg(any(feature = "winit", feature = "wayland"))]
 pub use sandbox::Sandbox;
 pub use settings::Settings;
 pub use subscription::Subscription;
