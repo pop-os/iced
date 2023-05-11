@@ -1,4 +1,4 @@
-use tiny_skia::{BlendMode, Mask, Pixmap, PixmapPaint};
+use tiny_skia::{Mask, Pixmap, PixmapPaint};
 
 use crate::core::text;
 use crate::core::Gradient;
@@ -259,17 +259,29 @@ impl Backend {
                     height: bounds.height - border_width,
                 };
 
+                // Make sure the border radius is correct
                 let mut border_radius = *border_radius;
-                for radius in &mut border_radius {
-                    *radius = radius
-                        .min(path_bounds.width / 2.0)
-                        .min(path_bounds.height / 2.0);
+                let mut border_radius_gt_half_border_width =
+                    [true, true, true, true];
+                for (i, radius) in &mut border_radius.iter_mut().enumerate() {
+                    *radius = if *radius == 0.0 {
+                        // Path should handle this fine
+                        0.0
+                    } else if *radius > border_width / 2.0 {
+                        *radius - border_width / 2.0
+                    } else {
+                        border_radius_gt_half_border_width[i] = false;
+                        0.0
+                    }
+                    .min(path_bounds.width / 2.0)
+                    .min(path_bounds.height / 2.0);
                 }
 
-                let border_radius_path =
-                    rounded_rectangle(path_bounds, border_radius);
+                // Stroking a path works well in this case.
+                if border_radius_gt_half_border_width.iter().all(|b| *b) {
+                    let border_radius_path =
+                        rounded_rectangle(path_bounds, border_radius);
 
-                if border_width > 0.0 {
                     pixels.stroke_path(
                         &border_radius_path,
                         &tiny_skia::Paint {
