@@ -1286,14 +1286,17 @@ where
     debug.view_started();
     let mut view = application.view(id.inner());
     debug.view_finished();
+    // TODO would it be ok to diff against the current cache?
+    let _state = Widget::state(view.as_widget());
+    view.as_widget_mut().diff(&mut Tree::empty());
 
-    view.diff(&mut Tree::empty());
     let size = if let Some((prev_w, prev_h, limits, dirty)) =
         auto_size_surfaces.remove(&id)
     {
-        let view = view.as_widget_mut();
-        let _state = view.state();
-        // TODO would it be ok to diff against the current cache?
+        let view: &mut dyn Widget<
+            <A as Program>::Message,
+            <A as Program>::Renderer,
+        > = view.as_widget_mut();
         let bounds = view.layout(renderer, &limits).bounds().size();
         // XXX add a small number to make sure it doesn't get truncated...
         let (w, h) = (
