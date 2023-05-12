@@ -15,7 +15,7 @@ use float_cmp::approx_eq;
 use futures::{channel::mpsc, task, Future, FutureExt, StreamExt};
 #[cfg(feature = "a11y")]
 use iced_accessibility::{A11yId, accesskit::{NodeId, NodeBuilder}, A11yNode};
-use iced_futures::{Executor, Runtime, core::{renderer::Style, widget::{operation::{self, OperationWrapper, focusable::focus}, tree, Tree, self, Operation}, layout::Limits, Widget, event::{Status, self}, mouse}, Subscription};
+use iced_futures::{Executor, Runtime, core::{renderer::Style, widget::{operation::{self, OperationWrapper, focusable::focus}, tree, Tree, Operation}, layout::Limits, Widget, event::{Status, self}, mouse}, Subscription};
 // use iced_native::{
 //     application::{self, StyleSheet},
 //     clipboard,
@@ -878,7 +878,7 @@ where
                                 }
                             }                        
                             native_events.extend(filtered_a11y.into_iter().map(|e| {
-                                event::Event::A11y(widget::Id::from(u128::from(e.request.target.0) as u64), e.request)
+                                event::Event::A11y(iced_runtime::core::id::Id::from(u128::from(e.request.target.0) as u64), e.request)
                             }));
                         }
                         let has_events =
@@ -1134,7 +1134,7 @@ where
                         a11y_events.push(ActionRequestEvent { surface_id, request });
                     },
                     Action::Focus => {
-                        commands.push(Command::widget(focus(widget::Id::from(u128::from(request.target.0) as u64))));
+                        commands.push(Command::widget(focus(iced_runtime::core::id::Id::from(u128::from(request.target.0) as u64))));
                     },
                     Action::Blur => todo!(),
                     Action::Collapse => todo!(),
@@ -1217,16 +1217,23 @@ where
     debug.view_started();
     let mut view = application.view(id.inner());
     debug.view_finished();
+    // TODO would it be ok to diff against the current cache?
+    let _state = Widget::state(view.as_widget());
+    view.as_widget_mut().diff(&mut Tree::empty());
 
     let size = if let Some((prev_w, prev_h, limits, dirty)) =
         auto_size_surfaces.remove(&id)
     {
-        let view = view.as_widget_mut();
-        let _state = view.state();
-        // TODO would it be ok to diff against the current cache?
-        view.diff(&mut Tree::empty());
+        let view: &mut dyn Widget<
+            <A as Program>::Message,
+            <A as Program>::Renderer,
+        > = view.as_widget_mut();
         let bounds = view.layout(&mut Tree::empty(), renderer, &limits).bounds().size();
-        let (w, h) = (bounds.width.ceil() as u32, bounds.height.ceil() as u32);
+        // XXX add a small number to make sure it doesn't get truncated...
+        let (w, h) = (
+            (bounds.width.ceil() + 0.1) as u32,
+            (bounds.height.ceil() + 0.1) as u32,
+        );
         let dirty = dirty || w != prev_w || h != prev_h;
         auto_size_surfaces.insert(id, (w, h, limits, dirty));
         if dirty {

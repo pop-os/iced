@@ -503,11 +503,11 @@ where
             )
         })
     }
-    fn id(&self) -> Option<iced_accessibility::Id> {
+    fn id(&self) -> Option<iced_runtime::core::id::Id> {
         self.with_element(|element| element.as_widget().id())
     }
 
-    fn set_id(&mut self, _id: iced_accessibility::Id) {
+    fn set_id(&mut self, _id: iced_runtime::core::id::Id) {
         self.with_element_mut(|element| element.as_widget_mut().set_id(_id));
     }
 

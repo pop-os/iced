@@ -285,7 +285,7 @@ where
             .map(|position| overlay::Element::new(position, Box::new(overlay)))
     }
 
-    fn set_id(&mut self, _id: iced_accessibility::Id) {
+    fn set_id(&mut self, _id: iced_runtime::core::id::Id) {
         if let Some(e) = self.element.borrow_mut().as_mut() {
             if let Some(e) = e.borrow_mut().as_mut() {
                 e.as_widget_mut().set_id(_id);
@@ -293,7 +293,7 @@ where
         }
     }
 
-    fn id(&self) -> Option<iced_accessibility::Id> {
+    fn id(&self) -> Option<iced_runtime::core::id::Id> {
         if let Some(e) = self.element.borrow().as_ref() {
             if let Some(e) = e.borrow().as_ref() {
                 return e.as_widget().id();
