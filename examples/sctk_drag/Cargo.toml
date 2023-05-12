@@ -1,5 +1,5 @@
 [package]
-name = "sctk-drag"
+name = "sctk_drag"
 version = "0.1.0"
 edition = "2021"
 

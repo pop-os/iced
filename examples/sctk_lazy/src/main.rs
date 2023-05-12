@@ -1,16 +1,30 @@
-use iced::theme;
+use iced::wayland::actions::layer_surface::SctkLayerSurfaceSettings;
+use iced::wayland::layer_surface::KeyboardInteractivity;
+use iced::wayland::InitialSurface;
 use iced::widget::{
     button, column, horizontal_space, lazy, pick_list, row, scrollable, text,
     text_input,
 };
 use iced::window::Id;
+use iced::{theme, Limits};
 use iced::{Element, Length, Sandbox, Settings};
 
 use std::collections::HashSet;
 use std::hash::Hash;
 
 pub fn main() -> iced::Result {
-    App::run(Settings::default())
+    let mut initial_surface = SctkLayerSurfaceSettings::default();
+    initial_surface.keyboard_interactivity = KeyboardInteractivity::OnDemand;
+    initial_surface.size_limits = Limits::NONE
+        .min_width(1.0)
+        .min_height(1.0)
+        .max_height(500.0)
+        .max_width(900.0);
+    let settings = Settings {
+        initial_surface: InitialSurface::LayerSurface(initial_surface),
+        ..Settings::default()
+    };
+    App::run(settings)
 }
 
 struct App {
