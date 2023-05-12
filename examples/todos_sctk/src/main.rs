@@ -5,9 +5,7 @@ use iced::id::Id;
 use iced::subscription;
 use iced::theme::{self, Theme};
 use iced::wayland::actions::data_device::ActionInner;
-use iced::wayland::actions::popup::SctkPopupSettings;
 use iced::wayland::data_device::action as data_device_action;
-use iced::wayland::popup::get_popup;
 use iced::wayland::InitialSurface;
 use iced::widget::{
     self, button, checkbox, column, container, row, scrollable, text,
@@ -73,7 +71,6 @@ enum Message {
     CloseRequested(window::Id),
     TextInputDragged(text_input::State),
     TextInputDndCommand(Arc<Box<dyn Send + Sync + Fn() -> ActionInner>>),
-    Ignore,
 }
 
 impl Debug for Message {
@@ -99,7 +96,6 @@ impl Debug for Message {
             Message::TextInputDndCommand(_) => {
                 write!(f, "Message::TextInputDndCommand(_)")
             }
-            Message::Ignore => write!(f, "Message::Ignore"),
         }
     }
 }
@@ -166,14 +162,7 @@ impl Application for Todos {
                                 .push(Task::new(state.input_value.clone()));
                             state.input_value.clear();
                         }
-
-                        return get_popup(SctkPopupSettings {
-                            parent: window::Id(0),
-                            id: window::Id(2),
-                            positioner: Default::default(),
-                            parent_size: None,
-                            grab: true,
-                        });
+                        Command::none()
                     }
                     Message::FilterChanged(filter) => {
                         state.filter = filter;
