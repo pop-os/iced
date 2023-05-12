@@ -54,7 +54,6 @@ use std::{
     io::{BufRead, BufReader},
     num::NonZeroU32,
     time::{Duration, Instant},
-    sync::{Arc, Mutex}
 
 };
 use wayland_backend::client::WaylandError;
