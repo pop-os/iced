@@ -237,6 +237,12 @@ impl Application for DndTest {
     fn close_requested(&self, id: window::Id) -> Self::Message {
         Message::Ignore
     }
+
+    fn style(&self) -> <Self::Theme as application::StyleSheet>::Style {
+        <Self::Theme as application::StyleSheet>::Style::Custom(Box::new(
+            CustomTheme,
+        ))
+    }
 }
 
 pub struct CustomTheme;
@@ -249,7 +255,19 @@ impl container::StyleSheet for CustomTheme {
             border_color: Color::from_rgb(1.0, 0.0, 0.0),
             border_radius: 2.0,
             border_width: 2.0,
+            background: Some(Color::from_rgb(0.0, 0.0, 0.0).into()),
             ..container::Appearance::default()
+        }
+    }
+}
+
+impl iced_style::application::StyleSheet for CustomTheme {
+    type Style = iced::Theme;
+
+    fn appearance(&self, style: &Self::Style) -> application::Appearance {
+        iced_style::application::Appearance {
+            background_color: Color::from_rgba(0.0, 0.0, 0.0, 0.0),
+            text_color: Color::from_rgb(1.0, 1.0, 1.0),
         }
     }
 }

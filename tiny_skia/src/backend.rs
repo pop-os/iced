@@ -1,4 +1,4 @@
-use tiny_skia::{Mask, Pixmap, PixmapPaint};
+use tiny_skia::{Mask, Pixmap, PixmapPaint, BlendMode};
 
 use crate::core::text;
 use crate::core::{Background, Color, Font, Point, Rectangle, Size, Vector};
@@ -86,6 +86,7 @@ impl Backend {
                 .expect("Create damage rectangle"),
             );
 
+            // background color should replace the previous contents
             pixels.fill_path(
                 &path,
                 &tiny_skia::Paint {
@@ -93,6 +94,7 @@ impl Backend {
                         background_color,
                     )),
                     anti_alias: false,
+                    blend_mode: BlendMode::Source,
                     ..Default::default()
                 },
                 tiny_skia::FillRule::default(),
