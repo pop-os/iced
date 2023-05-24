@@ -8,6 +8,7 @@ pub mod state;
 use crate::application::SurfaceIdWrapper;
 use crate::{
     application::Event,
+    conversion,
     sctk_event::{
         DndOfferEvent, IcedSctkEvent, LayerSurfaceEventVariant,
         PopupEventVariant, SctkEvent, SelectionOfferEvent, StartCause,
@@ -659,9 +660,12 @@ where
                             }
                         },
                     },
-                    Event::SetCursor(_) => {
-                        // TODO set cursor after cursor theming PR is merged
-                        // https://github.com/Smithay/client-toolkit/pull/306
+                    Event::SetCursor(iced_icon) => {
+                        if let Some(ptr) = self.state.seats.get(0).and_then(|s| s.ptr.as_ref()) {
+                            let icon = conversion::cursor_icon(iced_icon);
+                            let _ = ptr.set_cursor(&self.state.connection, icon);
+                        }
+
                     }
                     Event::Window(action) => match action {
                         platform_specific::wayland::window::Action::Window { builder, _phantom } => {

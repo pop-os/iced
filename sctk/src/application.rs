@@ -376,7 +376,7 @@ where
             .into_recipes(),
     );
 
-    let _mouse_interaction = Interaction::default();
+    let mut mouse_interaction = Interaction::default();
     let mut sctk_events: Vec<SctkEvent> = Vec::new();
     #[cfg(feature = "a11y")]
     let mut a11y_events: Vec<crate::sctk_event::ActionRequestEvent> =
@@ -790,6 +790,7 @@ where
                     },
                     state.cursor_position(),
                 );
+
                 let _ = compositor.present(
                     &mut renderer,
                     &mut c_surface,
@@ -1157,9 +1158,13 @@ where
                         },
                         state.cursor_position(),
                     );
+
                     debug.draw_finished();
-                    ev_proxy
-                        .send_event(Event::SetCursor(new_mouse_interaction));
+                    if new_mouse_interaction != mouse_interaction {
+                        mouse_interaction = new_mouse_interaction;
+                        ev_proxy
+                            .send_event(Event::SetCursor(mouse_interaction));
+                    }
 
                     let _ =
                         interfaces.insert(native_id.inner(), user_interface);
