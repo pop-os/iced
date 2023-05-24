@@ -1,6 +1,7 @@
 use std::{
     collections::HashMap,
     fmt::{Debug, Formatter},
+    num::NonZeroU32,
 };
 
 use crate::{
@@ -39,7 +40,6 @@ use sctk::{
             protocol::{
                 wl_keyboard::WlKeyboard,
                 wl_output::WlOutput,
-                wl_pointer::WlPointer,
                 wl_seat::WlSeat,
                 wl_surface::{self, WlSurface},
                 wl_touch::WlTouch,
@@ -48,7 +48,11 @@ use sctk::{
         },
     },
     registry::RegistryState,
-    seat::{keyboard::KeyEvent, SeatState},
+    seat::{
+        keyboard::KeyEvent,
+        pointer::{CursorIcon, ThemedPointer},
+        SeatState,
+    },
     shell::{
         wlr_layer::{
             Anchor, KeyboardInteractivity, Layer, LayerShell, LayerSurface,
@@ -64,18 +68,19 @@ use sctk::{
     shm::{multi::MultiPool, Shm},
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub(crate) struct SctkSeat {
     pub(crate) seat: WlSeat,
     pub(crate) kbd: Option<WlKeyboard>,
     pub(crate) kbd_focus: Option<WlSurface>,
     pub(crate) last_kbd_press: Option<(KeyEvent, u32)>,
-    pub(crate) ptr: Option<WlPointer>,
+    pub(crate) ptr: Option<ThemedPointer>,
     pub(crate) ptr_focus: Option<WlSurface>,
     pub(crate) last_ptr_press: Option<(u32, u32, u32)>, // (time, button, serial)
     pub(crate) _touch: Option<WlTouch>,
     pub(crate) _modifiers: Modifiers,
     pub(crate) data_device: DataDevice,
+    pub(crate) icon: Option<CursorIcon>,
 }
 
 #[derive(Debug, Clone)]
@@ -83,8 +88,9 @@ pub struct SctkWindow<T> {
     pub(crate) id: window::Id,
     pub(crate) window: Window,
     pub(crate) requested_size: Option<(u32, u32)>,
-    pub(crate) _current_size: Option<(u32, u32)>,
+    pub(crate) current_size: Option<(NonZeroU32, NonZeroU32)>,
     pub(crate) last_configure: Option<WindowConfigure>,
+    pub(crate) resizable: Option<f64>,
     /// Requests that SCTK window should perform.
     pub(crate) _pending_requests:
         Vec<platform_specific::wayland::window::Action<T>>,
@@ -482,6 +488,7 @@ where
             title,
 
             size_limits,
+            resizable,
             ..
         } = settings;
         // TODO Ashley: set window as opaque if transparency is false
@@ -532,14 +539,19 @@ where
             size.0 as i32,
             size.1 as i32,
         );
+
         window.wl_surface().commit();
         self.windows.push(SctkWindow {
             id: window_id,
             window,
             requested_size: Some(size),
-            _current_size: Some((1, 1)),
+            current_size: Some((
+                NonZeroU32::new(1).unwrap(),
+                NonZeroU32::new(1).unwrap(),
+            )),
             last_configure: None,
             _pending_requests: Vec::new(),
+            resizable,
         });
         (window_id, wl_surface)
     }
@@ -587,6 +599,7 @@ where
             wl_output.as_ref(),
         );
         layer_surface.set_anchor(anchor);
+        dbg!(keyboard_interactivity);
         layer_surface.set_keyboard_interactivity(keyboard_interactivity);
         layer_surface.set_margin(
             margin.top,

@@ -28,7 +28,8 @@ pub struct SctkWindowSettings {
     pub size: (u32, u32),
 
     /// Whether the window should be resizable or not.
-    pub resizable: bool,
+    /// and the size of the window border which can be dragged for a resize
+    pub resizable: Option<f64>,
 
     /// Whether the window should have a border, a title bar, etc. or not.
     pub decorations: bool,
@@ -51,7 +52,7 @@ impl Default for SctkWindowSettings {
                 .max_width(1920.0)
                 .max_height(1080.0),
             size: (1024, 768),
-            resizable: true,
+            resizable: Some(8.0),
             decorations: true,
             transparent: false,
         }
