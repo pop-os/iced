@@ -481,7 +481,7 @@ where
     ) -> (window::Id, WlSurface) {
         let SctkWindowSettings {
             size,
-            decorations,
+            client_decorations,
 
             window_id,
             app_id,
@@ -497,10 +497,10 @@ where
         // TODO Ashley: decorations
         let wl_surface =
             self.compositor_state.create_surface(&self.queue_handle);
-        let decorations = if decorations {
-            WindowDecorations::RequestServer
-        } else {
+        let decorations: WindowDecorations = if client_decorations {
             WindowDecorations::RequestClient
+        } else {
+            WindowDecorations::RequestServer
         };
         let window = self.xdg_shell_state.create_window(
             wl_surface.clone(),
@@ -532,7 +532,6 @@ where
         // if let Some(parent) = parent.and_then(|p| self.windows.iter().find(|w| w.window.wl_surface().id() == p)) {
         //     window.set_parent(Some(&parent.window));
         // }
-        window.commit();
         window.xdg_surface().set_window_geometry(
             0,
             0,
@@ -540,7 +539,7 @@ where
             size.1 as i32,
         );
 
-        window.wl_surface().commit();
+        window.commit();
         self.windows.push(SctkWindow {
             id: window_id,
             window,

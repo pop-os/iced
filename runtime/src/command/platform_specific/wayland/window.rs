@@ -32,7 +32,7 @@ pub struct SctkWindowSettings {
     pub resizable: Option<f64>,
 
     /// Whether the window should have a border, a title bar, etc. or not.
-    pub decorations: bool,
+    pub client_decorations: bool,
 
     /// Whether the window should be transparent.
     pub transparent: bool,
@@ -53,7 +53,7 @@ impl Default for SctkWindowSettings {
                 .max_height(1080.0),
             size: (1024, 768),
             resizable: Some(8.0),
-            decorations: true,
+            client_decorations: true,
             transparent: false,
         }
     }
