@@ -21,6 +21,7 @@ use crate::text_editor;
 use crate::text_input;
 use crate::toggler;
 
+use iced_core::renderer::BorderRadius;
 use iced_core::{Background, Color, Vector};
 
 use std::rc::Rc;
