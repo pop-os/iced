@@ -4,7 +4,10 @@ use crate::{
 };
 use sctk::{
     delegate_xdg_shell, delegate_xdg_window,
-    shell::{xdg::window::WindowHandler, WaylandSurface},
+    shell::{
+        xdg::{window::WindowHandler, XdgSurface},
+        WaylandSurface,
+    },
 };
 use std::{fmt::Debug, num::NonZeroU32};
 
@@ -68,7 +71,15 @@ impl<T: Debug> WindowHandler for SctkState<T> {
             .new_size
             .0
             .zip(configure.new_size.1)
-            .map(|new_size| (new_size));
+            .map(|new_size| {
+                window.window.set_window_geometry(
+                    0,
+                    0,
+                    new_size.0.get(),
+                    new_size.1.get(),
+                );
+                new_size
+            });
 
         let wl_surface = window.window.wl_surface();
         let id = wl_surface.clone();
