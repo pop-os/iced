@@ -6,7 +6,7 @@ use iced_runtime::keyboard::Modifiers;
 use sctk::{
     delegate_seat,
     reexports::client::{protocol::wl_keyboard::WlKeyboard, Proxy},
-    seat::SeatHandler,
+    seat::{pointer::ThemeSpec, SeatHandler},
 };
 use std::fmt::Debug;
 
@@ -41,6 +41,7 @@ where
             ptr_focus: None,
             last_ptr_press: None,
             last_kbd_press: None,
+            icon: None,
         });
     }
 
@@ -67,6 +68,7 @@ where
                     ptr_focus: None,
                     last_ptr_press: None,
                     last_kbd_press: None,
+                    icon: None,
                 });
                 self.seats.last_mut().unwrap()
             }
@@ -99,11 +101,19 @@ where
                 }
             }
             sctk::seat::Capability::Pointer => {
-                if let Ok(ptr) = self.seat_state.get_pointer(qh, &seat) {
+                let surface = self.compositor_state.create_surface(qh);
+
+                if let Ok(ptr) = self.seat_state.get_pointer_with_theme(
+                    qh,
+                    &seat,
+                    self.shm_state.wl_shm(),
+                    surface,
+                    ThemeSpec::default(),
+                ) {
                     self.sctk_events.push(SctkEvent::SeatEvent {
                         variant: SeatEventVariant::NewCapability(
                             capability,
-                            ptr.id(),
+                            ptr.pointer().id(),
                         ),
                         id: seat.clone(),
                     });
@@ -148,7 +158,7 @@ where
                     self.sctk_events.push(SctkEvent::SeatEvent {
                         variant: SeatEventVariant::RemoveCapability(
                             capability,
-                            ptr.id(),
+                            ptr.pointer().id(),
                         ),
                         id: seat.clone(),
                     });

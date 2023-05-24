@@ -246,8 +246,9 @@ impl Application for Todos {
                         }
                     })
                 };
+                let test = row![container(text("0000 0000 00000 000000000000 000000000000000 00000 0000 00000000 000000 000000000 l00000")).width(Length::Fill), container(text("a")).width(Length::Fixed(100.0))];
 
-                let content = column![title, input, controls, tasks]
+                let content = column![title, input, controls, tasks, test]
                     .spacing(20)
                     .max_width(800);
 

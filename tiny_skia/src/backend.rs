@@ -1,4 +1,4 @@
-use tiny_skia::{Mask, Pixmap, PixmapPaint, BlendMode};
+use tiny_skia::{BlendMode, Mask, Pixmap, PixmapPaint};
 
 use crate::core::text;
 use crate::core::{Background, Color, Font, Point, Rectangle, Size, Vector};

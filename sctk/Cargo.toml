@@ -15,7 +15,7 @@ a11y = ["iced_accessibility", "iced_runtime/a11y"]
 [dependencies]
 log = "0.4"
 thiserror = "1.0"
-sctk = { package = "smithay-client-toolkit", git = "https://github.com/smithay/client-toolkit", rev = "389a4f2" }
+sctk = { package = "smithay-client-toolkit", git = "https://github.com/pop-os/client-toolkit", tag = "themed-pointer" }
 # sctk = { package = "smithay-client-toolkit", path = "../../fork/client-toolkit/" }
 raw-window-handle = "0.5"
 enum-repr = "0.2"
