@@ -1,3 +1,4 @@
+use iced_futures::core::mouse::Interaction;
 use iced_runtime::core::{
     keyboard::{self, KeyCode},
     mouse::{self, ScrollDelta},
@@ -6,7 +7,7 @@ use sctk::{
     reexports::client::protocol::wl_pointer::AxisSource,
     seat::{
         keyboard::Modifiers,
-        pointer::{AxisScroll, BTN_LEFT, BTN_MIDDLE, BTN_RIGHT},
+        pointer::{AxisScroll, CursorIcon, BTN_LEFT, BTN_MIDDLE, BTN_RIGHT},
     },
 };
 /// An error that occurred while running an application.
@@ -253,5 +254,20 @@ pub fn keysym_to_vkey(keysym: u32) -> Option<KeyCode> {
         keysyms::XKB_KEY_XF86Cut => Some(KeyCode::Cut),
         // Fallback.
         _ => None,
+    }
+}
+
+pub(crate) fn cursor_icon(cursor: Interaction) -> CursorIcon {
+    match cursor {
+        Interaction::Idle => CursorIcon::Default,
+        Interaction::Pointer => CursorIcon::Pointer,
+        Interaction::Grab => CursorIcon::Grab,
+        Interaction::Text => CursorIcon::Text,
+        Interaction::Crosshair => CursorIcon::Crosshair,
+        Interaction::Working => CursorIcon::Progress,
+        Interaction::Grabbing => CursorIcon::Grabbing,
+        Interaction::ResizingHorizontally => CursorIcon::EwResize,
+        Interaction::ResizingVertically => CursorIcon::NsResize,
+        Interaction::NotAllowed => CursorIcon::NotAllowed,
     }
 }

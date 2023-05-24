@@ -335,7 +335,7 @@ where
     }
     runtime.track(application.subscription().map(subscription_map::<A, E, C>).into_recipes(),);
 
-    let _mouse_interaction = Interaction::default();
+    let mut mouse_interaction = Interaction::default();
     let mut sctk_events: Vec<SctkEvent> = Vec::new();
     #[cfg(feature = "a11y")]
     let mut a11y_events: Vec<crate::sctk_event::ActionRequestEvent> =
@@ -748,6 +748,7 @@ where
                     },
                     state.cursor(),
                 );
+
                 let _ = compositor.present(
                     &mut renderer,
                     &mut c_surface,
