@@ -21,6 +21,7 @@ use crate::svg;
 use crate::text_input;
 use crate::toggler;
 
+use iced_core::renderer::BorderRadius;
 use iced_core::{Background, Color, Vector};
 
 use std::rc::Rc;
@@ -369,7 +370,7 @@ impl container::StyleSheet for Theme {
                 container::Appearance {
                     text_color: None,
                     background: palette.background.weak.color.into(),
-                    border_radius: 2.0,
+                    border_radius: BorderRadius::from(2.0),
                     border_width: 0.0,
                     border_color: Color::TRANSPARENT,
                 }
