@@ -14,21 +14,23 @@ use crate::{
 use float_cmp::approx_eq;
 use futures::{channel::mpsc, task, Future, FutureExt, StreamExt};
 #[cfg(feature = "a11y")]
-use iced_accessibility::{A11yId, accesskit::{NodeId, NodeBuilder}, A11yNode};
-use iced_futures::{Executor, Runtime, core::{renderer::Style, widget::{operation::{self, OperationWrapper, focusable::focus}, tree, Tree, Operation}, layout::Limits, Widget, event::{Status, self}, mouse}, Subscription};
-// use iced_native::{
-//     application::{self, StyleSheet},
-//     clipboard,
-//     command::platform_specific::{
-//         self,
-//         wayland::{data_device::DndIcon, popup},
-//     },
-//     event::Status,
-//     layout::Limits,
-//     mouse::{self, Interaction},
-//     widget::{operation::{self, focusable::{focus, find_focused}}, Tree, self},
-//     Element, Renderer, Widget,
-// };
+use iced_accessibility::{
+    accesskit::{NodeBuilder, NodeId},
+    A11yId, A11yNode,
+};
+use iced_futures::{
+    core::{
+        event::Status,
+        layout::Limits,
+        renderer::Style,
+        widget::{
+            operation::{self, OperationWrapper, focusable::focus},
+            tree, Operation, Tree,
+        },
+        Widget, mouse,
+    },
+    Executor, Runtime, Subscription,
+};
 use log::error;
 
 use sctk::{
@@ -41,14 +43,27 @@ use wayland_backend::client::ObjectId;
 use iced_graphics::{
     compositor, renderer, Viewport, Compositor,
 };
+use iced_runtime::{
+    clipboard,
+    command::{
+        self,
+        platform_specific::{
+            self,
+            wayland::{data_device::DndIcon, popup},
+        },
+    },
+    core::{mouse::Interaction, Color, Point, Renderer, Size},
+    system, user_interface,
+    window::Id as SurfaceId,
+    Command, Debug, Program, UserInterface,
+};
+use iced_style::application::{self, StyleSheet};
 use itertools::Itertools;
-use std::mem::ManuallyDrop;
 use raw_window_handle::{
     HasRawDisplayHandle, HasRawWindowHandle, RawDisplayHandle, RawWindowHandle,
     WaylandDisplayHandle, WaylandWindowHandle,
 };
-use iced_style::application::{StyleSheet, self};
-use iced_runtime::{core::{mouse::Interaction, Element, Renderer, Point, Size, Color}, command::{platform_specific::{self, wayland::{data_device::DndIcon, popup}}, self}, window::Id as SurfaceId, Command, user_interface, UserInterface, system, clipboard, Debug, Program};
+use std::mem::ManuallyDrop;
 
 pub enum Event<Message> {
     /// A normal sctk event
@@ -879,7 +894,7 @@ where
                                 }
                             }                        
                             native_events.extend(filtered_a11y.into_iter().map(|e| {
-                                event::Event::A11y(iced_runtime::core::id::Id::from(u128::from(e.request.target.0) as u64), e.request)
+                                iced_runtime::core::event::Event::A11y(iced_runtime::core::id::Id::from(u128::from(e.request.target.0) as u64), e.request)
                             }));
                         }
                         let has_events =
@@ -914,6 +929,18 @@ where
                                         None => continue,
                                     };
                                 state.set_logical_size(w as f64, h as f64);
+                                match surface_id {
+                                    SurfaceIdWrapper::Window(id) => {
+                                        ev_proxy.send_event(Event::Window(
+                                            platform_specific::wayland::window::Action::Size {
+                                                id: *id,
+                                                width: w,
+                                                height: h,
+                                            },
+                                        ));
+                                    }
+                                    _ => {}
+                                };
                             }
                             auto_size_surfaces
                                 .insert(*surface_id, (w, h, limits, false));
