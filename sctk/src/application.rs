@@ -31,19 +31,6 @@ use iced_futures::{
     },
     Executor, Runtime, Subscription,
 };
-// use iced_native::{
-//     application::{self, StyleSheet},
-//     clipboard,
-//     command::platform_specific::{
-//         self,
-//         wayland::{data_device::DndIcon, popup},
-//     },
-//     event::Status,
-//     layout::Limits,
-//     mouse::{self, Interaction},
-//     widget::{operation::{self, focusable::{focus, find_focused}}, Tree, self},
-//     Element, Renderer, Widget,
-// };
 use log::error;
 
 use sctk::{
@@ -60,10 +47,6 @@ use iced_graphics::{
     // Color, Point, Viewport,
     Viewport,
 };
-// use iced_native::user_interface::{self, UserInterface};
-// use iced_native::window::Id as SurfaceId;
-use itertools::Itertools;
-// use iced_native::widget::Operation;
 use iced_runtime::{
     clipboard,
     command::{
@@ -79,12 +62,12 @@ use iced_runtime::{
     Command, Debug, Program, UserInterface,
 };
 use iced_style::application::{self, StyleSheet};
+use itertools::Itertools;
 use raw_window_handle::{
     HasRawDisplayHandle, HasRawWindowHandle, RawDisplayHandle, RawWindowHandle,
     WaylandDisplayHandle, WaylandWindowHandle,
 };
 use std::mem::ManuallyDrop;
-// use iced_native::widget::operation::OperationWrapper;
 
 pub enum Event<Message> {
     /// A normal sctk event
@@ -963,6 +946,18 @@ where
                                         None => continue,
                                     };
                                 state.set_logical_size(w as f64, h as f64);
+                                match surface_id {
+                                    SurfaceIdWrapper::Window(id) => {
+                                        ev_proxy.send_event(Event::Window(
+                                            platform_specific::wayland::window::Action::Size {
+                                                id: *id,
+                                                width: w,
+                                                height: h,
+                                            },
+                                        ));
+                                    }
+                                    _ => {}
+                                };
                             }
                             auto_size_surfaces
                                 .insert(*surface_id, (w, h, limits, false));

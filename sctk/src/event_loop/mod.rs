@@ -700,7 +700,8 @@ where
                             if let Some(window) = self.state.windows.iter_mut().find(|w| w.id == id) {
                                 let (width, height) = (NonZeroU32::new(width).unwrap_or(NonZeroU32::new(1).unwrap()), NonZeroU32::new(height).unwrap_or(NonZeroU32::new(1).unwrap()));
                                 window.requested_size = Some((width.get(), height.get()));
-                                window.window.xdg_surface().set_window_geometry(0, 0, width.get() as i32, height.get() as i32);
+                                window.window.set_window_geometry(0, 0, width.get() as u32, height.get() as u32);
+                                window.current_size = Some((width, height));
                                 // TODO Ashley maybe don't force window size?
                                 pending_redraws.push(window.window.wl_surface().id());
 
