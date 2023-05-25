@@ -510,22 +510,34 @@ where
         if let Some(app_id) = app_id {
             window.set_app_id(app_id);
         }
+        // TODO better way of handling size limits
         let min_size = size_limits.min();
-        let min_size =
-            if min_size.width as i32 <= 0 || min_size.height as i32 <= 0 {
-                None
-            } else {
-                Some((min_size.width as u32, min_size.height as u32))
-            };
-        let max_size = size_limits.max();
-        let max_size =
-            if max_size.width as i32 <= 0 || max_size.height as i32 <= 0 {
-                None
-            } else {
-                Some((max_size.width as u32, max_size.height as u32))
-            };
-        window.set_min_size(min_size);
-        window.set_max_size(max_size);
+        let min_size = if min_size.width as i32 <= 0
+            || min_size.height as i32 <= 0
+            || min_size.width > u16::MAX as f32
+            || min_size.height > u16::MAX as f32
+        {
+            None
+        } else {
+            Some((min_size.width as u32, min_size.height as u32))
+        };
+        let max_size: iced_futures::core::Size = size_limits.max();
+        let max_size = if max_size.width as i32 <= 0
+            || max_size.height as i32 <= 0
+            || max_size.width > u16::MAX as f32
+            || max_size.height > u16::MAX as f32
+        {
+            None
+        } else {
+            Some((max_size.width as u32, max_size.height as u32))
+        };
+        if min_size.is_some() {
+            window.set_min_size(min_size);
+        }
+        if max_size.is_some() {
+            window.set_max_size(max_size);
+        }
+
         if let Some(title) = title {
             window.set_title(title);
         }
