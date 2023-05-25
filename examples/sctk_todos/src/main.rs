@@ -4,6 +4,7 @@ use iced::event::{self, Event};
 use iced::subscription;
 use iced::theme::{self, Theme};
 use iced::wayland::actions::data_device::ActionInner;
+use iced::wayland::actions::window::SctkWindowSettings;
 use iced::wayland::data_device::action as data_device_action;
 use iced::wayland::InitialSurface;
 use iced::widget::{
@@ -27,9 +28,11 @@ pub fn main() -> iced::Result {
         .filter_or("MY_LOG_LEVEL", "debug")
         .write_style_or("MY_LOG_STYLE", "always");
 
+    let mut settings = SctkWindowSettings::default();
+    settings.size_limits = Limits::NONE.min_height(300.0).min_width(600.0);
     env_logger::init_from_env(env);
     Todos::run(Settings {
-        initial_surface: InitialSurface::XdgWindow(Default::default()),
+        initial_surface: InitialSurface::XdgWindow(settings),
         ..Settings::default()
     })
 }
