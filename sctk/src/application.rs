@@ -1670,7 +1670,7 @@ fn run_command<A, E>(
                         let w = bounds.width.ceil().ceil() as u32;
                         let h = bounds.height.ceil().ceil() as u32;
                         auto_size_surfaces.insert(SurfaceIdWrapper::Popup(popup.id), (w, h, popup.positioner.size_limits, false));
-                        popup.positioner.size = Some((bounds.width as u32, bounds.height as u32));
+                        popup.positioner.size = Some((w, h));
                     }
                     proxy.send_event(Event::Popup(popup::Action::Popup{popup, _phantom}));
                 } else {
