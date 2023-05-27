@@ -7,6 +7,6 @@ publish = false
 
 [dependencies]
 iced.workspace = true
-iced.features = ["debug"]
-
+iced.features = ["debug", "winit"]
+iced_core.workspace = true
 once_cell.workspace = true
