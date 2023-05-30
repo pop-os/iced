@@ -88,7 +88,7 @@ where
             id: None,
             flags: Default::default(),
             default_font: Default::default(),
-            default_text_size: 16.0,
+            default_text_size: 14.0,
             antialiasing: false,
             exit_on_close_request: true,
         }
@@ -125,7 +125,7 @@ where
             window: Default::default(),
             flags: Default::default(),
             default_font: Default::default(),
-            default_text_size: 16.0,
+            default_text_size: 14.0,
             antialiasing: false,
             exit_on_close_request: true,
         }
@@ -175,7 +175,7 @@ where
             initial_surface: Default::default(),
             flags: Default::default(),
             default_font: Default::default(),
-            default_text_size: 16.0,
+            default_text_size: 14.0,
             antialiasing: false,
             exit_on_close_request: true,
         }

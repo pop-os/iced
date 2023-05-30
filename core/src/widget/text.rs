@@ -50,7 +50,7 @@ where
             height: Length::Shrink,
             horizontal_alignment: alignment::Horizontal::Left,
             vertical_alignment: alignment::Vertical::Top,
-            shaping: Shaping::Basic,
+            shaping: Shaping::Advanced,
             style: Default::default(),
         }
     }

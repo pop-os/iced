@@ -38,12 +38,12 @@ impl Default for Text {
             content: String::new(),
             position: Point::ORIGIN,
             color: Color::BLACK,
-            size: 16.0,
-            line_height: LineHeight::Relative(1.2),
+            size: 14.0,
+            line_height: LineHeight::default(),
             font: Font::default(),
             horizontal_alignment: alignment::Horizontal::Left,
             vertical_alignment: alignment::Vertical::Top,
-            shaping: Shaping::Basic,
+            shaping: Shaping::Advanced,
         }
     }
 }

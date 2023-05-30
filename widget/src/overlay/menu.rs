@@ -61,7 +61,7 @@ where
             padding: Padding::ZERO,
             text_size: None,
             text_line_height: text::LineHeight::default(),
-            text_shaping: text::Shaping::Basic,
+            text_shaping: text::Shaping::Advanced,
             font: None,
             style: Default::default(),
         }
