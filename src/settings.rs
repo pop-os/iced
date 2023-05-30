@@ -93,7 +93,7 @@ where
             id: None,
             flags: Default::default(),
             default_font: Default::default(),
-            default_text_size: 16.0,
+            default_text_size: 14.0,
             antialiasing: false,
             exit_on_close_request: true,
         }
@@ -132,7 +132,7 @@ where
             flags: Default::default(),
             fonts: Vec::new(),
             default_font: Font::default(),
-            default_text_size: Pixels(16.0),
+            default_text_size: Pixels(14.0),
             antialiasing: false,
             exit_on_close_request: true,
         }
@@ -184,7 +184,7 @@ where
             initial_surface: Default::default(),
             flags: Default::default(),
             default_font: Default::default(),
-            default_text_size: Pixels(16.0),
+            default_text_size: Pixels(14.0),
             antialiasing: false,
             fonts: Vec::new(),
             exit_on_close_request: true,

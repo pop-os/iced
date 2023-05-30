@@ -104,8 +104,8 @@ where
             text_size: None,
             text_line_height: text::LineHeight::default(),
             text_alignment: alignment::Horizontal::Left,
-            text_shaping: text::Shaping::Basic,
-            spacing: Self::DEFAULT_SIZE / 2.0,
+            text_shaping: text::Shaping::Advanced,
+            spacing: 0.0,
             font: None,
             style: Default::default(),
         }

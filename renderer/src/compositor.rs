@@ -257,9 +257,23 @@ impl Candidate {
                 ))
             }
             #[cfg(not(feature = "wgpu"))]
-            Self::Wgpu => {
-                panic!("`wgpu` feature was not enabled in `iced_renderer`")
+            Self::TinySkia => {
+                let (compositor, backend) =
+                    iced_tiny_skia::window::compositor::new(
+                        iced_tiny_skia::Settings {
+                            default_font: settings.default_font,
+                            // TODO: find were this is getting set to a value other than 14.0
+                            // default_text_size: settings.default_text_size,
+                            default_text_size: 14.0
+                        },
+                    );
+
+                Ok((
+                    Compositor::TinySkia(compositor),
+                    Renderer::new(crate::Backend::TinySkia(backend)),
+                ))
             }
+
         }
     }
 }

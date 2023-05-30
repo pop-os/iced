@@ -20,7 +20,7 @@ pub struct Settings {
 
     /// The default size of text.
     ///
-    /// By default, it will be set to `16.0`.
+    /// By default, it will be set to `14.0`.
     pub default_text_size: Pixels,
 
     /// The antialiasing strategy that will be used for triangle primitives.
@@ -59,7 +59,7 @@ impl Default for Settings {
             present_mode: wgpu::PresentMode::AutoVsync,
             internal_backend: wgpu::Backends::all(),
             default_font: Font::default(),
-            default_text_size: Pixels(16.0),
+            default_text_size: Pixels(14.0),
             antialiasing: None,
         }
     }

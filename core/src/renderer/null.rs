@@ -54,7 +54,7 @@ impl text::Renderer for Null {
     }
 
     fn default_size(&self) -> Pixels {
-        Pixels(16.0)
+        Pixels(14.0)
     }
 
     fn load_font(&mut self, _font: Cow<'static, [u8]>) {}

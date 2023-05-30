@@ -663,8 +663,7 @@ pub fn draw<'a, T, Renderer>(
             Renderer::ICON_FONT,
             Renderer::ARROW_DOWN_ICON,
             *size,
-            text::LineHeight::default(),
-            text::Shaping::Basic,
+            text::Shaping::Advanced,
         )),
         Handle::Static(Icon {
             font,

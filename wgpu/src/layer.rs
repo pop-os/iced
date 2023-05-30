@@ -74,8 +74,8 @@ impl<'a> Layer<'a> {
                 font: Font::MONOSPACE,
                 horizontal_alignment: alignment::Horizontal::Left,
                 vertical_alignment: alignment::Vertical::Top,
-                shaping: core::text::Shaping::Basic,
                 clip_bounds: Rectangle::with_size(Size::INFINITY),
+                shaping: core::text::Shaping::Advanced,
             };
 
             overlay.text.push(Text::Cached(text.clone()));

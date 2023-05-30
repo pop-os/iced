@@ -100,14 +100,14 @@ where
             spacing: Self::DEFAULT_SPACING,
             text_size: None,
             text_line_height: text::LineHeight::default(),
-            text_shaping: text::Shaping::Basic,
+            text_shaping: text::Shaping::Advanced,
             font: None,
             icon: Icon {
                 font: Renderer::ICON_FONT,
                 code_point: Renderer::CHECKMARK_ICON,
                 size: None,
                 line_height: text::LineHeight::default(),
-                shaping: text::Shaping::Basic,
+                shaping: text::Shaping::Advanced,
             },
             style: Default::default(),
         }
