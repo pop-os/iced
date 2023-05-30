@@ -610,7 +610,6 @@ where
             wl_output.as_ref(),
         );
         layer_surface.set_anchor(anchor);
-        dbg!(keyboard_interactivity);
         layer_surface.set_keyboard_interactivity(keyboard_interactivity);
         layer_surface.set_margin(
             margin.top,
