@@ -11,7 +11,7 @@ pub struct Settings {
 
     /// The default size of text.
     ///
-    /// By default, it will be set to `16.0`.
+    /// By default, it will be set to `14.0`.
     pub default_text_size: f32,
 
     /// The antialiasing strategy that will be used for triangle primitives.
@@ -24,7 +24,7 @@ impl Default for Settings {
     fn default() -> Settings {
         Settings {
             default_font: Font::default(),
-            default_text_size: 16.0,
+            default_text_size: 14.0,
             antialiasing: None,
         }
     }
