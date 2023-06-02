@@ -42,9 +42,9 @@ system = ["iced_winit?/system", "iced_sctk?/system"]
 # Enables the advanced module
 advanced = []
 # Enables the `accesskit` accessibility library
-a11y = ["iced_accessibility", "iced_widget/a11y", "iced_winit?/a11y", "iced_sctk?/a11y"]
+a11y = ["iced_accessibility", "iced_core/a11y", "iced_widget/a11y", "iced_winit?/a11y", "iced_sctk?/a11y"]
 # Enables the winit shell. Conflicts with `wayland` and `glutin`.
-winit = ["iced_winit"]
+winit = ["iced_winit", "iced_accessibility?/accesskit_winit"]
 # Enables the sctk shell. COnflicts with `winit` and `glutin`.
 wayland = ["iced_sctk", "iced_widget/wayland", "iced_accessibility?/accesskit_unix"]
 
@@ -75,7 +75,7 @@ iced_renderer = { version = "0.1", path = "renderer", default-features = false }
 iced_widget = { version = "0.1", path = "widget" }
 iced_winit = { version = "0.9", path = "winit", features = ["application"], optional = true }
 iced_sctk = { path = "./sctk", optional = true }
-iced_accessibility = { version = "0.1", path = "accessibility", optional = true }
+iced_accessibility = { version = "0.1", path = "accessibility", default-features = false, optional = true }
 thiserror = "1"
 
 [dependencies.image_rs]
