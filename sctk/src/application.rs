@@ -371,7 +371,7 @@ where
     // let mut current_context_window = init_id_inner;
 
     let mut kbd_surface_id: Option<ObjectId> = None;
-    let mut mods = Modifiers::default();
+    let mut mods: Modifiers = Modifiers::default();
     let mut destroyed_surface_ids: HashMap<ObjectId, SurfaceIdWrapper> =
         Default::default();
     let mut simple_clipboard = Clipboard::unconnected();
@@ -449,6 +449,7 @@ where
                                 states.remove(&surface_id.inner());
                                 messages.push(application.close_requested(surface_id.inner()));
                                 destroyed_surface_ids.insert(id.id(), surface_id);
+                                compositor_surfaces.remove(&surface_id.inner());
                                 // if exit_on_close_request && surface_id == init_id {
                                 //     break 'main;
                                 // }
@@ -512,6 +513,7 @@ where
                                 states.remove(&surface_id.inner());
                                 messages.push(application.close_requested(surface_id.inner()));
                                 destroyed_surface_ids.insert(id.id(), surface_id);
+                                compositor_surfaces.remove(&surface_id.inner());
                                 // if exit_on_close_request && surface_id == init_id {
                                 //     break 'main;
                                 // }
@@ -578,6 +580,7 @@ where
                                 states.remove(&surface_id.inner());
                                 messages.push(application.close_requested(surface_id.inner()));
                                 destroyed_surface_ids.insert(id.id(), surface_id);
+                                compositor_surfaces.remove(&surface_id.inner());
                             }
                         }
                         PopupEventVariant::WmCapabilities(_) => {}
@@ -660,6 +663,7 @@ where
                                     interfaces.remove(inner);
                                     states.remove(inner);
                                     destroyed_surface_ids.insert(id.clone(), *surface_id);
+                                    compositor_surfaces.remove(&surface_id.inner());
                                     false
                                 },
                                 _ => true,
