@@ -70,6 +70,7 @@ where
     label: Option<Vec<iced_accessibility::accesskit::NodeId>>,
     content: Element<'a, Message, Renderer>,
     on_press: Option<Message>,
+    on_focus_changed: Option<Message>,
     width: Length,
     height: Length,
     padding: Padding,
@@ -93,6 +94,7 @@ where
             label: None,
             content: content.into(),
             on_press: None,
+            on_focus_changed: None,
             width: Length::Shrink,
             height: Length::Shrink,
             padding: Padding::new(5.0),
@@ -123,6 +125,12 @@ where
     /// Unless `on_press` is called, the [`Button`] will be disabled.
     pub fn on_press(mut self, msg: Message) -> Self {
         self.on_press = Some(msg);
+        self
+    }
+
+    /// Sets the message that will be produced when the [`Button`] is focused or unfocused.
+    pub fn on_focus_changed(mut self, msg: Message) -> Self {
+        self.on_focus_changed = Some(msg);
         self
     }
 
@@ -273,6 +281,7 @@ where
             cursor_position,
             shell,
             &self.on_press,
+            &self.on_focus_changed,
             || tree.state.downcast_mut::<State>(),
         )
     }
@@ -478,9 +487,17 @@ pub fn update<'a, Message: Clone>(
     cursor_position: Point,
     shell: &mut Shell<'_, Message>,
     on_press: &Option<Message>,
+    on_focus_changed: &Option<Message>,
     state: impl FnOnce() -> &'a mut State,
 ) -> event::Status {
     match event {
+        Event::Focus(focused_id) => {
+            if Some(id) == focused_id {
+                if let Some(on_focus_changed) = on_focus_changed {
+                    shell.publish(on_focus_changed.clone());
+                }
+            }
+        }
         Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left))
         | Event::Touch(touch::Event::FingerPressed { .. }) => {
             if on_press.is_some() {

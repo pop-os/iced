@@ -35,6 +35,9 @@ pub enum Event {
 
     /// A platform specific event
     PlatformSpecific(PlatformSpecific),
+
+    /// A Focus event
+    Focus(Option<crate::widget::Id>),
 }
 
 /// A platform specific event

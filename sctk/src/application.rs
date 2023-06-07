@@ -895,6 +895,18 @@ where
                             })
                             .collect();
 
+                        if let Some(state) = states.get_mut(&surface_id.inner())
+                        {
+                            if state.focus_changed {
+                                state.focus_changed = false;
+                                native_events.push(
+                                    iced_runtime::core::event::Event::Focus(
+                                        state.focus.clone(),
+                                    ),
+                                )
+                            }
+                        }
+
                         #[cfg(feature = "a11y")]
                         {
                             let mut filtered_a11y =
@@ -1058,6 +1070,34 @@ where
                     Some((*id, surface, interface, state))
                 }) {
                     debug.render_started();
+                    let mut focus_operation =
+                        Some(Box::new(OperationWrapper::Id(Box::new(
+                            operation::focusable::find_focused(),
+                        ))));
+                    while let Some(mut operation) = focus_operation.take() {
+                        user_interface.operate(&renderer, operation.as_mut());
+
+                        match operation.finish() {
+                            operation::Outcome::None => {
+                                state.focus(None);
+                            }
+                            operation::Outcome::Some(message) => match message {
+                                operation::OperationOutputWrapper::Message(
+                                    _,
+                                ) => {
+                                    unimplemented!();
+                                }
+                                operation::OperationOutputWrapper::Id(id) => {
+                                    state.focus(Some(id.clone()));
+                                }
+                            },
+                            operation::Outcome::Chain(next) => {
+                                focus_operation = Some(Box::new(
+                                    OperationWrapper::Wrapper(next),
+                                ));
+                            }
+                        }
+                    }
                     #[cfg(feature = "a11y")]
                     if let Some(Some(adapter)) = a11y_enabled
                         .then(|| adapters.get_mut(&native_id.inner()))
@@ -1066,6 +1106,9 @@ where
                             accesskit::{Role, Tree, TreeUpdate},
                             A11yTree,
                         };
+                        let focus =
+                            state.focus.clone().map(|f| A11yId::from(f));
+
                         // TODO send a11y tree
                         let child_tree =
                             user_interface.a11y_nodes(state.cursor_position());
@@ -1076,34 +1119,7 @@ where
                             child_tree,
                         );
                         let tree = Tree::new(NodeId(adapter.id));
-                        let mut current_operation =
-                            Some(Box::new(OperationWrapper::Id(Box::new(
-                                operation::focusable::find_focused(),
-                            ))));
-                        let mut focus = None;
-                        while let Some(mut operation) = current_operation.take()
-                        {
-                            user_interface
-                                .operate(&renderer, operation.as_mut());
 
-                            match operation.finish() {
-                                operation::Outcome::None => {
-                                }
-                                operation::Outcome::Some(message) => {
-                                    match message {
-                                        operation::OperationOutputWrapper::Message(_) => {
-                                            unimplemented!();
-                                        }
-                                        operation::OperationOutputWrapper::Id(id) => {
-                                            focus = Some(A11yId::from(id));
-                                        },
-                                    }
-                                }
-                                operation::Outcome::Chain(next) => {
-                                    current_operation = Some(Box::new(OperationWrapper::Wrapper(next)));
-                                }
-                            }
-                        }
                         log::debug!(
                             "focus: {:?}\ntree root: {:?}\n children: {:?}",
                             &focus,
@@ -1364,6 +1380,8 @@ where
     theme: <A::Renderer as Renderer>::Theme,
     appearance: application::Appearance,
     application: PhantomData<A>,
+    focus: Option<iced_runtime::core::id::Id>,
+    focus_changed: bool,
 }
 
 impl<A: Application> State<A>
@@ -1390,6 +1408,8 @@ where
             theme,
             appearance,
             application: PhantomData,
+            focus: None,
+            focus_changed: false,
         }
     }
 
@@ -1487,6 +1507,11 @@ where
         // Update theme and appearance
         self.theme = application.theme();
         self.appearance = self.theme.appearance(&application.style());
+    }
+
+    fn focus(&mut self, id: Option<iced_runtime::core::id::Id>) {
+        self.focus_changed = self.focus != id;
+        self.focus = id;
     }
 }
 

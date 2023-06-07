@@ -91,6 +91,7 @@ where
         Option<Box<dyn Fn(Box<dyn Send + Sync + Fn() -> platform_specific::wayland::data_device::ActionInner>) -> Message + 'a>>,
     surface_ids: Option<(window::Id, window::Id)>,
     dnd_icon: bool,
+    on_focus_changed: Option<Message>,
 }
 
 impl<'a, Message, Renderer> TextInput<'a, Message, Renderer>
@@ -124,6 +125,7 @@ where
             surface_ids: None,
             dnd_icon: false,
             line_height: text::LineHeight::default(),
+            on_focus_changed: None,
         }
     }
 
@@ -165,6 +167,13 @@ where
         on_paste: impl Fn(String) -> Message + 'a,
     ) -> Self {
         self.on_paste = Some(Box::new(on_paste));
+        self
+    }
+
+    /// Sets the message that should be produced when the [`TextInput`]
+    /// focus changed
+    pub fn on_focus_changed(mut self, on_focus_changed: Message) -> Self {
+        self.on_focus_changed = Some(on_focus_changed);
         self
     }
 
@@ -380,6 +389,7 @@ where
         shell: &mut Shell<'_, Message>,
     ) -> event::Status {
         update(
+            self.id.clone(),
             event,
             layout,
             cursor_position,
@@ -394,6 +404,7 @@ where
             self.on_input.as_deref(),
             self.on_paste.as_deref(),
             &self.on_submit,
+            &self.on_focus_changed,
             || tree.state.downcast_mut::<State>(),
             self.on_create_dnd_source.as_deref(),
             self.dnd_icon,
@@ -583,6 +594,7 @@ where
 /// Processes an [`Event`] and updates the [`State`] of a [`TextInput`]
 /// accordingly.
 pub fn update<'a, Message, Renderer>(
+    id: Option<Id>,
     event: Event,
     layout: Layout<'_>,
     cursor_position: Point,
@@ -597,6 +609,7 @@ pub fn update<'a, Message, Renderer>(
     on_input: Option<&dyn Fn(String) -> Message>,
     on_paste: Option<&dyn Fn(String) -> Message>,
     on_submit: &Option<Message>,
+    on_focus_changed: &Option<Message>,
     state: impl FnOnce() -> &'a mut State,
     on_start_dnd_source: Option<&dyn Fn(State) -> Message>,
     _dnd_icon: bool,
@@ -616,6 +629,14 @@ where
     Renderer: text::Renderer,
 {
     match event {
+        Event::Focus(focused_id) => {
+            if id.is_some() && id == focused_id {
+                if let Some(on_focus_changed) = on_focus_changed {
+                    shell.publish(on_focus_changed.clone());
+                }
+            }
+        }
+
         Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left))
         | Event::Touch(touch::Event::FingerPressed { .. }) => {
             let state = state();
