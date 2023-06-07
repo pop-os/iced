@@ -206,7 +206,7 @@ impl Candidate {
                             default_font: settings.default_font,
                             // TODO: find were this is getting set to a value other than 14.0
                             // default_text_size: settings.default_text_size,
-                            default_text_size: 14.0
+                            default_text_size: 14.0,
                         },
                     );
 
