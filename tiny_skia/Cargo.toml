@@ -10,10 +10,8 @@ geometry = ["iced_graphics/geometry"]
 
 [dependencies]
 raw-window-handle = "0.5"
-softbuffer = { git = "https://github.com/pop-os/softbuffer", tag = "cosmic-2.0-old" } 
-# softbuffer = { path = "../../../softbuffer" }
-# softbuffer = "0.2.0"
-tiny-skia = "0.9"
+softbuffer = "0.2"
+tiny-skia = "0.10"
 bytemuck = "1"
 rustc-hash = "1.1"
 kurbo = "0.9"
@@ -36,5 +34,5 @@ version = "1.6.1"
 features = ["std"]
 
 [dependencies.resvg]
-version = "0.32"
+version = "0.34"
 optional = true
