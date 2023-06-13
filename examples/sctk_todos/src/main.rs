@@ -25,7 +25,7 @@ static INPUT_ID: Lazy<Id> = Lazy::new(Id::unique);
 
 pub fn main() -> iced::Result {
     let env = Env::default()
-        .filter_or("MY_LOG_LEVEL", "debug")
+        .filter_or("MY_LOG_LEVEL", "info")
         .write_style_or("MY_LOG_STYLE", "always");
 
     let mut settings = SctkWindowSettings::default();

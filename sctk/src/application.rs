@@ -1406,13 +1406,16 @@ where
         if !approx_eq!(f32, w as f32, old_size.width, ulps = 2)
             || !approx_eq!(f32, h as f32, old_size.height, ulps = 2)
         {
+            let logical_size = LogicalSize::<f64>::new(w, h);
+            let physical_size: PhysicalSize<u32> =
+                logical_size.to_physical(self.scale_factor());
             self.viewport_changed = true;
             self.viewport = Viewport::with_physical_size(
                 Size {
-                    width: (w * self.application_scale_factor) as u32,
-                    height: (h * self.application_scale_factor) as u32,
+                    width: physical_size.width,
+                    height: physical_size.height,
                 },
-                self.application_scale_factor,
+                self.scale_factor(),
             );
         }
     }
