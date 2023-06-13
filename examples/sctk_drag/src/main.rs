@@ -239,7 +239,7 @@ impl container::StyleSheet for CustomTheme {
     fn appearance(&self, style: &Self::Style) -> container::Appearance {
         container::Appearance {
             border_color: Color::from_rgb(1.0, 0.0, 0.0),
-            border_radius: 2.0,
+            border_radius: 2.0.into(),
             border_width: 2.0,
             background: Some(Color::from_rgb(0.0, 0.0, 0.0).into()),
             ..container::Appearance::default()
