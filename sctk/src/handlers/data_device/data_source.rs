@@ -1,6 +1,5 @@
 use crate::event_loop::state::SctkState;
 use crate::sctk_event::{DataSourceEvent, SctkEvent};
-use log::error;
 use sctk::data_device_manager::WritePipe;
 use sctk::{
     data_device_manager::data_source::DataSourceHandler,
@@ -14,6 +13,7 @@ use sctk::{
 };
 use std::fmt::Debug;
 use std::io::{BufWriter, Write};
+use tracing::error;
 
 impl<T> DataSourceHandler for SctkState<T> {
     fn accept_mime(

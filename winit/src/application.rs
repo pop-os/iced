@@ -1012,7 +1012,7 @@ pub fn run_command<A, C, E>(
                     window.focus_window();
                 }
                 window::Action::ChangeLevel(level) => {
-                    window.set_window_level(conversion::window_level(level));
+                    // window.set_window_level(conversion::window_level(level));
                 }
                 window::Action::FetchId(tag) => {
                     proxy

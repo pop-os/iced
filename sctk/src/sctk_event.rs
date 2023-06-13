@@ -294,6 +294,8 @@ pub enum WindowEventVariant {
     },
     /// <https://wayland.app/protocols/xdg-shell#xdg_toplevel:event:configure>
     Configure(WindowConfigure, WlSurface, bool),
+    /// Scale Factor
+    ScaleFactorChanged(f64),
 }
 
 #[derive(Debug, Clone)]
@@ -310,6 +312,8 @@ pub enum PopupEventVariant {
     RepositionionedPopup { token: u32 },
     /// size
     Size(u32, u32),
+    /// Scale Factor
+    ScaleFactorChanged(f64),
 }
 
 #[derive(Debug, Clone)]
@@ -320,6 +324,8 @@ pub enum LayerSurfaceEventVariant {
     Done,
     /// <https://wayland.app/protocols/wlr-layer-shell-unstable-v1#zwlr_layer_surface_v1:event:configure>
     Configure(LayerSurfaceConfigure, WlSurface, bool),
+    /// Scale Factor
+    ScaleFactorChanged(f64),
 }
 
 /// Describes the reason the event loop is resuming.
@@ -368,14 +374,8 @@ pub struct SurfaceCompositorUpdate {
     /// New window configure.
     pub configure: Option<WindowConfigure>,
 
-    /// first
-    pub first: bool,
-
     /// New scale factor.
     pub scale_factor: Option<i32>,
-
-    /// Close the window.
-    pub close_window: bool,
 }
 
 impl SctkEvent {
@@ -665,6 +665,7 @@ impl SctkEvent {
                         Default::default()
                     }
                 }
+                WindowEventVariant::ScaleFactorChanged(_) => Default::default(),
             },
             SctkEvent::LayerSurfaceEvent {
                 variant,
@@ -712,7 +713,10 @@ impl SctkEvent {
                     PopupEventVariant::RepositionionedPopup { token: _ } => {
                         Default::default()
                     }
-                    PopupEventVariant::Size(_, _) => Default::default(), // TODO
+                    PopupEventVariant::Size(_, _) => Default::default(),
+                    PopupEventVariant::ScaleFactorChanged(_) => {
+                        Default::default()
+                    } // TODO
                 }
             }
             SctkEvent::NewOutput { id, info } => {

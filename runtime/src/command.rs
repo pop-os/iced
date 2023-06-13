@@ -1,5 +1,6 @@
 //! Run asynchronous actions.
 mod action;
+/// A set of asynchronous actions to be performed by some platform specific runtime.
 pub mod platform_specific;
 
 pub use action::Action;

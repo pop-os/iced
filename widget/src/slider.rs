@@ -15,6 +15,7 @@ use crate::core::{
 
 use std::ops::RangeInclusive;
 
+use iced_renderer::core::BorderRadius;
 pub use iced_style::slider::{
     Appearance, Handle, HandleShape, Rail, StyleSheet,
 };
@@ -513,7 +514,7 @@ pub fn draw<T, R>(
                     .max(2.0 * border_width)
                     .min(bounds.height / 2.0)
                     .min(bounds.width / 2.0);
-                (radius * 2.0, radius * 2.0, radius)
+                (radius * 2.0, radius * 2.0, BorderRadius::from(radius))
             }
             HandleShape::Rectangle {
                 width,
@@ -523,17 +524,11 @@ pub fn draw<T, R>(
                     .max(2.0 * border_width)
                     .min(bounds.width);
                 let height = bounds.height;
-                let br: [f32; 4] = border_radius.into();
-                let border_radius = br
-                    .into_iter()
-                    .min_by(|x, y| {
-                        x.partial_cmp(y).unwrap_or(std::cmp::Ordering::Equal)
-                    })
-                    .unwrap_or(0.0)
-                    .min(height / 2.0)
-                    .min(width / 2.0)
-                    .max(0.0);
-                (width, height, border_radius + width)
+                let mut border_radius: [f32; 4] = border_radius.into();
+                for r in &mut border_radius {
+                    *r = (*r).min(height / 2.0).min(width / 2.0).max(0.0);
+                }
+                (width, height, border_radius.into())
             }
         };
 

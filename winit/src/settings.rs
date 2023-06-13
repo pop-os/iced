@@ -143,7 +143,7 @@ impl Window {
             .with_decorations(self.decorations)
             .with_transparent(self.transparent)
             .with_window_icon(self.icon.and_then(conversion::icon))
-            .with_window_level(conversion::window_level(self.level))
+            // .with_window_level(conversion::window_level(self.level))
             .with_visible(self.visible);
 
         if let Some(position) = conversion::position(
@@ -173,7 +173,7 @@ impl Window {
         {
             // `with_name` is available on both `WindowBuilderExtWayland` and `WindowBuilderExtX11` and they do
             // exactly the same thing. We arbitrarily choose `WindowBuilderExtWayland` here.
-            use ::winit::platform::wayland::WindowBuilderExtWayland;
+            use ::winit::platform::unix::WindowBuilderExtUnix;
 
             if let Some(id) = _id {
                 window_builder = window_builder.with_name(id.clone(), id);

@@ -3,6 +3,7 @@ use crate::sctk_event::ActionRequestEvent;
 use crate::{
     clipboard::Clipboard,
     commands::{layer_surface::get_layer_surface, window::get_window},
+    dpi::{LogicalPosition, LogicalSize, PhysicalPosition, PhysicalSize},
     error::{self, Error},
     event_loop::{control_flow::ControlFlow, proxy, SctkEventLoop},
     sctk_event::{
@@ -22,16 +23,17 @@ use iced_futures::{
     core::{
         event::Status,
         layout::Limits,
+        mouse,
         renderer::Style,
         widget::{
             operation::{self, OperationWrapper, focusable::focus},
             tree, Operation, Tree,
         },
-        Widget, mouse,
+        Widget,
     },
     Executor, Runtime, Subscription,
 };
-use log::error;
+use tracing::error;
 
 use sctk::{
     reexports::client::{protocol::wl_surface::WlSurface, Proxy},
@@ -399,19 +401,13 @@ where
                         };
                         match variant.kind {
                             PointerEventKind::Enter { .. } => {
-                                state.set_cursor_position(Point::new(
-                                    variant.position.0 as f32,
-                                    variant.position.1 as f32,
-                                ));
+                                state.set_cursor_position(Some(LogicalPosition { x: variant.position.0, y: variant.position.1 }));
                             }
                             PointerEventKind::Leave { .. } => {
-                                state.set_cursor_position(Point::new(-1.0, -1.0));
+                                state.set_cursor_position(None);
                             }
                             PointerEventKind::Motion { .. } => {
-                                state.set_cursor_position(Point::new(
-                                    variant.position.0 as f32,
-                                    variant.position.1 as f32,
-                                ));
+                                state.set_cursor_position(Some(LogicalPosition { x: variant.position.0, y: variant.position.1 }));
                             }
                             PointerEventKind::Press { .. }
                             | PointerEventKind::Release { .. }
@@ -501,6 +497,14 @@ where
                                 }
                             }
                         }
+                        crate::sctk_event::WindowEventVariant::ScaleFactorChanged(sf) => {
+                            if let Some(state) = surface_ids
+                                .get(&id.id())
+                                .and_then(|id| states.get_mut(&id.inner()))
+                            {
+                                state.set_scale_factor(sf);
+                            }
+                        },
                     },
                     SctkEvent::LayerSurfaceEvent { variant, id } => match variant {
                         LayerSurfaceEventVariant::Created(id, native_id) => {
@@ -563,6 +567,14 @@ where
                                 }
                             }
                         }
+                        LayerSurfaceEventVariant::ScaleFactorChanged(sf) => {
+                            if let Some(state) = surface_ids
+                                .get(&id.id())
+                                .and_then(|id| states.get_mut(&id.inner()))
+                            {
+                                state.set_scale_factor(sf);
+                            }
+                        },
                     },
                     SctkEvent::PopupEvent {
                         variant,
@@ -632,6 +644,13 @@ where
                                 }
                             }
                         },
+                        PopupEventVariant::ScaleFactorChanged(sf) => {
+                            if let Some(id) = surface_ids.get(&id.id()) {
+                                if let Some(state) = states.get_mut(&id.inner()) {
+                                    state.set_scale_factor(sf);
+                                }
+                            }
+                        },
                     },
                     // TODO forward these events to an application which requests them?
                     SctkEvent::NewOutput { .. } => {
@@ -643,18 +662,7 @@ where
                     SctkEvent::Frame(_) => {
                         // TODO if animations are running, request redraw here?
                     },
-                    SctkEvent::ScaleFactorChanged {
-                        factor,
-                        id,
-                        inner_size: _,
-                    } => {
-                        if let Some(state) = surface_ids
-                            .get(&id.id())
-                            .and_then(|id| states.get_mut(&id.inner()))
-                        {
-                            state.set_scale_factor(factor);
-                        }
-                    }
+                    SctkEvent::ScaleFactorChanged { .. } => {}
                     SctkEvent::DataSource(DataSourceEvent::DndFinished) | SctkEvent::DataSource(DataSourceEvent::DndCancelled)=> {
                         surface_ids.retain(|id, surface_id| {
                             match surface_id {
@@ -870,7 +878,7 @@ where
 
                         let cursor_position =
                             match states.get(&surface_id.inner()) {
-                                Some(s) => s.cursor_position(),
+                                Some(s) => s.cursor(),
                                 None => continue,
                             };
                         debug.event_processing_started();
@@ -1074,7 +1082,20 @@ where
                                 }
                             }
                         }
-                        log::debug!("focus: {:?}\ntree root: {:?}\n children: {:?}", &focus, window_tree.root().iter().map(|n| (n.node().role(), n.id())).collect::<Vec<_>>(), window_tree.children().iter().map(|n| (n.node().role(), n.id())).collect::<Vec<_>>());
+                        tracing::debug!(
+                            "focus: {:?}\ntree root: {:?}\n children: {:?}",
+                            &focus,
+                            window_tree
+                                .root()
+                                .iter()
+                                .map(|n| (n.node().role(), n.id()))
+                                .collect::<Vec<_>>(),
+                            window_tree
+                                .children()
+                                .iter()
+                                .map(|n| (n.node().role(), n.id()))
+                                .collect::<Vec<_>>()
+                        );
                         let focus = focus
                             .filter(|f_id| window_tree.contains(f_id))
                             .map(|id| id.into());
@@ -1315,10 +1336,11 @@ where
 {
     pub(crate) id: SurfaceIdWrapper,
     title: String,
-    scale_factor: f64,
+    application_scale_factor: f64,
+    surface_scale_factor: f64,
     pub(crate) viewport: Viewport,
     viewport_changed: bool,
-    cursor_position: Point,
+    cursor_position: Option<PhysicalPosition<i32>>,
     modifiers: Modifiers,
     theme: <A::Renderer as Renderer>::Theme,
     appearance: application::Appearance,
@@ -1340,11 +1362,12 @@ where
         Self {
             id,
             title,
-            scale_factor,
+            application_scale_factor: scale_factor,
+            surface_scale_factor: 1.0, // assumed to be 1.0 at first
             viewport,
             viewport_changed: true,
             // TODO: Encode cursor availability in the type-system
-            cursor_position: Point::new(-1.0, -1.0),
+            cursor_position: None,
             modifiers: Modifiers::default(),
             theme,
             appearance,
@@ -1386,10 +1409,10 @@ where
             self.viewport_changed = true;
             self.viewport = Viewport::with_physical_size(
                 Size {
-                    width: (w * self.scale_factor) as u32,
-                    height: (h * self.scale_factor) as u32,
+                    width: (w * self.application_scale_factor) as u32,
+                    height: (h * self.application_scale_factor) as u32,
                 },
-                self.scale_factor,
+                self.application_scale_factor,
             );
         }
     }
@@ -1400,31 +1423,46 @@ where
     }
 
     pub fn set_scale_factor(&mut self, scale_factor: f64) {
-        if approx_eq!(f64, scale_factor, self.scale_factor, ulps = 2) {
+        if !approx_eq!(f64, scale_factor, self.surface_scale_factor, ulps = 2) {
             self.viewport_changed = true;
             let logical_size = self.viewport.logical_size();
+            let logical_size = LogicalSize::<f64>::new(
+                logical_size.width as f64,
+                logical_size.height as f64,
+            );
+            let physical_size: PhysicalSize<u32> = logical_size
+                .to_physical(self.application_scale_factor * scale_factor);
             self.viewport = Viewport::with_physical_size(
                 Size {
-                    width: (logical_size.width as f64 * scale_factor) as u32,
-                    height: (logical_size.height as f64 * scale_factor) as u32,
+                    width: physical_size.width,
+                    height: physical_size.height,
                 },
-                self.scale_factor,
+                self.application_scale_factor * scale_factor,
             );
         }
     }
 
-    /// Returns the current cursor position of the [`State`].
-    pub fn cursor_position(&self) -> Point {
-        self.cursor_position
-    }
-    
+    // TODO use a type to encode cursor availability
     /// Returns the current cursor position of the [`State`].
     pub fn cursor(&self) -> mouse::Cursor {
-        mouse::Cursor::Available(Point {
-            x: self.cursor_position.x as f32,
-            y: self.cursor_position.y as f32,
-        })        
+        self.cursor_position
+            .map(|cursor_position| {
+                let scale_factor = self.application_scale_factor;
+                assert!(
+                    scale_factor.is_sign_positive() && scale_factor.is_normal()
+                );
+                let logical: LogicalPosition<f64> =
+                    cursor_position.to_logical(scale_factor);
+
+                Point {
+                    x: logical.x as f32,
+                    y: logical.y as f32,
+                }
+            })
+            .map(mouse::Cursor::Available)
+            .unwrap_or(mouse::Cursor::Unavailable)
     }
+    
     /// Returns the current keyboard modifiers of the [`State`].
     pub fn modifiers(&self) -> Modifiers {
         self.modifiers
@@ -1445,8 +1483,9 @@ where
         self.appearance.text_color
     }
 
-    pub fn set_cursor_position(&mut self, p: Point) {
-        self.cursor_position = p;
+    pub fn set_cursor_position(&mut self, p: Option<LogicalPosition<f64>>) {
+        self.cursor_position =
+            p.map(|p| p.to_physical(self.application_scale_factor));
     }
 
     fn synchronize(&mut self, application: &A) {

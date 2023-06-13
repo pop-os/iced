@@ -159,15 +159,15 @@ pub fn window_event(
 /// Converts a [`window::Level`] to a [`winit`] window level.
 ///
 /// [`winit`]: https://github.com/rust-windowing/winit
-pub fn window_level(level: window::Level) -> winit::window::WindowLevel {
-    match level {
-        window::Level::Normal => winit::window::WindowLevel::Normal,
-        window::Level::AlwaysOnBottom => {
-            winit::window::WindowLevel::AlwaysOnBottom
-        }
-        window::Level::AlwaysOnTop => winit::window::WindowLevel::AlwaysOnTop,
-    }
-}
+// pub fn window_level(level: window::Level) -> winit::window::WindowLevel {
+//     match level {
+//         window::Level::Normal => winit::window::WindowLevel::Normal,
+//         window::Level::AlwaysOnBottom => {
+//             winit::window::WindowLevel::AlwaysOnBottom
+//         }
+//         window::Level::AlwaysOnTop => winit::window::WindowLevel::AlwaysOnTop,
+//     }
+// }
 
 /// Converts a [`Position`] to a [`winit`] logical position for a given monitor.
 ///

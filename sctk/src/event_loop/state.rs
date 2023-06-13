@@ -7,7 +7,14 @@ use std::{
 use crate::{
     application::Event,
     dpi::LogicalSize,
-    sctk_event::{SctkEvent, SurfaceCompositorUpdate},
+    handlers::{
+        wp_fractional_scaling::FractionalScalingManager,
+        wp_viewporter::ViewporterState,
+    },
+    sctk_event::{
+        LayerSurfaceEventVariant, PopupEventVariant, SctkEvent,
+        SurfaceCompositorUpdate, WindowEventVariant,
+    },
 };
 
 use iced_runtime::{
@@ -44,7 +51,7 @@ use sctk::{
                 wl_surface::{self, WlSurface},
                 wl_touch::WlTouch,
             },
-            Connection, QueueHandle,
+            Connection, Proxy, QueueHandle,
         },
     },
     registry::RegistryState,
@@ -67,6 +74,10 @@ use sctk::{
     },
     shm::{multi::MultiPool, Shm},
 };
+use wayland_protocols::wp::{
+    fractional_scale::v1::client::wp_fractional_scale_v1::WpFractionalScaleV1,
+    viewporter::client::wp_viewport::WpViewport,
+};
 
 #[derive(Debug)]
 pub(crate) struct SctkSeat {
@@ -87,6 +98,7 @@ pub(crate) struct SctkSeat {
 pub struct SctkWindow<T> {
     pub(crate) id: window::Id,
     pub(crate) window: Window,
+    pub(crate) scale_factor: Option<f64>,
     pub(crate) requested_size: Option<(u32, u32)>,
     pub(crate) current_size: Option<(NonZeroU32, NonZeroU32)>,
     pub(crate) last_configure: Option<WindowConfigure>,
@@ -94,6 +106,8 @@ pub struct SctkWindow<T> {
     /// Requests that SCTK window should perform.
     pub(crate) _pending_requests:
         Vec<platform_specific::wayland::window::Action<T>>,
+    pub(crate) wp_fractional_scale: Option<WpFractionalScaleV1>,
+    pub(crate) wp_viewport: Option<WpViewport>,
 }
 
 #[derive(Debug, Clone)]
@@ -110,6 +124,9 @@ pub struct SctkLayerSurface<T> {
     pub(crate) last_configure: Option<LayerSurfaceConfigure>,
     pub(crate) _pending_requests:
         Vec<platform_specific::wayland::layer_surface::Action<T>>,
+    pub(crate) scale_factor: Option<f64>,
+    pub(crate) wp_fractional_scale: Option<WpFractionalScaleV1>,
+    pub(crate) wp_viewport: Option<WpViewport>,
 }
 
 #[derive(Debug, Clone)]
@@ -137,6 +154,9 @@ pub struct SctkPopup<T> {
     pub(crate) _pending_requests:
         Vec<platform_specific::wayland::popup::Action<T>>,
     pub(crate) data: SctkPopupData,
+    pub(crate) scale_factor: Option<f64>,
+    pub(crate) wp_fractional_scale: Option<WpFractionalScaleV1>,
+    pub(crate) wp_viewport: Option<WpViewport>,
 }
 
 pub struct Dnd<T> {
@@ -229,16 +249,7 @@ pub struct SctkState<T> {
     /// Window updates, which are coming from SCTK or the compositor, which require
     /// calling back to the sctk's downstream. They are handled right in the event loop,
     /// unlike the ones coming from buffers on the `WindowHandle`'s.
-    pub popup_compositor_updates: HashMap<ObjectId, SurfaceCompositorUpdate>,
-    /// Window updates, which are coming from SCTK or the compositor, which require
-    /// calling back to the sctk's downstream. They are handled right in the event loop,
-    /// unlike the ones coming from buffers on the `WindowHandle`'s.
-    pub window_compositor_updates: HashMap<ObjectId, SurfaceCompositorUpdate>,
-    /// Layer Surface updates, which are coming from SCTK or the compositor, which require
-    /// calling back to the sctk's downstream. They are handled right in the event loop,
-    /// unlike the ones coming from buffers on the `WindowHandle`'s.
-    pub layer_surface_compositor_updates:
-        HashMap<ObjectId, SurfaceCompositorUpdate>,
+    pub compositor_updates: Vec<SctkEvent>,
 
     /// data data_device
     pub(crate) selection_source: Option<SctkCopyPasteSource>,
@@ -257,6 +268,9 @@ pub struct SctkState<T> {
     pub(crate) loop_handle: LoopHandle<'static, Self>,
 
     // sctk state objects
+    /// Viewporter state on the given window.
+    pub viewporter_state: Option<ViewporterState<T>>,
+    pub(crate) fractional_scaling_manager: Option<FractionalScalingManager<T>>,
     pub(crate) registry_state: RegistryState,
     pub(crate) seat_state: SeatState,
     pub(crate) output_state: OutputState,
@@ -308,6 +322,79 @@ pub enum LayerSurfaceCreationError {
 /// An error that occurred while starting a drag and drop operation.
 #[derive(Debug, thiserror::Error)]
 pub enum DndStartError {}
+
+impl<T> SctkState<T> {
+    pub fn scale_factor_changed(
+        &mut self,
+        surface: &WlSurface,
+        scale_factor: f64,
+        legacy: bool,
+    ) {
+        if let Some(window) = self
+            .windows
+            .iter_mut()
+            .find(|w| w.window.wl_surface() == surface)
+        {
+            if legacy && window.wp_fractional_scale.is_some() {
+                return;
+            }
+            window.scale_factor = Some(scale_factor);
+            if legacy {
+                let _ = window.window.set_buffer_scale(scale_factor as u32);
+            }
+            self.compositor_updates.push(SctkEvent::WindowEvent {
+                variant: WindowEventVariant::ScaleFactorChanged(scale_factor),
+                id: window.window.wl_surface().clone(),
+            });
+        }
+
+        if let Some(popup) = self
+            .popups
+            .iter_mut()
+            .find(|p| p.popup.wl_surface() == surface)
+        {
+            if legacy && popup.wp_fractional_scale.is_some() {
+                return;
+            }
+            popup.scale_factor = Some(scale_factor);
+            if legacy {
+                let _ = popup
+                    .popup
+                    .wl_surface()
+                    .set_buffer_scale(scale_factor as _);
+            }
+            self.compositor_updates.push(SctkEvent::PopupEvent {
+                variant: PopupEventVariant::ScaleFactorChanged(scale_factor),
+                id: popup.popup.wl_surface().clone(),
+                toplevel_id: popup.data.toplevel.clone(),
+                parent_id: popup.data.parent.wl_surface().clone(),
+            });
+        }
+
+        if let Some(layer_surface) = self
+            .layer_surfaces
+            .iter_mut()
+            .find(|l| l.surface.wl_surface() == surface)
+        {
+            if legacy && layer_surface.wp_fractional_scale.is_some() {
+                return;
+            }
+            layer_surface.scale_factor = Some(scale_factor);
+            if legacy {
+                let _ =
+                    layer_surface.surface.set_buffer_scale(scale_factor as u32);
+            }
+            self.compositor_updates.push(SctkEvent::LayerSurfaceEvent {
+                variant: LayerSurfaceEventVariant::ScaleFactorChanged(
+                    scale_factor,
+                ),
+                id: layer_surface.surface.wl_surface().clone(),
+            });
+        }
+
+        // TODO winit sets cursor size after handling the change for the window, so maybe that should be done as well.
+    }
+}
 
 impl<T> SctkState<T>
 where
@@ -455,6 +542,15 @@ where
             }
         }
         wl_surface.commit();
+
+        let wp_viewport = self.viewporter_state.as_ref().map(|state| {
+            state.get_viewport(popup.wl_surface(), &self.queue_handle)
+        });
+        let wp_fractional_scale =
+            self.fractional_scaling_manager.as_ref().map(|fsm| {
+                fsm.fractional_scaling(popup.wl_surface(), &self.queue_handle)
+            });
+
         self.popups.push(SctkPopup {
             popup: popup.clone(),
             data: SctkPopupData {
@@ -465,6 +561,9 @@ where
             },
             last_configure: None,
             _pending_requests: Default::default(),
+            wp_viewport,
+            wp_fractional_scale,
+            scale_factor: None,
         });
 
         Ok((
@@ -552,9 +651,19 @@ where
         );
 
         window.commit();
+
+        let wp_viewport = self.viewporter_state.as_ref().map(|state| {
+            state.get_viewport(window.wl_surface(), &self.queue_handle)
+        });
+        let wp_fractional_scale =
+            self.fractional_scaling_manager.as_ref().map(|fsm| {
+                fsm.fractional_scaling(window.wl_surface(), &self.queue_handle)
+            });
+
         self.windows.push(SctkWindow {
             id: window_id,
             window,
+            scale_factor: None,
             requested_size: Some(size),
             current_size: Some((
                 NonZeroU32::new(1).unwrap(),
@@ -563,6 +672,8 @@ where
             last_configure: None,
             _pending_requests: Vec::new(),
             resizable,
+            wp_viewport,
+            wp_fractional_scale,
         });
         (window_id, wl_surface)
     }
@@ -624,6 +735,18 @@ where
             layer_surface.set_input_region(None);
         }
         layer_surface.commit();
+
+        let wp_viewport = self.viewporter_state.as_ref().map(|state| {
+            state.get_viewport(layer_surface.wl_surface(), &self.queue_handle)
+        });
+        let wp_fractional_scale =
+            self.fractional_scaling_manager.as_ref().map(|fsm| {
+                fsm.fractional_scaling(
+                    layer_surface.wl_surface(),
+                    &self.queue_handle,
+                )
+            });
+
         self.layer_surfaces.push(SctkLayerSurface {
             id,
             surface: layer_surface,
@@ -637,6 +760,9 @@ where
             exclusive_zone,
             last_configure: None,
             _pending_requests: Vec::new(),
+            wp_viewport,
+            wp_fractional_scale,
+            scale_factor: None,
         });
         Ok((id, wl_surface))
     }

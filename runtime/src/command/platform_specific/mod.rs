@@ -5,6 +5,7 @@ use std::{fmt, marker::PhantomData};
 use iced_futures::MaybeSend;
 
 #[cfg(feature = "wayland")]
+/// Platform specific actions defined for wayland
 pub mod wayland;
 
 /// Platform specific actions defined for wayland

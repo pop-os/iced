@@ -17,39 +17,7 @@ impl<T: Debug> CompositorHandler for SctkState<T> {
         surface: &wl_surface::WlSurface,
         new_factor: i32,
     ) {
-        if let Some(_w) = self
-            .windows
-            .iter()
-            .find(|w| w.window.wl_surface().id() == surface.id())
-        {
-            if let Some(e) =
-                self.window_compositor_updates.get_mut(&surface.id())
-            {
-                e.scale_factor = Some(new_factor)
-            }
-        }
-        if let Some(_w) = self
-            .layer_surfaces
-            .iter()
-            .find(|w| w.surface.wl_surface().id() == surface.id())
-        {
-            if let Some(e) =
-                self.layer_surface_compositor_updates.get_mut(&surface.id())
-            {
-                e.scale_factor = Some(new_factor)
-            }
-        }
-        if let Some(_w) = self
-            .popups
-            .iter()
-            .find(|w| w.popup.wl_surface().id() == surface.id())
-        {
-            if let Some(e) =
-                self.popup_compositor_updates.get_mut(&surface.id())
-            {
-                e.scale_factor = Some(new_factor)
-            }
-        }
+        self.scale_factor_changed(surface, new_factor as f64, true);
     }
 
     fn frame(

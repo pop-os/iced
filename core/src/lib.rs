@@ -22,34 +22,35 @@ mod background;
 mod border_radius;
 pub mod clipboard;
 mod color;
-mod content_fit;
+pub mod content_fit;
 mod element;
 pub mod event;
 pub mod font;
 pub mod gradient;
-mod hasher;
-#[cfg(not(feature = "a11y"))]
-pub mod id;
 pub mod image;
 pub mod keyboard;
 pub mod layout;
-mod length;
 pub mod mouse;
 pub mod overlay;
-mod padding;
-mod pixels;
-mod point;
-mod rectangle;
 pub mod renderer;
-mod shell;
-mod size;
 pub mod svg;
 pub mod text;
 pub mod time;
 pub mod touch;
-mod vector;
 pub mod widget;
 pub mod window;
+
+mod hasher;
+#[cfg(not(feature = "a11y"))]
+pub mod id;
+mod length;
+mod padding;
+mod pixels;
+mod point;
+mod rectangle;
+mod shell;
+mod size;
+mod vector;
 
 pub use alignment::Alignment;
 pub use angle::{Degrees, Radians};

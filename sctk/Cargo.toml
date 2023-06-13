@@ -13,9 +13,10 @@ multi_window = []
 a11y = ["iced_accessibility", "iced_runtime/a11y"]
 
 [dependencies]
-log = "0.4"
+tracing = "0.1"
 thiserror = "1.0"
 sctk.workspace = true
+wayland-protocols.workspace = true
 # sctk = { package = "smithay-client-toolkit", path = "../../fork/client-toolkit/" }
 raw-window-handle = "0.5"
 enum-repr = "0.2"

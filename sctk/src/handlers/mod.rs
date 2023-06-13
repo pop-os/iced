@@ -4,6 +4,8 @@ pub mod data_device;
 pub mod output;
 pub mod seat;
 pub mod shell;
+pub mod wp_fractional_scaling;
+pub mod wp_viewporter;
 
 use sctk::{
     delegate_registry, delegate_shm,

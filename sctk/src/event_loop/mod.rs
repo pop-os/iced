@@ -10,6 +10,10 @@ use crate::application::SurfaceIdWrapper;
 use crate::{
     application::Event,
     conversion,
+    handlers::{
+        wp_fractional_scaling::FractionalScalingManager,
+        wp_viewporter::ViewporterState,
+    },
     sctk_event::{
         DndOfferEvent, IcedSctkEvent,
         LayerSurfaceEventVariant, PopupEventVariant, SctkEvent,
@@ -25,7 +29,6 @@ use iced_runtime::command::platform_specific::{
         window::SctkWindowSettings,
     },
 };
-use log::error;
 use sctk::data_device_manager::data_source::DragSource;
 use sctk::{
     compositor::CompositorState,
@@ -57,6 +60,7 @@ use std::{
     time::{Duration, Instant},
 
 };
+use tracing::error;
 use wayland_backend::client::WaylandError;
 
 use self::{
@@ -136,6 +140,31 @@ where
             .register_dispatcher(wayland_dispatcher.clone())
             .unwrap();
 
+        let (viewporter_state, fractional_scaling_manager) =
+            match FractionalScalingManager::new(&globals, &qh) {
+                Ok(m) => {
+                    let viewporter_state =
+                        match ViewporterState::new(&globals, &qh) {
+                            Ok(s) => Some(s),
+                            Err(e) => {
+                                error!(
+                                    "Failed to initialize viewporter: {}",
+                                    e
+                                );
+                                None
+                            }
+                        };
+                    (viewporter_state, Some(m))
+                }
+                Err(e) => {
+                    error!(
+                        "Failed to initialize fractional scaling manager: {}",
+                        e
+                    );
+                    (None, None)
+                }
+            };
+
         Ok(Self {
             event_loop,
             wayland_dispatcher,
@@ -168,16 +197,16 @@ where
                 popups: Vec::new(),
                 dnd_source: None,
                 _kbd_focus: None,
-                window_compositor_updates: HashMap::new(),
                 sctk_events: Vec::new(),
-                popup_compositor_updates: Default::default(),
-                layer_surface_compositor_updates: Default::default(),
                 pending_user_events: Vec::new(),
                 token_ctr: 0,
                 selection_source: None,
                 _accept_counter: 0,
                 dnd_offer: None,
                 selection_offer: None,
+                fractional_scaling_manager,
+                viewporter_state,
+                compositor_updates: Default::default(),
             },
             _features: Default::default(),
             event_loop_awakener: ping,
@@ -253,6 +282,7 @@ where
         );
 
         let mut sctk_event_sink_back_buffer = Vec::new();
+        let mut compositor_event_back_buffer = Vec::new();
 
         // NOTE We break on errors from dispatches, since if we've got protocol error
         // libwayland-client/wayland-rs will inform us anyway, but crashing downstream is not
@@ -381,6 +411,45 @@ where
                             &mut control_flow,
                         )
                     }
+                }
+            }
+
+            // handle compositor events
+            std::mem::swap(
+                &mut compositor_event_back_buffer,
+                &mut self.state.compositor_updates,
+            );
+
+            for event in compositor_event_back_buffer.drain(..) {
+                let forward_event = match &event {
+                    SctkEvent::LayerSurfaceEvent {
+                        variant: LayerSurfaceEventVariant::ScaleFactorChanged(_),
+                        ..
+                    }
+                    | SctkEvent::PopupEvent {
+                        variant: PopupEventVariant::ScaleFactorChanged(_),
+                        ..
+                    }
+                    | SctkEvent::WindowEvent {
+                        variant: WindowEventVariant::ScaleFactorChanged(_),
+                        ..
+                    } => true,
+                    // ignore other events that shouldn't be in this buffer
+                    event => {
+                        tracing::warn!(
+                            "Unhandled compositor event: {:?}",
+                            event
+                        );
+                        false
+                    }
+                };
+                if forward_event {
+                    sticky_exit_callback(
+                        IcedSctkEvent::SctkEvent(event),
+                        &self.state,
+                        &mut control_flow,
+                        &mut callback,
+                    );
                 }
             }
 
