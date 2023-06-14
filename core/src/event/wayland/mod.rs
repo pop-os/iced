@@ -5,7 +5,7 @@ mod popup;
 mod seat;
 mod window;
 
-use crate::window::Id;
+use crate::{time::Instant, window::Id};
 use sctk::reexports::client::protocol::{
     wl_output::WlOutput, wl_seat::WlSeat, wl_surface::WlSurface,
 };
@@ -36,4 +36,6 @@ pub enum Event {
     DndOffer(DndOfferEvent),
     /// Selection Offer events
     SelectionOffer(SelectionOfferEvent),
+    /// Frame events
+    Frame(Instant, WlSurface, Id),
 }

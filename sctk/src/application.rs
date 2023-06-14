@@ -21,10 +21,14 @@ use iced_accessibility::{
 };
 use iced_futures::{
     core::{
-        event::Status,
+        event::{
+            wayland::Event as WaylandEvent, Event as CoreEvent,
+            PlatformSpecific, Status,
+        },
         layout::Limits,
         mouse,
         renderer::Style,
+        time::Instant,
         widget::{
             operation::{self, OperationWrapper, focusable::focus},
             tree, Operation, Tree,
@@ -664,8 +668,12 @@ where
                     }
                     SctkEvent::RemovedOutput( ..) => {
                     }
-                    SctkEvent::Frame(_) => {
-                        // TODO if animations are running, request redraw here?
+                    SctkEvent::Frame(surface) => {
+                        if let Some(id) = surface_ids.get(&surface.id()) {
+                            runtime.broadcast(CoreEvent::PlatformSpecific(
+                                PlatformSpecific::Wayland(WaylandEvent::Frame(Instant::now(), surface, id.inner()))
+                            ), Status::Ignored);
+                        }
                     },
                     SctkEvent::ScaleFactorChanged { .. } => {}
                     SctkEvent::DataSource(DataSourceEvent::DndFinished) | SctkEvent::DataSource(DataSourceEvent::DndCancelled)=> {
