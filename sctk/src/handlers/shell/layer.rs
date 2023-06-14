@@ -61,10 +61,7 @@ impl<T: Debug> LayerShellHandler for SctkState<T> {
             configure.new_size.1.max(1)
         };
 
-        layer.current_size.replace(LogicalSize::new(
-            configure.new_size.0,
-            configure.new_size.1,
-        ));
+        layer.update_viewport(configure.new_size.0, configure.new_size.1);
         let first = layer.last_configure.is_none();
         layer.last_configure.replace(configure.clone());
 

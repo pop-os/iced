@@ -690,7 +690,6 @@ async fn run_instance<A, E, C>(
                         mouse_interaction = new_mouse_interaction;
                     }
                     debug.draw_finished();
-
                     compositor.configure_surface(
                         &mut surface,
                         physical_size.width,

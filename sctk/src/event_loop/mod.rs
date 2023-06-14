@@ -10,6 +10,7 @@ use crate::application::SurfaceIdWrapper;
 use crate::{
     application::Event,
     conversion,
+    dpi::LogicalSize,
     handlers::{
         wp_fractional_scaling::FractionalScalingManager,
         wp_viewporter::ViewporterState,
@@ -646,9 +647,7 @@ where
                             height,
                         } => {
                             if let Some(layer_surface) = self.state.layer_surfaces.iter_mut().find(|l| l.id == id) {
-                                layer_surface.requested_size = (width, height);
-                                layer_surface.surface.set_size(width.unwrap_or_default(), height.unwrap_or_default());
-
+                                layer_surface.set_size(width, height);
                                 pending_redraws.push(layer_surface.surface.wl_surface().id());
                             }
                         },
@@ -749,14 +748,15 @@ where
                         },
                         platform_specific::wayland::window::Action::Size { id, width, height } => {
                             if let Some(window) = self.state.windows.iter_mut().find(|w| w.id == id) {
-                                let (width, height) = (NonZeroU32::new(width).unwrap_or(NonZeroU32::new(1).unwrap()), NonZeroU32::new(height).unwrap_or(NonZeroU32::new(1).unwrap()));
-                                window.requested_size = Some((width.get(), height.get()));
-                                window.window.set_window_geometry(0, 0, width.get() as u32, height.get() as u32);
-                                window.current_size = Some((width, height));
+                                window.set_size(LogicalSize::new(NonZeroU32::new(width).unwrap_or(NonZeroU32::new(1).unwrap()), NonZeroU32::new(1).unwrap()));
                                 // TODO Ashley maybe don't force window size?
                                 pending_redraws.push(window.window.wl_surface().id());
 
                                 if let Some(mut prev_configure) = window.last_configure.clone() {
+                                    let (width, height) = (
+                                        NonZeroU32::new(width).unwrap_or(NonZeroU32::new(1).unwrap()),
+                                        NonZeroU32::new(height).unwrap_or(NonZeroU32::new(1).unwrap()),
+                                    );
                                     prev_configure.new_size = (Some(width), Some(height));
                                     sticky_exit_callback(
                                         IcedSctkEvent::SctkEvent(SctkEvent::WindowEvent { variant: WindowEventVariant::Configure(prev_configure, window.window.wl_surface().clone(), false), id: window.window.wl_surface().clone()}),
@@ -962,15 +962,14 @@ where
                         platform_specific::wayland::popup::Action::Size { id, width, height } => {
                             if let Some(sctk_popup) = self.state
                                 .popups
-                                .iter()
+                                .iter_mut()
                                 .find(|s| s.data.id == id)
                             {
                                 // update geometry
-                                sctk_popup.popup.xdg_surface().set_window_geometry(0, 0, width as i32, height as i32);
                                 // update positioner
                                 self.state.token_ctr += 1;
-                                sctk_popup.data.positioner.set_size(width as i32, height as i32);
-                                sctk_popup.popup.reposition(&sctk_popup.data.positioner, self.state.token_ctr);
+                                sctk_popup.set_size(width, height, self.state.token_ctr);
+
                                 pending_redraws.push(sctk_popup.popup.wl_surface().id());
 
                                 sticky_exit_callback(IcedSctkEvent::SctkEvent(SctkEvent::PopupEvent {

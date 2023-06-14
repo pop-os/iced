@@ -110,6 +110,32 @@ pub struct SctkWindow<T> {
     pub(crate) wp_viewport: Option<WpViewport>,
 }
 
+impl<T> SctkWindow<T> {
+    pub(crate) fn set_size(&mut self, logical_size: LogicalSize<NonZeroU32>) {
+        self.requested_size =
+            Some((logical_size.width.get(), logical_size.height.get()));
+        self.update_size(logical_size)
+    }
+
+    pub(crate) fn update_size(
+        &mut self,
+        LogicalSize { width, height }: LogicalSize<NonZeroU32>,
+    ) {
+        self.window.set_window_geometry(
+            0,
+            0,
+            width.get() as u32,
+            height.get() as u32,
+        );
+        self.current_size = Some((width, height));
+        // Update the target viewport, this is used if and only if fractional scaling is in use.
+        if let Some(viewport) = self.wp_viewport.as_ref() {
+            // Set inner size without the borders.
+            viewport.set_destination(width.get() as _, height.get() as _);
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct SctkLayerSurface<T> {
     pub(crate) id: window::Id,
@@ -127,6 +153,23 @@ pub struct SctkLayerSurface<T> {
     pub(crate) scale_factor: Option<f64>,
     pub(crate) wp_fractional_scale: Option<WpFractionalScaleV1>,
     pub(crate) wp_viewport: Option<WpViewport>,
+}
+
+impl<T> SctkLayerSurface<T> {
+    pub(crate) fn set_size(&mut self, w: Option<u32>, h: Option<u32>) {
+        self.requested_size = (w, h);
+
+        let (w, h) = (w.unwrap_or_default(), h.unwrap_or_default());
+        self.surface.set_size(w, h);
+    }
+
+    pub(crate) fn update_viewport(&mut self, w: u32, h: u32) {
+        self.current_size = Some(LogicalSize::new(w, h));
+        if let Some(viewport) = self.wp_viewport.as_ref() {
+            // Set inner size without the borders.
+            viewport.set_destination(w as i32, h as i32);
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -157,6 +200,18 @@ pub struct SctkPopup<T> {
     pub(crate) scale_factor: Option<f64>,
     pub(crate) wp_fractional_scale: Option<WpFractionalScaleV1>,
     pub(crate) wp_viewport: Option<WpViewport>,
+}
+
+impl<T> SctkPopup<T> {
+    pub(crate) fn set_size(&mut self, w: u32, h: u32, token: u32) {
+        // update geometry
+        self.popup
+            .xdg_surface()
+            .set_window_geometry(0, 0, w as i32, h as i32);
+        // update positioner
+        self.data.positioner.set_size(w as i32, h as i32);
+        self.popup.reposition(&self.data.positioner, token);
+    }
 }
 
 pub struct Dnd<T> {
@@ -544,7 +599,10 @@ where
         wl_surface.commit();
 
         let wp_viewport = self.viewporter_state.as_ref().map(|state| {
-            state.get_viewport(popup.wl_surface(), &self.queue_handle)
+            let viewport =
+                state.get_viewport(popup.wl_surface(), &self.queue_handle);
+            viewport.set_destination(size.0 as i32, size.1 as i32);
+            viewport
         });
         let wp_fractional_scale =
             self.fractional_scaling_manager.as_ref().map(|fsm| {
