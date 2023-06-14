@@ -5,10 +5,12 @@ use crate::{
     commands::{layer_surface::get_layer_surface, window::get_window},
     dpi::{LogicalPosition, LogicalSize, PhysicalPosition, PhysicalSize},
     error::{self, Error},
-    event_loop::{control_flow::ControlFlow, proxy, SctkEventLoop},
+    event_loop::{
+        control_flow::ControlFlow, proxy, state::SctkState, SctkEventLoop,
+    },
     sctk_event::{
         DataSourceEvent, IcedSctkEvent, KeyboardEventVariant,
-        LayerSurfaceEventVariant, PopupEventVariant, SctkEvent,
+        LayerSurfaceEventVariant, PopupEventVariant, SctkEvent, StartCause,
     },
     settings
 };
@@ -40,7 +42,7 @@ use iced_futures::{
 use tracing::error;
 
 use sctk::{
-    reexports::client::{protocol::wl_surface::WlSurface, Proxy},
+    reexports::client::{protocol::wl_surface::WlSurface, Proxy, QueueHandle},
     seat::{keyboard::Modifiers, pointer::PointerEventKind},
 };
 use std::{collections::HashMap, ffi::c_void, hash::Hash, marker::PhantomData};
@@ -247,6 +249,7 @@ where
 
     // let (display, context, config, surface) = init_egl(&wl_surface, 100, 100);
     let backend = event_loop.state.connection.backend();
+    let qh = event_loop.state.queue_handle.clone();
     let wrapper = SurfaceDisplayWrapper::<C> {
         comp_surface: None,
         backend: backend.clone(),
@@ -262,6 +265,7 @@ where
     let surface_ids = Default::default();
 
     let (mut sender, receiver) = mpsc::unbounded::<IcedSctkEvent<A::Message>>();
+    let (control_sender, mut control_receiver) = mpsc::unbounded();
 
     let compositor_surfaces = HashMap::new();
     let mut instance = Box::pin(run_instance::<A, E, C>(
@@ -272,6 +276,7 @@ where
         ev_proxy,
         debug,
         receiver,
+        control_sender,
         compositor_surfaces,
         surface_ids,
         auto_size_surfaces,
@@ -281,6 +286,7 @@ where
         backend,
         init_command,
         exit_on_close_request,
+        qh,
     ));
 
     let mut context = task::Context::from_waker(task::noop_waker_ref());
@@ -290,12 +296,18 @@ where
             return;
         }
 
-        sender.start_send(event).expect("Send event");
+        sender.start_send(event).expect("Failed to send event");
 
         let poll = instance.as_mut().poll(&mut context);
 
         *control_flow = match poll {
-            task::Poll::Pending => ControlFlow::Wait,
+            task::Poll::Pending => {
+                if let Ok(Some(flow)) = control_receiver.try_next() {
+                    flow
+                } else {
+                    ControlFlow::Wait
+                }
+            }
             task::Poll::Ready(_) => ControlFlow::ExitWithCode(1),
         };
     });
@@ -322,12 +334,14 @@ async fn run_instance<A, E, C>(
     mut ev_proxy: proxy::Proxy<Event<A::Message>>,
     mut debug: Debug,
     mut receiver: mpsc::UnboundedReceiver<IcedSctkEvent<A::Message>>,
+    mut control_sender: mpsc::UnboundedSender<ControlFlow>,
     mut compositor_surfaces: HashMap<SurfaceId, SurfaceDisplayWrapper<C>>,
     mut surface_ids: HashMap<ObjectId, SurfaceIdWrapper>,
     mut auto_size_surfaces: HashMap<SurfaceIdWrapper, (u32, u32, Limits, bool)>,
     backend: wayland_backend::client::Backend,
     init_command: Command<A::Message>,
     _exit_on_close_request: bool, // TODO Ashley
+    queue_handle: QueueHandle<SctkState<<A as Program>::Message>>,
 ) -> Result<(), Error>
 where
     A: Application + 'static,
@@ -372,6 +386,8 @@ where
     let mut messages: Vec<A::Message> = Vec::new();
     #[cfg(feature = "a11y")]
     let mut commands: Vec<Command<A::Message>> = Vec::new();
+    let mut redraw_pending = false;
+
     debug.startup_finished();
 
     // let mut current_context_window = init_id_inner;
@@ -384,7 +400,14 @@ where
 
     'main: while let Some(event) = receiver.next().await {
         match event {
-            IcedSctkEvent::NewEvents(_) => {} // TODO Ashley: Seems to be ignored in iced_winit so i'll ignore for now
+            IcedSctkEvent::NewEvents(start_cause) => {
+                redraw_pending = matches!(
+                    start_cause,
+                    StartCause::Init
+                        | StartCause::Poll
+                        | StartCause::ResumeTimeReached { .. }
+                );
+            }
             IcedSctkEvent::UserEvent(message) => {
                 messages.push(message);
             }
@@ -670,9 +693,10 @@ where
                     }
                     SctkEvent::Frame(surface) => {
                         if let Some(id) = surface_ids.get(&surface.id()) {
-                            runtime.broadcast(CoreEvent::PlatformSpecific(
-                                PlatformSpecific::Wayland(WaylandEvent::Frame(Instant::now(), surface, id.inner()))
-                            ), Status::Ignored);
+                            if let Some(state) = states.get_mut(&id.inner()) {
+                                // TODO set this to the callback?
+                                state.set_frame(Some(surface));
+                            }
                         }
                     },
                     SctkEvent::ScaleFactorChanged { .. } => {}
@@ -863,17 +887,16 @@ where
                         break 'main;
                     }
                 } else {
-                    // TODO ensure that the surface_ids are
-                    let mut needs_redraw = false;
                     for (object_id, surface_id) in &surface_ids {
                         if matches!(surface_id, SurfaceIdWrapper::Dnd(_)) {
                             continue;
                         }
                         let mut filtered_sctk = Vec::with_capacity(sctk_events.len());
-                        let Some(state) = states.get(&surface_id.inner()) else {
+                        let Some(state) = states.get_mut(&surface_id.inner()) else {
                             continue;
                         };
                         let mut i = 0;
+
                         while i < sctk_events.len() {
                             let has_kbd_focus =
                                 kbd_surface_id.as_ref() == Some(object_id);
@@ -888,12 +911,6 @@ where
                             }
                         }
                         let has_events = !sctk_events.is_empty();
-
-                        let cursor_position =
-                            match states.get(&surface_id.inner()) {
-                                Some(s) => s.cursor(),
-                                None => continue,
-                            };
                         debug.event_processing_started();
                         #[allow(unused_mut)]
                         let mut native_events: Vec<_> = filtered_sctk
@@ -949,11 +966,6 @@ where
                             auto_size_surfaces.remove(surface_id)
                         {
                             if dirty {
-                                let state =
-                                    match states.get_mut(&surface_id.inner()) {
-                                        Some(s) => s,
-                                        None => continue,
-                                    };
                                 state.set_logical_size(w as f64, h as f64);
                                 match surface_id {
                                     SurfaceIdWrapper::Window(id) => {
@@ -973,22 +985,18 @@ where
                         }
 
                         // TODO ASHLEY if event is a configure which isn't a new size and has no other changes, don't redraw
-                        if has_events
+                        if redraw_pending
+                            || has_events
                             || !messages.is_empty()
                             || matches!(
                                 interface_state,
                                 user_interface::State::Outdated
                             )
                         {
-                            needs_redraw = true;
-                            ev_proxy.send_event(Event::SctkEvent(
-                                IcedSctkEvent::RedrawRequested(
-                                    object_id.clone(),
-                                ),
-                            ));
+                            state.set_needs_redraw(true);
                         }
                     }
-                    if needs_redraw {
+                    if states.iter().any(|(_, s)| s.needs_redraw) {
                         let mut pure_states: HashMap<_, _> =
                             ManuallyDrop::into_inner(interfaces)
                                 .drain()
@@ -1000,7 +1008,13 @@ where
                         for surface_id in surface_ids.values() {
                             let state =
                                 match states.get_mut(&surface_id.inner()) {
-                                    Some(s) => s,
+                                    Some(s) => {
+                                        if !s.needs_redraw() {
+                                            continue;
+                                        } else {
+                                            s
+                                        }
+                                    }
                                     None => continue,
                                 };
                             let mut cache =
@@ -1041,6 +1055,84 @@ where
                             &mut auto_size_surfaces,
                             &mut ev_proxy,
                         ));
+
+                        for (object_id, surface_id) in &surface_ids {
+                            let state = match states
+                                .get_mut(&surface_id.inner())
+                            {
+                                Some(s) => {
+                                    if !s.needs_redraw() || s.frame().is_none()
+                                    {
+                                        continue;
+                                    } else {
+                                        s
+                                    }
+                                }
+                                None => continue,
+                            };
+                            let Some(user_interface) = interfaces
+                                .get_mut(&surface_id.inner()) else {
+                                    continue;
+                                };
+                            let redraw_event = CoreEvent::Window(
+                                surface_id.inner(),
+                                crate::core::window::Event::RedrawRequested(
+                                    Instant::now(),
+                                ),
+                            );
+
+                            let (interface_state, _) = user_interface.update(
+                                &[redraw_event.clone()],
+                                state.cursor(),
+                                &mut renderer,
+                                &mut simple_clipboard,
+                                &mut messages,
+                            );
+
+                            debug.draw_started();
+                            let new_mouse_interaction = user_interface.draw(
+                                &mut renderer,
+                                state.theme(),
+                                &Style {
+                                    text_color: state.text_color(),
+                                },
+                                state.cursor(),
+                            );
+                            debug.draw_finished();
+
+                            if new_mouse_interaction != mouse_interaction {
+                                mouse_interaction = new_mouse_interaction;
+                                ev_proxy.send_event(Event::SetCursor(
+                                    mouse_interaction,
+                                ));
+                            }
+
+                            runtime.broadcast(redraw_event, Status::Ignored);
+
+                            ev_proxy.send_event(Event::SctkEvent(
+                                IcedSctkEvent::RedrawRequested(
+                                    object_id.clone(),
+                                ),
+                            ));
+
+                            let _ =
+                                control_sender
+                                    .start_send(match interface_state {
+                                    user_interface::State::Updated {
+                                        redraw_request: Some(redraw_request),
+                                    } => match redraw_request {
+                                        crate::core::window::RedrawRequest::NextFrame => {
+                                            ControlFlow::Poll
+                                        }
+                                        crate::core::window::RedrawRequest::At(at) => {
+                                            ControlFlow::WaitUntil(at)
+                                        }
+                                    },
+                                    _ => ControlFlow::Wait,
+                                });
+                            state.set_needs_redraw(false);
+                            redraw_pending = false;
+                        }
                     }
                 }
                 sctk_events.clear();
@@ -1062,6 +1154,14 @@ where
                     let state = states.get_mut(&id.inner());
                     Some((*id, surface, interface, state))
                 }) {
+                    // request a new frame
+                    // NOTE Ashley: this is done here only after a redraw
+                    // to prevent more events from being produced after repeatedly requesting redraws
+                    if let Some(surface) = state.frame.take() {
+                        surface.frame(&queue_handle, surface.clone());
+                        surface.commit();
+                    }
+
                     debug.render_started();
                     #[cfg(feature = "a11y")]
                     if let Some(Some(adapter)) = a11y_enabled.then(|| adapters.get_mut(&native_id.inner())) {
@@ -1359,6 +1459,8 @@ where
     theme: <A::Renderer as Renderer>::Theme,
     appearance: application::Appearance,
     application: PhantomData<A>,
+    frame: Option<WlSurface>,
+    needs_redraw: bool,
 }
 
 impl<A: Application> State<A>
@@ -1386,7 +1488,25 @@ where
             theme,
             appearance,
             application: PhantomData,
+            frame: None,
+            needs_redraw: false,
         }
+    }
+
+    pub(crate) fn set_needs_redraw(&mut self, needs_redraw: bool) {
+        self.needs_redraw = needs_redraw;
+    }
+
+    pub(crate) fn needs_redraw(&self) -> bool {
+        self.needs_redraw
+    }
+
+    pub(crate) fn set_frame(&mut self, frame: Option<WlSurface>) {
+        self.frame = frame;
+    }
+
+    pub(crate) fn frame(&self) -> Option<&WlSurface> {
+        self.frame.as_ref()
     }
 
     /// Returns the current [`Viewport`] of the [`State`].

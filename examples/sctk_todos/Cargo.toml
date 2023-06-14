@@ -29,3 +29,5 @@ assets = [
     ["target/release-opt/todos", "usr/bin/iced-todos", "755"],
     ["iced-todos.desktop", "usr/share/applications/", "644"],
 ]
+[profile.release-opt]
+debug = true
