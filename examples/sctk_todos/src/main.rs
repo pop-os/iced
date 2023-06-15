@@ -196,8 +196,7 @@ impl Application for Todos {
                             widget::focus_next()
                         }
                     }
-                    Message::CloseRequested(s) => {
-                        dbg!(s);
+                    Message::CloseRequested(_) => {
                         std::process::exit(0);
                     }
                     _ => Command::none(),

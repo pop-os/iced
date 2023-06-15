@@ -83,7 +83,7 @@ impl<T: Debug> WindowHandler for SctkState<T> {
             ),
             id,
         });
-        self.sctk_events.push(SctkEvent::Frame(wl_surface.clone()));
+        self.frame_events.push(wl_surface.clone());
     }
 }
 

@@ -199,6 +199,7 @@ where
                 dnd_source: None,
                 _kbd_focus: None,
                 sctk_events: Vec::new(),
+                frame_events: Vec::new(),
                 pending_user_events: Vec::new(),
                 token_ctr: 0,
                 selection_source: None,
@@ -284,6 +285,7 @@ where
 
         let mut sctk_event_sink_back_buffer = Vec::new();
         let mut compositor_event_back_buffer = Vec::new();
+        let mut frame_event_back_buffer = Vec::new();
 
         // NOTE We break on errors from dispatches, since if we've got protocol error
         // libwayland-client/wayland-rs will inform us anyway, but crashing downstream is not
@@ -454,6 +456,20 @@ where
                 }
             }
 
+            std::mem::swap(
+                &mut frame_event_back_buffer,
+                &mut self.state.frame_events,
+            );
+
+            for event in frame_event_back_buffer.drain(..) {
+                sticky_exit_callback(
+                    IcedSctkEvent::Frame(event),
+                    &self.state,
+                    &mut control_flow,
+                    &mut callback,
+                );
+            }
+
             // The purpose of the back buffer and that swap is to not hold borrow_mut when
             // we're doing callback to the user, since we can double borrow if the user decides
             // to create a window in one of those callbacks.
@@ -485,12 +501,6 @@ where
             // Handle pending sctk events.
             for event in sctk_event_sink_back_buffer.drain(..) {
                 match event {
-                    SctkEvent::Frame(id) => sticky_exit_callback(
-                        IcedSctkEvent::SctkEvent(SctkEvent::Frame(id)),
-                        &self.state,
-                        &mut control_flow,
-                        &mut callback,
-                    ),
                     SctkEvent::PopupEvent {
                         variant: PopupEventVariant::Done,
                         toplevel_id,

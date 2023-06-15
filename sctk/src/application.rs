@@ -300,15 +300,15 @@ where
 
         let poll = instance.as_mut().poll(&mut context);
 
-        *control_flow = match poll {
+        match poll {
             task::Poll::Pending => {
                 if let Ok(Some(flow)) = control_receiver.try_next() {
-                    flow
-                } else {
-                    ControlFlow::Wait
+                    *control_flow = flow
                 }
             }
-            task::Poll::Ready(_) => ControlFlow::ExitWithCode(1),
+            task::Poll::Ready(_) => {
+                *control_flow = ControlFlow::ExitWithCode(1)
+            }
         };
     });
 
@@ -691,14 +691,6 @@ where
                     }
                     SctkEvent::RemovedOutput( ..) => {
                     }
-                    SctkEvent::Frame(surface) => {
-                        if let Some(id) = surface_ids.get(&surface.id()) {
-                            if let Some(state) = states.get_mut(&id.inner()) {
-                                // TODO set this to the callback?
-                                state.set_frame(Some(surface));
-                            }
-                        }
-                    },
                     SctkEvent::ScaleFactorChanged { .. } => {}
                     SctkEvent::DataSource(DataSourceEvent::DndFinished) | SctkEvent::DataSource(DataSourceEvent::DndCancelled)=> {
                         surface_ids.retain(|id, surface_id| {
@@ -829,6 +821,13 @@ where
                 interfaces.insert(native_id, user_interface);
             }
             IcedSctkEvent::MainEventsCleared => {
+                if !redraw_pending
+                    && sctk_events.is_empty()
+                    && messages.is_empty()
+                {
+                    continue;
+                }
+
                 let mut i = 0;
                 while i < sctk_events.len() {
                     let remove = matches!(
@@ -887,6 +886,7 @@ where
                         break 'main;
                     }
                 } else {
+                    let mut needs_update = false;
                     for (object_id, surface_id) in &surface_ids {
                         if matches!(surface_id, SurfaceIdWrapper::Dnd(_)) {
                             continue;
@@ -993,10 +993,15 @@ where
                                 user_interface::State::Outdated
                             )
                         {
-                            state.set_needs_redraw(true);
+                            state.set_needs_redraw(state.frame.is_some());
+                            needs_update = !messages.is_empty()
+                                || matches!(
+                                    interface_state,
+                                    user_interface::State::Outdated
+                                );
                         }
                     }
-                    if states.iter().any(|(_, s)| s.needs_redraw) {
+                    if needs_update {
                         let mut pure_states: HashMap<_, _> =
                             ManuallyDrop::into_inner(interfaces)
                                 .drain()
@@ -1055,86 +1060,84 @@ where
                             &mut auto_size_surfaces,
                             &mut ev_proxy,
                         ));
-
-                        for (object_id, surface_id) in &surface_ids {
-                            let state = match states
-                                .get_mut(&surface_id.inner())
-                            {
-                                Some(s) => {
-                                    if !s.needs_redraw() || s.frame().is_none()
-                                    {
-                                        continue;
-                                    } else {
-                                        s
-                                    }
-                                }
-                                None => continue,
-                            };
-                            let Some(user_interface) = interfaces
-                                .get_mut(&surface_id.inner()) else {
-                                    continue;
-                                };
-                            let redraw_event = CoreEvent::Window(
-                                surface_id.inner(),
-                                crate::core::window::Event::RedrawRequested(
-                                    Instant::now(),
-                                ),
-                            );
-
-                            let (interface_state, _) = user_interface.update(
-                                &[redraw_event.clone()],
-                                state.cursor(),
-                                &mut renderer,
-                                &mut simple_clipboard,
-                                &mut messages,
-                            );
-
-                            debug.draw_started();
-                            let new_mouse_interaction = user_interface.draw(
-                                &mut renderer,
-                                state.theme(),
-                                &Style {
-                                    text_color: state.text_color(),
-                                },
-                                state.cursor(),
-                            );
-                            debug.draw_finished();
-
-                            if new_mouse_interaction != mouse_interaction {
-                                mouse_interaction = new_mouse_interaction;
-                                ev_proxy.send_event(Event::SetCursor(
-                                    mouse_interaction,
-                                ));
-                            }
-
-                            runtime.broadcast(redraw_event, Status::Ignored);
-
-                            ev_proxy.send_event(Event::SctkEvent(
-                                IcedSctkEvent::RedrawRequested(
-                                    object_id.clone(),
-                                ),
-                            ));
-
-                            let _ =
-                                control_sender
-                                    .start_send(match interface_state {
-                                    user_interface::State::Updated {
-                                        redraw_request: Some(redraw_request),
-                                    } => match redraw_request {
-                                        crate::core::window::RedrawRequest::NextFrame => {
-                                            ControlFlow::Poll
-                                        }
-                                        crate::core::window::RedrawRequest::At(at) => {
-                                            ControlFlow::WaitUntil(at)
-                                        }
-                                    },
-                                    _ => ControlFlow::Wait,
-                                });
-                            state.set_needs_redraw(false);
-                            redraw_pending = false;
-                        }
                     }
+                    for (object_id, surface_id) in &surface_ids {
+                        let state = match states.get_mut(&surface_id.inner()) {
+                            Some(s) => {
+                                if !s.needs_redraw() {
+                                    continue;
+                                } else {
+                                    s.set_needs_redraw(false);
+
+                                    s
+                                }
+                            }
+                            None => continue,
+                        };
+                        let Some(user_interface) = interfaces
+                            .get_mut(&surface_id.inner()) else {
+                                continue;
+                            };
+
+                        let redraw_event = CoreEvent::Window(
+                            surface_id.inner(),
+                            crate::core::window::Event::RedrawRequested(
+                                Instant::now(),
+                            ),
+                        );
+
+                        let (interface_state, _) = user_interface.update(
+                            &[redraw_event.clone()],
+                            state.cursor(),
+                            &mut renderer,
+                            &mut simple_clipboard,
+                            &mut messages,
+                        );
+
+                        debug.draw_started();
+                        let new_mouse_interaction = user_interface.draw(
+                            &mut renderer,
+                            state.theme(),
+                            &Style {
+                                text_color: state.text_color(),
+                            },
+                            state.cursor(),
+                        );
+                        debug.draw_finished();
+
+                        if new_mouse_interaction != mouse_interaction {
+                            mouse_interaction = new_mouse_interaction;
+                            ev_proxy.send_event(Event::SetCursor(
+                                mouse_interaction,
+                            ));
+                        }
+
+                        runtime.broadcast(redraw_event, Status::Ignored);
+
+                        ev_proxy.send_event(Event::SctkEvent(
+                            IcedSctkEvent::RedrawRequested(object_id.clone()),
+                        ));
+
+                        let _ =
+                            control_sender
+                                .start_send(match interface_state {
+                                user_interface::State::Updated {
+                                    redraw_request: Some(redraw_request),
+                                } => {
+                                    match redraw_request {
+                                    crate::core::window::RedrawRequest::NextFrame => {
+                                        ControlFlow::Poll
+                                    }
+                                    crate::core::window::RedrawRequest::At(at) => {
+                                        ControlFlow::WaitUntil(at)
+                                    }
+                                }},
+                                _ => ControlFlow::Wait,
+                            });
+                    }
+                    redraw_pending = false;
                 }
+
                 sctk_events.clear();
                 // clear the destroyed surfaces after they have been handled
                 destroyed_surface_ids.clear();
@@ -1336,6 +1339,14 @@ where
             #[cfg(feature = "a11y")]
             IcedSctkEvent::A11ySurfaceCreated(surface_id, adapter) => {
                 adapters.insert(surface_id.inner(), adapter);
+            }
+            IcedSctkEvent::Frame(surface) => {
+                if let Some(id) = surface_ids.get(&surface.id()) {
+                    if let Some(state) = states.get_mut(&id.inner()) {
+                        // TODO set this to the callback?
+                        state.set_frame(Some(surface));
+                    }
+                }
             }
         }
     }
@@ -1931,8 +1942,7 @@ fn event_is_for_surface(
         SctkEvent::WindowEvent { id, .. } => &id.id() == object_id,
         SctkEvent::LayerSurfaceEvent { id, .. } => &id.id() == object_id,
         SctkEvent::PopupEvent { id, .. } => &id.id() == object_id,
-        SctkEvent::Frame(_)
-        | SctkEvent::NewOutput { .. }
+        SctkEvent::NewOutput { .. }
         | SctkEvent::UpdateOutput { .. }
         | SctkEvent::RemovedOutput(_) => false,
         SctkEvent::ScaleFactorChanged { id, .. } => &id.id() == object_id,

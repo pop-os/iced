@@ -115,6 +115,9 @@ pub enum IcedSctkEvent<T> {
 
     /// Dnd source created with an icon surface.
     DndSurfaceCreated(WlSurface, DndIcon, SurfaceId),
+
+    /// Frame callback event
+    Frame(WlSurface),
 }
 
 #[derive(Debug, Clone)]
@@ -174,7 +177,6 @@ pub enum SctkEvent {
     //
     // compositor events
     //
-    Frame(WlSurface),
     ScaleFactorChanged {
         factor: f64,
         id: WlOutput,
@@ -747,7 +749,6 @@ impl SctkEvent {
                 .into_iter()
                 .collect()
             }
-            SctkEvent::Frame(_) => Default::default(),
             SctkEvent::ScaleFactorChanged {
                 factor: _,
                 id: _,

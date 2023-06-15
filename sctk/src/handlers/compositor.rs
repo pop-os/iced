@@ -27,7 +27,7 @@ impl<T: Debug> CompositorHandler for SctkState<T> {
         surface: &wl_surface::WlSurface,
         _time: u32,
     ) {
-        self.sctk_events.push(SctkEvent::Frame(surface.clone()));
+        self.frame_events.push(surface.clone());
     }
 }
 
