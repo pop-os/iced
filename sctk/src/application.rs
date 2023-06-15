@@ -1158,8 +1158,8 @@ where
                     Some((*id, surface, interface, state))
                 }) {
                     // request a new frame
-                    // NOTE Ashley: this is done here only after a redraw
-                    // to prevent more events from being produced after repeatedly requesting redraws
+                    // NOTE Ashley: this is done here only after a redraw for now instead of the event handler.
+                    // Otherwise cpu goes up in the running application as well as in cosmic-comp
                     if let Some(surface) = state.frame.take() {
                         surface.frame(&queue_handle, surface.clone());
                         surface.commit();
