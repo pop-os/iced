@@ -977,6 +977,24 @@ where
                                             },
                                         ));
                                     }
+                                    SurfaceIdWrapper::LayerSurface(id) => {
+                                        ev_proxy.send_event(Event::LayerSurface(
+                                            platform_specific::wayland::layer_surface::Action::Size {
+                                                id: *id,
+                                                width: Some(w),
+                                                height: Some(h),
+                                            },
+                                        ));
+                                    },
+                                    SurfaceIdWrapper::Popup(id) => {
+                                        ev_proxy.send_event(Event::Popup(
+                                            platform_specific::wayland::popup::Action::Size {
+                                                id: *id,
+                                                width: w,
+                                                height: h,
+                                            },
+                                        ));
+                                    }
                                     _ => {}
                                 };
                             }
