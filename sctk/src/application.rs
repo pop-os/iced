@@ -469,6 +469,7 @@ where
                         crate::sctk_event::WindowEventVariant::Close => {
                             if let Some(surface_id) = surface_ids.remove(&id.id()) {
                                 // drop(compositor_surfaces.remove(&surface_id.inner()));
+                                auto_size_surfaces.remove(&surface_id);
                                 interfaces.remove(&surface_id.inner());
                                 states.remove(&surface_id.inner());
                                 messages.push(application.close_requested(surface_id.inner()));
@@ -543,6 +544,7 @@ where
                         LayerSurfaceEventVariant::Done => {
                             if let Some(surface_id) = surface_ids.remove(&id.id()) {
                                 drop(compositor_surfaces.remove(&surface_id.inner()));
+                                auto_size_surfaces.remove(&surface_id);
                                 interfaces.remove(&surface_id.inner());
                                 states.remove(&surface_id.inner());
                                 messages.push(application.close_requested(surface_id.inner()));
@@ -620,6 +622,7 @@ where
                         PopupEventVariant::Done => {
                             if let Some(surface_id) = surface_ids.remove(&id.id()) {
                                 drop(compositor_surfaces.remove(&surface_id.inner()));
+                                auto_size_surfaces.remove(&surface_id);
                                 interfaces.remove(&surface_id.inner());
                                 states.remove(&surface_id.inner());
                                 messages.push(application.close_requested(surface_id.inner()));
@@ -985,7 +988,7 @@ where
                                                 height: Some(h),
                                             },
                                         ));
-                                    },
+                                    }
                                     SurfaceIdWrapper::Popup(id) => {
                                         ev_proxy.send_event(Event::Popup(
                                             platform_specific::wayland::popup::Action::Size {
@@ -1009,14 +1012,15 @@ where
                             || matches!(
                                 interface_state,
                                 user_interface::State::Outdated
-                            )
+                            ) || state.first()
                         {
-                            state.set_needs_redraw(state.frame.is_some());
+                            state.set_needs_redraw(state.frame.is_some() || state.first());
                             needs_update = !messages.is_empty()
                                 || matches!(
                                     interface_state,
                                     user_interface::State::Outdated
-                                );
+                                ) || state.first();
+                            state.set_first(false);
                         }
                     }
                     if needs_update {
@@ -1490,6 +1494,7 @@ where
     application: PhantomData<A>,
     frame: Option<WlSurface>,
     needs_redraw: bool,
+    first: bool,
 }
 
 impl<A: Application> State<A>
@@ -1519,6 +1524,7 @@ where
             application: PhantomData,
             frame: None,
             needs_redraw: false,
+            first: true,
         }
     }
 
@@ -1536,6 +1542,14 @@ where
 
     pub(crate) fn frame(&self) -> Option<&WlSurface> {
         self.frame.as_ref()
+    }
+
+    pub(crate) fn first(&self) -> bool {
+        self.first
+    }
+
+    pub(crate) fn set_first(&mut self, first: bool) {
+        self.first = first;
     }
 
     /// Returns the current [`Viewport`] of the [`State`].
