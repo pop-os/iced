@@ -31,7 +31,7 @@ version = "0.8"
 path = "../style"
 
 [dependencies.ouroboros]
-version = "0.13"
+version = "0.17"
 optional = true
 
 [dependencies.qrcode]
