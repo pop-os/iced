@@ -39,6 +39,7 @@ use sctk::{
     },
 };
 use std::{collections::HashMap, time::Instant};
+use wayland_protocols::wp::viewporter::client::wp_viewport::WpViewport;
 
 pub enum IcedSctkEvent<T> {
     /// Emitted when new events arrive from the OS to be processed.
@@ -297,7 +298,7 @@ pub enum WindowEventVariant {
     /// <https://wayland.app/protocols/xdg-shell#xdg_toplevel:event:configure>
     Configure(WindowConfigure, WlSurface, bool),
     /// Scale Factor
-    ScaleFactorChanged(f64),
+    ScaleFactorChanged(f64, Option<WpViewport>),
 }
 
 #[derive(Debug, Clone)]
@@ -315,7 +316,7 @@ pub enum PopupEventVariant {
     /// size
     Size(u32, u32),
     /// Scale Factor
-    ScaleFactorChanged(f64),
+    ScaleFactorChanged(f64, Option<WpViewport>),
 }
 
 #[derive(Debug, Clone)]
@@ -327,7 +328,7 @@ pub enum LayerSurfaceEventVariant {
     /// <https://wayland.app/protocols/wlr-layer-shell-unstable-v1#zwlr_layer_surface_v1:event:configure>
     Configure(LayerSurfaceConfigure, WlSurface, bool),
     /// Scale Factor
-    ScaleFactorChanged(f64),
+    ScaleFactorChanged(f64, Option<WpViewport>),
 }
 
 /// Describes the reason the event loop is resuming.
@@ -667,7 +668,9 @@ impl SctkEvent {
                         Default::default()
                     }
                 }
-                WindowEventVariant::ScaleFactorChanged(_) => Default::default(),
+                WindowEventVariant::ScaleFactorChanged(..) => {
+                    Default::default()
+                }
             },
             SctkEvent::LayerSurfaceEvent {
                 variant,
@@ -716,7 +719,7 @@ impl SctkEvent {
                         Default::default()
                     }
                     PopupEventVariant::Size(_, _) => Default::default(),
-                    PopupEventVariant::ScaleFactorChanged(_) => {
+                    PopupEventVariant::ScaleFactorChanged(..) => {
                         Default::default()
                     } // TODO
                 }

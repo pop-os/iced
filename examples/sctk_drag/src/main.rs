@@ -14,11 +14,21 @@ use iced::{
     widget::{self, column, container, dnd_listener, dnd_source, text},
     window, Application, Color, Command, Element, Subscription, Theme,
 };
-use iced_style::{application, theme};
+use iced_style::application;
 use sctk::reexports::client::protocol::wl_data_device_manager::DndAction;
+use sctk::shell::wlr_layer::Anchor;
 
 fn main() {
-    DndTest::run(iced::Settings::default()).unwrap();
+    let mut settings = iced::Settings::default();
+    match &mut settings.initial_surface {
+        InitialSurface::LayerSurface(s) => {
+            s.size_limits = s.size_limits.min_width(100.0).max_width(400.0);
+            s.size = Some((Some(400), None));
+            s.anchor = Anchor::TOP.union(Anchor::BOTTOM);
+        }
+        _ => {}
+    };
+    DndTest::run(settings).unwrap();
 }
 
 const SUPPORTED_MIME_TYPES: &'static [&'static str; 6] = &[
@@ -171,6 +181,8 @@ impl Application for DndTest {
                     "Drag text here: {}",
                     &self.current_text
                 )))
+                .width(Length::Fill)
+                .height(Length::FillPortion(1))
                 .style(if matches!(self.target, DndState::Some(_)) {
                     <iced_style::Theme as container::StyleSheet>::Style::Custom(
                         Box::new(CustomTheme),
@@ -203,6 +215,8 @@ impl Application for DndTest {
                     "Drag me: {}",
                     &self.current_text.chars().rev().collect::<String>()
                 )))
+                .width(Length::Fill)
+                .height(Length::FillPortion(1))
                 .style(if self.source.is_some() {
                     <iced_style::Theme as container::StyleSheet>::Style::Custom(
                         Box::new(CustomTheme),
@@ -241,7 +255,7 @@ impl container::StyleSheet for CustomTheme {
             border_color: Color::from_rgb(1.0, 0.0, 0.0),
             border_radius: 2.0.into(),
             border_width: 2.0,
-            background: Some(Color::from_rgb(0.0, 0.0, 0.0).into()),
+            background: Some(Color::from_rgb(1.0, 0.0, 0.0).into()),
             ..container::Appearance::default()
         }
     }
@@ -252,8 +266,8 @@ impl iced_style::application::StyleSheet for CustomTheme {
 
     fn appearance(&self, style: &Self::Style) -> application::Appearance {
         iced_style::application::Appearance {
-            background_color: Color::from_rgba(0.0, 0.0, 0.0, 0.0),
-            text_color: Color::from_rgb(1.0, 1.0, 1.0),
+            background_color: Color::from_rgba(1.0, 0.0, 1.0, 1.0),
+            text_color: Color::from_rgb(0.0, 1.0, 0.0),
         }
     }
 }

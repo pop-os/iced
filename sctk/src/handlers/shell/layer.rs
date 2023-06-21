@@ -49,7 +49,6 @@ impl<T: Debug> LayerShellHandler for SctkState<T> {
                 Some(l) => l,
                 None => return,
             };
-
         configure.new_size.0 = if let Some(w) = layer.requested_size.0 {
             w
         } else {

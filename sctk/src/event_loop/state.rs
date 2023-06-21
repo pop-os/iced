@@ -43,7 +43,6 @@ use sctk::{
     reexports::{
         calloop::{LoopHandle, RegistrationToken},
         client::{
-            backend::ObjectId,
             protocol::{
                 wl_keyboard::WlKeyboard,
                 wl_output::WlOutput,
@@ -51,7 +50,7 @@ use sctk::{
                 wl_surface::{self, WlSurface},
                 wl_touch::WlTouch,
             },
-            Connection, Proxy, QueueHandle,
+            Connection, QueueHandle,
         },
     },
     registry::RegistryState,
@@ -399,7 +398,10 @@ impl<T> SctkState<T> {
                 let _ = window.window.set_buffer_scale(scale_factor as u32);
             }
             self.compositor_updates.push(SctkEvent::WindowEvent {
-                variant: WindowEventVariant::ScaleFactorChanged(scale_factor),
+                variant: WindowEventVariant::ScaleFactorChanged(
+                    scale_factor,
+                    window.wp_viewport.clone(),
+                ),
                 id: window.window.wl_surface().clone(),
             });
         }
@@ -420,7 +422,10 @@ impl<T> SctkState<T> {
                     .set_buffer_scale(scale_factor as _);
             }
             self.compositor_updates.push(SctkEvent::PopupEvent {
-                variant: PopupEventVariant::ScaleFactorChanged(scale_factor),
+                variant: PopupEventVariant::ScaleFactorChanged(
+                    scale_factor,
+                    popup.wp_viewport.clone(),
+                ),
                 id: popup.popup.wl_surface().clone(),
                 toplevel_id: popup.data.toplevel.clone(),
                 parent_id: popup.data.parent.wl_surface().clone(),
@@ -443,6 +448,7 @@ impl<T> SctkState<T> {
             self.compositor_updates.push(SctkEvent::LayerSurfaceEvent {
                 variant: LayerSurfaceEventVariant::ScaleFactorChanged(
                     scale_factor,
+                    layer_surface.wp_viewport.clone(),
                 ),
                 id: layer_surface.surface.wl_surface().clone(),
             });

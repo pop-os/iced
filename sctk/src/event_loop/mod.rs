@@ -115,7 +115,6 @@ where
                 // Drain events here as well to account for application doing batch event processing
                 // on RedrawEventsCleared.
                 // shim::handle_window_requests(state);
-                todo!()
             })
             .unwrap();
         let (user_events_sender, user_events_channel) =
@@ -426,15 +425,16 @@ where
             for event in compositor_event_back_buffer.drain(..) {
                 let forward_event = match &event {
                     SctkEvent::LayerSurfaceEvent {
-                        variant: LayerSurfaceEventVariant::ScaleFactorChanged(_),
+                        variant:
+                            LayerSurfaceEventVariant::ScaleFactorChanged(..),
                         ..
                     }
                     | SctkEvent::PopupEvent {
-                        variant: PopupEventVariant::ScaleFactorChanged(_),
+                        variant: PopupEventVariant::ScaleFactorChanged(..),
                         ..
                     }
                     | SctkEvent::WindowEvent {
-                        variant: WindowEventVariant::ScaleFactorChanged(_),
+                        variant: WindowEventVariant::ScaleFactorChanged(..),
                         ..
                     } => true,
                     // ignore other events that shouldn't be in this buffer
