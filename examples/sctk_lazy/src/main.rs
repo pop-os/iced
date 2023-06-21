@@ -15,7 +15,7 @@ use std::hash::Hash;
 
 pub fn main() -> iced::Result {
     let mut initial_surface = SctkLayerSurfaceSettings::default();
-    initial_surface.keyboard_interactivity = KeyboardInteractivity::None;
+    initial_surface.keyboard_interactivity = KeyboardInteractivity::OnDemand;
     initial_surface.size_limits = Limits::NONE
         .min_width(1.0)
         .min_height(1.0)
