@@ -6,6 +6,7 @@ mod state;
 use iced_graphics::core::widget::operation::focusable::focus;
 use iced_graphics::core::widget::operation::OperationWrapper;
 use iced_graphics::core::widget::Operation;
+use iced_graphics::core::window::SizeType;
 use iced_runtime::futures::futures::FutureExt;
 pub use state::State;
 
@@ -939,6 +940,23 @@ pub fn run_command<A, C, E>(
                         width,
                         height,
                     });
+                }
+                window::Action::FetchSize {
+                    size_type,
+                    callback,
+                } => {
+                    let width_height = match size_type {
+                        SizeType::Inner => window.inner_size(),
+                        SizeType::Outer => window.outer_size(),
+                    };
+                    let width_height =
+                        (width_height.width, width_height.height);
+
+                    proxy
+                        .send_event(UserEventWrapper::Message(callback(
+                            width_height,
+                        )))
+                        .expect("Send message to event loop")
                 }
                 window::Action::Maximize(maximized) => {
                     window.set_maximized(maximized);

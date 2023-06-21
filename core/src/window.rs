@@ -2,6 +2,7 @@
 pub mod icon;
 
 mod event;
+mod fetch_size;
 mod level;
 mod mode;
 mod redraw_request;
@@ -17,3 +18,4 @@ pub use user_attention::UserAttention;
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 /// The identifier of a generic window.
 pub struct Id(pub u128);
+pub use fetch_size::SizeType;
