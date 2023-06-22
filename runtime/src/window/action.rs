@@ -1,7 +1,3 @@
-
-
-use iced_core::window::SizeType;
-
 use crate::core::window::{Icon, Level, Mode, UserAttention};
 use crate::futures::MaybeSend;
 use crate::window::Screenshot;
@@ -26,12 +22,7 @@ pub enum Action<T> {
         height: u32,
     },
     /// Fetch the current size of the window.
-    FetchSize {
-        /// Which size to fetch
-        size_type: SizeType,
-        /// Callback function
-        callback: Box<dyn FnOnce((u32, u32)) -> T + 'static>,
-    },
+    FetchSize(Box<dyn FnOnce((u32, u32)) -> T + 'static>),
     /// Set the window to maximized or back
     Maximize(bool),
     /// Set the window to minimized or back
@@ -118,10 +109,7 @@ impl<T> Action<T> {
             Self::Close => Action::Close,
             Self::Drag => Action::Drag,
             Self::Resize { width, height } => Action::Resize { width, height },
-            Self::FetchSize { size_type, callback } => Action::FetchSize {
-                size_type: size_type,
-                callback: Box::new(move |s| f(callback(s))),
-            },
+            Self::FetchSize(o) => Action::FetchSize(Box::new(move |s| f(o(s)))),
             Self::Maximize(maximized) => Action::Maximize(maximized),
             Self::Minimize(minimized) => Action::Minimize(minimized),
             Self::Move { x, y } => Action::Move { x, y },
@@ -154,7 +142,7 @@ impl<T> fmt::Debug for Action<T> {
                 f,
                 "Action::Resize {{ widget: {width}, height: {height} }}"
             ),
-            Self::FetchSize { size_type, .. } => write!(f, "Action::FetchSize {{ size_type: {size_type:?} }}"),
+            Self::FetchSize(_) => write!(f, "Action::FetchSize"),
             Self::Maximize(maximized) => {
                 write!(f, "Action::Maximize({maximized})")
             }
