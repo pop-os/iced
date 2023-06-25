@@ -738,7 +738,15 @@ pub fn update<Message>(
                 content_bounds,
             );
 
-            notify_on_scroll(state, on_scroll, bounds, content_bounds, shell);
+            notify_on_scroll(
+                state,
+                on_scroll,
+                bounds,
+                content_bounds,
+                horizontal_alignment,
+                vertical_alignment,
+                shell,
+            );
 
             return event::Status::Captured;
         }
@@ -784,6 +792,8 @@ pub fn update<Message>(
                             on_scroll,
                             bounds,
                             content_bounds,
+                            horizontal_alignment,
+                            vertical_alignment,
                             shell,
                         );
                     }
@@ -830,6 +840,8 @@ pub fn update<Message>(
                         on_scroll,
                         bounds,
                         content_bounds,
+                        horizontal_alignment,
+                        vertical_alignment,
                         shell,
                     );
 
@@ -866,6 +878,8 @@ pub fn update<Message>(
                         on_scroll,
                         bounds,
                         content_bounds,
+                        horizontal_alignment,
+                        vertical_alignment,
                         shell,
                     );
                 }
@@ -907,6 +921,8 @@ pub fn update<Message>(
                         on_scroll,
                         bounds,
                         content_bounds,
+                        horizontal_alignment,
+                        vertical_alignment,
                         shell,
                     );
                 }
@@ -943,6 +959,8 @@ pub fn update<Message>(
                         on_scroll,
                         bounds,
                         content_bounds,
+                        horizontal_alignment,
+                        vertical_alignment,
                         shell,
                     );
 
@@ -1158,6 +1176,8 @@ fn notify_on_scroll<Message>(
     on_scroll: &Option<Box<dyn Fn(Viewport) -> Message + '_>>,
     bounds: Rectangle,
     content_bounds: Rectangle,
+    horizontal_alignment: Alignment,
+    vertical_alignment: Alignment,
     shell: &mut Shell<'_, Message>,
 ) {
     if let Some(on_scroll) = on_scroll {
@@ -1172,6 +1192,8 @@ fn notify_on_scroll<Message>(
             offset_y: state.offset_y,
             bounds,
             content_bounds,
+            horizontal_alignment,
+            vertical_alignment,
         };
 
         // Don't publish redundant viewports to shell
@@ -1264,6 +1286,10 @@ pub struct Viewport {
     pub bounds: Rectangle,
     /// The content bounds of the [`Scrollable`].
     pub content_bounds: Rectangle,
+    /// The horizontal [`Alignment`] of the [`Scrollable`].
+    pub horizontal_alignment: Alignment,
+    /// The vertical [`Alignment`] of the [`Scrollable`].
+    pub vertical_alignment: Alignment,
 }
 
 impl Viewport {
