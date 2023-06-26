@@ -387,6 +387,7 @@ impl SctkEvent {
         modifiers: &mut Modifiers,
         surface_ids: &HashMap<ObjectId, SurfaceIdWrapper>,
         destroyed_surface_ids: &HashMap<ObjectId, SurfaceIdWrapper>,
+        natural_scroll: bool,
     ) -> Vec<iced_runtime::core::Event> {
         match self {
             // TODO Ashley: Platform specific multi-seat events?
@@ -441,14 +442,19 @@ impl SctkEvent {
                     horizontal,
                     vertical,
                     source,
-                } => pointer_axis_to_native(source, horizontal, vertical)
-                    .map(|a| {
-                        iced_runtime::core::Event::Mouse(
-                            mouse::Event::WheelScrolled { delta: a },
-                        )
-                    })
-                    .into_iter()
-                    .collect(), // TODO Ashley: conversion
+                } => pointer_axis_to_native(
+                    source,
+                    horizontal,
+                    vertical,
+                    natural_scroll,
+                )
+                .map(|a| {
+                    iced_runtime::core::Event::Mouse(
+                        mouse::Event::WheelScrolled { delta: a },
+                    )
+                })
+                .into_iter()
+                .collect(), // TODO Ashley: conversion
             },
             SctkEvent::KeyboardEvent {
                 variant,

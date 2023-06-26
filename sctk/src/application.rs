@@ -170,6 +170,11 @@ where
         1.0
     }
 
+    /// Defines whether or not to use natural scrolling
+    fn natural_scroll(&self) -> bool {
+        false
+    }
+
     /// Returns whether the [`Application`] should be terminated.
     ///
     /// By default, it returns `false`.
@@ -379,6 +384,8 @@ where
             .map(subscription_map::<A, E, C>)
             .into_recipes(),
     );
+
+    let natural_scroll = application.natural_scroll();
 
     let mut mouse_interaction = Interaction::default();
     let mut sctk_events: Vec<SctkEvent> = Vec::new();
@@ -862,6 +869,7 @@ where
                             &mut mods,
                             &surface_ids,
                             &destroyed_surface_ids,
+                            natural_scroll,
                         ) {
                             runtime.broadcast(native_event, Status::Ignored);
                         }
@@ -907,6 +915,7 @@ where
                     }
                 } else {
                     let mut needs_update = false;
+
                     for (object_id, surface_id) in &surface_ids {
                         if matches!(surface_id, SurfaceIdWrapper::Dnd(_)) {
                             continue;
@@ -943,6 +952,7 @@ where
                                     &mut mods,
                                     &surface_ids,
                                     &destroyed_surface_ids,
+                                    state.natural_scroll,
                                 )
                             })
                             .collect();
@@ -1514,6 +1524,7 @@ where
     appearance: application::Appearance,
     application: PhantomData<A>,
     frame: Option<WlSurface>,
+    natural_scroll: bool,
     needs_redraw: bool,
     first: bool,
     wp_viewport: Option<WpViewport>,
@@ -1545,6 +1556,7 @@ where
             appearance,
             application: PhantomData,
             frame: None,
+            natural_scroll: application.natural_scroll(),
             needs_redraw: false,
             first: true,
             wp_viewport: None,

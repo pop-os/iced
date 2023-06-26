@@ -31,16 +31,35 @@ pub fn pointer_axis_to_native(
     source: Option<AxisSource>,
     horizontal: AxisScroll,
     vertical: AxisScroll,
+    natural_scroll: bool,
 ) -> Option<ScrollDelta> {
     source.map(|source| match source {
-        AxisSource::Wheel | AxisSource::WheelTilt => ScrollDelta::Lines {
-            x: horizontal.discrete as f32,
-            y: vertical.discrete as f32,
-        },
-        _ => ScrollDelta::Pixels {
-            x: horizontal.absolute as f32,
-            y: vertical.absolute as f32,
-        },
+        AxisSource::Wheel | AxisSource::WheelTilt => {
+            if natural_scroll {
+                ScrollDelta::Lines {
+                    x: horizontal.discrete as f32,
+                    y: vertical.discrete as f32,
+                }
+            } else {
+                ScrollDelta::Lines {
+                    x: (-1 * horizontal.discrete) as f32,
+                    y: (-1 * vertical.discrete) as f32,
+                }
+            }
+        }
+        _ => {
+            if natural_scroll {
+                ScrollDelta::Pixels {
+                    x: horizontal.absolute as f32,
+                    y: vertical.absolute as f32,
+                }
+            } else {
+                ScrollDelta::Pixels {
+                    x: (-1.0 * horizontal.absolute) as f32,
+                    y: (-1.0 * vertical.absolute) as f32,
+                }
+            }
+        }
     })
 }
 
