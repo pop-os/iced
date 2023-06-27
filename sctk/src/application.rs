@@ -23,10 +23,7 @@ use iced_accessibility::{
 };
 use iced_futures::{
     core::{
-        event::{
-            wayland::Event as WaylandEvent, Event as CoreEvent,
-            PlatformSpecific, Status,
-        },
+        event::{Event as CoreEvent, Status},
         layout::Limits,
         mouse,
         renderer::Style,
@@ -552,6 +549,8 @@ where
                                 state.set_scale_factor(sf);
                             }
                         },
+                        // handled by the application
+                        crate::sctk_event::WindowEventVariant::StateChanged(_) => {},
                     },
                     SctkEvent::LayerSurfaceEvent { variant, id } => match variant {
                         LayerSurfaceEventVariant::Created(id, native_id) => {
@@ -652,7 +651,6 @@ where
                                 compositor_surfaces.remove(&surface_id.inner());
                             }
                         }
-                        PopupEventVariant::WmCapabilities(_) => {}
                         PopupEventVariant::Configure(configure, wl_surface, first) => {
                             if let Some(id) = surface_ids.get(&id.id()) {
                                compositor_surfaces.entry(id.inner()).or_insert_with(|| {

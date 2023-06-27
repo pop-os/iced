@@ -358,6 +358,15 @@ impl Application for Todos {
             ) => Some(Message::TabPressed {
                 shift: modifiers.shift(),
             }),
+            (
+                Event::PlatformSpecific(event::PlatformSpecific::Wayland(
+                    event::wayland::Event::Window(e, s, id),
+                )),
+                _,
+            ) => {
+                dbg!(&e);
+                None
+            }
             _ => None,
         })
     }
