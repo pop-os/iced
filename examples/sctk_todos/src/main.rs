@@ -301,7 +301,28 @@ impl Application for Todos {
     }
 
     fn subscription(&self) -> Subscription<Message> {
-        Subscription::none()
+        subscription::events_with(|event, status| match (event, status) {
+            (
+                Event::Keyboard(keyboard::Event::KeyPressed {
+                    key_code: keyboard::KeyCode::Tab,
+                    modifiers,
+                    ..
+                }),
+                event::Status::Ignored,
+            ) => Some(Message::TabPressed {
+                shift: modifiers.shift(),
+            }),
+            (
+                Event::PlatformSpecific(event::PlatformSpecific::Wayland(
+                    event::wayland::Event::Window(e, s, id),
+                )),
+                _,
+            ) => {
+                dbg!(&e);
+                None
+            }
+            _ => None,
+        })
     }
 
     fn close_requested(&self, id: window::Id) -> Self::Message {

@@ -35,7 +35,10 @@ use sctk::{
     },
     shell::{
         wlr_layer::LayerSurfaceConfigure,
-        xdg::{popup::PopupConfigure, window::WindowConfigure},
+        xdg::{
+            popup::PopupConfigure,
+            window::{WindowConfigure, WindowManagerCapabilities},
+        },
     },
 };
 use std::{collections::HashMap, time::Instant};
@@ -289,7 +292,7 @@ pub enum WindowEventVariant {
     /// <https://wayland.app/protocols/xdg-shell#xdg_toplevel:event:close>
     Close,
     /// <https://wayland.app/protocols/xdg-shell#xdg_toplevel:event:wm_capabilities>
-    WmCapabilities(Vec<u32>),
+    WmCapabilities(WindowManagerCapabilities),
     /// <https://wayland.app/protocols/xdg-shell#xdg_toplevel:event:configure_bounds>
     ConfigureBounds {
         width: u32,
@@ -297,6 +300,9 @@ pub enum WindowEventVariant {
     },
     /// <https://wayland.app/protocols/xdg-shell#xdg_toplevel:event:configure>
     Configure(WindowConfigure, WlSurface, bool),
+
+    /// window state changed
+    StateChanged(sctk::shell::xdg::window::WindowState),
     /// Scale Factor
     ScaleFactorChanged(f64, Option<WpViewport>),
 }
@@ -307,8 +313,6 @@ pub enum PopupEventVariant {
     Created(ObjectId, SurfaceId),
     /// <https://wayland.app/protocols/xdg-shell#xdg_popup:event:popup_done>
     Done,
-    /// <https://wayland.app/protocols/xdg-shell#xdg_toplevel:event:wm_capabilities>
-    WmCapabilities(Vec<u32>),
     /// <https://wayland.app/protocols/xdg-shell#xdg_popup:event:configure>
     Configure(PopupConfigure, WlSurface, bool),
     /// <https://wayland.app/protocols/xdg-shell#xdg_popup:event:repositioned>
@@ -643,7 +647,20 @@ impl SctkEvent {
                     })
                     .into_iter()
                     .collect(),
-                WindowEventVariant::WmCapabilities(_) => Default::default(),
+                WindowEventVariant::WmCapabilities(caps) => surface_ids
+                    .get(&surface.id())
+                    .map(|id| id.inner())
+                    .map(|id| {
+                        iced_runtime::core::Event::PlatformSpecific(
+                            PlatformSpecific::Wayland(wayland::Event::Window(
+                                wayland::WindowEvent::WmCapabilities(caps),
+                                surface,
+                                id,
+                            )),
+                        )
+                    })
+                    .into_iter()
+                    .collect(),
                 WindowEventVariant::ConfigureBounds { .. } => {
                     Default::default()
                 }
@@ -677,6 +694,19 @@ impl SctkEvent {
                 WindowEventVariant::ScaleFactorChanged(..) => {
                     Default::default()
                 }
+                WindowEventVariant::StateChanged(s) => surface_ids
+                    .get(&surface.id())
+                    .map(|id| {
+                        iced_runtime::core::Event::PlatformSpecific(
+                            PlatformSpecific::Wayland(wayland::Event::Window(
+                                wayland::WindowEvent::State(s),
+                                surface,
+                                id.inner(),
+                            )),
+                        )
+                    })
+                    .into_iter()
+                    .collect(),
             },
             SctkEvent::LayerSurfaceEvent {
                 variant,
@@ -719,7 +749,6 @@ impl SctkEvent {
                         .into_iter()
                         .collect(),
                     PopupEventVariant::Created(_, _) => Default::default(), // TODO
-                    PopupEventVariant::WmCapabilities(_) => Default::default(), // TODO
                     PopupEventVariant::Configure(_, _, _) => Default::default(), // TODO
                     PopupEventVariant::RepositionionedPopup { token: _ } => {
                         Default::default()

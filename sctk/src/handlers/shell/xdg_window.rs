@@ -5,10 +5,7 @@ use crate::{
 };
 use sctk::{
     delegate_xdg_shell, delegate_xdg_window,
-    shell::{
-        xdg::{window::WindowHandler, XdgSurface},
-        WaylandSurface,
-    },
+    shell::{xdg::window::WindowHandler, WaylandSurface},
 };
 use std::{fmt::Debug, num::NonZeroU32};
 
@@ -52,12 +49,40 @@ impl<T: Debug> WindowHandler for SctkState<T> {
             None => return,
         };
 
+        if window.last_configure.as_ref().map(|c| c.state)
+            != Some(configure.state)
+        {
+            self.sctk_events.push(SctkEvent::WindowEvent {
+                variant: WindowEventVariant::StateChanged(configure.state),
+                id: window.window.wl_surface().clone(),
+            });
+        }
+        if window.last_configure.as_ref().map(|c| c.capabilities)
+            != Some(configure.capabilities)
+        {
+            self.sctk_events.push(SctkEvent::WindowEvent {
+                variant: WindowEventVariant::WmCapabilities(
+                    configure.capabilities,
+                ),
+                id: window.window.wl_surface().clone(),
+            });
+        }
 
         if configure.new_size.0.is_none() {
-            configure.new_size.0 = Some(window.requested_size.and_then(|r| NonZeroU32::new(r.0)).unwrap_or_else(|| NonZeroU32::new(300).unwrap()));
+            configure.new_size.0 = Some(
+                window
+                    .requested_size
+                    .and_then(|r| NonZeroU32::new(r.0))
+                    .unwrap_or_else(|| NonZeroU32::new(300).unwrap()),
+            );
         }
         if configure.new_size.1.is_none() {
-            configure.new_size.1 = Some(window.requested_size.and_then(|r| NonZeroU32::new(r.1)).unwrap_or_else(|| NonZeroU32::new(500).unwrap()));
+            configure.new_size.1 = Some(
+                window
+                    .requested_size
+                    .and_then(|r| NonZeroU32::new(r.1))
+                    .unwrap_or_else(|| NonZeroU32::new(500).unwrap()),
+            );
         }
         configure
             .new_size
