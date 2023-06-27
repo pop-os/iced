@@ -61,7 +61,6 @@ mod debug;
 #[cfg(not(feature = "debug"))]
 #[path = "debug/null.rs"]
 mod debug;
-mod screenshot;
 
 pub use iced_core as core;
 pub use iced_futures as futures;
@@ -70,5 +69,4 @@ pub use command::Command;
 pub use debug::Debug;
 pub use font::Font;
 pub use program::Program;
-pub use screenshot::{CropError, Screenshot};
 pub use user_interface::UserInterface;

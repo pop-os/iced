@@ -2,13 +2,15 @@
 mod action;
 
 pub use crate::core::window::Id;
+pub mod screenshot;
+
 pub use action::Action;
+pub use screenshot::Screenshot;
 
 use crate::command::{self, Command};
 use crate::core::time::Instant;
 use crate::core::window::{Event, Icon, Level, Mode, UserAttention};
 use crate::futures::subscription::{self, Subscription};
-use crate::screenshot::Screenshot;
 
 /// Subscribes to the frames of the window of the running application.
 ///
