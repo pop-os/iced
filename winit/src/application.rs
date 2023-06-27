@@ -23,7 +23,7 @@ use crate::graphics::compositor::{self, Compositor};
 use crate::runtime::clipboard;
 use crate::runtime::program::Program;
 use crate::runtime::user_interface::{self, UserInterface};
-use crate::runtime::{Command, Debug, Screenshot};
+use crate::runtime::{Command, Debug};
 use crate::style::application::{Appearance, StyleSheet};
 use crate::{Clipboard, Error, Proxy, Settings};
 

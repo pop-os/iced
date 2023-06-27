@@ -4,6 +4,7 @@ mod action;
 pub mod screenshot;
 
 pub use crate::core::window::Id;
+
 pub use action::Action;
 pub use screenshot::Screenshot;
 
