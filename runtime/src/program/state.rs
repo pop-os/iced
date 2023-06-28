@@ -227,6 +227,48 @@ where
 
         (uncaptured_events, actions)
     }
+
+    /// Applies [`widget::Operation`]s to the [`State`]
+    pub fn operate<'a>(
+        &mut self,
+        id: crate::window::Id,
+        renderer: &mut P::Renderer,
+        operations: impl Iterator<
+            Item = &'a mut dyn Operation<OperationOutputWrapper<P::Message>>,
+        >,
+        bounds: Size,
+        debug: &mut Debug,
+    ) {
+        let mut user_interface = build_user_interface(
+            id,
+            &mut self.program,
+            self.cache.take().unwrap(),
+            renderer,
+            bounds,
+            debug,
+        );
+
+        for operation in operations {
+            let mut owned_op;
+            let mut current_operation = Some(operation);
+            while let Some(operation) = current_operation.take() {
+                user_interface.operate(renderer, operation);
+                match operation.finish() {
+                    Outcome::None => {}
+                    Outcome::Some(OperationOutputWrapper::Message(message)) => {
+                        self.queued_messages.push(message)
+                    }
+                    Outcome::Chain(op) => {
+                        owned_op = op;
+                        current_operation = Some(owned_op.as_mut());
+                    }
+                    _ => {}
+                };
+            }
+        }
+
+        self.cache = Some(user_interface.into_cache());
+    }
 }
 
 fn build_user_interface<'a, P: Program>(
