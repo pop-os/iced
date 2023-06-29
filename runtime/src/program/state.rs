@@ -229,12 +229,12 @@ where
     }
 
     /// Applies [`widget::Operation`]s to the [`State`]
-    pub fn operate<'a>(
+    pub fn operate(
         &mut self,
         id: crate::window::Id,
         renderer: &mut P::Renderer,
         operations: impl Iterator<
-            Item = &'a mut dyn Operation<OperationOutputWrapper<P::Message>>,
+            Item = Box<dyn Operation<OperationOutputWrapper<P::Message>>>,
         >,
         bounds: Size,
         debug: &mut Debug,
@@ -249,18 +249,18 @@ where
         );
 
         for operation in operations {
-            let mut owned_op;
             let mut current_operation = Some(operation);
-            while let Some(operation) = current_operation.take() {
-                user_interface.operate(renderer, operation);
+
+            while let Some(mut operation) = current_operation.take() {
+                user_interface.operate(renderer, operation.as_mut());
+
                 match operation.finish() {
                     Outcome::None => {}
                     Outcome::Some(OperationOutputWrapper::Message(message)) => {
                         self.queued_messages.push(message)
                     }
-                    Outcome::Chain(op) => {
-                        owned_op = op;
-                        current_operation = Some(owned_op.as_mut());
+                    Outcome::Chain(next) => {
+                        current_operation = Some(next);
                     }
                     _ => {}
                 };
