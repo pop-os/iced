@@ -592,7 +592,7 @@ pub fn update<'a, Message, T: Draggable>(
                         {
                             DragEvent::Dropped {
                                 pane,
-                                target: Target::PaneGrid(edge),
+                                target: Target::Edge(edge),
                             }
                         } else {
                             let dropped_region = contents
@@ -609,10 +609,7 @@ pub fn update<'a, Message, T: Draggable>(
                                 {
                                     DragEvent::Dropped {
                                         pane,
-                                        target: Target::Pane {
-                                            pane: target,
-                                            region,
-                                        },
+                                        target: Target::Pane(target, region),
                                     }
                                 }
                                 _ => DragEvent::Canceled { pane },
@@ -1099,15 +1096,10 @@ pub enum DragEvent {
 /// The [`Target`] area a pane can be dropped on.
 #[derive(Debug, Clone, Copy)]
 pub enum Target {
-    /// The [`Edge`} of the full [`PaneGrid`].
-    PaneGrid(Edge),
+    /// An [`Edge`] of the full [`PaneGrid`].
+    Edge(Edge),
     /// A single [`Pane`] of the [`PaneGrid`].
-    Pane {
-        /// The targetted [`Pane`].
-        pane: Pane,
-        /// The targetted area of the [`Pane`].
-        region: Region,
-    },
+    Pane(Pane, Region),
 }
 
 /// The region of a [`Pane`].
