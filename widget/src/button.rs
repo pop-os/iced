@@ -549,7 +549,8 @@ pub fn update<'a, Message: Clone>(
                 }
             }
         }
-        Event::Touch(touch::Event::FingerLost { .. }) => {
+        Event::Touch(touch::Event::FingerLost { .. })
+        | Event::Mouse(mouse::Event::CursorLeft) => {
             let state = state();
             state.is_hovered = false;
             state.is_pressed = false;
