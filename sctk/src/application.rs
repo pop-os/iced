@@ -994,6 +994,7 @@ where
                                 &mut messages,
                             )
                         };
+                        state.interface_state = interface_state;
                         debug.event_processing_finished();
                         for (event, status) in
                             native_events.into_iter().zip(statuses.into_iter())
@@ -1010,30 +1011,18 @@ where
                             auto_size_surfaces
                                 .insert(*surface_id, (w, h, limits, false));
                         }
-
-                        // TODO ASHLEY if event is a configure which isn't a new size and has no other changes, don't redraw
-                        if redraw_pending
-                            || has_events
-                            || !messages.is_empty()
+                        needs_update = !messages.is_empty()
                             || matches!(
                                 interface_state,
                                 user_interface::State::Outdated
                             )
                             || state.first()
-                            || state.viewport_changed
-                        {
+                            || has_events
+                            || state.viewport_changed;
+                        if redraw_pending || needs_update {
                             state.set_needs_redraw(
-                                state.frame.is_some()
-                                    || state.first()
-                                    || state.viewport_changed,
+                                state.frame.is_some() || needs_update,
                             );
-                            needs_update = !messages.is_empty()
-                                || matches!(
-                                    interface_state,
-                                    user_interface::State::Outdated
-                                )
-                                || state.first()
-                                || state.needs_redraw();
                             state.set_first(false);
                         }
                     }
@@ -1110,10 +1099,6 @@ where
                             }
                             None => continue,
                         };
-                        let Some(user_interface) = interfaces
-                            .get_mut(&surface_id.inner()) else {
-                                continue;
-                            };
 
                         let redraw_event = CoreEvent::Window(
                             surface_id.inner(),
@@ -1121,32 +1106,6 @@ where
                                 Instant::now(),
                             ),
                         );
-
-                        let (interface_state, _) = user_interface.update(
-                            &[redraw_event.clone()],
-                            state.cursor(),
-                            &mut renderer,
-                            &mut simple_clipboard,
-                            &mut messages,
-                        );
-
-                        debug.draw_started();
-                        let new_mouse_interaction = user_interface.draw(
-                            &mut renderer,
-                            state.theme(),
-                            &Style {
-                                text_color: state.text_color(),
-                            },
-                            state.cursor(),
-                        );
-                        debug.draw_finished();
-
-                        if new_mouse_interaction != mouse_interaction {
-                            mouse_interaction = new_mouse_interaction;
-                            ev_proxy.send_event(Event::SetCursor(
-                                mouse_interaction,
-                            ));
-                        }
 
                         runtime.broadcast(redraw_event, Status::Ignored);
 
@@ -1156,7 +1115,7 @@ where
 
                         let _ =
                             control_sender
-                                .start_send(match interface_state {
+                                .start_send(match state.interface_state {
                                 user_interface::State::Updated {
                                     redraw_request: Some(redraw_request),
                                 } => {
@@ -1168,7 +1127,11 @@ where
                                         ControlFlow::WaitUntil(at)
                                     }
                                 }},
-                                _ => ControlFlow::Wait,
+                                _ => if needs_update {
+                                    ControlFlow::Poll
+                                } else {
+                                    ControlFlow::Wait
+                                },
                             });
                     }
                     redraw_pending = false;
@@ -1526,6 +1489,7 @@ where
     needs_redraw: bool,
     first: bool,
     wp_viewport: Option<WpViewport>,
+    interface_state: user_interface::State,
 }
 
 impl<A: Application> State<A>
@@ -1558,6 +1522,7 @@ where
             needs_redraw: false,
             first: true,
             wp_viewport: None,
+            interface_state: user_interface::State::Outdated,
         }
     }
 
