@@ -344,7 +344,7 @@ where
             cursor,
             clipboard,
             shell,
-            &self.direction,
+            self.direction,
             &self.on_scroll,
             |event, layout, cursor, clipboard, shell| {
                 self.content.as_widget_mut().on_event(
@@ -376,7 +376,7 @@ where
             theme,
             layout,
             cursor,
-            &self.direction,
+            self.direction,
             &self.style,
             |renderer, layout, cursor, viewport| {
                 self.content.as_widget().draw(
@@ -404,7 +404,7 @@ where
             tree.state.downcast_ref::<State>(),
             layout,
             cursor,
-            &self.direction,
+            self.direction,
             |layout, cursor, viewport| {
                 self.content.as_widget().mouse_interaction(
                     &tree.children[0],
@@ -435,7 +435,7 @@ where
                 let content_layout = layout.children().next().unwrap();
                 let content_bounds = content_layout.bounds();
                 let offset = tree.state.downcast_ref::<State>().offset(
-                    &self.direction,
+                    self.direction,
                     bounds,
                     content_bounds,
                 );
@@ -655,7 +655,7 @@ pub fn update<Message>(
     cursor: mouse::Cursor,
     clipboard: &mut dyn Clipboard,
     shell: &mut Shell<'_, Message>,
-    direction: &Direction,
+    direction: Direction,
     on_scroll: &Option<Box<dyn Fn(Viewport) -> Message + '_>>,
     update_content: impl FnOnce(
         Event,
@@ -672,15 +672,6 @@ pub fn update<Message>(
     let content_bounds = content.bounds();
 
     let scrollbars = Scrollbars::new(state, direction, bounds, content_bounds);
-
-    let horizontal_alignment = direction
-        .horizontal()
-        .map(|p| p.alignment)
-        .unwrap_or_default();
-    let vertical_alignment = direction
-        .vertical()
-        .map(|p| p.alignment)
-        .unwrap_or_default();
 
     let (mouse_over_y_scrollbar, mouse_over_x_scrollbar) =
         scrollbars.is_mouse_over(cursor);
@@ -732,11 +723,7 @@ pub fn update<Message>(
                 mouse::ScrollDelta::Pixels { x, y } => Vector::new(x, y),
             };
 
-            state.scroll(
-                aligned_delta(delta, vertical_alignment, horizontal_alignment),
-                bounds,
-                content_bounds,
-            );
+            state.scroll(delta, direction, bounds, content_bounds);
 
             notify_on_scroll(state, on_scroll, bounds, content_bounds, shell);
 
@@ -767,15 +754,7 @@ pub fn update<Message>(
                             cursor_position.y - scroll_box_touched_at.y,
                         );
 
-                        state.scroll(
-                            aligned_delta(
-                                delta,
-                                vertical_alignment,
-                                horizontal_alignment,
-                            ),
-                            bounds,
-                            content_bounds,
-                        );
+                        state.scroll(delta, direction, bounds, content_bounds);
 
                         state.scroll_area_touched_at = Some(cursor_position);
 
@@ -819,7 +798,6 @@ pub fn update<Message>(
                         scrollbar.scroll_percentage_y(
                             scroller_grabbed_at,
                             cursor_position,
-                            vertical_alignment,
                         ),
                         bounds,
                         content_bounds,
@@ -853,7 +831,6 @@ pub fn update<Message>(
                         scrollbar.scroll_percentage_y(
                             scroller_grabbed_at,
                             cursor_position,
-                            vertical_alignment,
                         ),
                         bounds,
                         content_bounds,
@@ -896,7 +873,6 @@ pub fn update<Message>(
                         scrollbar.scroll_percentage_x(
                             scroller_grabbed_at,
                             cursor_position,
-                            horizontal_alignment,
                         ),
                         bounds,
                         content_bounds,
@@ -930,7 +906,6 @@ pub fn update<Message>(
                         scrollbar.scroll_percentage_x(
                             scroller_grabbed_at,
                             cursor_position,
-                            horizontal_alignment,
                         ),
                         bounds,
                         content_bounds,
@@ -961,7 +936,7 @@ pub fn mouse_interaction(
     state: &State,
     layout: Layout<'_>,
     cursor: mouse::Cursor,
-    direction: &Direction,
+    direction: Direction,
     content_interaction: impl FnOnce(
         Layout<'_>,
         mouse::Cursor,
@@ -1014,7 +989,7 @@ pub fn draw<Renderer>(
     theme: &Renderer::Theme,
     layout: Layout<'_>,
     cursor: mouse::Cursor,
-    direction: &Direction,
+    direction: Direction,
     style: &<Renderer::Theme as StyleSheet>::Style,
     draw_content: impl FnOnce(&mut Renderer, Layout<'_>, mouse::Cursor, &Rectangle),
 ) where
@@ -1299,9 +1274,30 @@ impl State {
     pub fn scroll(
         &mut self,
         delta: Vector<f32>,
+        direction: Direction,
         bounds: Rectangle,
         content_bounds: Rectangle,
     ) {
+        let horizontal_alignment = direction
+            .horizontal()
+            .map(|p| p.alignment)
+            .unwrap_or_default();
+
+        let vertical_alignment = direction
+            .vertical()
+            .map(|p| p.alignment)
+            .unwrap_or_default();
+
+        let align = |alignment: Alignment, delta: f32| match alignment {
+            Alignment::Start => delta,
+            Alignment::End => -delta,
+        };
+
+        let delta = Vector::new(
+            align(horizontal_alignment, delta.x),
+            align(vertical_alignment, delta.y),
+        );
+
         if bounds.height < content_bounds.height {
             self.offset_y = Offset::Absolute(
                 (self.offset_y.absolute(bounds.height, content_bounds.height)
@@ -1374,7 +1370,7 @@ impl State {
     /// the bounds of the [`Scrollable`] and its contents.
     pub fn offset(
         &self,
-        direction: &Direction,
+        direction: Direction,
         bounds: Rectangle,
         content_bounds: Rectangle,
     ) -> Vector {
@@ -1419,7 +1415,7 @@ impl Scrollbars {
     /// Create y and/or x scrollbar(s) if content is overflowing the [`Scrollable`] bounds.
     fn new(
         state: &State,
-        direction: &Direction,
+        direction: Direction,
         bounds: Rectangle,
         content_bounds: Rectangle,
     ) -> Self {
@@ -1488,6 +1484,7 @@ impl Scrollbars {
                 scroller: internals::Scroller {
                     bounds: scroller_bounds,
                 },
+                alignment: vertical.alignment,
             })
         } else {
             None
@@ -1548,6 +1545,7 @@ impl Scrollbars {
                 scroller: internals::Scroller {
                     bounds: scroller_bounds,
                 },
+                alignment: horizontal.alignment,
             })
         } else {
             None
@@ -1611,39 +1609,17 @@ impl Scrollbars {
     }
 }
 
-fn aligned_delta(
-    delta: Vector,
-    vertical_alignment: Alignment,
-    horizontal_alignment: Alignment,
-) -> Vector {
-    let align = |alignment: Alignment, delta: f32| match alignment {
-        Alignment::Start => delta,
-        Alignment::End => -delta,
-    };
-
-    Vector::new(
-        align(horizontal_alignment, delta.x),
-        align(vertical_alignment, delta.y),
-    )
-}
-
 pub(super) mod internals {
     use crate::core::{Point, Rectangle};
 
     use super::Alignment;
 
-    /// The scrollbar of a [`Scrollable`].
     #[derive(Debug, Copy, Clone)]
     pub struct Scrollbar {
-        /// The total bounds of the [`Scrollbar`], including the scrollbar, the scroller,
-        /// and the scrollbar margin.
         pub total_bounds: Rectangle,
-
-        /// The bounds of just the [`Scrollbar`].
         pub bounds: Rectangle,
-
-        /// The state of this scrollbar's [`Scroller`].
         pub scroller: Scroller,
+        pub alignment: Alignment,
     }
 
     impl Scrollbar {
@@ -1657,7 +1633,6 @@ pub(super) mod internals {
             &self,
             grabbed_at: f32,
             cursor_position: Point,
-            alignment: Alignment,
         ) -> f32 {
             let pct = if cursor_position.x < 0.0 && cursor_position.y < 0.0 {
                 // cursor position is unavailable! Set to either end or beginning of scrollbar depending
@@ -1670,7 +1645,7 @@ pub(super) mod internals {
                     / (self.bounds.height - self.scroller.bounds.height)
             };
 
-            match alignment {
+            match self.alignment {
                 Alignment::Start => pct,
                 Alignment::End => 1.0 - pct,
             }
@@ -1681,7 +1656,6 @@ pub(super) mod internals {
             &self,
             grabbed_at: f32,
             cursor_position: Point,
-            alignment: Alignment,
         ) -> f32 {
             let pct = if cursor_position.x < 0.0 && cursor_position.y < 0.0 {
                 (self.scroller.bounds.x / self.total_bounds.width).round()
@@ -1692,7 +1666,7 @@ pub(super) mod internals {
                     / (self.bounds.width - self.scroller.bounds.width)
             };
 
-            match alignment {
+            match self.alignment {
                 Alignment::Start => pct,
                 Alignment::End => 1.0 - pct,
             }
