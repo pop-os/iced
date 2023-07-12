@@ -4,7 +4,7 @@ use sctk::reexports::client::protocol::wl_data_device_manager::DndAction;
 
 use crate::core::{
     event, layout, mouse, overlay, touch, Clipboard, Element, Event, Length,
-    Point, Rectangle, Shell, Widget,
+    Point, Rectangle, Shell, Size, Widget,
 };
 
 use crate::core::widget::{
@@ -16,7 +16,7 @@ use crate::core::widget::{
 pub struct DndSource<'a, Message, Renderer> {
     content: Element<'a, Message, Renderer>,
 
-    on_drag: Option<Message>,
+    on_drag: Option<Box<dyn Fn(Size) -> Message + 'a>>,
 
     on_cancelled: Option<Message>,
 
@@ -34,9 +34,15 @@ pub struct DndSource<'a, Message, Renderer> {
 
 impl<'a, Message, Renderer> DndSource<'a, Message, Renderer> {
     /// The message to produce when the drag starts.
+    ///
+    /// Receives the size of the source widget, so the caller is able to size the
+    /// drag surface to match.
     #[must_use]
-    pub fn on_drag(mut self, message: Message) -> Self {
-        self.on_drag = Some(message);
+    pub fn on_drag<F>(mut self, f: F) -> Self
+    where
+        F: Fn(Size) -> Message + 'a,
+    {
+        self.on_drag = Some(Box::new(f));
         self
     }
 
@@ -332,9 +338,9 @@ where
             // XXX if the widget is not hovered but the mouse is pressed,
             // we are triggering on_drag
             if let (Some(on_drag), Some(_)) =
-                (self.on_drag.clone(), state.left_pressed_position.take())
+                (self.on_drag.as_ref(), state.left_pressed_position.take())
             {
-                shell.publish(on_drag);
+                shell.publish(on_drag(layout.bounds().size()));
                 state.is_dragging = true;
                 return event::Status::Captured;
             };
@@ -343,7 +349,7 @@ where
 
         state.hovered = true;
         if let (Some(on_drag), Some(pressed_pos)) =
-            (self.on_drag.clone(), state.left_pressed_position.clone())
+            (self.on_drag.as_ref(), state.left_pressed_position.clone())
         {
             if cursor_position.x < 0.0 || cursor_position.y < 0.0 {
                 return captured;
@@ -353,7 +359,7 @@ where
             if distance > self.drag_threshold {
                 state.left_pressed_position = None;
                 state.is_dragging = true;
-                shell.publish(on_drag);
+                shell.publish(on_drag(layout.bounds().size()));
                 return event::Status::Captured;
             }
         }
