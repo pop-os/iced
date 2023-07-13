@@ -715,14 +715,7 @@ pub fn update<Message>(
 
             state.scroll(delta, direction, bounds, content_bounds);
 
-            notify_on_scroll(
-                state,
-                on_scroll,
-                bounds,
-                content_bounds,
-                direction,
-                shell,
-            );
+            notify_on_scroll(state, on_scroll, bounds, content_bounds, shell);
 
             return event::Status::Captured;
         }
@@ -760,7 +753,6 @@ pub fn update<Message>(
                             on_scroll,
                             bounds,
                             content_bounds,
-                            direction,
                             shell,
                         );
                     }
@@ -806,7 +798,6 @@ pub fn update<Message>(
                         on_scroll,
                         bounds,
                         content_bounds,
-                        direction,
                         shell,
                     );
 
@@ -842,7 +833,6 @@ pub fn update<Message>(
                         on_scroll,
                         bounds,
                         content_bounds,
-                        direction,
                         shell,
                     );
                 }
@@ -883,7 +873,6 @@ pub fn update<Message>(
                         on_scroll,
                         bounds,
                         content_bounds,
-                        direction,
                         shell,
                     );
                 }
@@ -919,7 +908,6 @@ pub fn update<Message>(
                         on_scroll,
                         bounds,
                         content_bounds,
-                        direction,
                         shell,
                     );
 
@@ -1135,7 +1123,6 @@ fn notify_on_scroll<Message>(
     on_scroll: &Option<Box<dyn Fn(Viewport) -> Message + '_>>,
     bounds: Rectangle,
     content_bounds: Rectangle,
-    direction: Direction,
     shell: &mut Shell<'_, Message>,
 ) {
     if let Some(on_scroll) = on_scroll {
@@ -1145,23 +1132,11 @@ fn notify_on_scroll<Message>(
             return;
         }
 
-        let horizontal_alignment = direction
-            .horizontal()
-            .map(|p| p.alignment)
-            .unwrap_or_default();
-
-        let vertical_alignment = direction
-            .vertical()
-            .map(|p| p.alignment)
-            .unwrap_or_default();
-
         let viewport = Viewport {
             offset_x: state.offset_x,
             offset_y: state.offset_y,
             bounds,
             content_bounds,
-            vertical_alignment,
-            horizontal_alignment,
         };
 
         // Don't publish redundant viewports to shell
@@ -1266,8 +1241,6 @@ pub struct Viewport {
     offset_y: Offset,
     bounds: Rectangle,
     content_bounds: Rectangle,
-    vertical_alignment: Alignment,
-    horizontal_alignment: Alignment,
 }
 
 impl Viewport {
@@ -1283,6 +1256,22 @@ impl Viewport {
         AbsoluteOffset { x, y }
     }
 
+    /// Returns the [`AbsoluteOffset`] of the current [`Viewport`], but with its
+    /// alignment reversed.
+    ///
+    /// This method can be useful to switch the alignment of a [`Scrollable`]
+    /// while maintaining its scrolling position.
+    pub fn absolute_offset_reversed(&self) -> AbsoluteOffset {
+        let AbsoluteOffset { x, y } = self.absolute_offset();
+
+        AbsoluteOffset {
+            x: ((self.content_bounds.width - self.bounds.width).max(0.0) - x)
+                .max(0.0),
+            y: ((self.content_bounds.height - self.bounds.height).max(0.0) - y)
+                .max(0.0),
+        }
+    }
+
     /// Returns the [`RelativeOffset`] of the current [`Viewport`].
     pub fn relative_offset(&self) -> RelativeOffset {
         let AbsoluteOffset { x, y } = self.absolute_offset();
@@ -1291,36 +1280,6 @@ impl Viewport {
         let y = y / (self.content_bounds.height - self.bounds.height);
 
         RelativeOffset { x, y }
-    }
-
-    /// Returns a new [`Viewport`] with the supplied vertical [`Alignment`].
-    pub fn with_vertical_alignment(self, alignment: Alignment) -> Self {
-        if self.vertical_alignment != alignment {
-            let relative = 1.0 - self.relative_offset().y;
-
-            Self {
-                offset_y: Offset::Relative(relative),
-                vertical_alignment: alignment,
-                ..self
-            }
-        } else {
-            self
-        }
-    }
-
-    /// Returns a new [`Viewport`] with the supplied horizontal [`Alignment`].
-    pub fn with_horizontal_alignment(self, alignment: Alignment) -> Self {
-        if self.horizontal_alignment != alignment {
-            let relative = 1.0 - self.relative_offset().x;
-
-            Self {
-                offset_x: Offset::Relative(relative),
-                horizontal_alignment: alignment,
-                ..self
-            }
-        } else {
-            self
-        }
     }
 }
 
