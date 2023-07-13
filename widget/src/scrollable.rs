@@ -503,7 +503,7 @@ where
         if matches!(state.state, tree::State::Some(_)) {
             let state = state.state.downcast_ref::<State>();
             let scrollbars =
-                Scrollbars::new(state, &self.direction, window, content_bounds);
+                Scrollbars::new(state, self.direction, window, content_bounds);
             for (window, content, offset, scrollbar) in scrollbars
                 .x
                 .iter()

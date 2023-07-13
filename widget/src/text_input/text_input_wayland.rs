@@ -320,7 +320,7 @@ where
             let bounds = limits.max();
             let font = self.font.unwrap_or_else(|| renderer.default_font());
 
-            let (width, height) = renderer.measure(
+            let Size { width, height } = renderer.measure(
                 &self.value.to_string(),
                 size,
                 text::LineHeight::default(),
