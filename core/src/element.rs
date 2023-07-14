@@ -1,11 +1,11 @@
 use crate::event::{self, Event};
 use crate::id::Id;
+use crate::layout;
 use crate::mouse;
 use crate::overlay;
 use crate::renderer;
 use crate::widget;
 use crate::widget::tree::{self, Tree};
-use crate::{layout, Point};
 use crate::{Clipboard, Color, Layout, Length, Rectangle, Shell, Widget};
 
 use std::any::Any;
@@ -292,23 +292,31 @@ where
 
     fn layout(
         &self,
-        _renderer: &Renderer,
-        _limits: &layout::Limits,
+        renderer: &Renderer,
+        limits: &layout::Limits,
     ) -> layout::Node {
-        todo!()
+        self.widget.layout(renderer, limits)
     }
 
     fn draw(
         &self,
-        _state: &Tree,
-        _renderer: &mut Renderer,
-        _theme: &<Renderer as crate::Renderer>::Theme,
-        _style: &renderer::Style,
-        _layout: Layout<'_>,
-        _cursor_position: mouse::Cursor,
-        _viewport: &Rectangle,
+        state: &Tree,
+        renderer: &mut Renderer,
+        theme: &<Renderer as crate::Renderer>::Theme,
+        style: &renderer::Style,
+        layout: Layout<'_>,
+        cursor_position: mouse::Cursor,
+        viewport: &Rectangle,
     ) {
-        todo!()
+        self.widget.draw(
+            state,
+            renderer,
+            theme,
+            style,
+            layout,
+            cursor_position,
+            viewport,
+        )
     }
 }
 
