@@ -322,6 +322,7 @@ where
         renderer: &Renderer,
         clipboard: &mut dyn Clipboard,
         shell: &mut Shell<'_, Message>,
+        viewport: &Rectangle,
     ) -> event::Status {
         let action = tree.state.downcast_mut::<state::Action>();
 
@@ -362,6 +363,7 @@ where
                     renderer,
                     clipboard,
                     shell,
+                    viewport,
                     is_picked,
                 )
             })

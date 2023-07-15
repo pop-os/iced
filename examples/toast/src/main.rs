@@ -402,6 +402,7 @@ mod toast {
             renderer: &Renderer,
             clipboard: &mut dyn Clipboard,
             shell: &mut Shell<'_, Message>,
+            viewport: &Rectangle,
         ) -> event::Status {
             self.content.as_widget_mut().on_event(
                 &mut state.children[0],
@@ -411,6 +412,7 @@ mod toast {
                 renderer,
                 clipboard,
                 shell,
+                viewport,
             )
         }
 
@@ -561,6 +563,8 @@ mod toast {
                 }
             }
 
+            let viewport = layout.bounds();
+
             self.toasts
                 .iter_mut()
                 .zip(self.state.iter_mut())
@@ -578,6 +582,7 @@ mod toast {
                         renderer,
                         clipboard,
                         &mut local_shell,
+                        &viewport,
                     );
 
                     if !local_shell.is_empty() {

@@ -327,6 +327,7 @@ where
         renderer: &Renderer,
         clipboard: &mut dyn Clipboard,
         shell: &mut Shell<'_, Message>,
+        _viewport: &Rectangle,
     ) -> event::Status {
         update(
             tree.state.downcast_mut::<State>(),
@@ -337,7 +338,7 @@ where
             shell,
             self.direction,
             &self.on_scroll,
-            |event, layout, cursor, clipboard, shell| {
+            |event, layout, cursor, clipboard, shell, viewport| {
                 self.content.as_widget_mut().on_event(
                     &mut tree.children[0],
                     event,
@@ -346,6 +347,7 @@ where
                     renderer,
                     clipboard,
                     shell,
+                    viewport,
                 )
             },
         )
@@ -653,6 +655,7 @@ pub fn update<Message>(
         mouse::Cursor,
         &mut dyn Clipboard,
         &mut Shell<'_, Message>,
+        &Rectangle,
     ) -> event::Status,
 ) -> event::Status {
     let bounds = layout.bounds();
@@ -679,7 +682,20 @@ pub fn update<Message>(
             _ => mouse::Cursor::Unavailable,
         };
 
-        update_content(event.clone(), content, cursor, clipboard, shell)
+        let translation = state.translation(direction, bounds, content_bounds);
+
+        update_content(
+            event.clone(),
+            content,
+            cursor,
+            clipboard,
+            shell,
+            &Rectangle {
+                y: bounds.y + translation.y,
+                x: bounds.x + translation.x,
+                ..bounds
+            },
+        )
     };
 
     if let event::Status::Captured = event_status {

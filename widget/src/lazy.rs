@@ -189,6 +189,7 @@ where
         renderer: &Renderer,
         clipboard: &mut dyn Clipboard,
         shell: &mut Shell<'_, Message>,
+        viewport: &Rectangle,
     ) -> event::Status {
         self.with_element_mut(|element| {
             element.as_widget_mut().on_event(
@@ -199,6 +200,7 @@ where
                 renderer,
                 clipboard,
                 shell,
+                viewport,
             )
         })
     }

@@ -272,6 +272,7 @@ where
         renderer: &Renderer,
         clipboard: &mut dyn Clipboard,
         shell: &mut Shell<'_, Message>,
+        viewport: &Rectangle,
     ) -> event::Status {
         let mut local_messages = Vec::new();
         let mut local_shell = Shell::new(&mut local_messages);
@@ -286,6 +287,7 @@ where
                 renderer,
                 clipboard,
                 &mut local_shell,
+                viewport,
             )
         });
 

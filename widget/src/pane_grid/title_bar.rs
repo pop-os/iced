@@ -306,6 +306,7 @@ where
         renderer: &Renderer,
         clipboard: &mut dyn Clipboard,
         shell: &mut Shell<'_, Message>,
+        viewport: &Rectangle,
     ) -> event::Status {
         let mut children = layout.children();
         let padded = children.next().unwrap();
@@ -330,6 +331,7 @@ where
                 renderer,
                 clipboard,
                 shell,
+                viewport,
             )
         } else {
             event::Status::Ignored
@@ -344,6 +346,7 @@ where
                 renderer,
                 clipboard,
                 shell,
+                viewport,
             )
         } else {
             event::Status::Ignored
