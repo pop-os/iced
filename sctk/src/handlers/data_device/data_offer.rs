@@ -1,8 +1,5 @@
 use sctk::{
-    data_device_manager::data_offer::{
-        DataDeviceOffer, DataOfferHandler, DragOffer,
-    },
-    delegate_data_offer,
+    data_device_manager::data_offer::{DataOfferHandler, DragOffer},
     reexports::client::{
         protocol::wl_data_device_manager::DndAction, Connection, QueueHandle,
     },
@@ -12,15 +9,6 @@ use std::fmt::Debug;
 use crate::event_loop::state::SctkState;
 
 impl<T> DataOfferHandler for SctkState<T> {
-    fn offer(
-        &mut self,
-        _conn: &Connection,
-        _qh: &QueueHandle<Self>,
-        _offer: &mut DataDeviceOffer,
-        _mime_type: String,
-    ) {
-    }
-
     fn source_actions(
         &mut self,
         _conn: &Connection,
@@ -67,5 +55,3 @@ impl<T> DataOfferHandler for SctkState<T> {
         }
     }
 }
-
-delegate_data_offer!(@<T: 'static + Debug> SctkState<T>);

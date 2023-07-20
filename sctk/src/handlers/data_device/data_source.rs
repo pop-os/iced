@@ -3,7 +3,6 @@ use crate::sctk_event::{DataSourceEvent, SctkEvent};
 use sctk::data_device_manager::WritePipe;
 use sctk::{
     data_device_manager::data_source::DataSourceHandler,
-    delegate_data_source,
     reexports::client::{
         protocol::{
             wl_data_device_manager::DndAction, wl_data_source::WlDataSource,
@@ -265,5 +264,3 @@ impl<T> DataSourceHandler for SctkState<T> {
         }
     }
 }
-
-delegate_data_source!(@<T: 'static + Debug> SctkState<T>);

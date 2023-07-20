@@ -15,7 +15,7 @@ wayland = ["sctk"]
 [dependencies]
 unicode-segmentation = "1.6"
 num-traits = "0.2"
-sctk = { package = "smithay-client-toolkit", git = "https://github.com/pop-os/client-toolkit", tag = "themed-pointer", optional = true }
+sctk = { package = "smithay-client-toolkit", git = "https://github.com/smithay/client-toolkit", rev = "c9940f4", optional = true }
 thiserror = "1"
 
 [dependencies.iced_runtime]

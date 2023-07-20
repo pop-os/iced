@@ -15,7 +15,7 @@ a11y = ["iced_accessibility", "iced_runtime/a11y"]
 [dependencies]
 tracing = "0.1"
 thiserror = "1.0"
-sctk = { package = "smithay-client-toolkit", git = "https://github.com/pop-os/client-toolkit", tag = "themed-pointer" }
+sctk = { package = "smithay-client-toolkit", git = "https://github.com/smithay/client-toolkit", rev = "c9940f4" }
 wayland-protocols = { version = "0.30.0", features = [ "staging"]}
 # sctk = { package = "smithay-client-toolkit", path = "../../fork/client-toolkit/" }
 raw-window-handle = "0.5"

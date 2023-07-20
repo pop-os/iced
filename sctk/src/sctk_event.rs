@@ -28,6 +28,7 @@ use sctk::{
         },
         Proxy,
     },
+    reexports::csd_frame::WindowManagerCapabilities,
     seat::{
         keyboard::{KeyEvent, Modifiers},
         pointer::{PointerEvent, PointerEventKind},
@@ -35,10 +36,7 @@ use sctk::{
     },
     shell::{
         wlr_layer::LayerSurfaceConfigure,
-        xdg::{
-            popup::PopupConfigure,
-            window::{WindowConfigure, WindowManagerCapabilities},
-        },
+        xdg::{popup::PopupConfigure, window::WindowConfigure},
     },
 };
 use std::{collections::HashMap, time::Instant};
@@ -302,7 +300,7 @@ pub enum WindowEventVariant {
     Configure(WindowConfigure, WlSurface, bool),
 
     /// window state changed
-    StateChanged(sctk::shell::xdg::window::WindowState),
+    StateChanged(sctk::reexports::csd_frame::WindowState),
     /// Scale Factor
     ScaleFactorChanged(f64, Option<WpViewport>),
 }
