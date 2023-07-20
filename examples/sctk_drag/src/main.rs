@@ -227,7 +227,7 @@ impl Application for DndTest {
                 .padding(80)
             )
             .drag_threshold(5.0)
-            .on_drag(Message::StartDnd)
+            .on_drag(|_| Message::StartDnd)
             .on_finished(Message::SourceFinished)
             .on_cancelled(Message::SourceFinished)
         ]
