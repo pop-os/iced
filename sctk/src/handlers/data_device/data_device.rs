@@ -2,11 +2,10 @@ use std::fmt::Debug;
 
 use sctk::{
     data_device_manager::{
-        data_device::{DataDevice, DataDeviceDataExt, DataDeviceHandler},
+        data_device::{DataDevice, DataDeviceHandler},
         data_offer::DragOffer,
     },
-    delegate_data_device,
-    reexports::client::{Connection, QueueHandle},
+    reexports::client::{protocol::wl_data_device, Connection, QueueHandle},
 };
 
 use crate::{
@@ -19,10 +18,20 @@ impl<T> DataDeviceHandler for SctkState<T> {
         &mut self,
         _conn: &Connection,
         _qh: &QueueHandle<Self>,
-        data_device: DataDevice,
+        wl_data_device: &wl_data_device::WlDataDevice,
     ) {
-        let mime_types = data_device.drag_mime_types();
-        let drag_offer = data_device.drag_offer().unwrap();
+        let data_device = if let Some(seat) = self
+            .seats
+            .iter()
+            .find(|s| s.data_device.inner() == wl_data_device)
+        {
+            &seat.data_device
+        } else {
+            return;
+        };
+
+        let drag_offer = data_device.data().drag_offer().unwrap();
+        let mime_types = drag_offer.with_mime_types(|types| types.to_vec());
         self.dnd_offer = Some(SctkDragOffer {
             dropped: false,
             offer: drag_offer.clone(),
@@ -42,7 +51,7 @@ impl<T> DataDeviceHandler for SctkState<T> {
         &mut self,
         _conn: &Connection,
         _qh: &QueueHandle<Self>,
-        _data_device: DataDevice,
+        _wl_data_device: &wl_data_device::WlDataDevice,
     ) {
         // ASHLEY TODO the dnd_offer should be removed when the leave event is received
         // but for now it is not if the offer was previously dropped.
@@ -65,14 +74,25 @@ impl<T> DataDeviceHandler for SctkState<T> {
         &mut self,
         _conn: &Connection,
         _qh: &QueueHandle<Self>,
-        data_device: DataDevice,
+        wl_data_device: &wl_data_device::WlDataDevice,
     ) {
-        let offer = data_device.drag_offer();
+        let data_device = if let Some(seat) = self
+            .seats
+            .iter()
+            .find(|s| s.data_device.inner() == wl_data_device)
+        {
+            &seat.data_device
+        } else {
+            return;
+        };
+
+        let offer = data_device.data().drag_offer();
         // if the offer is not the same as the current one, ignore the leave event
         if offer.as_ref() != self.dnd_offer.as_ref().map(|o| &o.offer) {
             return;
         }
-        let DragOffer { x, y, surface, .. } = data_device.drag_offer().unwrap();
+        let DragOffer { x, y, surface, .. } =
+            data_device.data().drag_offer().unwrap();
         self.sctk_events.push(SctkEvent::DndOffer {
             event: DndOfferEvent::Motion { x, y },
             surface: surface.clone(),
@@ -83,13 +103,22 @@ impl<T> DataDeviceHandler for SctkState<T> {
         &mut self,
         _conn: &Connection,
         _qh: &QueueHandle<Self>,
-        data_device: DataDevice,
+        wl_data_device: &wl_data_device::WlDataDevice,
     ) {
-        if let Some(offer) = data_device.selection_offer() {
+        let data_device = if let Some(seat) = self
+            .seats
+            .iter()
+            .find(|s| s.data_device.inner() == wl_data_device)
+        {
+            &seat.data_device
+        } else {
+            return;
+        };
+
+        if let Some(offer) = data_device.data().selection_offer() {
+            let mime_types = offer.with_mime_types(|types| types.to_vec());
             self.sctk_events.push(SctkEvent::SelectionOffer(
-                crate::sctk_event::SelectionOfferEvent::Offer(
-                    data_device.selection_mime_types(),
-                ),
+                crate::sctk_event::SelectionOfferEvent::Offer(mime_types),
             ));
             self.selection_offer = Some(SctkSelectionOffer {
                 offer: offer.clone(),
@@ -102,9 +131,19 @@ impl<T> DataDeviceHandler for SctkState<T> {
         &mut self,
         _conn: &Connection,
         _qh: &QueueHandle<Self>,
-        data_device: DataDevice,
+        wl_data_device: &wl_data_device::WlDataDevice,
     ) {
-        if let Some(offer) = data_device.drag_offer() {
+        let data_device = if let Some(seat) = self
+            .seats
+            .iter()
+            .find(|s| s.data_device.inner() == wl_data_device)
+        {
+            &seat.data_device
+        } else {
+            return;
+        };
+
+        if let Some(offer) = data_device.data().drag_offer() {
             if let Some(dnd_offer) = self.dnd_offer.as_mut() {
                 if offer != dnd_offer.offer {
                     return;
@@ -118,5 +157,3 @@ impl<T> DataDeviceHandler for SctkState<T> {
         }
     }
 }
-
-delegate_data_device!(@<T: 'static + Debug> SctkState<T>);

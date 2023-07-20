@@ -1,6 +1,6 @@
 #![allow(missing_docs)]
 
-use sctk::shell::xdg::window::{WindowManagerCapabilities, WindowState};
+use sctk::reexports::csd_frame::{WindowManagerCapabilities, WindowState};
 
 /// window events
 #[derive(Debug, Clone, PartialEq, Eq)]
