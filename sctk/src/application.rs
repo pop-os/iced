@@ -1106,6 +1106,17 @@ where
                                 Instant::now(),
                             ),
                         );
+                        let Some(user_interface) = interfaces
+                        .get_mut(&surface_id.inner()) else {
+                            continue;
+                        };
+                        let (interface_state, _) = user_interface.update(
+                            &[redraw_event.clone()],
+                            state.cursor(),
+                            &mut renderer,
+                            &mut simple_clipboard,
+                            &mut messages,
+                        );
 
                         runtime.broadcast(redraw_event, Status::Ignored);
 
@@ -1115,7 +1126,7 @@ where
 
                         let _ =
                             control_sender
-                                .start_send(match state.interface_state {
+                                .start_send(match interface_state {
                                 user_interface::State::Updated {
                                     redraw_request: Some(redraw_request),
                                 } => {
