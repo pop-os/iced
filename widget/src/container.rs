@@ -5,11 +5,12 @@ use crate::core::layout;
 use crate::core::mouse;
 use crate::core::overlay;
 use crate::core::renderer;
-use crate::core::widget::{Id, Operation, Tree};
+use crate::core::widget::{self, operation, Id, Operation, Tree};
 use crate::core::{
     Background, Clipboard, Color, Element, Layout, Length, Padding, Pixels,
-    Point, Rectangle, Shell, Widget,
+    Point, Rectangle, Shell, Size, Vector, Widget,
 };
+use crate::runtime::Command;
 
 use iced_renderer::core::widget::OperationOutputWrapper;
 pub use iced_style::container::{Appearance, StyleSheet};
@@ -179,14 +180,18 @@ where
         renderer: &Renderer,
         operation: &mut dyn Operation<OperationOutputWrapper<Message>>,
     ) {
-        operation.container(self.id.as_ref(), &mut |operation| {
-            self.content.as_widget().operate(
-                &mut tree.children[0],
-                layout.children().next().unwrap(),
-                renderer,
-                operation,
-            );
-        });
+        operation.container(
+            self.id.as_ref(),
+            layout.bounds(),
+            &mut |operation| {
+                self.content.as_widget().operate(
+                    &mut tree.children[0],
+                    layout.children().next().unwrap(),
+                    renderer,
+                    operation,
+                );
+            },
+        );
     }
 
     fn on_event(
@@ -354,4 +359,93 @@ pub fn draw_background<Renderer>(
                 .unwrap_or(Background::Color(Color::TRANSPARENT)),
         );
     }
+}
+
+/// Produces a [`Command`] that queries the visible screen bounds of the
+/// [`Container`] with the given [`Id`].
+pub fn visible_bounds(id: Id) -> Command<Option<Rectangle>> {
+    struct VisibleBounds {
+        target: Id,
+        depth: usize,
+        scrollables: Vec<(Vector, Rectangle, usize)>,
+        bounds: Option<Rectangle>,
+    }
+
+    impl Operation<Option<Rectangle>> for VisibleBounds {
+        fn scrollable(
+            &mut self,
+            _state: &mut dyn operation::Scrollable,
+            _id: Option<&Id>,
+            bounds: Rectangle,
+            translation: Vector,
+        ) {
+            match self.scrollables.last() {
+                Some((last_translation, last_viewport, _depth)) => {
+                    let viewport = last_viewport
+                        .intersection(&(bounds - *last_translation))
+                        .unwrap_or(Rectangle::new(Point::ORIGIN, Size::ZERO));
+
+                    self.scrollables.push((
+                        translation + *last_translation,
+                        viewport,
+                        self.depth,
+                    ));
+                }
+                None => {
+                    self.scrollables.push((translation, bounds, self.depth));
+                }
+            }
+        }
+
+        fn container(
+            &mut self,
+            id: Option<&Id>,
+            bounds: Rectangle,
+            operate_on_children: &mut dyn FnMut(
+                &mut dyn Operation<Option<Rectangle>>,
+            ),
+        ) {
+            if self.bounds.is_some() {
+                return;
+            }
+
+            if id == Some(&self.target) {
+                match self.scrollables.last() {
+                    Some((translation, viewport, _)) => {
+                        self.bounds =
+                            viewport.intersection(&(bounds - *translation));
+                    }
+                    None => {
+                        self.bounds = Some(bounds);
+                    }
+                }
+
+                return;
+            }
+
+            self.depth += 1;
+
+            operate_on_children(self);
+
+            self.depth -= 1;
+
+            match self.scrollables.last() {
+                Some((_, _, depth)) if self.depth == *depth => {
+                    let _ = self.scrollables.pop();
+                }
+                _ => {}
+            }
+        }
+
+        fn finish(&self) -> widget::operation::Outcome<Option<Rectangle>> {
+            widget::operation::Outcome::Some(self.bounds)
+        }
+    }
+
+    Command::widget(VisibleBounds {
+        target: id.into(),
+        depth: 0,
+        scrollables: Vec::new(),
+        bounds: None,
+    })
 }

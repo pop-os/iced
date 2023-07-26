@@ -306,9 +306,15 @@ where
     ) {
         let state = tree.state.downcast_mut::<State>();
 
-        operation.scrollable(state, Some(&self.id));
+        let bounds = layout.bounds();
+        let content_layout = layout.children().next().unwrap();
+        let content_bounds = content_layout.bounds();
+        let translation =
+            state.translation(self.direction, bounds, content_bounds);
 
-        operation.container(Some(&self.id), &mut |operation| {
+        operation.scrollable(state, Some(&self.id), bounds, translation);
+
+        operation.container(Some(&self.id), bounds, &mut |operation| {
             self.content.as_widget().operate(
                 &mut tree.children[0],
                 layout.children().next().unwrap(),

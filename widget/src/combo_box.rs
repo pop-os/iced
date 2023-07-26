@@ -291,6 +291,7 @@ where
 impl<T> Inner<T> {
     fn text_input_tree(&self) -> widget::Tree {
         widget::Tree {
+            id: None,
             tag: widget::tree::Tag::of::<text_input::State>(),
             state: widget::tree::State::new(self.text_input.clone()),
             children: vec![],

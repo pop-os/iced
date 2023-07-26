@@ -198,24 +198,12 @@ impl Window {
 
         #[cfg(target_os = "linux")]
         {
-            #[cfg(feature = "x11")]
-            {
-                use winit::platform::x11::WindowBuilderExtX11;
+            use winit::platform::unix::WindowBuilderExtUnix;
 
-                window_builder = window_builder.with_name(
-                    &self.platform_specific.application_id,
-                    &self.platform_specific.application_id,
-                );
-            }
-            #[cfg(feature = "wayland")]
-            {
-                use winit::platform::wayland::WindowBuilderExtWayland;
-
-                window_builder = window_builder.with_name(
-                    &self.platform_specific.application_id,
-                    &self.platform_specific.application_id,
-                );
-            }
+            window_builder = window_builder.with_name(
+                &self.platform_specific.application_id,
+                &self.platform_specific.application_id,
+            );
         }
 
         window_builder

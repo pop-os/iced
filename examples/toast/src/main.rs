@@ -383,7 +383,7 @@ mod toast {
             renderer: &Renderer,
             operation: &mut dyn Operation<OperationOutputWrapper<Message>>,
         ) {
-            operation.container(None, &mut |operation| {
+            operation.container(None, layout.bounds(), &mut |operation| {
                 self.content.as_widget().operate(
                     &mut state.children[0],
                     layout,
@@ -624,7 +624,7 @@ mod toast {
             renderer: &Renderer,
             operation: &mut dyn Operation<OperationOutputWrapper<Message>>,
         ) {
-            operation.container(None, &mut |operation| {
+            operation.container(None, layout.bounds(), &mut |operation| {
                 self.toasts
                     .iter()
                     .zip(self.state.iter_mut())
