@@ -45,7 +45,7 @@ use sctk::{
     seat::SeatState,
     shell::{
         wlr_layer::LayerShell,
-        xdg::{XdgShell, XdgSurface},
+        xdg::XdgShell,
         WaylandSurface,
     },
     shm::Shm,
@@ -677,6 +677,18 @@ where
                             if let Some(layer_surface) = self.state.layer_surfaces.iter_mut().find(|l| l.id == id) {
                                 layer_surface.set_size(width, height);
                                 pending_redraws.push(layer_surface.surface.wl_surface().id());
+                                    let wl_surface = layer_surface.surface.wl_surface();
+
+                                if let Some(mut prev_configure) = layer_surface.last_configure.clone() {
+                                    
+                                    prev_configure.new_size = (width.unwrap_or(prev_configure.new_size.0), width.unwrap_or(prev_configure.new_size.1));
+                                    sticky_exit_callback(
+                                        IcedSctkEvent::SctkEvent(SctkEvent::LayerSurfaceEvent { variant: LayerSurfaceEventVariant::Configure(prev_configure, wl_surface.clone(), false), id: wl_surface.clone()}),
+                                        &self.state,
+                                        &mut control_flow,
+                                        &mut callback,
+                                    );
+                                }
                             }
                         },
                         platform_specific::wayland::layer_surface::Action::Destroy(id) => {
@@ -767,7 +779,7 @@ where
                                 let adapter = self.init_a11y_adapter(&wl_surface, app_id, title, iced_accessibility::accesskit::Role::Window);
 
                                 sticky_exit_callback(
-                                    IcedSctkEvent::A11ySurfaceCreated(SurfaceIdWrapper::LayerSurface(id), adapter),
+                                    IcedSctkEvent::A11ySurfaceCreated(SurfaceIdWrapper::Window(id), adapter),
                                     &self.state,
                                     &mut control_flow,
                                     &mut callback,

@@ -538,6 +538,9 @@ where
                                 if let Some(state) = states.get_mut(&id.inner()) {
                                     state.set_logical_size(configure.new_size.0.unwrap().get() as f64 , configure.new_size.1.unwrap().get() as f64);
                                 }
+                                if let Some((_, _, limits, _)) = auto_size_surfaces.get(id) {
+                                    auto_size_surfaces.insert(*id, (configure.new_size.0.unwrap().get(), configure.new_size.1.unwrap().get(), *limits, false));
+                                }
                             }
                         }
                         crate::sctk_event::WindowEventVariant::ScaleFactorChanged(sf, viewport) => {
@@ -616,6 +619,9 @@ where
                                         configure.new_size.0 as f64,
                                         configure.new_size.1 as f64,
                                     );
+                                }
+                                if let Some((_, _, limits, _)) = auto_size_surfaces.get(id) {
+                                    auto_size_surfaces.insert(*id, (configure.new_size.0, configure.new_size.1, *limits, false));
                                 }
                             }
                         }
@@ -696,6 +702,9 @@ where
                                         width as f64,
                                         height as f64,
                                     );
+                                }
+                                if let Some((_, _, limits, _)) = auto_size_surfaces.get(id) {
+                                    auto_size_surfaces.insert(*id, (width, height, *limits, false));
                                 }
                             }
                         },
@@ -1002,15 +1011,6 @@ where
                             runtime.broadcast(event, status);
                         }
 
-                        if let Some((w, h, limits, dirty)) =
-                            auto_size_surfaces.remove(surface_id)
-                        {
-                            if dirty {
-                                state.set_logical_size(w as f64, h as f64);
-                            }
-                            auto_size_surfaces
-                                .insert(*surface_id, (w, h, limits, false));
-                        }
                         needs_update = !messages.is_empty()
                             || matches!(
                                 interface_state,
@@ -1087,6 +1087,14 @@ where
                         ));
                     }
                     for (object_id, surface_id) in &surface_ids {
+                        // don't redraw yet if the autosize state is dirty
+                        if let Some((_w, _h, _limits, dirty)) =
+                            auto_size_surfaces.get(surface_id)
+                        {
+                            if *dirty {
+                                continue;
+                            }
+                        }
                         let state = match states.get_mut(&surface_id.inner()) {
                             Some(s) => {
                                 if !s.needs_redraw() {
@@ -1419,7 +1427,7 @@ where
     let mut view = application.view(id.inner());
     debug.view_finished();
 
-    let size = if let Some((w, h, limits, dirty)) =
+    let size = if let Some((auto_size_w, auto_size_h, limits, dirty)) =
         auto_size_surfaces.remove(&id)
     {
         let view: &mut dyn Widget<
@@ -1437,7 +1445,10 @@ where
         );
         let dirty = dirty
             || w != size.width.round() as u32
-            || h != size.height.round() as u32;
+            || h != size.height.round() as u32
+            || w != auto_size_w
+            || h != auto_size_h;
+
         auto_size_surfaces.insert(id, (w, h, limits, dirty));
         if dirty {
             match id {
