@@ -568,6 +568,7 @@ where
 
                 (on_selected)(option)
             },
+            None,
         )
         .width(bounds.width)
         .padding(padding)
