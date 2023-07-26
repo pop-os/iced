@@ -75,6 +75,9 @@ where
     style: <Renderer::Theme as StyleSheet>::Style,
 }
 
+/// The default [`Padding`] of a [`TextInput`].
+pub const DEFAULT_PADDING: Padding = Padding::new(5.0);
+
 impl<'a, Message, Renderer> TextInput<'a, Message, Renderer>
 where
     Message: Clone,
@@ -94,7 +97,7 @@ where
             is_secure: false,
             font: None,
             width: Length::Fill,
-            padding: Padding::new(5.0),
+            padding: DEFAULT_PADDING,
             size: None,
             line_height: text::LineHeight::default(),
             on_input: None,
