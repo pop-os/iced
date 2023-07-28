@@ -8,9 +8,13 @@ pub mod cursor;
 
 #[cfg(feature = "wayland")]
 mod text_input_wayland;
+use iced_renderer::core::Padding;
 #[cfg(feature = "wayland")]
 pub use text_input_wayland::*;
 #[cfg(not(feature = "wayland"))]
 mod text_input;
 #[cfg(not(feature = "wayland"))]
 pub use text_input::*;
+
+/// The default [`Padding`] of a [`TextInput`].
+pub const DEFAULT_PADDING: Padding = Padding::new(5.0);

@@ -90,6 +90,8 @@ where
         Option<Box<dyn Fn(Box<dyn Send + Sync + Fn() -> platform_specific::wayland::data_device::ActionInner>) -> Message + 'a>>,
     surface_ids: Option<(window::Id, window::Id)>,
     dnd_icon: bool,
+    line_height: text::LineHeight,
+
 }
 
 impl<'a, Message, Renderer> TextInput<'a, Message, Renderer>
@@ -122,12 +124,22 @@ where
             on_create_dnd_source: None,
             surface_ids: None,
             dnd_icon: false,
+            line_height: text::LineHeight::default(),
         }
     }
 
     /// Sets the [`Id`] of the [`TextInput`].
     pub fn id(mut self, id: Id) -> Self {
         self.id = Some(id);
+        self
+    }
+
+    /// Sets the [`LineHeight`] of the [`TextInput`].
+    pub fn line_height(
+        mut self,
+        line_height: impl Into<text::LineHeight>,
+    ) -> Self {
+        self.line_height = line_height.into();
         self
     }
 
@@ -235,6 +247,7 @@ where
             self.icon.as_ref(),
             &self.style,
             self.dnd_icon,
+            self.line_height,
         )
     }
 
@@ -323,7 +336,7 @@ where
             let Size { width, height } = renderer.measure(
                 &self.value.to_string(),
                 size,
-                text::LineHeight::default(),
+                self.line_height,
                 font,
                 bounds,
                 text::Shaping::Advanced,
@@ -339,6 +352,7 @@ where
                 self.padding,
                 self.size,
                 self.icon.as_ref(),
+                self.line_height,
             )
         }
     }
@@ -365,6 +379,7 @@ where
         renderer: &Renderer,
         clipboard: &mut dyn Clipboard,
         shell: &mut Shell<'_, Message>,
+        _viewport: &Rectangle,
     ) -> event::Status {
         update(
             event,
@@ -385,6 +400,7 @@ where
             self.dnd_icon,
             self.on_dnd_command_produced.as_deref(),
             self.surface_ids.clone(),
+            self.line_height,
         )
     }
 
@@ -413,6 +429,7 @@ where
             self.icon.as_ref(),
             &self.style,
             self.dnd_icon,
+            self.line_height,
         )
     }
 
@@ -505,6 +522,7 @@ pub fn layout<Renderer>(
     padding: Padding,
     size: Option<f32>,
     icon: Option<&Icon<Renderer::Font>>,
+    line_height: text::LineHeight,
 ) -> layout::Node
 where
     Renderer: text::Renderer,
@@ -590,6 +608,7 @@ pub fn update<'a, Message, Renderer>(
         ) -> Message,
     >,
     surface_ids: Option<(window::Id, window::Id)>,
+    line_height: text::LineHeight,
 ) -> event::Status
 where
     Message: Clone,
@@ -735,6 +754,7 @@ where
                                         &value,
                                         state,
                                         target,
+                                        line_height,
                                     )
                                 } else {
                                     None
@@ -769,6 +789,7 @@ where
                                 &value,
                                 state,
                                 target,
+                                line_height,
                             )
                         } else {
                             None
@@ -794,6 +815,7 @@ where
                                 value,
                                 state,
                                 target,
+                                line_height,
                             )
                             .unwrap_or(0);
 
@@ -853,6 +875,7 @@ where
                     &value,
                     state,
                     target,
+                    line_height,
                 )
                 .unwrap_or(0);
 
@@ -1210,6 +1233,7 @@ where
                         &value,
                         state,
                         target,
+                        line_height,
                     )
                 } else {
                     None
@@ -1282,6 +1306,7 @@ where
                     &value,
                     state,
                     target,
+                    line_height,
                 )
             } else {
                 None
@@ -1418,6 +1443,7 @@ pub fn draw<Renderer>(
     icon: Option<&Icon<Renderer::Font>>,
     style: &<Renderer::Theme as StyleSheet>::Style,
     dnd_icon: bool,
+    line_height: text::LineHeight,
 ) where
     Renderer: text::Renderer,
     Renderer::Theme: StyleSheet,
@@ -1886,6 +1912,7 @@ fn find_cursor_position<Renderer>(
     value: &Value,
     state: &State,
     x: f32,
+    line_height: text::LineHeight,
 ) -> Option<usize>
 where
     Renderer: text::Renderer,
@@ -1899,7 +1926,7 @@ where
         .hit_test(
             &value,
             size,
-            text::LineHeight::default(),
+            line_height,
             font,
             Size::INFINITY,
             text::Shaping::Advanced,

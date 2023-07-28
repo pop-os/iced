@@ -34,11 +34,11 @@ path = "../runtime"
 features = ["wayland"]
 
 [dependencies.iced_style]
-version = "0.8.0"
+version = "0.9.0"
 path = "../style"
 
 [dependencies.iced_graphics]
-version = "0.8"
+version = "0.9"
 path = "../graphics"
 
 

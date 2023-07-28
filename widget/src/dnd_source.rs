@@ -202,7 +202,7 @@ where
         renderer: &Renderer,
         operation: &mut dyn Operation<OperationOutputWrapper<Message>>,
     ) {
-        operation.container(None, &mut |operation| {
+        operation.container(None, layout.bounds(), &mut |operation| {
             self.content.as_widget().operate(
                 &mut tree.children[0],
                 layout.children().next().unwrap(),
@@ -242,6 +242,7 @@ where
         renderer: &Renderer,
         clipboard: &mut dyn Clipboard,
         shell: &mut Shell<'_, Message>,
+        viewport: &Rectangle,
     ) -> event::Status {
         let captured = self.content.as_widget_mut().on_event(
             &mut tree.children[0],
@@ -251,6 +252,7 @@ where
             renderer,
             clipboard,
             shell,
+            viewport,
         );
 
         if captured == event::Status::Captured && !self.handle_captured_events {
