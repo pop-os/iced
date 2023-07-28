@@ -50,3 +50,6 @@ default-features = false
 version = "0.1.0"
 path = "../accessibility"
 optional = true
+[package.metadata.docs.rs]
+rustdoc-args = ["--cfg", "docsrs"]
+all-features = true
