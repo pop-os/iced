@@ -530,7 +530,7 @@ where
                         {
                             if let Some(index) = &mut menu.hovered_option {
                                 if *index
-                                    == state
+                                    >= state
                                         .filtered_options
                                         .options
                                         .len()
