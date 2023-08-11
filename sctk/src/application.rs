@@ -535,11 +535,15 @@ where
                                     );
                                     interfaces.insert(id.inner(), user_interface);
                                 }
+                                if let Some((w, h, _, dirty)) = auto_size_surfaces.get_mut(id) {
+                                    if *w == configure.new_size.0.unwrap().get() && *h == configure.new_size.1.unwrap().get() {
+                                        *dirty = false;
+                                    } else {
+                                        continue;
+                                    }
+                                }
                                 if let Some(state) = states.get_mut(&id.inner()) {
                                     state.set_logical_size(configure.new_size.0.unwrap().get() as f64 , configure.new_size.1.unwrap().get() as f64);
-                                }
-                                if let Some((_, _, limits, _)) = auto_size_surfaces.get(id) {
-                                    auto_size_surfaces.insert(*id, (configure.new_size.0.unwrap().get(), configure.new_size.1.unwrap().get(), *limits, false));
                                 }
                             }
                         }
@@ -614,15 +618,20 @@ where
                                     );
                                     interfaces.insert(id.inner(), user_interface);
                                 }
+                                if let Some((w, h, _, dirty)) = auto_size_surfaces.get_mut(id) {
+                                    if *w == configure.new_size.0 && *h == configure.new_size.1 {
+                                        *dirty = false;
+                                    } else {
+                                        continue;
+                                    }
+                                }
                                 if let Some(state) = states.get_mut(&id.inner()) {
                                     state.set_logical_size(
                                         configure.new_size.0 as f64,
                                         configure.new_size.1 as f64,
                                     );
                                 }
-                                if let Some((_, _, limits, _)) = auto_size_surfaces.get(id) {
-                                    auto_size_surfaces.insert(*id, (configure.new_size.0, configure.new_size.1, *limits, false));
-                                }
+                                
                             }
                         }
                         LayerSurfaceEventVariant::ScaleFactorChanged(sf, viewport) => {
@@ -686,6 +695,13 @@ where
                                     );
                                     interfaces.insert(id.inner(), user_interface);
                                 }
+                                if let Some((w, h, _, dirty)) = auto_size_surfaces.get_mut(id) {
+                                    if *w == configure.width as u32 && *h == configure.height as u32 {
+                                        *dirty = false;
+                                    } else {
+                                        continue;
+                                    }
+                                }
                                 if let Some(state) = states.get_mut(&id.inner()) {
                                     state.set_logical_size(
                                         configure.width as f64,
@@ -703,8 +719,12 @@ where
                                         height as f64,
                                     );
                                 }
-                                if let Some((_, _, limits, _)) = auto_size_surfaces.get(id) {
-                                    auto_size_surfaces.insert(*id, (width, height, *limits, false));
+                                if let Some((w, h, _, dirty)) = auto_size_surfaces.get_mut(id) {
+                                    if *w == width && *h == height {
+                                        *dirty = false;
+                                    } else {
+                                        continue;
+                                    }
                                 }
                             }
                         },
@@ -1087,17 +1107,23 @@ where
                         ));
                     }
                     for (object_id, surface_id) in &surface_ids {
-                        // don't redraw yet if the autosize state is dirty
-                        if let Some((_w, _h, _limits, dirty)) =
-                            auto_size_surfaces.get(surface_id)
-                        {
-                            if *dirty {
-                                continue;
-                            }
-                        }
                         let state = match states.get_mut(&surface_id.inner()) {
                             Some(s) => {
                                 if !s.needs_redraw() {
+                                    continue;
+                                } else if auto_size_surfaces
+                                    .get(surface_id)
+                                    .map(|(w, h, _, dirty)| {
+                                        // don't redraw yet if the autosize state is dirty
+                                        *dirty || {
+                                            let Size { width, height } =
+                                                s.logical_size();
+                                            width.round() as u32 != *w
+                                                || height.round() as u32 != *h
+                                        }
+                                    })
+                                    .unwrap_or_default()
+                                {
                                     continue;
                                 } else {
                                     s.set_needs_redraw(false);
@@ -1499,7 +1525,7 @@ where
     title: String,
     application_scale_factor: f64,
     surface_scale_factor: f64,
-    pub(crate) viewport: Viewport,
+    viewport: Viewport,
     viewport_changed: bool,
     cursor_position: Option<PhysicalPosition<i32>>,
     modifiers: Modifiers,
