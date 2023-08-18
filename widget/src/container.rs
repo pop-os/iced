@@ -256,6 +256,7 @@ where
                 text_color: style
                     .text_color
                     .unwrap_or(renderer_style.text_color),
+                scale_factor: renderer_style.scale_factor,
             },
             layout.children().next().unwrap(),
             cursor,

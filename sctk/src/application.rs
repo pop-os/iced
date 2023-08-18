@@ -855,6 +855,7 @@ where
                     state.theme(),
                     &Style {
                         text_color: state.text_color(),
+                        scale_factor: state.scale_factor(),
                     },
                     state.cursor(),
                 );
@@ -1306,6 +1307,7 @@ where
                         state.theme(),
                         &Style {
                             text_color: state.text_color(),
+                            scale_factor: state.scale_factor(),
                         },
                         state.cursor(),
                     );
