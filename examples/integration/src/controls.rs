@@ -1,3 +1,4 @@
+use iced_wgpu::core::window::Id;
 use iced_wgpu::Renderer;
 use iced_widget::{slider, text_input, Column, Row, Text};
 use iced_winit::core::{Alignment, Color, Element, Length};
@@ -45,7 +46,7 @@ impl Program for Controls {
         Command::none()
     }
 
-    fn view(&self) -> Element<Message, Renderer<Theme>> {
+    fn view(&self, _: Id) -> Element<Message, Renderer<Theme>> {
         let background_color = self.background_color;
         let text = &self.text;
 

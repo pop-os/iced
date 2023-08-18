@@ -848,6 +848,7 @@ where
                     state.theme(),
                     &Style {
                         text_color: state.text_color(),
+                        scale_factor: state.scale_factor(),
                     },
                     state.cursor(),
                 );
@@ -1273,6 +1274,7 @@ where
                             state.theme(),
                             &Style {
                                 text_color: state.text_color(),
+                                scale_factor: state.scale_factor(),
                             },
                             state.cursor(),
                         );
@@ -1285,20 +1287,27 @@ where
                             .insert(native_id.inner(), user_interface);
 
                         state.viewport_changed = false;
-                    } else {
-                        debug.draw_started();
-                        let new_mouse_interaction = user_interface.draw(
-                            &mut renderer,
-                            state.theme(),
-                            &Style {
-                                text_color: state.text_color(),
-                            },
-                            state.cursor(),
-                        );
-                        debug.draw_finished();
-                        ev_proxy.send_event(Event::SetCursor(
-                            new_mouse_interaction,
-                        ));
+                    }
+
+                    debug.draw_started();
+                    let new_mouse_interaction = user_interface.draw(
+                        &mut renderer,
+                        state.theme(),
+                        &Style {
+                            text_color: state.text_color(),
+                            scale_factor: state.scale_factor(),
+                        },
+                        state.cursor(),
+                    );
+
+                    debug.draw_finished();
+                    if new_mouse_interaction != mouse_interaction {
+                        mouse_interaction = new_mouse_interaction;
+                        ev_proxy
+                            .send_event(Event::SetCursor(mouse_interaction));
+                    }
+
+                    let _ =
                         interfaces.insert(native_id.inner(), user_interface);
                     }
 
@@ -1787,6 +1796,11 @@ fn run_command<A, E>(
                     .spawn(Box::pin(future.map(|e| {
                         Event::SctkEvent(IcedSctkEvent::UserEvent(e))
                     })));
+            }
+            command::Action::Stream(stream) => {
+                runtime.run(Box::pin(
+                    stream.map(|e| Event::SctkEvent(IcedSctkEvent::UserEvent(e))),
+                ));
             }
             command::Action::Clipboard(action) => match action {
                 clipboard::Action::Read(..) => {

@@ -7,6 +7,7 @@ use iced_graphics::core::widget::operation::focusable::focus;
 use iced_graphics::core::widget::operation::OperationWrapper;
 use iced_graphics::core::widget::Operation;
 use iced_runtime::futures::futures::FutureExt;
+use iced_runtime::futures::futures::StreamExt;
 pub use state::State;
 
 use crate::conversion;
@@ -514,6 +515,7 @@ async fn run_instance<A, E, C>(
                     state.theme(),
                     &renderer::Style {
                         text_color: state.text_color(),
+                        scale_factor: state.scale_factor(),
                     },
                     state.cursor(),
                 );
@@ -678,6 +680,7 @@ async fn run_instance<A, E, C>(
                         state.theme(),
                         &renderer::Style {
                             text_color: state.text_color(),
+                            scale_factor: state.scale_factor(),
                         },
                         state.cursor(),
                     );
@@ -927,7 +930,9 @@ pub fn run_command<A, C, E>(
                 ));
             }
             command::Action::Stream(stream) => {
-                runtime.run(stream);
+                runtime.run(Box::pin(
+                    stream.map(|e| UserEventWrapper::Message(e)),
+                ));
             }
             command::Action::Clipboard(action) => match action {
                 clipboard::Action::Read(tag) => {
