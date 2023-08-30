@@ -517,6 +517,7 @@ async fn run_instance<A, E, C>(
                     &mut renderer,
                     state.theme(),
                     &renderer::Style {
+                        icon_color: state.icon_color(),
                         text_color: state.text_color(),
                         scale_factor: state.scale_factor(),
                     },
@@ -682,6 +683,7 @@ async fn run_instance<A, E, C>(
                         &mut renderer,
                         state.theme(),
                         &renderer::Style {
+                            icon_color: state.icon_color(),
                             text_color: state.text_color(),
                             scale_factor: state.scale_factor(),
                         },

@@ -121,6 +121,11 @@ where
         self.appearance.background_color
     }
 
+    /// Returns the current icon [`Color`] of the [`State`].
+    pub fn icon_color(&self) -> Color {
+        self.appearance.icon_color
+    }
+
     /// Returns the current text [`Color`] of the [`State`].
     pub fn text_color(&self) -> Color {
         self.appearance.text_color
