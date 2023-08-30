@@ -39,6 +39,7 @@ where
     width: Length,
     height: Length,
     content_fit: ContentFit,
+    symbolic: bool,
     style: <Renderer::Theme as StyleSheet>::Style,
     _phantom_data: std::marker::PhantomData<&'a ()>,
 }
@@ -62,6 +63,7 @@ where
             width: Length::Fill,
             height: Length::Shrink,
             content_fit: ContentFit::Contain,
+            symbolic: false,
             style: Default::default(),
             _phantom_data: std::marker::PhantomData,
         }
@@ -97,6 +99,13 @@ where
             content_fit,
             ..self
         }
+    }
+
+    /// Symbolic icons inherit their color from the renderer if a color is not defined.
+    #[must_use]
+    pub fn symbolic(mut self, symbolic: bool) -> Self {
+        self.symbolic = symbolic;
+        self
     }
 
     /// Sets the style variant of this [`Svg`].
@@ -196,7 +205,7 @@ where
         _state: &Tree,
         renderer: &mut Renderer,
         theme: &Renderer::Theme,
-        _style: &renderer::Style,
+        style: &renderer::Style,
         layout: Layout<'_>,
         _cursor: mouse::Cursor,
         _viewport: &Rectangle,
@@ -219,7 +228,10 @@ where
                 ..bounds
             };
 
-            let appearance = theme.appearance(&self.style);
+            let mut appearance = theme.appearance(&self.style);
+            if self.symbolic && appearance.color.is_none() {
+                appearance.color = Some(style.icon_color);
+            }
 
             renderer.draw(
                 self.handle.clone(),

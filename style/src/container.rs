@@ -4,6 +4,8 @@ use iced_core::{Background, BorderRadius, Color};
 /// The appearance of a container.
 #[derive(Debug, Clone, Copy)]
 pub struct Appearance {
+    /// The icon [`Color`] of the container.
+    pub icon_color: Option<Color>,
     /// The text [`Color`] of the container.
     pub text_color: Option<Color>,
     /// The [`Background`] of the container.
@@ -19,6 +21,7 @@ pub struct Appearance {
 impl std::default::Default for Appearance {
     fn default() -> Self {
         Self {
+            icon_color: None,
             text_color: None,
             background: None,
             border_radius: 0.0.into(),

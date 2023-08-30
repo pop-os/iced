@@ -420,6 +420,7 @@ where
         container::draw_background(renderer, &style, layout.bounds());
 
         let defaults = renderer::Style {
+            icon_color: inherited_style.icon_color,
             text_color: style.text_color.unwrap_or(inherited_style.text_color),
             scale_factor: inherited_style.scale_factor,
         };

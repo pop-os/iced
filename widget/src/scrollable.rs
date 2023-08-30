@@ -748,7 +748,7 @@ pub fn update<Message>(
             match event {
                 touch::Event::FingerPressed { .. } => {
                     let Some(cursor_position) = cursor.position() else {
-                        return event::Status::Ignored
+                        return event::Status::Ignored;
                     };
 
                     state.scroll_area_touched_at = Some(cursor_position);
@@ -758,7 +758,7 @@ pub fn update<Message>(
                         state.scroll_area_touched_at
                     {
                         let Some(cursor_position) = cursor.position() else {
-                            return event::Status::Ignored
+                            return event::Status::Ignored;
                         };
 
                         let delta = Vector::new(
@@ -803,7 +803,7 @@ pub fn update<Message>(
             | Event::Touch(touch::Event::FingerMoved { .. }) => {
                 if let Some(scrollbar) = scrollbars.y {
                     let Some(cursor_position) = cursor.position() else {
-                        return event::Status::Ignored
+                        return event::Status::Ignored;
                     };
 
                     state.scroll_y_to(
@@ -833,7 +833,7 @@ pub fn update<Message>(
             Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left))
             | Event::Touch(touch::Event::FingerPressed { .. }) => {
                 let Some(cursor_position) = cursor.position() else {
-                    return event::Status::Ignored
+                    return event::Status::Ignored;
                 };
 
                 if let (Some(scroller_grabbed_at), Some(scrollbar)) =
@@ -877,7 +877,7 @@ pub fn update<Message>(
             Event::Mouse(mouse::Event::CursorMoved { .. })
             | Event::Touch(touch::Event::FingerMoved { .. }) => {
                 let Some(cursor_position) = cursor.position() else {
-                    return event::Status::Ignored
+                    return event::Status::Ignored;
                 };
 
                 if let Some(scrollbar) = scrollbars.x {
@@ -908,7 +908,7 @@ pub fn update<Message>(
             Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left))
             | Event::Touch(touch::Event::FingerPressed { .. }) => {
                 let Some(cursor_position) = cursor.position() else {
-                    return event::Status::Ignored
+                    return event::Status::Ignored;
                 };
 
                 if let (Some(scroller_grabbed_at), Some(scrollbar)) =

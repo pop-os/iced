@@ -14,6 +14,8 @@ pub struct Appearance {
     pub border_width: f32,
     /// The border [`Color`] of the button.
     pub border_color: Color,
+    /// The icon [`Color`] of the button.
+    pub icon_color: Color,
     /// The text [`Color`] of the button.
     pub text_color: Color,
 }
@@ -26,6 +28,7 @@ impl std::default::Default for Appearance {
             border_radius: 0.0.into(),
             border_width: 0.0,
             border_color: Color::TRANSPARENT,
+            icon_color: Color::BLACK,
             text_color: Color::BLACK,
         }
     }

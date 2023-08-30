@@ -316,6 +316,7 @@ where
             renderer,
             theme,
             &renderer::Style {
+                icon_color: styling.icon_color,
                 text_color: styling.text_color,
                 scale_factor: renderer_style.scale_factor,
             },

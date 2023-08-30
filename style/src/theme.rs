@@ -98,6 +98,7 @@ impl application::StyleSheet for Theme {
         match style {
             Application::Default => application::Appearance {
                 background_color: palette.background.base.color,
+                icon_color: palette.background.base.icon,
                 text_color: palette.background.base.text,
             },
             Application::Custom(custom) => custom.appearance(self),
@@ -381,6 +382,7 @@ impl container::StyleSheet for Theme {
                 let palette = self.extended_palette();
 
                 container::Appearance {
+                    icon_color: None,
                     text_color: None,
                     background: Some(palette.background.weak.color.into()),
                     border_radius: 2.0.into(),

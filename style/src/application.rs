@@ -18,6 +18,9 @@ pub struct Appearance {
     /// The background [`Color`] of the application.
     pub background_color: Color,
 
+    /// The default icon [`Color`] of the application.
+    pub icon_color: Color,
+
     /// The default text [`Color`] of the application.
     pub text_color: Color,
 }
