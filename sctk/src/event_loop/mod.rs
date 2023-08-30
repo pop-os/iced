@@ -43,11 +43,7 @@ use sctk::{
     },
     registry::RegistryState,
     seat::SeatState,
-    shell::{
-        wlr_layer::LayerShell,
-        xdg::XdgShell,
-        WaylandSurface,
-    },
+    shell::{wlr_layer::LayerShell, xdg::XdgShell, WaylandSurface},
     shm::Shm,
 };
 #[cfg(feature = "a11y")]
@@ -680,7 +676,6 @@ where
                                     let wl_surface = layer_surface.surface.wl_surface();
 
                                 if let Some(mut prev_configure) = layer_surface.last_configure.clone() {
-                                    
                                     prev_configure.new_size = (width.unwrap_or(prev_configure.new_size.0), width.unwrap_or(prev_configure.new_size.1));
                                     sticky_exit_callback(
                                         IcedSctkEvent::SctkEvent(SctkEvent::LayerSurfaceEvent { variant: LayerSurfaceEventVariant::Configure(prev_configure, wl_surface.clone(), false), id: wl_surface.clone()}),
