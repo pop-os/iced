@@ -117,11 +117,14 @@ impl Extended {
     }
 }
 
-/// A pair of background and text colors.
+/// Recommended background, icon, and text [`Color`].
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Pair {
     /// The background color.
     pub color: Color,
+
+    /// The icon color, which defaults to the text color.
+    pub icon: Color,
 
     /// The text color.
     ///
@@ -134,9 +137,12 @@ pub struct Pair {
 impl Pair {
     /// Creates a new [`Pair`] from a background [`Color`] and some text [`Color`].
     pub fn new(color: Color, text: Color) -> Self {
+        let text = readable(color, text);
+
         Self {
             color,
-            text: readable(color, text),
+            icon: text,
+            text,
         }
     }
 }

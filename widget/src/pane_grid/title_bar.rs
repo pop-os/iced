@@ -133,6 +133,7 @@ where
         let bounds = layout.bounds();
         let style = theme.appearance(&self.style);
         let inherited_style = renderer::Style {
+            icon_color: style.icon_color.unwrap_or(inherited_style.icon_color),
             text_color: style.text_color.unwrap_or(inherited_style.text_color),
             scale_factor: inherited_style.scale_factor,
         };
