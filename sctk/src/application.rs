@@ -622,7 +622,7 @@ where
                                         configure.new_size.1 as f64,
                                     );
                                 }
-                                
+
                             }
                         }
                         LayerSurfaceEventVariant::ScaleFactorChanged(sf, viewport) => {
@@ -847,6 +847,7 @@ where
                     &mut renderer,
                     state.theme(),
                     &Style {
+                        icon_color: state.icon_color(),
                         text_color: state.text_color(),
                         scale_factor: state.scale_factor(),
                     },
@@ -994,10 +995,11 @@ where
                             has_events || !native_events.is_empty();
 
                         let (interface_state, statuses) = {
-                            let Some(user_interface) = interfaces
-                                .get_mut(&surface_id.inner()) else {
-                                    continue;
-                                };
+                            let Some(user_interface) =
+                                interfaces.get_mut(&surface_id.inner())
+                            else {
+                                continue;
+                            };
                             user_interface.update(
                                 native_events.as_slice(),
                                 state.cursor(),
@@ -1123,8 +1125,9 @@ where
                                 Instant::now(),
                             ),
                         );
-                        let Some(user_interface) = interfaces
-                        .get_mut(&surface_id.inner()) else {
+                        let Some(user_interface) =
+                            interfaces.get_mut(&surface_id.inner())
+                        else {
                             continue;
                         };
                         let (interface_state, _) = user_interface.update(
@@ -1294,6 +1297,7 @@ where
                         &mut renderer,
                         state.theme(),
                         &Style {
+                            icon_color: state.icon_color(),
                             text_color: state.text_color(),
                             scale_factor: state.scale_factor(),
                         },
@@ -1701,6 +1705,11 @@ where
     /// Returns the current background [`Color`] of the [`State`].
     pub fn background_color(&self) -> Color {
         self.appearance.background_color
+    }
+
+    /// Returns the current icon [`Color`] of the [`State`].
+    pub fn icon_color(&self) -> Color {
+        self.appearance.icon_color
     }
 
     /// Returns the current text [`Color`] of the [`State`].
