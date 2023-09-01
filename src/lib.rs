@@ -165,6 +165,13 @@
 #![allow(clippy::inherent_to_string, clippy::type_complexity)]
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![cfg_attr(docsrs, feature(doc_cfg))]
+
+#[cfg(all(not(feature = "wayland"), not(feature = "winit")))]
+compile_error!("must define `wayland` or `winit` feature");
+
+#[cfg(all(feature = "wayland", feature = "winit"))]
+compile_error!("cannot use `wayland` feature with `winit");
+
 pub use iced_futures::futures;
 use iced_widget::graphics;
 use iced_widget::renderer;
