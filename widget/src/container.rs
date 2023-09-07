@@ -263,7 +263,7 @@ where
                 &renderer::Style {
                     icon_color: style
                         .icon_color
-                        .unwrap_or(renderer_style.text_color),
+                        .unwrap_or(renderer_style.icon_color),
                     text_color: style
                         .text_color
                         .unwrap_or(renderer_style.text_color),
