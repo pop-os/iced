@@ -16,7 +16,7 @@ bitflags = "1.2"
 thiserror = "1"
 log = "0.4.17"
 twox-hash = { version = "1.5", default-features = false }
-sctk = { package = "smithay-client-toolkit", git = "https://github.com/smithay/client-toolkit", rev = "c9940f4", optional = true }
+sctk = { package = "smithay-client-toolkit", git = "https://github.com/smithay/client-toolkit", rev = "f49df45", optional = true }
 
 [dependencies.palette]
 version = "0.7"
