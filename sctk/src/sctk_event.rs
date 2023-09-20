@@ -548,7 +548,7 @@ impl SctkEvent {
                 KeyboardEventVariant::Press(ke) => {
                     let mut skip_char = false;
 
-                    let mut events: Vec<_> = keysym_to_vkey(ke.keysym)
+                    let mut events: Vec<_> = keysym_to_vkey(ke.keysym.raw())
                         .map(|k| {
                             if k == KeyCode::Backspace {
                                 skip_char = true;
@@ -580,7 +580,7 @@ impl SctkEvent {
                 KeyboardEventVariant::Repeat(ke) => {
                     let mut skip_char = false;
 
-                    let mut events: Vec<_> = keysym_to_vkey(ke.keysym)
+                    let mut events: Vec<_> = keysym_to_vkey(ke.keysym.raw())
                         .map(|k| {
                             if k == KeyCode::Backspace {
                                 skip_char = true;
@@ -609,17 +609,19 @@ impl SctkEvent {
                     }
                     events
                 }
-                KeyboardEventVariant::Release(k) => keysym_to_vkey(k.keysym)
-                    .map(|k| {
-                        iced_runtime::core::Event::Keyboard(
-                            keyboard::Event::KeyReleased {
-                                key_code: k,
-                                modifiers: modifiers_to_native(*modifiers),
-                            },
-                        )
-                    })
-                    .into_iter()
-                    .collect(),
+                KeyboardEventVariant::Release(k) => {
+                    keysym_to_vkey(k.keysym.raw())
+                        .map(|k| {
+                            iced_runtime::core::Event::Keyboard(
+                                keyboard::Event::KeyReleased {
+                                    key_code: k,
+                                    modifiers: modifiers_to_native(*modifiers),
+                                },
+                            )
+                        })
+                        .into_iter()
+                        .collect()
+                }
                 KeyboardEventVariant::Modifiers(new_mods) => {
                     *modifiers = new_mods;
                     vec![iced_runtime::core::Event::Keyboard(

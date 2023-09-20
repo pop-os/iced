@@ -3,7 +3,10 @@ use crate::{
     sctk_event::{KeyboardEventVariant, SctkEvent},
 };
 
-use sctk::{delegate_keyboard, seat::keyboard::KeyboardHandler};
+use sctk::{
+    delegate_keyboard,
+    seat::keyboard::{KeyboardHandler, Keysym},
+};
 use std::fmt::Debug;
 
 impl<T: Debug> KeyboardHandler for SctkState<T> {
@@ -15,7 +18,7 @@ impl<T: Debug> KeyboardHandler for SctkState<T> {
         surface: &sctk::reexports::client::protocol::wl_surface::WlSurface,
         _serial: u32,
         _raw: &[u32],
-        _keysyms: &[u32],
+        _keysyms: &[Keysym],
     ) {
         let (i, mut is_active, seat) = {
             let (i, is_active, my_seat) =
