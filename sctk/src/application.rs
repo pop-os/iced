@@ -946,6 +946,7 @@ where
                     if application.should_exit() {
                         break 'main;
                     }
+                    let _ = control_sender.start_send(ControlFlow::Wait);
                 } else {
                     let mut needs_update = false;
 
