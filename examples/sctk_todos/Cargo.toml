@@ -10,7 +10,7 @@ iced = { path = "../..", default-features=false, features = ["async-std", "wayla
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 once_cell = "1.15"
-sctk = { package = "smithay-client-toolkit", git = "https://github.com/Smithay/client-toolkit", rev = "f49df45" }
+sctk = { package = "smithay-client-toolkit", git = "https://github.com/Smithay/client-toolkit", rev = "dc8c4a0" }
 iced_style = { path = "../../style" }
 
 log = "0.4.17"

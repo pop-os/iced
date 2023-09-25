@@ -267,6 +267,7 @@ impl iced_style::application::StyleSheet for CustomTheme {
     fn appearance(&self, style: &Self::Style) -> application::Appearance {
         iced_style::application::Appearance {
             background_color: Color::from_rgba(1.0, 0.0, 1.0, 1.0),
+            icon_color: Color::BLACK,
             text_color: Color::from_rgb(0.0, 1.0, 0.0),
         }
     }

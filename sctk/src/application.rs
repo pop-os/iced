@@ -255,7 +255,11 @@ where
         .create_surface(&event_loop.state.queue_handle);
 
     // let (display, context, config, surface) = init_egl(&wl_surface, 100, 100);
-    let backend = event_loop.state.connection.backend();
+    let backend = event_loop
+        .wayland_dispatcher
+        .as_source_ref()
+        .connection()
+        .backend();
     let qh = event_loop.state.queue_handle.clone();
     let wrapper = SurfaceDisplayWrapper::<C> {
         comp_surface: None,

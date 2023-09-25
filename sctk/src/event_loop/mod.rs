@@ -29,7 +29,6 @@ use iced_runtime::command::platform_specific::{
         window::SctkWindowSettings,
     },
 };
-use sctk::data_device_manager::data_source::DragSource;
 use sctk::{
     compositor::CompositorState,
     data_device_manager::DataDeviceManagerState,
@@ -38,13 +37,17 @@ use sctk::{
         calloop::{self, EventLoop},
         client::{
             globals::registry_queue_init, protocol::wl_surface::WlSurface,
-            ConnectError, Connection, DispatchError, Proxy, WaylandSource,
+            ConnectError, Connection, DispatchError, Proxy,
         },
     },
     registry::RegistryState,
     seat::SeatState,
     shell::{wlr_layer::LayerShell, xdg::XdgShell, WaylandSurface},
     shm::Shm,
+};
+use sctk::{
+    data_device_manager::data_source::DragSource,
+    reexports::calloop_wayland_source::WaylandSource,
 };
 #[cfg(feature = "a11y")]
 use std::sync::{Arc, Mutex};
@@ -121,7 +124,7 @@ where
                 calloop::channel::Event::Closed => {}
             })
             .unwrap();
-        let wayland_source = WaylandSource::new(event_queue).unwrap();
+        let wayland_source = WaylandSource::new(connection, event_queue);
 
         let wayland_dispatcher = calloop::Dispatcher::new(
             wayland_source,
@@ -162,7 +165,6 @@ where
             event_loop,
             wayland_dispatcher,
             state: SctkState {
-                connection,
                 registry_state,
                 seat_state: SeatState::new(&globals, &qh),
                 output_state: OutputState::new(&globals, &qh),
@@ -306,7 +308,7 @@ where
         // Still, we set the exit code to the error's OS error code, or to 1 if not possible.
         let exit_code = loop {
             // Send pending events to the server.
-            match self.state.connection.flush() {
+            match self.wayland_dispatcher.as_source_ref().connection().flush() {
                 Ok(_) => {}
                 Err(error) => {
                     break match error {
@@ -748,7 +750,7 @@ where
                     Event::SetCursor(iced_icon) => {
                         if let Some(ptr) = self.state.seats.get(0).and_then(|s| s.ptr.as_ref()) {
                             let icon = conversion::cursor_icon(iced_icon);
-                            let _ = ptr.set_cursor(&self.state.connection, icon);
+                            let _ = ptr.set_cursor(&self.wayland_dispatcher.as_source_ref().connection(), icon);
                         }
 
                     }
@@ -1164,7 +1166,7 @@ where
                                             Some(s) => s,
                                             None => return,
                                         };
-                                        let mut reader = BufReader::new(f);
+                                        let mut reader = BufReader::new(f.as_ref());
                                         let consumed = match reader.fill_buf() {
                                             Ok(buf) => {
                                                 if buf.is_empty() {
@@ -1222,7 +1224,7 @@ where
                                             Some(s) => s,
                                             None => return,
                                         };
-                                        let mut reader = BufReader::new(f);
+                                        let mut reader = BufReader::new(f.as_ref());
                                         let consumed = match reader.fill_buf() {
                                             Ok(buf) => {
                                                 if buf.is_empty() {
