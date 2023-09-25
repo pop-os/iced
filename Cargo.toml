@@ -53,7 +53,7 @@ a11y = ["iced_accessibility", "iced_core/a11y", "iced_widget/a11y", "iced_winit?
 # Enables the winit shell. Conflicts with `wayland` and `glutin`.
 winit = ["iced_winit", "iced_accessibility?/accesskit_winit"]
 # Enables the sctk shell. COnflicts with `winit` and `glutin`.
-wayland = ["iced_sctk", "iced_widget/wayland", "iced_accessibility?/accesskit_unix"]
+wayland = ["iced_sctk", "iced_widget/wayland", "iced_accessibility?/accesskit_unix", "iced_core/wayland"]
 
 [dependencies]
 iced_core.workspace = true
@@ -152,7 +152,7 @@ qrcode = { version = "0.12", default-features = false }
 raw-window-handle = "0.5"
 resvg = "0.36"
 rustc-hash = "1.0"
-sctk = { package = "smithay-client-toolkit", git = "https://github.com/smithay/client-toolkit", rev = "389a4f2" }
+sctk = { package = "smithay-client-toolkit", git = "https://github.com/smithay/client-toolkit", rev = "dc8c4a0" }
 smol = "1.0"
 softbuffer = { git = "https://github.com/pop-os/softbuffer", tag = "cosmic-2.0-old" } 
 syntect = "5.1"
@@ -165,7 +165,7 @@ xxhash-rust = { version = "0.8", features = ["xxh3"] }
 unicode-segmentation = "1.0"
 wasm-bindgen-futures = "0.4"
 wasm-timer = "0.2"
-wayland-protocols = { version = "0.30.0", features = [ "staging"]}
+wayland-protocols = { version = "0.31.0", features = [ "staging"]}
 web-sys = "0.3"
 wgpu = "0.18"
 winapi = "0.3"

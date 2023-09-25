@@ -251,7 +251,11 @@ where
         .create_surface(&event_loop.state.queue_handle);
 
     // let (display, context, config, surface) = init_egl(&wl_surface, 100, 100);
-    let backend = event_loop.state.connection.backend();
+    let backend = event_loop
+        .wayland_dispatcher
+        .as_source_ref()
+        .connection()
+        .backend();
     let qh = event_loop.state.queue_handle.clone();
     let wrapper = SurfaceDisplayWrapper::<C> {
         comp_surface: None,
@@ -1270,25 +1274,6 @@ where
                         user_interface = user_interface
                             .relayout(logical_size, &mut renderer);
                         debug.layout_finished();
-
-                        debug.draw_started();
-                        let new_mouse_interaction = user_interface.draw(
-                            &mut renderer,
-                            state.theme(),
-                            &Style {
-                                text_color: state.text_color(),
-                                scale_factor: state.scale_factor(),
-                            },
-                            state.cursor(),
-                        );
-                        debug.draw_finished();
-                        ev_proxy.send_event(Event::SetCursor(
-                            new_mouse_interaction,
-                        ));
-
-                        let _ = interfaces
-                            .insert(native_id.inner(), user_interface);
-
                         state.viewport_changed = false;
                     }
 
@@ -1313,7 +1298,7 @@ where
 
                     let _ =
                         interfaces.insert(native_id.inner(), user_interface);
-                    }
+                    
 
                     let _ = compositor.present(
                         &mut renderer,

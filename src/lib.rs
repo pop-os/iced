@@ -160,13 +160,6 @@
 )]
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![cfg_attr(docsrs, feature(doc_cfg))]
-
-#[cfg(all(not(feature = "wayland"), not(feature = "winit")))]
-compile_error!("must define `wayland` or `winit` feature");
-
-#[cfg(all(feature = "wayland", feature = "winit"))]
-compile_error!("cannot use `wayland` feature with `winit");
-
 pub use iced_futures::futures;
 use iced_widget::graphics;
 use iced_widget::renderer;
@@ -249,6 +242,8 @@ pub mod font {
 
 pub mod event {
     //! Handle events of a user interface.
+    #[cfg(feature = "wayland")]
+    pub use crate::core::event::wayland;
     pub use crate::core::event::{Event, MacOS, PlatformSpecific, Status};
     pub use iced_futures::event::{listen, listen_raw, listen_with};
 }

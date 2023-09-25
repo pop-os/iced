@@ -10,7 +10,6 @@ use sctk::{
         Connection, QueueHandle,
     },
 };
-use std::fmt::Debug;
 use std::io::{BufWriter, Write};
 use tracing::error;
 
@@ -74,7 +73,7 @@ impl<T> DataSourceHandler for SctkState<T> {
                         Some(s) => s,
                         None => return,
                     };
-                let mut writer = BufWriter::new(f);
+                let mut writer = BufWriter::new(f.as_ref());
                 let slice = &data.as_slice()[cur_index
                     ..(cur_index + writer.capacity()).min(data.len())];
                 match writer.write(slice) {
@@ -142,7 +141,7 @@ impl<T> DataSourceHandler for SctkState<T> {
                         Some(s) => s,
                         None => return,
                     };
-                let mut writer = BufWriter::new(f);
+                let mut writer = BufWriter::new(f.as_ref());
                 let slice = &data.as_slice()[cur_index
                     ..(cur_index + writer.capacity()).min(data.len())];
                 match writer.write(slice) {

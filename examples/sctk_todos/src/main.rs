@@ -1,6 +1,6 @@
 use env_logger::Env;
 use iced::alignment::{self, Alignment};
-use iced::event::{self, Event};
+use iced::event::{self, listen_raw, Event};
 use iced::subscription;
 use iced::theme::{self, Theme};
 use iced::wayland::actions::data_device::ActionInner;
@@ -14,6 +14,7 @@ use iced::widget::{
 use iced::{window, Application, Element};
 use iced::{Color, Command, Font, Length, Settings, Subscription};
 use iced_core::id::Id;
+use iced_core::layout::Limits;
 use iced_core::{id, keyboard};
 
 use once_cell::sync::Lazy;
@@ -301,7 +302,7 @@ impl Application for Todos {
     }
 
     fn subscription(&self) -> Subscription<Message> {
-        subscription::events_with(|event, status| match (event, status) {
+        listen_raw(|event, status| match (event, status) {
             (
                 Event::Keyboard(keyboard::Event::KeyPressed {
                     key_code: keyboard::KeyCode::Tab,

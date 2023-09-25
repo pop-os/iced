@@ -1,5 +1,4 @@
 use std::{
-    collections::HashMap,
     fmt::{Debug, Formatter},
     num::NonZeroU32,
 };
@@ -13,7 +12,7 @@ use crate::{
     },
     sctk_event::{
         LayerSurfaceEventVariant, PopupEventVariant, SctkEvent,
-        SurfaceCompositorUpdate, WindowEventVariant,
+        WindowEventVariant,
     },
 };
 
@@ -50,7 +49,7 @@ use sctk::{
                 wl_surface::{self, WlSurface},
                 wl_touch::WlTouch,
             },
-            Connection, QueueHandle,
+            QueueHandle,
         },
     },
     registry::RegistryState,
@@ -334,7 +333,6 @@ pub struct SctkState<T> {
     pub(crate) xdg_shell_state: XdgShell,
     pub(crate) layer_shell: Option<LayerShell>,
     pub(crate) data_device_manager_state: DataDeviceManagerState,
-    pub(crate) connection: Connection,
     pub(crate) token_ctr: u32,
 }
 
