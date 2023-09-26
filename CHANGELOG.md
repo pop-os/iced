@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Many thanks to...
+- @wash2
+
 ## [0.10.0] - 2023-07-28
 ### Added
 - Text shaping, font fallback, and `iced_wgpu` overhaul. [#1697](https://github.com/iced-rs/iced/pull/1697)
