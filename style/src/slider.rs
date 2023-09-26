@@ -1,5 +1,5 @@
 //! Change the apperance of a slider.
-use iced_core::{BorderRadius, Color};
+use iced_core::{gradient::Linear, BorderRadius, Color};
 
 /// The appearance of a slider.
 #[derive(Debug, Clone, Copy)]
@@ -14,11 +14,26 @@ pub struct Appearance {
 #[derive(Debug, Clone, Copy)]
 pub struct Rail {
     /// The colors of the rail of the slider.
-    pub colors: (Color, Color),
+    pub colors: RailBackground,
     /// The width of the stroke of a slider rail.
     pub width: f32,
     /// The border radius of the corners of the rail.
     pub border_radius: BorderRadius,
+}
+
+/// The background color of the rail
+#[derive(Debug, Clone, Copy)]
+pub enum RailBackground {
+    /// Start and end colors of the rail
+    Pair(Color, Color),
+    /// Linear gradient for the background of the rail
+    /// includes an option for auto-selecting the angle
+    Gradient {
+        /// the linear gradient of the slider
+        gradient: Linear,
+        /// Let the widget determin the angle of the gradient
+        auto_angle: bool,
+    },
 }
 
 /// The appearance of the handle of a slider.
