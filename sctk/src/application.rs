@@ -42,7 +42,10 @@ use sctk::{
     reexports::client::{protocol::wl_surface::WlSurface, Proxy, QueueHandle},
     seat::{keyboard::Modifiers, pointer::PointerEventKind},
 };
-use std::{collections::HashMap, ffi::c_void, hash::Hash, marker::PhantomData};
+use std::{
+    collections::HashMap, ffi::c_void, hash::Hash, marker::PhantomData,
+    time::Duration,
+};
 use wayland_backend::client::ObjectId;
 use wayland_protocols::wp::viewporter::client::wp_viewport::WpViewport;
 
@@ -1114,6 +1117,7 @@ where
                             &mut ev_proxy,
                         ));
                     }
+                    let mut sent_control_flow = false;
                     for (object_id, surface_id) in &surface_ids {
                         let state = match states.get_mut(&surface_id.inner()) {
                             Some(s) => {
@@ -1166,7 +1170,7 @@ where
                         ev_proxy.send_event(Event::SctkEvent(
                             IcedSctkEvent::RedrawRequested(object_id.clone()),
                         ));
-
+                        sent_control_flow = true;
                         let _ =
                             control_sender
                                 .start_send(match interface_state {
@@ -1174,19 +1178,25 @@ where
                                     redraw_request: Some(redraw_request),
                                 } => {
                                     match redraw_request {
-                                    crate::core::window::RedrawRequest::NextFrame => {
-                                        ControlFlow::Poll
-                                    }
-                                    crate::core::window::RedrawRequest::At(at) => {
-                                        ControlFlow::WaitUntil(at)
-                                    }
-                                }},
+                                        crate::core::window::RedrawRequest::NextFrame => {
+                                            ControlFlow::Poll
+                                        }
+                                        crate::core::window::RedrawRequest::At(at) => {
+                                            ControlFlow::WaitUntil(at)
+                                        }
+                                    }},
                                 _ => if needs_update {
                                     ControlFlow::Poll
                                 } else {
                                     ControlFlow::Wait
                                 },
                             });
+                    }
+                    if !sent_control_flow {
+                        let mut wait_500_ms = Instant::now();
+                        wait_500_ms = wait_500_ms + Duration::from_millis(250);
+                        _ = control_sender
+                            .start_send(ControlFlow::WaitUntil(wait_500_ms));
                     }
                     redraw_pending = false;
                 }
