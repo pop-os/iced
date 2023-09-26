@@ -37,7 +37,6 @@ impl Id {
 }
 
 // Not meant to be used directly
-#[cfg(feature = "a11y")]
 impl From<u64> for Id {
     fn from(value: u64) -> Self {
         Self(Internal::Unique(value))
@@ -45,7 +44,6 @@ impl From<u64> for Id {
 }
 
 // Not meant to be used directly
-#[cfg(feature = "a11y")]
 impl Into<NonZeroU128> for Id {
     fn into(self) -> NonZeroU128 {
         match &self.0 {
@@ -83,7 +81,7 @@ pub fn window_node_id() -> NonZeroU128 {
 }
 
 // TODO refactor to make panic impossible?
-#[derive(Debug, Clone, Eq, Hash)]
+#[derive(Debug, Clone, Eq)]
 /// Internal representation of an [`Id`].
 pub enum Internal {
     /// a unique id
@@ -101,6 +99,23 @@ impl PartialEq for Internal {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::Unique(l0), Self::Unique(r0)) => l0 == r0,
+            (Self::Custom(_, l1), Self::Custom(_, r1)) => l1 == r1,
+            (Self::Set(l0), Self::Set(r0)) => l0 == r0,
+            _ => false,
+        }
+    }
+}
+
+/// Similar to PartialEq, but only intended for use when comparing Ids
+pub trait IdEq {
+    /// Compare two Ids for equality based on their number or name
+    fn eq(&self, other: &Self) -> bool;
+}
+
+impl IdEq for Internal {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Unique(l0), Self::Unique(r0)) => l0 == r0,
             (Self::Custom(l0, l1), Self::Custom(r0, r1)) => {
                 l0 == r0 || l1 == r1
             }
@@ -112,6 +127,16 @@ impl PartialEq for Internal {
             (Self::Set(l0), r) | (r, Self::Set(l0)) => {
                 l0.iter().any(|l| l == r)
             }
+        }
+    }
+}
+
+impl std::hash::Hash for Internal {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        match self {
+            Self::Unique(id) => id.hash(state),
+            Self::Custom(name, _) => name.hash(state),
+            Self::Set(ids) => ids.hash(state),
         }
     }
 }

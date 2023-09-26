@@ -2,7 +2,7 @@
 use crate::id::{Id, Internal};
 use crate::Widget;
 use std::any::{self, Any};
-use std::borrow::{Borrow, BorrowMut};
+use std::borrow::{Borrow, BorrowMut, Cow};
 use std::collections::HashMap;
 use std::fmt;
 use std::hash::Hash;
@@ -127,14 +127,14 @@ impl Tree {
 
         let children_len = self.children.len();
         let (mut id_map, mut id_list): (
-            HashMap<Id, &mut Tree>,
+            HashMap<String, &mut Tree>,
             Vec<&mut Tree>,
         ) = self.children.iter_mut().fold(
             (HashMap::new(), Vec::with_capacity(children_len)),
             |(mut id_map, mut id_list), c| {
                 if let Some(id) = c.id.as_ref() {
-                    if matches!(id.0, Internal::Custom(_, _)) {
-                        let _ = id_map.insert(id.clone(), c);
+                    if let Internal::Custom(_, ref name) = id.0 {
+                        let _ = id_map.insert(name.to_string(), c);
                     } else {
                         id_list.push(c);
                     }
@@ -147,9 +147,13 @@ impl Tree {
 
         let mut child_state_i = 0;
         for (new, new_id) in new_children.iter_mut().zip(new_ids.iter()) {
-            let child_state = if let Some(c) =
-                new_id.as_ref().and_then(|id| id_map.remove(id))
-            {
+            let child_state = if let Some(c) = new_id.as_ref().and_then(|id| {
+                if let Internal::Custom(_, ref name) = id.0 {
+                    id_map.remove(name.as_ref())
+                } else {
+                    None
+                }
+            }) {
                 c
             } else if child_state_i < id_list.len() {
                 let c = &mut id_list[child_state_i];

@@ -2,7 +2,7 @@ use accesskit::NodeClassSet;
 
 use crate::A11yId;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct A11yNode {
     node: accesskit::NodeBuilder,
     id: A11yId,

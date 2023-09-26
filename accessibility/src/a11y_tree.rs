@@ -1,4 +1,4 @@
-use crate::{A11yId, A11yNode};
+use crate::{A11yId, A11yNode, IdEq};
 
 #[derive(Debug, Clone, Default)]
 /// Accessible tree of nodes
@@ -64,8 +64,8 @@ impl A11yTree {
     }
 
     pub fn contains(&self, id: &A11yId) -> bool {
-        self.root.iter().any(|n| n.id() == id)
-            || self.children.iter().any(|n| n.id() == id)
+        self.root.iter().any(|n| IdEq::eq(n.id(), id))
+            || self.children.iter().any(|n| IdEq::eq(n.id(), id))
     }
 }
 

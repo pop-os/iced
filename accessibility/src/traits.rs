@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use crate::A11yId;
 
-#[derive(Debug, Clone, PartialEq, Hash)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Description<'a> {
     Text(Cow<'a, str>),
     Id(Vec<A11yId>),
