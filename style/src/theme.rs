@@ -17,10 +17,15 @@ use crate::radio;
 use crate::rule;
 use crate::scrollable;
 use crate::slider;
+use crate::slider::RailBackground;
 use crate::svg;
 use crate::text_input;
 use crate::toggler;
 
+use iced_core::gradient::ColorStop;
+use iced_core::gradient::Linear;
+use iced_core::Degrees;
+use iced_core::Radians;
 use iced_core::{Background, Color, Vector};
 
 use std::rc::Rc;
@@ -433,10 +438,24 @@ impl slider::StyleSheet for Theme {
 
                 slider::Appearance {
                     rail: slider::Rail {
-                        colors: (
-                            palette.primary.base.color,
-                            palette.secondary.base.color,
-                        ),
+                        colors: RailBackground::Gradient {
+                            gradient: Linear::new(Radians::from(Degrees(0.0)))
+                                .add_stops([
+                                    ColorStop {
+                                        offset: 0.0,
+                                        color: Color::from_rgb(1.0, 0.0, 0.0),
+                                    },
+                                    ColorStop {
+                                        offset: 0.5,
+                                        color: Color::from_rgb(0.0, 1.0, 0.0),
+                                    },
+                                    ColorStop {
+                                        offset: 1.0,
+                                        color: Color::from_rgb(0.0, 0.0, 1.0),
+                                    },
+                                ]),
+                            auto_angle: true,
+                        },
                         width: 4.0,
                         border_radius: 2.0.into(),
                     },

@@ -16,7 +16,7 @@ use crate::core::{
 use std::borrow::Cow;
 use std::ops::RangeInclusive;
 
-use iced_renderer::core::BorderRadius;
+use iced_renderer::core::{BorderRadius, Radians};
 pub use iced_style::slider::{
     Appearance, Handle, HandleShape, Rail, StyleSheet,
 };
@@ -545,37 +545,63 @@ pub fn draw<T, R>(
 
     let rail_y = bounds.y + bounds.height / 2.0;
 
-    // rail
-    renderer.fill_quad(
-        renderer::Quad {
-            bounds: Rectangle {
-                x: bounds.x,
-                y: rail_y - style.rail.width / 2.0,
-                width: offset + handle_width / 2.0,
-                height: style.rail.width,
-            },
-            border_radius: style.rail.border_radius,
-            border_width: 0.0,
-            border_color: Color::TRANSPARENT,
-        },
-        style.rail.colors.0,
-    );
+    match style.rail.colors {
+        iced_style::slider::RailBackground::Pair(l, r) => {
+            // rail
+            renderer.fill_quad(
+                renderer::Quad {
+                    bounds: Rectangle {
+                        x: bounds.x,
+                        y: rail_y - style.rail.width / 2.0,
+                        width: offset + handle_width / 2.0,
+                        height: style.rail.width,
+                    },
+                    border_radius: style.rail.border_radius,
+                    border_width: 0.0,
+                    border_color: Color::TRANSPARENT,
+                },
+                l,
+            );
 
-    // right rail
-    renderer.fill_quad(
-        renderer::Quad {
-            bounds: Rectangle {
-                x: bounds.x + offset + handle_width / 2.0,
-                y: rail_y - style.rail.width / 2.0,
-                width: bounds.width - offset - handle_width / 2.0,
-                height: style.rail.width,
+            // right rail
+            renderer.fill_quad(
+                renderer::Quad {
+                    bounds: Rectangle {
+                        x: bounds.x + offset + handle_width / 2.0,
+                        y: rail_y - style.rail.width / 2.0,
+                        width: bounds.width - offset - handle_width / 2.0,
+                        height: style.rail.width,
+                    },
+                    border_radius: style.rail.border_radius,
+                    border_width: 0.0,
+                    border_color: Color::TRANSPARENT,
+                },
+                r,
+            );
+        }
+        iced_style::slider::RailBackground::Gradient {
+            mut gradient,
+            auto_angle,
+        } => renderer.fill_quad(
+            renderer::Quad {
+                bounds: Rectangle {
+                    x: bounds.x,
+                    y: rail_y - style.rail.width / 2.0,
+                    width: bounds.width,
+                    height: style.rail.width,
+                },
+                border_radius: style.rail.border_radius,
+                border_width: 0.0,
+                border_color: Color::TRANSPARENT,
             },
-            border_radius: style.rail.border_radius,
-            border_width: 0.0,
-            border_color: Color::TRANSPARENT,
-        },
-        style.rail.colors.1,
-    );
+            if auto_angle {
+                gradient.angle = Radians(0.0);
+                gradient
+            } else {
+                gradient
+            },
+        ),
+    }
 
     // handle
     renderer.fill_quad(
