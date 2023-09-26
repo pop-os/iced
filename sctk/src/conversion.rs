@@ -8,7 +8,7 @@ use iced_runtime::core::{
 use sctk::{
     reexports::client::protocol::wl_pointer::AxisSource,
     seat::{
-        keyboard::{Keysym, Modifiers},
+        keyboard::Modifiers,
         pointer::{AxisScroll, CursorIcon, BTN_LEFT, BTN_MIDDLE, BTN_RIGHT},
     },
 };
@@ -103,8 +103,8 @@ pub fn pointer_axis_to_native(
                 }
             } else {
                 ScrollDelta::Lines {
-                    x: (-1 * horizontal.discrete) as f32,
-                    y: (-1 * vertical.discrete) as f32,
+                    x: -horizontal.discrete as f32,
+                    y: -vertical.discrete as f32,
                 }
             }
         }

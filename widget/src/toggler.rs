@@ -11,7 +11,7 @@ use crate::core::touch;
 use crate::core::widget::tree::{self, Tree};
 use crate::core::widget::{self, Id};
 use crate::core::{
-    id, Alignment, Clipboard, Element, Event, Layout, Length, Pixels, Point,
+    id, Alignment, Clipboard, Element, Event, Layout, Length, Pixels,
     Rectangle, Shell, Widget,
 };
 
@@ -98,7 +98,7 @@ where
             labeled_by_widget: None,
             is_toggled,
             on_toggle: Box::new(f),
-            label: label,
+            label,
             width: Length::Fill,
             size: Self::DEFAULT_SIZE,
             text_size: None,

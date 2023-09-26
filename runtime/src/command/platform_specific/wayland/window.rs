@@ -180,7 +180,7 @@ impl<T> Action<T> {
         match self {
             Action::Window { builder, .. } => Action::Window {
                 builder,
-                _phantom: PhantomData::default(),
+                _phantom: PhantomData,
             },
             Action::Size { id, width, height } => {
                 Action::Size { id, width, height }

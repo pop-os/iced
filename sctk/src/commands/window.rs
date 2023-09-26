@@ -18,7 +18,7 @@ pub fn get_window<Message>(builder: SctkWindowSettings) -> Command<Message> {
         platform_specific::Action::Wayland(wayland::Action::Window(
             wayland::window::Action::Window {
                 builder,
-                _phantom: PhantomData::default(),
+                _phantom: PhantomData,
             },
         )),
     ))

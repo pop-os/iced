@@ -2,12 +2,11 @@
 use sctk::{
     compositor::CompositorHandler,
     delegate_compositor,
-    reexports::client::{protocol::wl_surface, Connection, Proxy, QueueHandle},
-    shell::WaylandSurface,
+    reexports::client::{protocol::wl_surface, Connection, QueueHandle},
 };
 use std::fmt::Debug;
 
-use crate::{event_loop::state::SctkState, sctk_event::SctkEvent};
+use crate::event_loop::state::SctkState;
 
 impl<T: Debug> CompositorHandler for SctkState<T> {
     fn scale_factor_changed(
@@ -32,10 +31,10 @@ impl<T: Debug> CompositorHandler for SctkState<T> {
 
     fn transform_changed(
         &mut self,
-        conn: &Connection,
-        qh: &QueueHandle<Self>,
-        surface: &wl_surface::WlSurface,
-        new_transform: sctk::reexports::client::protocol::wl_output::Transform,
+        _conn: &Connection,
+        _qh: &QueueHandle<Self>,
+        _surface: &wl_surface::WlSurface,
+        _new_transform: sctk::reexports::client::protocol::wl_output::Transform,
     ) {
         // TODO
         // this is not required

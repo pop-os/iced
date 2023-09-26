@@ -3,6 +3,7 @@
 //! A [`Button`] has some local [`State`].
 use iced_runtime::core::widget::Id;
 use iced_runtime::{keyboard, Command};
+#[cfg(feature = "a11y")]
 use std::borrow::Cow;
 
 use crate::core::event::{self, Event};
@@ -369,7 +370,7 @@ where
         let child_tree =
             self.content
                 .as_widget()
-                .a11y_nodes(child_layout, &child_tree, p);
+                .a11y_nodes(child_layout, child_tree, p);
 
         let Rectangle {
             x,
@@ -484,7 +485,7 @@ impl State {
 /// Processes the given [`Event`] and updates the [`State`] of a [`Button`]
 /// accordingly.
 pub fn update<'a, Message: Clone>(
-    id: Id,
+    _id: Id,
     event: Event,
     layout: Layout<'_>,
     cursor: mouse::Cursor,
@@ -531,7 +532,7 @@ pub fn update<'a, Message: Clone>(
             iced_accessibility::accesskit::ActionRequest { action, .. },
         ) => {
             let state = state();
-            if let Some(Some(on_press)) = (id == event_id
+            if let Some(Some(on_press)) = (_id == event_id
                 && matches!(
                     action,
                     iced_accessibility::accesskit::Action::Default

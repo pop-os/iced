@@ -4,7 +4,6 @@ use sctk::{
         protocol::wl_data_device_manager::DndAction, Connection, QueueHandle,
     },
 };
-use std::fmt::Debug;
 
 use crate::event_loop::state::SctkState;
 

@@ -25,7 +25,7 @@ pub fn get_layer_surface<Message>(
         platform_specific::Action::Wayland(wayland::Action::LayerSurface(
             wayland::layer_surface::Action::LayerSurface {
                 builder,
-                _phantom: PhantomData::default(),
+                _phantom: PhantomData,
             },
         )),
     ))

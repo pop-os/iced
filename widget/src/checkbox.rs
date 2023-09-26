@@ -12,7 +12,7 @@ use crate::core::touch;
 use crate::core::widget;
 use crate::core::widget::tree::{self, Tree};
 use crate::core::{
-    id::Internal, Alignment, Clipboard, Element, Layout, Length, Pixels, Point,
+    id::Internal, Alignment, Clipboard, Element, Layout, Length, Pixels,
     Rectangle, Shell, Widget,
 };
 

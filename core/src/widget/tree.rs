@@ -2,7 +2,7 @@
 use crate::id::{Id, Internal};
 use crate::Widget;
 use std::any::{self, Any};
-use std::borrow::{Borrow, BorrowMut, Cow};
+use std::borrow::{Borrow, BorrowMut};
 use std::collections::HashMap;
 use std::fmt;
 use std::hash::Hash;

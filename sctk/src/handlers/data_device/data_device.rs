@@ -1,9 +1,6 @@
-use std::fmt::Debug;
-
 use sctk::{
     data_device_manager::{
-        data_device::{DataDevice, DataDeviceHandler},
-        data_offer::DragOffer,
+        data_device::DataDeviceHandler, data_offer::DragOffer,
     },
     reexports::client::{protocol::wl_data_device, Connection, QueueHandle},
 };
