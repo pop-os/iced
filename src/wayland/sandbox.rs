@@ -60,7 +60,7 @@ use crate::{
 /// says "Hello, world!":
 ///
 /// ```no_run
-/// use iced::{Element, Sandbox, Settings};
+/// use iced::{Element, Sandbox, Settings, window::Id};
 ///
 /// pub fn main() -> iced::Result {
 ///     Hello::run(Settings::default())
@@ -83,8 +83,12 @@ use crate::{
 ///         // This application has no interactions
 ///     }
 ///
-///     fn view(&self) -> Element<Self::Message> {
+///     fn view(&self, _: Id) -> Element<Self::Message> {
 ///         "Hello, world!".into()
+///     }
+///
+///     fn close_requested(&self, _: Id) -> Self::Message {
+///         unimplemented!()
 ///     }
 /// }
 /// ```

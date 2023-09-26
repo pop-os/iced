@@ -20,8 +20,21 @@ jobs:
         sudo apt-get install -y libxkbcommon-dev libwayland-dev
     - name: Run tests
       run: |
-        cargo test --verbose --workspace --features "wayland"
-        cargo test --verbose --workspace --features "winit wgpu svg canvas qr_code lazy debug tokio palette web-colors system a11y"
+        cargo test --verbose --features "winit wgpu svg canvas qr_code lazy debug tokio palette web-colors system a11y"
+        cargo test -p iced_accessibility
+        cargo test -p iced_core
+        cargo test -p iced_futures
+        cargo test -p iced_graphics
+        cargo test -p iced_renderer
+        cargo test -p iced_runtime
+        cargo test -p iced_tiny_skia
+        cargo test -p iced_widget
+        cargo test -p iced_wgpu
+    - name: test wayland
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        cargo test --verbose --features "wayland wgpu svg canvas qr_code lazy debug tokio palette web-colors system a11y"
+        cargo test -p iced_sctk
 
   web:
     runs-on: ubuntu-latest
