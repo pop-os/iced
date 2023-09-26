@@ -4,7 +4,7 @@ use std::hash::Hash;
 use std::sync::atomic::{self, AtomicU64};
 use std::{borrow, num::NonZeroU128};
 
-#[derive(Debug, Clone, PartialEq, Hash, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum A11yId {
     Window(NonZeroU128),
     Widget(Id),
@@ -33,6 +33,17 @@ impl From<Id> for A11yId {
     }
 }
 
+impl IdEq for A11yId {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (A11yId::Widget(self_), A11yId::Widget(other)) => {
+                IdEq::eq(self_, other)
+            }
+            _ => self == other,
+        }
+    }
+}
+
 impl From<accesskit::NodeId> for A11yId {
     fn from(value: accesskit::NodeId) -> Self {
         let val = u128::from(value.0);
@@ -58,7 +69,7 @@ static NEXT_ID: AtomicU64 = AtomicU64::new(1);
 static NEXT_WINDOW_ID: AtomicU64 = AtomicU64::new(1);
 
 /// The identifier of a generic widget.
-#[derive(Debug, Clone, PartialEq, Hash, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Id(pub Internal);
 
 impl Id {
@@ -86,6 +97,11 @@ impl Id {
     }
 }
 
+impl IdEq for Id {
+    fn eq(&self, other: &Self) -> bool {
+        IdEq::eq(&self.0, &other.0)
+    }
+}
 // Not meant to be used directly
 impl From<u64> for Id {
     fn from(value: u64) -> Self {
@@ -146,6 +162,22 @@ pub enum Internal {
 }
 
 impl PartialEq for Internal {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Unique(l0), Self::Unique(r0)) => l0 == r0,
+            (Self::Custom(_, l1), Self::Custom(_, r1)) => l1 == r1,
+            (Self::Set(l0), Self::Set(r0)) => l0 == r0,
+            _ => false,
+        }
+    }
+}
+
+/// Similar to PartialEq, but only intended for use when comparing Ids
+pub trait IdEq {
+    fn eq(&self, other: &Self) -> bool;
+}
+
+impl IdEq for Internal {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::Unique(l0), Self::Unique(r0)) => l0 == r0,

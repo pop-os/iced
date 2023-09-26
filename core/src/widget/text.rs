@@ -218,7 +218,7 @@ where
     }
 
     fn id(&self) -> Option<crate::widget::Id> {
-        Some(self.id.clone().into())
+        Some(self.id.clone())
     }
 
     fn set_id(&mut self, id: crate::widget::Id) {
