@@ -17,11 +17,11 @@ jobs:
       run: |
         export DEBIAN_FRONTED=noninteractive
         sudo apt-get -qq update
-        sudo apt-get install -y libxkbcommon-dev
+        sudo apt-get install -y libxkbcommon-dev libwayland-dev
     - name: Run tests
       run: |
-        cargo test --verbose --workspace
-        cargo test --verbose --workspace --all-features
+        cargo test --verbose --workspace --features "wayland"
+        cargo test --verbose --workspace --features "winit wgpu svg canvas qr_code lazy debug tokio palette web-colors system a11y"
 
   web:
     runs-on: ubuntu-latest
@@ -32,10 +32,10 @@ jobs:
         targets: wasm32-unknown-unknown
     - uses: actions/checkout@master
     - name: Run checks
-      run: cargo check --package iced --target wasm32-unknown-unknown --no-default-features --features "winit tiny-skia"
+      run: cargo check --package iced --target wasm32-unknown-unknown --no-default-features --features "winit"
     - name: Check compilation of `tour` example
-      run: cargo build --package tour --target wasm32-unknown-unknown --no-default-features --features "winit tiny-skia"
+      run: cargo build --package tour --target wasm32-unknown-unknown
     - name: Check compilation of `todos` example
-      run: cargo build --package todos --target wasm32-unknown-unknown --no-default-features --features "winit tiny-skia"
+      run: cargo build --package todos --target wasm32-unknown-unknown
     - name: Check compilation of `integration` example
-      run: cargo build --package integration --target wasm32-unknown-unknown --no-default-features --features "winit tiny-skia"
+      run: cargo build --package integration --target wasm32-unknown-unknown

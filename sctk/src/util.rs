@@ -33,8 +33,10 @@ pub enum CursorGrabMode {
 /// Describes the appearance of the mouse cursor.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Default)]
 pub enum CursorIcon {
     /// The platform-dependent default cursor.
+    #[default]
     Default,
     /// A simple crosshair.
     Crosshair,
@@ -89,12 +91,6 @@ pub enum CursorIcon {
     RowResize,
 }
 
-impl Default for CursorIcon {
-    fn default() -> Self {
-        CursorIcon::Default
-    }
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Theme {
     Light,
@@ -107,7 +103,7 @@ pub enum Theme {
 ///
 /// [`Critical`]: Self::Critical
 /// [`Informational`]: Self::Informational
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum UserAttentionType {
     /// ## Platform-specific
     ///
@@ -118,11 +114,6 @@ pub enum UserAttentionType {
     ///
     /// - **macOS:** Bounces the dock icon once.
     /// - **Windows:** Flashes the taskbar button until the application is in focus.
+    #[default]
     Informational,
-}
-
-impl Default for UserAttentionType {
-    fn default() -> Self {
-        UserAttentionType::Informational
-    }
 }

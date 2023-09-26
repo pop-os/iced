@@ -119,12 +119,8 @@ impl<T> SctkWindow<T> {
         &mut self,
         LogicalSize { width, height }: LogicalSize<NonZeroU32>,
     ) {
-        self.window.set_window_geometry(
-            0,
-            0,
-            width.get() as u32,
-            height.get() as u32,
-        );
+        self.window
+            .set_window_geometry(0, 0, width.get(), height.get());
         self.current_size = Some((width, height));
         // Update the target viewport, this is used if and only if fractional scaling is in use.
         if let Some(viewport) = self.wp_viewport.as_ref() {
@@ -414,10 +410,7 @@ impl<T> SctkState<T> {
             }
             popup.scale_factor = Some(scale_factor);
             if legacy {
-                let _ = popup
-                    .popup
-                    .wl_surface()
-                    .set_buffer_scale(scale_factor as _);
+                popup.popup.wl_surface().set_buffer_scale(scale_factor as _);
             }
             self.compositor_updates.push(SctkEvent::PopupEvent {
                 variant: PopupEventVariant::ScaleFactorChanged(

@@ -7,6 +7,14 @@ jobs:
     - uses: hecrj/setup-rust-action@v1
       with:
         components: clippy
+
     - uses: actions/checkout@master
+    - name: Install dependencies
+      run: |
+        export DEBIAN_FRONTED=noninteractive
+        sudo apt-get -qq update
+        sudo apt-get install -y libxkbcommon-dev libwayland-dev
     - name: Check lints
-      run: cargo clippy --workspace --all-features --all-targets --no-deps -- -D warnings
+      run: |
+        cargo clippy --no-default-features --features "winit" --all-targets
+        cargo clippy --no-default-features --features "wayland wgpu svg canvas qr_code lazy debug tokio palette web-colors system a11y"

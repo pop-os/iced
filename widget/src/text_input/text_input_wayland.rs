@@ -34,7 +34,7 @@ use iced_runtime::command::platform_specific::wayland::data_device::{
 pub use iced_style::text_input::{Appearance, StyleSheet};
 use sctk::reexports::client::protocol::wl_data_device_manager::DndAction;
 
-const SUPPORTED_MIME_TYPES: &'static [&'static str; 6] = &[
+const SUPPORTED_MIME_TYPES: &'static [&str; 6] = &[
     "text/plain;charset=utf-8",
     "text/plain;charset=UTF-8",
     "UTF8_STRING",
@@ -1198,10 +1198,6 @@ where
                 state.dnd_offer =
                     DndOfferState::OutsideWidget(mime_types, DndAction::None);
                 return event::Status::Captured;
-            } else if !is_clicked {
-                state.dnd_offer =
-                    DndOfferState::OutsideWidget(mime_types, DndAction::None);
-                return event::Status::Captured;
             }
             let mut accepted = false;
             for m in &mime_types {
@@ -1475,7 +1471,7 @@ pub fn draw<Renderer>(
     renderer.fill_quad(
         renderer::Quad {
             bounds,
-            border_radius: appearance.border_radius.into(),
+            border_radius: appearance.border_radius,
             border_width: appearance.border_width,
             border_color: appearance.border_color,
         },

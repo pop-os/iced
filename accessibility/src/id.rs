@@ -110,9 +110,9 @@ impl From<u64> for Id {
 }
 
 // Not meant to be used directly
-impl Into<NonZeroU128> for Id {
-    fn into(self) -> NonZeroU128 {
-        match &self.0 {
+impl From<Id> for NonZeroU128 {
+    fn from(val: Id) -> NonZeroU128 {
+        match &val.0 {
             Internal::Unique(id) => NonZeroU128::try_from(*id as u128).unwrap(),
             Internal::Custom(id, _) => {
                 NonZeroU128::try_from(*id as u128).unwrap()

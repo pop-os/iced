@@ -221,17 +221,14 @@ where
         layer_surface: SctkLayerSurfaceSettings,
     ) -> Result<(iced_runtime::window::Id, WlSurface), LayerSurfaceCreationError>
     {
-        let ret = self.state.get_layer_surface(layer_surface);
-        ret
+        self.state.get_layer_surface(layer_surface)
     }
 
     pub fn get_window(
         &mut self,
         settings: SctkWindowSettings,
     ) -> (iced_runtime::window::Id, WlSurface) {
-        let ret = self.state.get_window(settings);
-
-        ret
+        self.state.get_window(settings)
     }
 
     // TODO Ashley provide users a reasonable method of setting the role for the surface
@@ -750,7 +747,7 @@ where
                     Event::SetCursor(iced_icon) => {
                         if let Some(ptr) = self.state.seats.get(0).and_then(|s| s.ptr.as_ref()) {
                             let icon = conversion::cursor_icon(iced_icon);
-                            let _ = ptr.set_cursor(&self.wayland_dispatcher.as_source_ref().connection(), icon);
+                            let _ = ptr.set_cursor(self.wayland_dispatcher.as_source_ref().connection(), icon);
                         }
 
                     }
@@ -1113,8 +1110,8 @@ where
                                 let source = self.state.data_device_manager_state.create_drag_and_drop_source(qh, mime_types.iter().map(|s| s.as_str()).collect::<Vec<_>>(), actions);
                                 let icon_surface =  if let Some(icon_id) = icon_id{
                                     let icon_native_id = match &icon_id {
-                                        DndIcon::Custom(icon_id) => icon_id.clone(),
-                                        DndIcon::Widget(icon_id, _) => icon_id.clone(),
+                                        DndIcon::Custom(icon_id) => *icon_id,
+                                        DndIcon::Widget(icon_id, _) => *icon_id,
                                     };
                                     let wl_surface = self.state.compositor_state.create_surface(qh);
                                     source.start_drag(device, &origin, Some(&wl_surface), serial);
@@ -1272,7 +1269,7 @@ where
                                 let source = self
                                     .state
                                     .data_device_manager_state
-                                    .create_copy_paste_source(&qh, mime_types.iter().map(|s| s.as_str()).collect::<Vec<_>>());
+                                    .create_copy_paste_source(qh, mime_types.iter().map(|s| s.as_str()).collect::<Vec<_>>());
                                 source.set_selection(&seat.data_device, serial);
                                 self.state.selection_source = Some(SctkCopyPasteSource {
                                     source,

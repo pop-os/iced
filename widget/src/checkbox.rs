@@ -11,7 +11,7 @@ use crate::core::text;
 use crate::core::touch;
 use crate::core::widget::Tree;
 use crate::core::{
-    id::Internal, Alignment, Clipboard, Element, Layout, Length, Pixels, Point,
+    id::Internal, Alignment, Clipboard, Element, Layout, Length, Pixels,
     Rectangle, Shell, Widget,
 };
 use crate::{Row, Text};

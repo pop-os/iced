@@ -16,7 +16,7 @@ jobs:
     - name: Generate documentation
       run: |
         RUSTDOCFLAGS="--cfg docsrs" \
-          cargo doc --no-deps --all-features \
+          cargo doc --no-deps --features "winit" \
           -p iced_core \
           -p iced_style \
           -p iced_futures \

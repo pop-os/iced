@@ -518,7 +518,7 @@ where
                                     if matches!(simple_clipboard.state,  crate::clipboard::State::Unavailable) {
                                     if let RawDisplayHandle::Wayland(handle) = wrapper.raw_display_handle() {
                                         assert!(!handle.display.is_null());
-                                        simple_clipboard = unsafe { Clipboard::connect(handle.display as *mut c_void) };
+                                        simple_clipboard = unsafe { Clipboard::connect(handle.display) };
                                     }
                                     }
                                     let c_surface = compositor.create_surface(&wrapper, configure.new_size.0.unwrap().get(), configure.new_size.1.unwrap().get());
@@ -600,7 +600,7 @@ where
                                      if matches!(simple_clipboard.state,  crate::clipboard::State::Unavailable) {
                                         if let RawDisplayHandle::Wayland(handle) = wrapper.raw_display_handle() {
                                             assert!(!handle.display.is_null());
-                                            simple_clipboard = unsafe { Clipboard::connect(handle.display as *mut c_void) };
+                                            simple_clipboard = unsafe { Clipboard::connect(handle.display) };
                                         }
                                      }
                                      let mut c_surface = compositor.create_surface(&wrapper, configure.new_size.0, configure.new_size.1);
@@ -756,7 +756,7 @@ where
                         surface_ids.retain(|id, surface_id| {
                             match surface_id {
                                 SurfaceIdWrapper::Dnd(inner) => {
-                                    drop(compositor_surfaces.remove(&inner));
+                                    drop(compositor_surfaces.remove(inner));
                                     interfaces.remove(inner);
                                     states.remove(inner);
                                     destroyed_surface_ids.insert(id.clone(), *surface_id);
@@ -1121,20 +1121,20 @@ where
                     for (object_id, surface_id) in &surface_ids {
                         let state = match states.get_mut(&surface_id.inner()) {
                             Some(s) => {
-                                if !s.needs_redraw() {
-                                    continue;
-                                } else if auto_size_surfaces
-                                    .get(surface_id)
-                                    .map(|(w, h, _, dirty)| {
-                                        // don't redraw yet if the autosize state is dirty
-                                        *dirty || {
-                                            let Size { width, height } =
-                                                s.logical_size();
-                                            width.round() as u32 != *w
-                                                || height.round() as u32 != *h
-                                        }
-                                    })
-                                    .unwrap_or_default()
+                                if !s.needs_redraw()
+                                    || auto_size_surfaces
+                                        .get(surface_id)
+                                        .map(|(w, h, _, dirty)| {
+                                            // don't redraw yet if the autosize state is dirty
+                                            *dirty || {
+                                                let Size { width, height } =
+                                                    s.logical_size();
+                                                width.round() as u32 != *w
+                                                    || height.round() as u32
+                                                        != *h
+                                            }
+                                        })
+                                        .unwrap_or_default()
                                 {
                                     continue;
                                 } else {
@@ -1194,7 +1194,7 @@ where
                     }
                     if !sent_control_flow {
                         let mut wait_500_ms = Instant::now();
-                        wait_500_ms = wait_500_ms + Duration::from_millis(250);
+                        wait_500_ms += Duration::from_millis(250);
                         _ = control_sender
                             .start_send(ControlFlow::WaitUntil(wait_500_ms));
                     }
@@ -1896,7 +1896,7 @@ fn run_command<A, E>(
                     state.logical_size(),
                     &state.title,
                     debug,
-                    id.clone(), // TODO: run the operation on every widget tree ?
+                    *id, // TODO: run the operation on every widget tree ?
                     auto_size_surfaces,
                     proxy
                 );

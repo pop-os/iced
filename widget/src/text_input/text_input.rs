@@ -5,9 +5,9 @@ pub use super::cursor::Cursor;
 pub use super::value::Value;
 
 use super::cursor;
-use super::editor;
+
 use super::editor::Editor;
-use super::value;
+
 use iced_renderer::core::widget::OperationOutputWrapper;
 
 use crate::core::alignment;

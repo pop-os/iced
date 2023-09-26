@@ -447,7 +447,7 @@ pub fn visible_bounds(id: Id) -> Command<Option<Rectangle>> {
     }
 
     Command::widget(VisibleBounds {
-        target: id.into(),
+        target: id,
         depth: 0,
         scrollables: Vec::new(),
         bounds: None,

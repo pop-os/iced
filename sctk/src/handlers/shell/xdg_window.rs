@@ -84,16 +84,12 @@ impl<T: Debug> WindowHandler for SctkState<T> {
                     .unwrap_or_else(|| NonZeroU32::new(500).unwrap()),
             );
         }
-        configure
-            .new_size
-            .0
-            .zip(configure.new_size.1)
-            .map(|new_size| {
-                window.update_size(LogicalSize {
-                    width: new_size.0,
-                    height: new_size.1,
-                });
+        if let Some(new_size) = configure.new_size.0.zip(configure.new_size.1) {
+            window.update_size(LogicalSize {
+                width: new_size.0,
+                height: new_size.1,
             });
+        }
 
         let wl_surface = window.window.wl_surface();
         let id = wl_surface.clone();

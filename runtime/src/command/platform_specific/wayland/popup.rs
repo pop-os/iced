@@ -139,7 +139,7 @@ impl<T> Action<T> {
         match self {
             Action::Popup { popup, .. } => Action::Popup {
                 popup,
-                _phantom: PhantomData::default(),
+                _phantom: PhantomData,
             },
             Action::Destroy { id } => Action::Destroy { id },
             Action::Grab { id } => Action::Grab { id },

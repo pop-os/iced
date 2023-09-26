@@ -212,6 +212,7 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
                         &renderer::Style {
                             text_color: Color::WHITE,
                             scale_factor: viewport.scale_factor(),
+                            icon_color: Color::WHITE,
                         },
                         &mut clipboard,
                         &mut debug,

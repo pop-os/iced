@@ -458,7 +458,7 @@ where
         let child_tree = &state.children[0];
         let child_tree = self.content.as_widget().a11y_nodes(
             child_layout,
-            &child_tree,
+            child_tree,
             cursor_position,
         );
 
