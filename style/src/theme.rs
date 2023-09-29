@@ -22,6 +22,8 @@ use crate::svg;
 use crate::text_input;
 use crate::toggler;
 
+use ::palette::FromColor;
+use ::palette::RgbHue;
 use iced_core::gradient::ColorStop;
 use iced_core::gradient::Linear;
 use iced_core::Degrees;
@@ -440,20 +442,20 @@ impl slider::StyleSheet for Theme {
                     rail: slider::Rail {
                         colors: RailBackground::Gradient {
                             gradient: Linear::new(Radians::from(Degrees(0.0)))
-                                .add_stops([
-                                    ColorStop {
-                                        offset: 0.0,
-                                        color: Color::from_rgb(1.0, 0.0, 0.0),
-                                    },
-                                    ColorStop {
-                                        offset: 0.5,
-                                        color: Color::from_rgb(0.0, 1.0, 0.0),
-                                    },
-                                    ColorStop {
-                                        offset: 1.0,
-                                        color: Color::from_rgb(0.0, 0.0, 1.0),
-                                    },
-                                ]),
+                                .add_stops((0u16..8).map(|h| ColorStop {
+                                    color: Color::from(
+                                        ::palette::Srgba::from_color(
+                                            ::palette::Hsv::new_srgb_const(
+                                                RgbHue::new(
+                                                    f32::from(h) * 45.0,
+                                                ),
+                                                1.0,
+                                                1.0,
+                                            ),
+                                        ),
+                                    ),
+                                    offset: f32::from(h) / 7.0,
+                                })),
                             auto_angle: true,
                         },
                         width: 4.0,
