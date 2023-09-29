@@ -440,24 +440,10 @@ impl slider::StyleSheet for Theme {
 
                 slider::Appearance {
                     rail: slider::Rail {
-                        colors: RailBackground::Gradient {
-                            gradient: Linear::new(Radians::from(Degrees(0.0)))
-                                .add_stops((0u16..8).map(|h| ColorStop {
-                                    color: Color::from(
-                                        ::palette::Srgba::from_color(
-                                            ::palette::Hsv::new_srgb_const(
-                                                RgbHue::new(
-                                                    f32::from(h) * 45.0,
-                                                ),
-                                                1.0,
-                                                1.0,
-                                            ),
-                                        ),
-                                    ),
-                                    offset: f32::from(h) / 7.0,
-                                })),
-                            auto_angle: true,
-                        },
+                        colors: RailBackground::Pair(
+                            palette.primary.base.color,
+                            palette.secondary.base.color,
+                        ),
                         width: 4.0,
                         border_radius: 2.0.into(),
                     },
