@@ -15,7 +15,7 @@ use crate::core::{
 
 use std::ops::RangeInclusive;
 
-use iced_renderer::core::{BorderRadius, Radians};
+use iced_renderer::core::{BorderRadius, Degrees, Radians};
 pub use iced_style::slider::{
     Appearance, Handle, HandleShape, Rail, StyleSheet,
 };
@@ -598,7 +598,7 @@ pub fn draw<T, R>(
                 border_color: Color::TRANSPARENT,
             },
             if auto_angle {
-                gradient.angle = Radians(0.0);
+                gradient.angle = Radians::from(Degrees(180.0));
                 gradient
             } else {
                 gradient
