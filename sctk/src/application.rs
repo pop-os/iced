@@ -354,7 +354,7 @@ async fn run_instance<A, E, C>(
     mut auto_size_surfaces: HashMap<SurfaceIdWrapper, (u32, u32, Limits, bool)>,
     backend: wayland_backend::client::Backend,
     init_command: Command<A::Message>,
-    _exit_on_close_request: bool, // TODO Ashley
+    exit_on_close_request: bool,
     queue_handle: QueueHandle<SctkState<<A as Program>::Message>>,
 ) -> Result<(), Error>
 where
@@ -496,9 +496,9 @@ where
                                 messages.push(application.close_requested(surface_id.inner()));
                                 destroyed_surface_ids.insert(id.id(), surface_id);
                                 compositor_surfaces.remove(&surface_id.inner());
-                                // if exit_on_close_request && surface_id == init_id {
-                                //     break 'main;
-                                // }
+                                if exit_on_close_request && compositor_surfaces.is_empty() {
+                                    break 'main;
+                                }
                             }
                         }
                         crate::sctk_event::WindowEventVariant::WmCapabilities(_)
@@ -584,9 +584,9 @@ where
                                 messages.push(application.close_requested(surface_id.inner()));
                                 destroyed_surface_ids.insert(id.id(), surface_id);
                                 compositor_surfaces.remove(&surface_id.inner());
-                                // if exit_on_close_request && surface_id == init_id {
-                                //     break 'main;
-                                // }
+                                if exit_on_close_request && compositor_surfaces.is_empty() {
+                                    break 'main;
+                                }
                             }
                         }
                         LayerSurfaceEventVariant::Configure(configure, wl_surface, first) => {
