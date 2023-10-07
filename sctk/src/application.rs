@@ -380,7 +380,7 @@ where
             &mut debug,
             || compositor.fetch_information(),
             &mut auto_size_surfaces,
-            &mut Vec::new()
+            &mut Vec::new(),
         );
     }
     runtime.track(
@@ -1794,9 +1794,20 @@ pub(crate) fn update<A, E, C>(
     C: iced_graphics::Compositor<Renderer = A::Renderer> + 'static,
     <A::Renderer as Renderer>::Theme: StyleSheet,
 {
-    let actions_ = std::mem::take( actions);
+    let actions_ = std::mem::take(actions);
     for a in actions_ {
-        if let Some(a) = handle_actions(application, cache, state, renderer, a, runtime, proxy, debug, graphics_info, auto_size_surfaces) {
+        if let Some(a) = handle_actions(
+            application,
+            cache,
+            state,
+            renderer,
+            a,
+            runtime,
+            proxy,
+            debug,
+            graphics_info,
+            auto_size_surfaces,
+        ) {
             actions.push(a);
         }
     }
@@ -1818,7 +1829,7 @@ pub(crate) fn update<A, E, C>(
             debug,
             graphics_info,
             auto_size_surfaces,
-            actions
+            actions,
         )
     }
 
@@ -1848,14 +1859,24 @@ fn run_command<A, E>(
         (u32, u32, Limits, bool),
     >,
     actions: &mut Vec<command::Action<A::Message>>,
-)
-where
+) where
     A: Application,
     E: Executor,
     <A::Renderer as Renderer>::Theme: StyleSheet,
 {
     for action in command.actions() {
-        if let Some(a) = handle_actions(application, cache, state, renderer, action, runtime, proxy, debug, graphics_info, auto_size_surfaces) {
+        if let Some(a) = handle_actions(
+            application,
+            cache,
+            state,
+            renderer,
+            action,
+            runtime,
+            proxy,
+            debug,
+            graphics_info,
+            auto_size_surfaces,
+        ) {
             actions.push(a);
         }
     }
@@ -1881,7 +1902,7 @@ where
     E: Executor,
     <A::Renderer as Renderer>::Theme: StyleSheet,
 {
-match action {
+    match action {
             command::Action::Future(future) => {
                 runtime
                     .spawn(Box::pin(future.map(|e| {
@@ -1924,8 +1945,10 @@ match action {
                     None => return None,
                 };
                 let id = &state.id;
+                dbg!("got action for {}", &state.id);
                 let mut current_cache = std::mem::take(cache);
                 let mut current_operation = Some(Box::new(OperationWrapper::Message(action)));
+
 
                 let mut user_interface = build_user_interface(
                     application,
@@ -1939,7 +1962,7 @@ match action {
                     proxy
                 );
                 let mut ret = None;
-                
+
                 while let Some(mut operation) = current_operation.take() {
                     user_interface.operate(renderer, operation.as_mut());
 
@@ -2043,7 +2066,7 @@ match action {
             }
             _ => {}
         };
-        None
+    None
 }
 pub fn build_user_interfaces<'a, A>(
     application: &'a A,

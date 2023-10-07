@@ -9,6 +9,7 @@ use iced::{
         data_device::{
             accept_mime_type, finish_dnd, request_dnd_data, set_actions,
         },
+        layer_surface::destroy_layer_surface,
         InitialSurface,
     },
     widget::{column, container, dnd_listener, dnd_source, text},
