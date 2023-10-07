@@ -376,6 +376,7 @@ where
             &mut debug,
             || compositor.fetch_information(),
             &mut auto_size_surfaces,
+            &mut Vec::new()
         );
     }
     runtime.track(application.subscription().map(subscription_map::<A, E, C>).into_recipes(),);
@@ -925,6 +926,7 @@ where
                         &mut ev_proxy,
                         &mut debug,
                         &mut messages,
+                        &mut Vec::new(),
                         || compositor.fetch_information(),
                         &mut auto_size_surfaces,
                     );
@@ -944,6 +946,7 @@ where
                     }
                     let _ = control_sender.start_send(ControlFlow::Wait);
                 } else {
+                    let mut actions = Vec::new();
                     let mut needs_update = false;
 
                     for (object_id, surface_id) in &surface_ids {
@@ -1076,6 +1079,7 @@ where
                                 &mut ev_proxy,
                                 &mut debug,
                                 &mut messages,
+                                &mut actions,
                                 || compositor.fetch_information(),
                                 &mut auto_size_surfaces,
                             );
@@ -1737,6 +1741,7 @@ pub(crate) fn update<A, E, C>(
     proxy: &mut proxy::Proxy<Event<A::Message>>,
     debug: &mut Debug,
     messages: &mut Vec<A::Message>,
+    actions: &mut Vec<command::Action<A::Message>>,
     graphics_info: impl FnOnce() -> compositor::Information + Copy,
     auto_size_surfaces: &mut HashMap<
         SurfaceIdWrapper,
@@ -1748,6 +1753,12 @@ pub(crate) fn update<A, E, C>(
     C: iced_graphics::Compositor<Renderer = A::Renderer> + 'static,
     <A::Renderer as Renderer>::Theme: StyleSheet,
 {
+    let actions_ = std::mem::take( actions);
+    for a in actions_ {
+        if let Some(a) = handle_actions(application, cache, state, renderer, a, runtime, proxy, debug, graphics_info, auto_size_surfaces) {
+            actions.push(a);
+        }
+    }
     for message in messages.drain(..) {
         debug.log_message(&message);
 
@@ -1766,7 +1777,8 @@ pub(crate) fn update<A, E, C>(
             debug,
             graphics_info,
             auto_size_surfaces,
-        );
+            actions
+        )
     }
 
     runtime.track(application.subscription().map(subscription_map::<A, E, C>).into_recipes(),);
@@ -1784,18 +1796,46 @@ fn run_command<A, E>(
     runtime: MyRuntime<E, A::Message>,
     proxy: &mut proxy::Proxy<Event<A::Message>>,
     debug: &mut Debug,
-    _graphics_info: impl FnOnce() -> compositor::Information + Copy,
+    graphics_info: impl FnOnce() -> compositor::Information + Copy,
     auto_size_surfaces: &mut HashMap<
         SurfaceIdWrapper,
         (u32, u32, Limits, bool),
     >,
-) where
+    actions: &mut Vec<command::Action<A::Message>>,
+)
+where
     A: Application,
     E: Executor,
     <A::Renderer as Renderer>::Theme: StyleSheet,
 {
     for action in command.actions() {
-        match action {
+        if let Some(a) = handle_actions(application, cache, state, renderer, action, runtime, proxy, debug, graphics_info, auto_size_surfaces) {
+            actions.push(a);
+        }
+    }
+}
+
+fn handle_actions<A, E>(
+    application: &A,
+    cache: &mut user_interface::Cache,
+    state: Option<&State<A>>,
+    renderer: &mut A::Renderer,
+    action: command::Action<A::Message>,
+    runtime: MyRuntime<E, A::Message>,
+    proxy: &mut proxy::Proxy<Event<A::Message>>,
+    debug: &mut Debug,
+    _graphics_info: impl FnOnce() -> compositor::Information + Copy,
+    auto_size_surfaces: &mut HashMap<
+        SurfaceIdWrapper,
+        (u32, u32, Limits, bool),
+    >,
+) -> Option<command::Action<A::Message>>
+where
+    A: Application,
+    E: Executor,
+    <A::Renderer as Renderer>::Theme: StyleSheet,
+{
+match action {
             command::Action::Future(future) => {
                 runtime
                     .spawn(Box::pin(future.map(|e| {
@@ -1840,13 +1880,11 @@ fn run_command<A, E>(
             command::Action::Widget(action) => {
                 let state = match state {
                     Some(s) => s,
-                    None => continue,
+                    None => return None,
                 };
                 let id = &state.id;
-
                 let mut current_cache = std::mem::take(cache);
                 let mut current_operation = Some(Box::new(OperationWrapper::Message(action)));
-
 
                 let mut user_interface = build_user_interface(
                     application,
@@ -1859,18 +1897,22 @@ fn run_command<A, E>(
                     auto_size_surfaces,
                     proxy
                 );
-
+                let mut ret = None;
+                
                 while let Some(mut operation) = current_operation.take() {
                     user_interface.operate(renderer, operation.as_mut());
 
                     match operation.as_ref().finish() {
-                        operation::Outcome::None => {}
+                        operation::Outcome::None => {
+                            ret = Some(operation);
+                        }
                         operation::Outcome::Some(message) => {
                             match message {
                                 operation::OperationOutputWrapper::Message(m) => {
                                     proxy.send_event(Event::SctkEvent(
                                         IcedSctkEvent::UserEvent(m),
                                     ));
+                                    ret = Some(operation)
                                 },
                                 operation::OperationOutputWrapper::Id(_) => {
                                     // should not happen
@@ -1886,6 +1928,10 @@ fn run_command<A, E>(
 
                 current_cache = user_interface.into_cache();
                 *cache = current_cache;
+                return ret.map(|o| match *o {
+                    OperationWrapper::Message(o) => command::Action::Widget(o),
+                    _ => unimplemented!()
+                });
             }
             command::Action::PlatformSpecific(
                 platform_specific::Action::Wayland(
@@ -1956,10 +2002,9 @@ fn run_command<A, E>(
                 proxy.send_event(Event::DataDevice(data_device_action));
             }
             _ => {}
-        }
-    }
+        };
+        None
 }
-
 pub fn build_user_interfaces<'a, A>(
     application: &'a A,
     renderer: &mut A::Renderer,
