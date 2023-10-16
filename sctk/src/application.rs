@@ -1990,9 +1990,9 @@ where
 
                 current_cache = user_interface.into_cache();
                 *cache = current_cache;
-                return ret.map(|o| match *o {
-                    OperationWrapper::Message(o) => command::Action::Widget(o),
-                    _ => unimplemented!()
+                return ret.and_then(|o| match *o {
+                    OperationWrapper::Message(o) => Some(command::Action::Widget(o)),
+                    _ => None
                 });
             }
             command::Action::PlatformSpecific(
