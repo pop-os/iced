@@ -31,7 +31,7 @@ raw-window-handle = "0.5"
 
 [dependencies.winit]
 git = "https://github.com/pop-os/winit.git"
-branch = "iced"
+branch = "master"
 
 [dependencies.iced_runtime]
 version = "0.1"

@@ -167,7 +167,7 @@ impl Window {
         {
             // `with_name` is available on both `WindowBuilderExtWayland` and `WindowBuilderExtX11` and they do
             // exactly the same thing. We arbitrarily choose `WindowBuilderExtWayland` here.
-            use ::winit::platform::unix::WindowBuilderExtUnix;
+            use ::winit::platform::wayland::WindowBuilderExtWayland;
 
             if let Some(id) = _id {
                 window_builder = window_builder.with_name(id.clone(), id);
@@ -202,7 +202,9 @@ impl Window {
 
         #[cfg(target_os = "linux")]
         {
-            use winit::platform::unix::WindowBuilderExtUnix;
+            // `with_name` is available on both `WindowBuilderExtWayland` and `WindowBuilderExtX11` and they do
+            // exactly the same thing. We arbitrarily choose `WindowBuilderExtWayland` here.
+            use winit::platform::wayland::WindowBuilderExtWayland;
 
             window_builder = window_builder.with_name(
                 &self.platform_specific.application_id,
