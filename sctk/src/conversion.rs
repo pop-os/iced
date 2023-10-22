@@ -9,7 +9,10 @@ use sctk::{
     reexports::client::protocol::wl_pointer::AxisSource,
     seat::{
         keyboard::Modifiers,
-        pointer::{AxisScroll, CursorIcon, BTN_LEFT, BTN_MIDDLE, BTN_RIGHT},
+        pointer::{
+            AxisScroll, CursorIcon, BTN_EXTRA, BTN_LEFT, BTN_MIDDLE, BTN_RIGHT,
+            BTN_SIDE,
+        },
     },
 };
 use xkeysym::{key, RawKeysym};
@@ -83,6 +86,10 @@ pub fn pointer_button_to_native(button: u32) -> Option<mouse::Button> {
         Some(mouse::Button::Right)
     } else if button == BTN_MIDDLE {
         Some(mouse::Button::Middle)
+    } else if button == BTN_SIDE {
+        Some(mouse::Button::Back)
+    } else if button == BTN_EXTRA {
+        Some(mouse::Button::Forward)
     } else {
         button.try_into().ok().map(mouse::Button::Other)
     }

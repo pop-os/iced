@@ -22,6 +22,7 @@ Many thanks to...
 - @dtzxporter
 
 Many thanks to...
+- @edfloreshz
 - @jackpot51
 - @wash2
 
