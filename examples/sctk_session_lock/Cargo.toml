@@ -1,0 +1,11 @@
+[package]
+name = "sctk_session_lock"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+sctk = { package = "smithay-client-toolkit", git = "https://github.com/smithay/client-toolkit", rev = "828b1eb" }
+iced = { path = "../..", default-features = false,  features = ["async-std", "wayland", "debug", "a11y"] }
+iced_runtime = { path = "../../runtime" }
+env_logger = "0.10"
+async-std = "1.0"

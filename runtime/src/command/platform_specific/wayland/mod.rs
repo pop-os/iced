@@ -10,6 +10,8 @@ pub mod data_device;
 pub mod layer_surface;
 /// popup actions
 pub mod popup;
+/// session locks
+pub mod session_lock;
 /// window actions
 pub mod window;
 
@@ -25,6 +27,8 @@ pub enum Action<T> {
     DataDevice(data_device::Action<T>),
     /// activation
     Activation(activation::Action<T>),
+    /// session lock
+    SessionLock(session_lock::Action<T>),
 }
 
 impl<T> Action<T> {
@@ -43,6 +47,7 @@ impl<T> Action<T> {
             Action::Popup(a) => Action::Popup(a.map(f)),
             Action::DataDevice(a) => Action::DataDevice(a.map(f)),
             Action::Activation(a) => Action::Activation(a.map(f)),
+            Action::SessionLock(a) => Action::SessionLock(a.map(f)),
         }
     }
 }
@@ -60,6 +65,9 @@ impl<T> Debug for Action<T> {
             }
             Self::Activation(arg0) => {
                 f.debug_tuple("Activation").field(arg0).finish()
+            }
+            Self::SessionLock(arg0) => {
+                f.debug_tuple("SessionLock").field(arg0).finish()
             }
         }
     }
