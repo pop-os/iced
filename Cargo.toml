@@ -152,7 +152,7 @@ qrcode = { version = "0.12", default-features = false }
 raw-window-handle = "0.5"
 resvg = "0.36"
 rustc-hash = "1.0"
-sctk = { package = "smithay-client-toolkit", git = "https://github.com/smithay/client-toolkit", rev = "dc8c4a0" }
+sctk = { package = "smithay-client-toolkit", git = "https://github.com/smithay/client-toolkit", rev = "2e9bf9f" }
 smol = "1.0"
 softbuffer = { git = "https://github.com/pop-os/softbuffer", tag = "cosmic-2.0-old" } 
 syntect = "5.1"
