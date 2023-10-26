@@ -3,11 +3,14 @@ use crate::sctk_event::{DataSourceEvent, SctkEvent};
 use sctk::data_device_manager::WritePipe;
 use sctk::{
     data_device_manager::data_source::DataSourceHandler,
-    reexports::client::{
-        protocol::{
-            wl_data_device_manager::DndAction, wl_data_source::WlDataSource,
+    reexports::{
+        calloop::PostAction,
+        client::{
+            protocol::{
+                wl_data_device_manager::DndAction, wl_data_source::WlDataSource,
+            },
+            Connection, QueueHandle,
         },
-        Connection, QueueHandle,
     },
 };
 use std::io::{BufWriter, Write};
@@ -62,50 +65,62 @@ impl<T> DataSourceHandler for SctkState<T> {
             .as_mut()
             .filter(|s| s.source.inner() == source)
         {
-            match self.loop_handle.insert_source(pipe, move |_, f, state| {
-                let loop_handle = &state.loop_handle;
-                let selection_source = match state.selection_source.as_mut() {
-                    Some(s) => s,
-                    None => return,
-                };
-                let (data, mut cur_index, token) =
-                    match selection_source.cur_write.take() {
+            match self.loop_handle.insert_source(
+                pipe,
+                move |_, f, state| -> PostAction {
+                    let selection_source = match state.selection_source.as_mut()
+                    {
                         Some(s) => s,
-                        None => return,
+                        None => {
+                            return PostAction::Continue;
+                        }
                     };
-                let mut writer = BufWriter::new(f.as_ref());
-                let slice = &data.as_slice()[cur_index
-                    ..(cur_index + writer.capacity()).min(data.len())];
-                match writer.write(slice) {
-                    Ok(num_written) => {
-                        cur_index += num_written;
-                        if cur_index == data.len() {
-                            loop_handle.remove(token);
-                        } else {
+                    let (data, mut cur_index, token) =
+                        match selection_source.cur_write.take() {
+                            Some(s) => s,
+                            None => {
+                                return PostAction::Continue;
+                            }
+                        };
+                    let mut writer = BufWriter::new(f.as_ref());
+                    let slice = &data.as_slice()[cur_index
+                        ..(cur_index + writer.capacity()).min(data.len())];
+                    match writer.write(slice) {
+                        Ok(num_written) => {
+                            cur_index += num_written;
+                            let done = cur_index == data.len();
+                            if !done {
+                                selection_source.cur_write =
+                                    Some((data, cur_index, token));
+                            }
+                            if let Err(err) = writer.flush() {
+                                error!("Failed to flush pipe: {}", err);
+                                return PostAction::Remove;
+                            }
+                            if done {
+                                PostAction::Remove
+                            } else {
+                                PostAction::Continue
+                            }
+                        }
+                        Err(e)
+                            if matches!(
+                                e.kind(),
+                                std::io::ErrorKind::Interrupted
+                            ) =>
+                        {
+                            // try again
                             selection_source.cur_write =
                                 Some((data, cur_index, token));
+                            PostAction::Continue
                         }
-                        if let Err(err) = writer.flush() {
-                            loop_handle.remove(token);
-                            error!("Failed to flush pipe: {}", err);
+                        Err(_) => {
+                            error!("Failed to write to pipe");
+                            PostAction::Remove
                         }
                     }
-                    Err(e)
-                        if matches!(
-                            e.kind(),
-                            std::io::ErrorKind::Interrupted
-                        ) =>
-                    {
-                        // try again
-                        selection_source.cur_write =
-                            Some((data, cur_index, token));
-                    }
-                    Err(_) => {
-                        loop_handle.remove(token);
-                        error!("Failed to write to pipe");
-                    }
-                };
-            }) {
+                },
+            ) {
                 Ok(s) => {
                     my_source.cur_write = Some((
                         my_source
@@ -130,49 +145,54 @@ impl<T> DataSourceHandler for SctkState<T> {
                 Some((source, data)) => (source, data),
                 None => return,
             };
-            match self.loop_handle.insert_source(pipe, move |_, f, state| {
-                let loop_handle = &state.loop_handle;
-                let dnd_source = match state.dnd_source.as_mut() {
-                    Some(s) => s,
-                    None => return,
-                };
-                let (data, mut cur_index, token) =
-                    match dnd_source.cur_write.take() {
+            match self.loop_handle.insert_source(
+                pipe,
+                move |_, f, state| -> PostAction {
+                    let loop_handle = &state.loop_handle;
+                    let dnd_source = match state.dnd_source.as_mut() {
                         Some(s) => s,
-                        None => return,
+                        None => return PostAction::Continue,
                     };
-                let mut writer = BufWriter::new(f.as_ref());
-                let slice = &data.as_slice()[cur_index
-                    ..(cur_index + writer.capacity()).min(data.len())];
-                match writer.write(slice) {
-                    Ok(num_written) => {
-                        cur_index += num_written;
-                        if cur_index == data.len() {
-                            loop_handle.remove(token);
-                        } else {
+                    let (data, mut cur_index, token) =
+                        match dnd_source.cur_write.take() {
+                            Some(s) => s,
+                            None => return PostAction::Continue,
+                        };
+                    let mut writer = BufWriter::new(f.as_ref());
+                    let slice = &data.as_slice()[cur_index
+                        ..(cur_index + writer.capacity()).min(data.len())];
+                    match writer.write(slice) {
+                        Ok(num_written) => {
+                            cur_index += num_written;
+                            if cur_index == data.len() {
+                                loop_handle.remove(token);
+                            } else {
+                                dnd_source.cur_write =
+                                    Some((data, cur_index, token));
+                            }
+                            if let Err(err) = writer.flush() {
+                                loop_handle.remove(token);
+                                error!("Failed to flush pipe: {}", err);
+                            }
+                        }
+                        Err(e)
+                            if matches!(
+                                e.kind(),
+                                std::io::ErrorKind::Interrupted
+                            ) =>
+                        {
+                            // try again
                             dnd_source.cur_write =
                                 Some((data, cur_index, token));
                         }
-                        if let Err(err) = writer.flush() {
+                        Err(_) => {
                             loop_handle.remove(token);
-                            error!("Failed to flush pipe: {}", err);
+                            error!("Failed to write to pipe");
                         }
-                    }
-                    Err(e)
-                        if matches!(
-                            e.kind(),
-                            std::io::ErrorKind::Interrupted
-                        ) =>
-                    {
-                        // try again
-                        dnd_source.cur_write = Some((data, cur_index, token));
-                    }
-                    Err(_) => {
-                        loop_handle.remove(token);
-                        error!("Failed to write to pipe");
-                    }
-                };
-            }) {
+                    };
+                    PostAction::Continue
+                },
+            ) {
                 Ok(s) => {
                     source.cur_write = Some((
                         data.from_mime_type(&mime).unwrap_or_default(),

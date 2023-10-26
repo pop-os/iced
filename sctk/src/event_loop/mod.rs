@@ -34,7 +34,7 @@ use sctk::{
     data_device_manager::DataDeviceManagerState,
     output::OutputState,
     reexports::{
-        calloop::{self, EventLoop},
+        calloop::{self, EventLoop, PostAction},
         client::{
             globals::registry_queue_init, protocol::wl_surface::WlSurface,
             ConnectError, Connection, DispatchError, Proxy,
@@ -1157,11 +1157,11 @@ where
                                     match self.event_loop.handle().insert_source(read_pipe, move |_, f, state| {
                                         let mut dnd_offer = match state.dnd_offer.take() {
                                             Some(s) => s,
-                                            None => return,
+                                            None => return PostAction::Continue,
                                         };
                                         let (mime_type, data, token) = match dnd_offer.cur_read.take() {
                                             Some(s) => s,
-                                            None => return,
+                                            None => return PostAction::Continue,
                                         };
                                         let mut reader = BufReader::new(f.as_ref());
                                         let consumed = match reader.fill_buf() {
@@ -1185,18 +1185,18 @@ where
                                             Err(e) if matches!(e.kind(), std::io::ErrorKind::Interrupted) => {
                                                 dnd_offer.cur_read = Some((mime_type, data, token));
                                                 state.dnd_offer = Some(dnd_offer);
-                                                return;
+                                                return PostAction::Continue;
                                             },
                                             Err(e) => {
                                                 error!("Error reading selection data: {}", e);
-                                                loop_handle.remove(token);
                                                 if !dnd_offer.dropped {
                                                     state.dnd_offer = Some(dnd_offer);
                                                 }
-                                                return;
+                                                return PostAction::Remove;
                                             },
                                         };
                                         reader.consume(consumed);
+                                        PostAction::Continue
                                     }) {
                                         Ok(token) => {
                                             dnd_offer.cur_read = Some((mime_type.clone(), Vec::new(), token));
@@ -1215,11 +1215,11 @@ where
                                     match self.event_loop.handle().insert_source(read_pipe, move |_, f, state| {
                                         let selection_offer = match state.selection_offer.as_mut() {
                                             Some(s) => s,
-                                            None => return,
+                                            None => return PostAction::Continue,
                                         };
                                         let (mime_type, data, token) = match selection_offer.cur_read.take() {
                                             Some(s) => s,
-                                            None => return,
+                                            None => return PostAction::Continue,
                                         };
                                         let mut reader = BufReader::new(f.as_ref());
                                         let consumed = match reader.fill_buf() {
@@ -1236,15 +1236,15 @@ where
                                             },
                                             Err(e) if matches!(e.kind(), std::io::ErrorKind::Interrupted) => {
                                                 selection_offer.cur_read = Some((mime_type, data, token));
-                                                return;
+                                                return PostAction::Continue;
                                             },
                                             Err(e) => {
                                                 error!("Error reading selection data: {}", e);
-                                                loop_handle.remove(token);
-                                                return;
+                                                return PostAction::Continue;
                                             },
                                         };
                                         reader.consume(consumed);
+                                        PostAction::Continue
                                     }) {
                                         Ok(token) => {
                                             selection_offer.cur_read = Some((mime_type.clone(), Vec::new(), token));

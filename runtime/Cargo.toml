@@ -14,7 +14,7 @@ wayland = ["iced_accessibility?/accesskit_unix", "iced_core/wayland", "sctk"]
 
 [dependencies]
 thiserror = "1"
-sctk = { package = "smithay-client-toolkit", git = "https://github.com/smithay/client-toolkit", rev = "dc8c4a0", optional = true }
+sctk = { package = "smithay-client-toolkit", git = "https://github.com/smithay/client-toolkit", rev = "2e9bf9f", optional = true }
 
 [dependencies.iced_core]
 version = "0.10"
