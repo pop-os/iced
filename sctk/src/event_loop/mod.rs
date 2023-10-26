@@ -44,6 +44,7 @@ use sctk::{
     },
     registry::RegistryState,
     seat::SeatState,
+    session_lock::SessionLockState,
     shell::{wlr_layer::LayerShell, xdg::XdgShell, WaylandSurface},
     shm::Shm,
 };
@@ -128,7 +129,8 @@ where
                 calloop::channel::Event::Closed => {}
             })
             .unwrap();
-        let wayland_source = WaylandSource::new(connection, event_queue);
+        let wayland_source =
+            WaylandSource::new(connection.clone(), event_queue);
 
         let wayland_dispatcher = calloop::Dispatcher::new(
             wayland_source,
@@ -169,6 +171,7 @@ where
             event_loop,
             wayland_dispatcher,
             state: SctkState {
+                connection,
                 registry_state,
                 seat_state: SeatState::new(&globals, &qh),
                 output_state: OutputState::new(&globals, &qh),
@@ -184,6 +187,8 @@ where
                 )
                 .expect("data device manager is not available"),
                 activation_state: ActivationState::bind(&globals, &qh).ok(),
+                session_lock_state: SessionLockState::new(&globals, &qh),
+                session_lock: None,
 
                 queue_handle: qh,
                 loop_handle,
@@ -195,6 +200,7 @@ where
                 windows: Vec::new(),
                 layer_surfaces: Vec::new(),
                 popups: Vec::new(),
+                lock_surfaces: Vec::new(),
                 dnd_source: None,
                 _kbd_focus: None,
                 sctk_events: Vec::new(),
@@ -1244,6 +1250,45 @@ where
                             }
                         },
                     },
+                    Event::SessionLock(action) => match action {
+                        platform_specific::wayland::session_lock::Action::Lock => {
+                            if self.state.session_lock.is_none() {
+                                // TODO send message on error? When protocol doesn't exist.
+                                self.state.session_lock = self.state.session_lock_state.lock(&self.state.queue_handle).ok();
+                            }
+                        }
+                        platform_specific::wayland::session_lock::Action::Unlock => {
+                            self.state.session_lock.take();
+                            // Make sure server processes unlock before client exits
+                            let _ = self.state.connection.roundtrip();
+                            sticky_exit_callback(
+                                IcedSctkEvent::SctkEvent(SctkEvent::SessionUnlocked),
+                                &self.state,
+                                &mut control_flow,
+                                &mut callback,
+                            );
+                        }
+                        platform_specific::wayland::session_lock::Action::LockSurface { id, output, _phantom } => {
+                            // TODO how to handle this when there's no lock?
+                            if let Some(surface) = self.state.get_lock_surface(id, &output) {
+                                sticky_exit_callback(
+                                    IcedSctkEvent::SctkEvent(SctkEvent::SessionLockSurfaceCreated {surface, native_id: id}),
+                                    &self.state,
+                                    &mut control_flow,
+                                    &mut callback,
+                                );
+                            }
+                        }
+                        platform_specific::wayland::session_lock::Action::DestroyLockSurface { id } => {
+                            if let Some(i) =
+                                self.state.lock_surfaces.iter().position(|s| {
+                                    s.id == id
+                                })
+                            {
+                                self.state.lock_surfaces.remove(i);
+                            }
+                        }
+                    }
                 }
             }
 

@@ -3,6 +3,7 @@ mod layer;
 mod output;
 mod popup;
 mod seat;
+mod session_lock;
 mod window;
 
 use crate::{time::Instant, window::Id};
@@ -15,6 +16,7 @@ pub use layer::*;
 pub use output::*;
 pub use popup::*;
 pub use seat::*;
+pub use session_lock::*;
 pub use window::*;
 
 /// wayland events
@@ -36,6 +38,8 @@ pub enum Event {
     DndOffer(DndOfferEvent),
     /// Selection Offer events
     SelectionOffer(SelectionOfferEvent),
+    /// Session lock events
+    SessionLock(SessionLockEvent),
     /// Frame events
     Frame(Instant, WlSurface, Id),
 }
