@@ -108,7 +108,8 @@ where
         renderer: &Renderer,
         limits: &layout::Limits,
     ) -> layout::Node {
-        let Size { width, height } = renderer.dimensions(&self.handle);
+        let Size { width, height } =
+            renderer.dimensions(&self.handle, [0.0; 4]);
 
         let mut size = limits
             .width(self.width)
@@ -333,6 +334,7 @@ where
                         y: bounds.y,
                         ..Rectangle::with_size(image_size)
                     },
+                    [0.0; 4],
                 )
             });
         });
@@ -410,7 +412,7 @@ pub fn image_size<Renderer>(
 where
     Renderer: image::Renderer,
 {
-    let Size { width, height } = renderer.dimensions(handle);
+    let Size { width, height } = renderer.dimensions(handle, [0.0; 4]);
 
     let (width, height) = {
         let dimensions = (width as f32, height as f32);

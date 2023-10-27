@@ -50,6 +50,8 @@ pub enum Primitive<T> {
         handle: image::Handle,
         /// The bounds of the image
         bounds: Rectangle,
+        /// The border radii of the image
+        border_radius: [f32; 4],
     },
     /// An SVG primitive
     Svg {
