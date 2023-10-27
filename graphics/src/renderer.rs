@@ -222,12 +222,8 @@ where
 {
     type Handle = image::Handle;
 
-    fn dimensions(
-        &self,
-        handle: &image::Handle,
-        border_radius: [f32; 4],
-    ) -> Size<u32> {
-        self.backend().dimensions(handle, border_radius)
+    fn dimensions(&self, handle: &image::Handle) -> Size<u32> {
+        self.backend().dimensions(handle)
     }
 
     fn draw(

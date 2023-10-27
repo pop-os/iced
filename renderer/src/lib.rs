@@ -212,12 +212,8 @@ impl<T> text::Renderer for Renderer<T> {
 impl<T> crate::core::image::Renderer for Renderer<T> {
     type Handle = crate::core::image::Handle;
 
-    fn dimensions(
-        &self,
-        handle: &crate::core::image::Handle,
-        border_radius: [f32; 4],
-    ) -> Size<u32> {
-        delegate!(self, renderer, renderer.dimensions(handle, border_radius))
+    fn dimensions(&self, handle: &crate::core::image::Handle) -> Size<u32> {
+        delegate!(self, renderer, renderer.dimensions(handle))
     }
 
     fn draw(

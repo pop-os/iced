@@ -2,7 +2,6 @@ use crate::core::image as raster;
 use crate::core::{Rectangle, Size};
 use crate::graphics;
 
-use graphics::image::image_rs::{ImageBuffer, Rgba, RgbaImage};
 use rustc_hash::{FxHashMap, FxHashSet};
 use std::cell::RefCell;
 use std::collections::hash_map;
@@ -18,14 +17,8 @@ impl Pipeline {
         }
     }
 
-    pub fn dimensions(
-        &self,
-        handle: &raster::Handle,
-        border_radius: [f32; 4],
-    ) -> Size<u32> {
-        if let Some(image) =
-            self.cache.borrow_mut().allocate(handle, border_radius)
-        {
+    pub fn dimensions(&self, handle: &raster::Handle) -> Size<u32> {
+        if let Some(image) = self.cache.borrow_mut().allocate(handle) {
             Size::new(image.width(), image.height())
         } else {
             Size::new(0, 0)
@@ -41,13 +34,30 @@ impl Pipeline {
         clip_mask: Option<&tiny_skia::Mask>,
         border_radius: [f32; 4],
     ) {
-        if let Some(image) =
-            self.cache.borrow_mut().allocate(handle, border_radius)
-        {
+        if let Some(mut image) = self.cache.borrow_mut().allocate(handle) {
             let width_scale = bounds.width / image.width() as f32;
             let height_scale = bounds.height / image.height() as f32;
 
             let transform = transform.pre_scale(width_scale, height_scale);
+
+            let mut scratch;
+
+            // Round the borders if a border radius is defined
+            if border_radius.iter().any(|&corner| corner != 0.0) {
+                scratch = image.to_owned();
+                round(&mut scratch.as_mut(), {
+                    let [a, b, c, d] = border_radius;
+                    let scale_by = width_scale.min(height_scale);
+                    let max_radius = image.width().min(image.height()) / 2;
+                    [
+                        ((a / scale_by) as u32).max(1).min(max_radius),
+                        ((b / scale_by) as u32).max(1).min(max_radius),
+                        ((c / scale_by) as u32).max(1).min(max_radius),
+                        ((d / scale_by) as u32).max(1).min(max_radius),
+                    ]
+                });
+                image = scratch.as_ref();
+            }
 
             pixels.draw_pixmap(
                 (bounds.x / width_scale) as i32,
@@ -78,20 +88,11 @@ impl Cache {
     pub fn allocate(
         &mut self,
         handle: &raster::Handle,
-        border_radius: [f32; 4],
     ) -> Option<tiny_skia::PixmapRef<'_>> {
         let id = handle.id();
 
         if let hash_map::Entry::Vacant(entry) = self.entries.entry(id) {
-            let mut image = graphics::image::load(handle).ok()?.into_rgba8();
-
-            // Round the borders if a border radius is defined
-            if border_radius.iter().any(|&corner| corner != 0.0) {
-                round(&mut image, {
-                    let [a, b, c, d] = border_radius;
-                    [a as u32, b as u32, c as u32, d as u32]
-                });
-            }
+            let image = graphics::image::load(handle).ok()?.into_rgba8();
 
             let mut buffer =
                 vec![0u32; image.width() as usize * image.height() as usize];
@@ -135,8 +136,8 @@ struct Entry {
 }
 
 // https://users.rust-lang.org/t/how-to-trim-image-to-circle-image-without-jaggy/70374/2
-fn round(img: &mut ImageBuffer<Rgba<u8>, Vec<u8>>, radius: [u32; 4]) {
-    let (width, height) = img.dimensions();
+fn round(img: &mut tiny_skia::PixmapMut, radius: [u32; 4]) {
+    let (width, height) = (img.width(), img.height());
     assert!(radius[0] + radius[1] <= width);
     assert!(radius[3] + radius[2] <= width);
     assert!(radius[0] + radius[3] <= height);
@@ -153,7 +154,7 @@ fn round(img: &mut ImageBuffer<Rgba<u8>, Vec<u8>>, radius: [u32; 4]) {
 }
 
 fn border_radius(
-    img: &mut ImageBuffer<Rgba<u8>, Vec<u8>>,
+    img: &mut tiny_skia::PixmapMut,
     r: u32,
     coordinates: impl Fn(u32, u32) -> (u32, u32),
 ) {
@@ -174,9 +175,19 @@ fn border_radius(
     let mut alpha: u16 = 0;
     let mut skip_draw = true;
 
-    let draw = |img: &mut RgbaImage, alpha, x, y| {
+    fn pixel_id(width: u32, (x, y): (u32, u32)) -> usize {
+        ((width as usize * y as usize) + x as usize) * 4
+    }
+
+    let clear_pixel = |img: &mut tiny_skia::PixmapMut, (x, y): (u32, u32)| {
+        let pixel = pixel_id(img.width(), (x, y));
+        img.data_mut()[pixel..pixel + 4].copy_from_slice(&[0; 4]);
+    };
+
+    let draw = |img: &mut tiny_skia::PixmapMut, alpha, x, y| {
         debug_assert!((1..=256).contains(&alpha));
-        let pixel_alpha = &mut img[coordinates(r0 - x, r0 - y)].0[3];
+        let pixel = pixel_id(img.width(), coordinates(r0 - x, r0 - y));
+        let pixel_alpha = &mut img.data_mut()[pixel + 3];
         *pixel_alpha = ((alpha * *pixel_alpha as u16 + 128) / 256) as u8;
     };
 
@@ -186,14 +197,14 @@ fn border_radius(
         {
             let i = x / 16;
             for j in y / 16 + 1..r0 {
-                img[coordinates(r0 - i, r0 - j)].0[3] = 0;
+                clear_pixel(img, coordinates(r0 - i, r0 - j));
             }
         }
         // remove contents right of current position mirrored
         {
             let j = x / 16;
             for i in y / 16 + 1..r0 {
-                img[coordinates(r0 - i, r0 - j)].0[3] = 0;
+                clear_pixel(img, coordinates(r0 - i, r0 - j));
             }
         }
 
@@ -246,7 +257,7 @@ fn border_radius(
     let range = y / 16 + 1..r0;
     for i in range.clone() {
         for j in range.clone() {
-            img[coordinates(r0 - i, r0 - j)].0[3] = 0;
+            clear_pixel(img, coordinates(r0 - i, r0 - j));
         }
     }
 }

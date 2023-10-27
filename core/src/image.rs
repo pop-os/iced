@@ -174,11 +174,7 @@ pub trait Renderer: crate::Renderer {
     type Handle: Clone + Hash;
 
     /// Returns the dimensions of an image for the given [`Handle`].
-    fn dimensions(
-        &self,
-        handle: &Self::Handle,
-        border_radius: [f32; 4],
-    ) -> Size<u32>;
+    fn dimensions(&self, handle: &Self::Handle) -> Size<u32>;
 
     /// Draws an image with the given [`Handle`] and inside the provided
     /// `bounds`.

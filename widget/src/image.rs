@@ -148,7 +148,7 @@ where
 {
     // The raw w/h of the underlying image
     let image_size = {
-        let Size { width, height } = renderer.dimensions(handle, border_radius);
+        let Size { width, height } = renderer.dimensions(handle);
 
         Size::new(width as f32, height as f32)
     };
@@ -185,7 +185,7 @@ pub fn draw<Renderer, Handle>(
     Renderer: image::Renderer<Handle = Handle>,
     Handle: Clone + Hash,
 {
-    let Size { width, height } = renderer.dimensions(handle, border_radius);
+    let Size { width, height } = renderer.dimensions(handle);
     let image_size = Size::new(width as f32, height as f32);
 
     let bounds = layout.bounds();

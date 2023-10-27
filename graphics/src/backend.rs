@@ -81,11 +81,7 @@ pub trait Text {
 /// A graphics backend that supports image rendering.
 pub trait Image {
     /// Returns the dimensions of the provided image.
-    fn dimensions(
-        &self,
-        handle: &image::Handle,
-        border_radius: [f32; 4],
-    ) -> Size<u32>;
+    fn dimensions(&self, handle: &image::Handle) -> Size<u32>;
 }
 
 /// A graphics backend that supports SVG rendering.

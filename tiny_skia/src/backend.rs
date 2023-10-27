@@ -851,12 +851,8 @@ impl backend::Text for Backend {
 
 #[cfg(feature = "image")]
 impl backend::Image for Backend {
-    fn dimensions(
-        &self,
-        handle: &crate::core::image::Handle,
-        border_radius: [f32; 4],
-    ) -> Size<u32> {
-        self.raster_pipeline.dimensions(handle, border_radius)
+    fn dimensions(&self, handle: &crate::core::image::Handle) -> Size<u32> {
+        self.raster_pipeline.dimensions(handle)
     }
 }
 
