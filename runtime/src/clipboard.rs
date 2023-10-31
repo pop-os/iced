@@ -9,7 +9,7 @@ use std::fmt;
 /// [`Command`]: crate::Command
 pub enum Action<T> {
     /// Read the clipboard and produce `T` with the result.
-    Read(Box<dyn Fn(Option<String>) -> T>),
+    Read(Box<dyn Fn(Option<String>) -> T + Send>),
 
     /// Write the given contents to the clipboard.
     Write(String),
@@ -42,7 +42,7 @@ impl<T> fmt::Debug for Action<T> {
 
 /// Read the current contents of the clipboard.
 pub fn read<Message>(
-    f: impl Fn(Option<String>) -> Message + 'static,
+    f: impl Fn(Option<String>) -> Message + 'static + std::marker::Send,
 ) -> Command<Message> {
     Command::single(command::Action::Clipboard(Action::Read(Box::new(f))))
 }

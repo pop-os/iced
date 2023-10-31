@@ -32,6 +32,16 @@ pub trait DataFromMimeType {
     fn from_mime_type(&self, mime_type: &str) -> Option<Vec<u8>>;
 }
 
+impl DataFromMimeType for String {
+    fn from_mime_type(&self, mime_type: &str) -> Option<Vec<u8>> {
+        if mime_type == "text/plain;charset=utf-8" {
+            Some(self.as_bytes().to_vec())
+        } else {
+            None
+        }
+    }
+}
+
 /// DataDevice Action
 pub enum ActionInner {
     /// Indicate that you are setting the selection and will respond to events

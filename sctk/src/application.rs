@@ -43,8 +43,7 @@ use sctk::{
     seat::{keyboard::Modifiers, pointer::PointerEventKind},
 };
 use std::{
-    collections::HashMap, ffi::c_void, hash::Hash, marker::PhantomData,
-    time::Duration,
+    collections::HashMap, hash::Hash, marker::PhantomData, time::Duration,
 };
 use wayland_backend::client::ObjectId;
 use wayland_protocols::wp::viewporter::client::wp_viewport::WpViewport;
@@ -96,6 +95,13 @@ pub enum Event<Message> {
     SetCursor(Interaction),
     /// Application Message
     Message(Message),
+    /// Miscellaneous messages
+    Misc(MiscEvent<Message>),
+}
+
+pub enum MiscEvent<T> {
+    IcedReadSelection(Box<dyn Fn(Option<String>) -> T + Send>),
+    IcedWriteSelection(String),
 }
 
 pub struct IcedSctkState;
@@ -1910,11 +1916,11 @@ where
                     })));
             }
             command::Action::Clipboard(action) => match action {
-                clipboard::Action::Read(..) => {
-                    todo!();
+                clipboard::Action::Read(m) => {
+                    proxy.send_event(Event::Misc(MiscEvent::IcedReadSelection(m)));
                 }
-                clipboard::Action::Write(..) => {
-                    todo!();
+                clipboard::Action::Write(s) => {
+                    proxy.send_event(Event::Misc(MiscEvent::IcedWriteSelection(s)));
                 }
             },
             command::Action::Window(..) => {

@@ -1298,6 +1298,87 @@ where
                             }
                         }
                     }
+                    Event::Misc(a) => {
+                        match a {
+                            crate::application::MiscEvent::IcedReadSelection(to_msg) => {
+                                if let Some(selection_offer) = self.state.selection_offer.as_mut() {
+                                    let mime_type = "text/plain;charset=UTF-8".to_string();
+                                    let read_pipe = match selection_offer.offer.receive(mime_type.clone()) {
+                                        Ok(p) => p,
+                                        Err(_) => continue, // TODO error handling
+                                    };
+                                    let loop_handle = self.event_loop.handle();
+                                    match self.event_loop.handle().insert_source(read_pipe, move |_, f, state| {
+                                        let selection_offer = match state.selection_offer.as_mut() {
+                                            Some(s) => s,
+                                            None => return,
+                                        };
+                                        let (mime_type, data, token) = match selection_offer.cur_read.take() {
+                                            Some(s) => s,
+                                            None => return,
+                                        };
+                                        let mut reader = BufReader::new(f.as_ref());
+                                        let consumed = match reader.fill_buf() {
+                                            Ok(buf) => {
+                                                if buf.is_empty() {
+                                                    loop_handle.remove(token);
+                                                    let data = String::from_utf8(data).ok();
+                                                    state.pending_user_events.push(Event::Message(to_msg(data)));
+                                                } else {
+                                                    let mut data = data;
+                                                    data.extend_from_slice(buf);
+                                                    selection_offer.cur_read = Some((mime_type, data, token));
+                                                }
+                                                buf.len()
+                                            },
+                                            Err(e) if matches!(e.kind(), std::io::ErrorKind::Interrupted) => {
+                                                selection_offer.cur_read = Some((mime_type, data, token));
+                                                return;
+                                            },
+                                            Err(e) => {
+                                                error!("Error reading selection data: {}", e);
+                                                loop_handle.remove(token);
+                                                return;
+                                            },
+                                        };
+                                        reader.consume(consumed);
+                                    }) {
+                                        Ok(token) => {
+                                            selection_offer.cur_read = Some((mime_type.clone(), Vec::new(), token));
+                                        },
+                                        Err(_) => continue,
+                                    };
+                                }
+                            },
+                            crate::application::MiscEvent::IcedWriteSelection(data) => {
+                                let mime_types = vec!["text/plain;charset=UTF-8"];
+                                let qh = &self.state.queue_handle.clone();
+                                let seat = match self.state.seats.get(0) {
+                                    Some(s) => s,
+                                    None => continue,
+                                };
+                                let serial = match seat.last_ptr_press {
+                                    Some(s) => s.2,
+                                    None => continue,
+                                };
+                                // remove the old selection
+                                self.state.selection_source = None;
+                                // create a new one
+                                let source = self
+                                    .state
+                                    .data_device_manager_state
+                                    .create_copy_paste_source(qh, mime_types);
+                                source.set_selection(&seat.data_device, serial);
+                                self.state.selection_source = Some(SctkCopyPasteSource {
+                                    source,
+                                    cur_write: None,
+                                    accepted_mime_types: Vec::new(),
+                                    pipe: None,
+                                    data: Box::new(data),
+                                });
+                            },
+                        }
+                    },
                 }
             }
 

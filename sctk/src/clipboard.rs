@@ -70,7 +70,7 @@ impl iced_runtime::core::clipboard::Clipboard for Clipboard {
 
 /// Read the current contents of the clipboard.
 pub fn read<Message>(
-    f: impl Fn(Option<String>) -> Message + 'static,
+    f: impl Fn(Option<String>) -> Message + 'static + std::marker::Send,
 ) -> Command<Message> {
     Command::single(command::Action::Clipboard(Action::Read(Box::new(f))))
 }
