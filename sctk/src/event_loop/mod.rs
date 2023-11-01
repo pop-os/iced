@@ -20,6 +20,7 @@ use crate::{
         PopupEventVariant, SctkEvent, StartCause, WindowEventVariant,
     },
     settings,
+    subsurface_widget::SubsurfaceState,
 };
 use iced_futures::core::window::Mode;
 use iced_runtime::command::platform_specific::{
@@ -33,6 +34,7 @@ use sctk::{
     activation::{ActivationState, RequestData},
     compositor::CompositorState,
     data_device_manager::DataDeviceManagerState,
+    globals::GlobalData,
     output::OutputState,
     reexports::{
         calloop::{self, EventLoop, PostAction},
@@ -297,6 +299,55 @@ where
             &self.state,
             &mut control_flow,
         );
+
+        // XXX don't re-bind?
+        let wl_compositor = self
+            .state
+            .registry_state
+            .bind_one(&self.state.queue_handle, 1..=6, GlobalData)
+            .unwrap();
+        let wl_subcompositor = self.state.registry_state.bind_one(
+            &self.state.queue_handle,
+            1..=1,
+            GlobalData,
+        );
+        let wp_viewporter = self.state.registry_state.bind_one(
+            &self.state.queue_handle,
+            1..=1,
+            GlobalData,
+        );
+        let wl_shm = self
+            .state
+            .registry_state
+            .bind_one(&self.state.queue_handle, 1..=1, GlobalData)
+            .unwrap();
+        let wp_dmabuf = self
+            .state
+            .registry_state
+            .bind_one(&self.state.queue_handle, 2..=4, GlobalData)
+            .ok();
+        if let Ok(wl_subcompositor) = wl_subcompositor {
+            if let Ok(wp_viewporter) = wp_viewporter {
+                callback(
+                    IcedSctkEvent::Subcompositor(SubsurfaceState {
+                        wl_compositor,
+                        wl_subcompositor,
+                        wp_viewporter,
+                        wl_shm,
+                        wp_dmabuf,
+                        qh: self.state.queue_handle.clone(),
+                    }),
+                    &self.state,
+                    &mut control_flow,
+                );
+            } else {
+                tracing::warn!(
+                    "No `wp_viewporter`. Subsurfaces not supported."
+                );
+            }
+        } else {
+            tracing::warn!("No `wl_subcompositor`. Subsurfaces not supported.");
+        }
 
         let mut sctk_event_sink_back_buffer = Vec::new();
         let mut compositor_event_back_buffer = Vec::new();

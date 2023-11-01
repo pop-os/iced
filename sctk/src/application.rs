@@ -80,6 +80,8 @@ use raw_window_handle::{
 };
 use std::mem::ManuallyDrop;
 
+use crate::subsurface_widget::{SubsurfaceInstance, SubsurfaceState};
+
 pub enum Event<Message> {
     /// A normal sctk event
     SctkEvent(IcedSctkEvent<Message>),
@@ -362,6 +364,8 @@ where
     let mut states: HashMap<SurfaceId, State<A, C>> = HashMap::new();
     let mut interfaces = ManuallyDrop::new(HashMap::new());
     let mut simple_clipboard = Clipboard::unconnected();
+
+    let mut subsurface_state = None::<SubsurfaceState<A::Message>>;
 
     {
         run_command(
@@ -893,6 +897,9 @@ where
                 );
                 state.synchronize(&application);
 
+                // Subsurface list should always be empty before `view`
+                assert!(crate::subsurface_widget::take_subsurfaces().is_empty());
+
                 // just draw here immediately and never again for dnd icons
                 // TODO handle scale factor?
                 let _new_mouse_interaction = user_interface.draw(
@@ -905,6 +912,15 @@ where
                     },
                     state.cursor(),
                 );
+
+                let subsurfaces = crate::subsurface_widget::take_subsurfaces();
+                if let Some(subsurface_state) = subsurface_state.as_ref() {
+                    subsurface_state.update_subsurfaces(
+                        &state.wrapper.wl_surface,
+                        &mut state.subsurfaces,
+                        &subsurfaces,
+                    );
+                }
 
                 let _ = compositor.present(
                     &mut renderer,
@@ -1354,6 +1370,12 @@ where
                         debug.layout_finished();
                         state.viewport_changed = false;
                     }
+
+                    // Subsurface list should always be empty before `view`
+                    assert!(
+                        crate::subsurface_widget::take_subsurfaces().is_empty()
+                    );
+
                     debug.draw_started();
                     let new_mouse_interaction = user_interface.draw(
                         &mut renderer,
@@ -1365,6 +1387,17 @@ where
                         },
                         state.cursor(),
                     );
+
+                    // Update subsurfaces based on what view requested.
+                    let subsurfaces =
+                        crate::subsurface_widget::take_subsurfaces();
+                    if let Some(subsurface_state) = subsurface_state.as_ref() {
+                        subsurface_state.update_subsurfaces(
+                            &state.wrapper.wl_surface,
+                            &mut state.subsurfaces,
+                            &subsurfaces,
+                        );
+                    }
 
                     debug.draw_finished();
                     if new_mouse_interaction != mouse_interaction {
@@ -1461,6 +1494,9 @@ where
                         state.set_frame(Some(surface));
                     }
                 }
+            }
+            IcedSctkEvent::Subcompositor(state) => {
+                subsurface_state = Some(state);
             }
         }
     }
@@ -1598,6 +1634,7 @@ where
     interface_state: user_interface::State,
     surface: Option<C::Surface>,
     wrapper: SurfaceDisplayWrapper,
+    subsurfaces: Vec<SubsurfaceInstance>,
 }
 
 impl<A: Application, C: Compositor> State<A, C>
@@ -1636,6 +1673,7 @@ where
             interface_state: user_interface::State::Outdated,
             surface: None,
             wrapper,
+            subsurfaces: Vec::new(),
         }
     }
 

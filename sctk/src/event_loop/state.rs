@@ -41,10 +41,12 @@ use sctk::{
     reexports::{
         calloop::{LoopHandle, RegistrationToken},
         client::{
+            delegate_noop,
             protocol::{
                 wl_keyboard::WlKeyboard,
                 wl_output::WlOutput,
                 wl_seat::WlSeat,
+                wl_subsurface::WlSubsurface,
                 wl_surface::{self, WlSurface},
                 wl_touch::WlTouch,
             },
@@ -842,3 +844,5 @@ where
         }
     }
 }
+
+delegate_noop!(@<T: 'static + Debug> SctkState<T>: ignore WlSubsurface);

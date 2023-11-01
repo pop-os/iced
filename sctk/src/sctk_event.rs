@@ -5,6 +5,7 @@ use crate::{
     },
     dpi::PhysicalSize,
     keymap::{self, keysym_to_key},
+    subsurface_widget::SubsurfaceState,
 };
 
 use iced_futures::core::event::{
@@ -122,6 +123,8 @@ pub enum IcedSctkEvent<T> {
 
     /// Frame callback event
     Frame(WlSurface),
+
+    Subcompositor(SubsurfaceState<T>),
 }
 
 #[derive(Debug, Clone)]

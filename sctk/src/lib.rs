@@ -10,6 +10,7 @@ pub mod keymap;
 pub mod result;
 pub mod sctk_event;
 pub mod settings;
+pub mod subsurface_widget;
 #[cfg(feature = "system")]
 pub mod system;
 pub mod util;
