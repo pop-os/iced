@@ -2,6 +2,8 @@ use std::fmt::Debug;
 
 use iced_futures::MaybeSend;
 
+/// activation Actions
+pub mod activation;
 /// data device Actions
 pub mod data_device;
 /// layer surface actions
@@ -21,6 +23,8 @@ pub enum Action<T> {
     Popup(popup::Action<T>),
     /// data device
     DataDevice(data_device::Action<T>),
+    /// activation
+    Activation(activation::Action<T>),
 }
 
 impl<T> Action<T> {
@@ -38,6 +42,7 @@ impl<T> Action<T> {
             Action::Window(a) => Action::Window(a.map(f)),
             Action::Popup(a) => Action::Popup(a.map(f)),
             Action::DataDevice(a) => Action::DataDevice(a.map(f)),
+            Action::Activation(a) => Action::Activation(a.map(f)),
         }
     }
 }
@@ -52,6 +57,9 @@ impl<T> Debug for Action<T> {
             Self::Popup(arg0) => f.debug_tuple("Popup").field(arg0).finish(),
             Self::DataDevice(arg0) => {
                 f.debug_tuple("DataDevice").field(arg0).finish()
+            }
+            Self::Activation(arg0) => {
+                f.debug_tuple("Activation").field(arg0).finish()
             }
         }
     }

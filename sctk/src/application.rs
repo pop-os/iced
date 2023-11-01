@@ -43,8 +43,7 @@ use sctk::{
     seat::{keyboard::Modifiers, pointer::PointerEventKind},
 };
 use std::{
-    collections::HashMap, ffi::c_void, hash::Hash, marker::PhantomData,
-    time::Duration,
+    collections::HashMap, hash::Hash, marker::PhantomData, time::Duration,
 };
 use wayland_backend::client::ObjectId;
 use wayland_protocols::wp::viewporter::client::wp_viewport::WpViewport;
@@ -92,6 +91,8 @@ pub enum Event<Message> {
     Popup(platform_specific::wayland::popup::Action<Message>),
     /// data device requests from the client
     DataDevice(platform_specific::wayland::data_device::Action<Message>),
+    /// xdg-activation request from the client
+    Activation(platform_specific::wayland::activation::Action<Message>),
     /// request sctk to set the cursor of the active pointer
     SetCursor(Interaction),
     /// Application Message
@@ -2062,6 +2063,13 @@ where
             }
             command::Action::PlatformSpecific(platform_specific::Action::Wayland(platform_specific::wayland::Action::DataDevice(data_device_action))) => {
                 proxy.send_event(Event::DataDevice(data_device_action));
+            }
+            command::Action::PlatformSpecific(
+                platform_specific::Action::Wayland(
+                    platform_specific::wayland::Action::Activation(activation_action)
+                )
+            ) => {
+                proxy.send_event(Event::Activation(activation_action));
             }
             _ => {}
         };
