@@ -30,6 +30,7 @@ use iced_runtime::{
     window,
 };
 use sctk::{
+    activation::ActivationState,
     compositor::CompositorState,
     data_device_manager::{
         data_device::DataDevice,
@@ -329,6 +330,7 @@ pub struct SctkState<T> {
     pub(crate) xdg_shell_state: XdgShell,
     pub(crate) layer_shell: Option<LayerShell>,
     pub(crate) data_device_manager_state: DataDeviceManagerState,
+    pub(crate) activation_state: Option<ActivationState>,
     pub(crate) token_ctr: u32,
 }
 

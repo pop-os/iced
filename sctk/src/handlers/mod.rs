@@ -1,4 +1,5 @@
 // handlers
+pub mod activation;
 pub mod compositor;
 pub mod data_device;
 pub mod output;
