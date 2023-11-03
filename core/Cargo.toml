@@ -22,6 +22,11 @@ sctk = { package = "smithay-client-toolkit", git = "https://github.com/smithay/c
 version = "0.7"
 optional = true
 
+[dependencies.serde]
+version = "1"
+optional = true
+features = ["serde_derive"]
+
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 instant = "0.1"
 
