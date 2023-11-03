@@ -4,6 +4,7 @@
 ///
 /// [`winit`]: https://docs.rs/winit/0.20.0-alpha3/winit/
 #[derive(Debug, Hash, Ord, PartialOrd, PartialEq, Eq, Clone, Copy)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[repr(u32)]
 #[allow(missing_docs)]
 pub enum KeyCode {
