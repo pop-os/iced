@@ -226,11 +226,13 @@ where
         handle: image::Handle,
         filter_method: image::FilterMethod,
         bounds: Rectangle,
+        border_radius: [f32; 4],
     ) {
         self.primitives.push(Primitive::Image {
             handle,
             filter_method,
             bounds,
+            border_radius,
         });
     }
 }

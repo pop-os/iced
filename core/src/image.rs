@@ -193,5 +193,6 @@ pub trait Renderer: crate::Renderer {
         handle: Self::Handle,
         filter_method: FilterMethod,
         bounds: Rectangle,
+        border_radius: [f32; 4],
     );
 }

@@ -78,6 +78,8 @@ pub enum Primitive<T> {
         filter_method: image::FilterMethod,
         /// The bounds of the image
         bounds: Rectangle,
+        /// The border radii of the image
+        border_radius: [f32; 4],
     },
     /// An SVG primitive
     Svg {

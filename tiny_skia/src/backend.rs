@@ -458,6 +458,7 @@ impl Backend {
                 handle,
                 filter_method,
                 bounds,
+                border_radius,
             } => {
                 let physical_bounds = (*bounds + translation) * scale_factor;
 
@@ -481,6 +482,7 @@ impl Backend {
                     pixels,
                     transform,
                     clip_mask,
+                    *border_radius,
                 );
             }
             #[cfg(not(feature = "image"))]
