@@ -15,6 +15,9 @@ pub enum Image {
 
         /// The bounds of the image.
         bounds: Rectangle,
+
+        /// Border radius to apply
+        border_radius: [f32; 4],
     },
     /// A vector image.
     Vector {
