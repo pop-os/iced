@@ -33,10 +33,8 @@ use sctk::{
     activation::ActivationState,
     compositor::CompositorState,
     data_device_manager::{
-        data_device::DataDevice,
-        data_offer::{DragOffer, SelectionOffer},
-        data_source::{CopyPasteSource, DragSource},
-        DataDeviceManagerState, WritePipe,
+        data_device::DataDevice, data_offer::DragOffer,
+        data_source::DragSource, DataDeviceManagerState, WritePipe,
     },
     error::GlobalError,
     output::OutputState,
@@ -234,12 +232,6 @@ impl<T> Debug for Dnd<T> {
 }
 
 #[derive(Debug)]
-pub struct SctkSelectionOffer {
-    pub(crate) offer: SelectionOffer,
-    pub(crate) cur_read: Option<(String, Vec<u8>, RegistrationToken)>,
-}
-
-#[derive(Debug)]
 pub struct SctkDragOffer {
     pub(crate) dropped: bool,
     pub(crate) offer: DragOffer,
@@ -252,25 +244,6 @@ pub struct SctkPopupData {
     pub(crate) parent: SctkSurface,
     pub(crate) toplevel: WlSurface,
     pub(crate) positioner: XdgPositioner,
-}
-
-pub struct SctkCopyPasteSource {
-    pub accepted_mime_types: Vec<String>,
-    pub source: CopyPasteSource,
-    pub data: Box<dyn DataFromMimeType>,
-    pub(crate) pipe: Option<WritePipe>,
-    pub(crate) cur_write: Option<(Vec<u8>, usize, RegistrationToken)>,
-}
-
-impl Debug for SctkCopyPasteSource {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.debug_tuple("SctkCopyPasteSource")
-            .field(&self.accepted_mime_types)
-            .field(&self.source)
-            .field(&self.pipe)
-            .field(&self.cur_write)
-            .finish()
-    }
 }
 
 /// Wrapper to carry sctk state.
@@ -302,9 +275,7 @@ pub struct SctkState<T> {
     pub compositor_updates: Vec<SctkEvent>,
 
     /// data data_device
-    pub(crate) selection_source: Option<SctkCopyPasteSource>,
     pub(crate) dnd_offer: Option<SctkDragOffer>,
-    pub(crate) selection_offer: Option<SctkSelectionOffer>,
     pub(crate) _accept_counter: u32,
     /// A sink for window and device events that is being filled during dispatching
     /// event loop and forwarded downstream afterwards.

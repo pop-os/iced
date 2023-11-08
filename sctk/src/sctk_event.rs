@@ -189,7 +189,6 @@ pub enum SctkEvent {
         event: DndOfferEvent,
         surface: WlSurface,
     },
-    SelectionOffer(SelectionOfferEvent),
 }
 
 #[derive(Debug, Clone)]
@@ -212,19 +211,6 @@ pub enum DataSourceEvent {
     /// Send the DnD data to the destination.
     SendDndData {
         /// The mime type of the data to be sent
-        mime_type: String,
-    },
-}
-
-#[derive(Debug, Clone)]
-pub enum SelectionOfferEvent {
-    /// A Selection offer has been introduced with the given mime types.
-    Offer(Vec<String>),
-    /// Read the selection data from the clipboard.
-    Data {
-        /// The raww data
-        data: Vec<u8>,
-        /// mime type of the data to read
         mime_type: String,
     },
 }
@@ -852,38 +838,6 @@ impl SctkEvent {
                         PlatformSpecific::Wayland(wayland::Event::DndOffer(
                             wayland::DndOfferEvent::SelectedAction(action),
                         )),
-                    ))
-                    .into_iter()
-                    .collect()
-                }
-            },
-            SctkEvent::SelectionOffer(so) => match so {
-                SelectionOfferEvent::Offer(mime_types) => {
-                    Some(iced_runtime::core::Event::PlatformSpecific(
-                        PlatformSpecific::Wayland(
-                            wayland::Event::SelectionOffer(
-                                wayland::SelectionOfferEvent::Offer(
-                                    mime_types
-                                        .iter()
-                                        .map(|m| m.to_string())
-                                        .collect(),
-                                ),
-                            ),
-                        ),
-                    ))
-                    .into_iter()
-                    .collect()
-                }
-                SelectionOfferEvent::Data { mime_type, data } => {
-                    Some(iced_runtime::core::Event::PlatformSpecific(
-                        PlatformSpecific::Wayland(
-                            wayland::Event::SelectionOffer(
-                                wayland::SelectionOfferEvent::Data {
-                                    data,
-                                    mime_type,
-                                },
-                            ),
-                        ),
                     ))
                     .into_iter()
                     .collect()
