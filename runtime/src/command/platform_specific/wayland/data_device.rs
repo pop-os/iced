@@ -34,21 +34,6 @@ pub trait DataFromMimeType {
 
 /// DataDevice Action
 pub enum ActionInner {
-    /// Indicate that you are setting the selection and will respond to events
-    /// with data of the advertised mime types.
-    SetSelection {
-        /// The mime types that the selection can be converted to.
-        mime_types: Vec<String>,
-        /// The data to send.
-        data: Box<dyn DataFromMimeType + Send + Sync>,
-    },
-    /// Unset the selection.
-    UnsetSelection,
-    /// Request the selection data from the clipboard.
-    RequestSelectionData {
-        /// The mime type that the selection should be converted to.
-        mime_type: String,
-    },
     /// Start a drag and drop operation. When a client asks for the selection, an event will be delivered
     /// This is used for internal drags, where the client is the source of the drag.
     /// The client will be resposible for data transfer.
@@ -115,13 +100,6 @@ impl fmt::Debug for ActionInner {
         match self {
             Self::Accept(mime_type) => {
                 f.debug_tuple("Accept").field(mime_type).finish()
-            }
-            Self::SetSelection { mime_types, .. } => {
-                f.debug_tuple("SetSelection").field(mime_types).finish()
-            }
-            Self::UnsetSelection => f.debug_tuple("UnsetSelection").finish(),
-            Self::RequestSelectionData { mime_type } => {
-                f.debug_tuple("RequestSelection").field(mime_type).finish()
             }
             Self::StartInternalDnd { origin_id, icon_id } => f
                 .debug_tuple("StartInternalDnd")

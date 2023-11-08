@@ -368,6 +368,7 @@ where
 
     let mut states: HashMap<SurfaceId, State<A>> = HashMap::new();
     let mut interfaces = ManuallyDrop::new(HashMap::new());
+    let mut simple_clipboard = Clipboard::unconnected();
 
     {
         run_command(
@@ -382,6 +383,7 @@ where
             || compositor.fetch_information(),
             &mut auto_size_surfaces,
             &mut Vec::new(),
+            &mut simple_clipboard,
         );
     }
     runtime.track(
@@ -419,7 +421,6 @@ where
     let mut mods: Modifiers = Modifiers::default();
     let mut destroyed_surface_ids: HashMap<ObjectId, SurfaceIdWrapper> =
         Default::default();
-    let mut simple_clipboard = Clipboard::unconnected();
 
     'main: while let Some(event) = receiver.next().await {
         match event {
@@ -937,6 +938,7 @@ where
                         &mut Vec::new(),
                         || compositor.fetch_information(),
                         &mut auto_size_surfaces,
+                        &mut simple_clipboard,
                     );
 
                     interfaces = ManuallyDrop::new(build_user_interfaces(
@@ -1101,6 +1103,7 @@ where
                                 &mut actions,
                                 || compositor.fetch_information(),
                                 &mut auto_size_surfaces,
+                                &mut simple_clipboard,
                             );
 
                             pure_states.insert(surface_id.inner(), cache);
@@ -1789,6 +1792,7 @@ pub(crate) fn update<A, E, C>(
         SurfaceIdWrapper,
         (u32, u32, Limits, bool),
     >,
+    clipboard: &mut Clipboard,
 ) where
     A: Application + 'static,
     E: Executor + 'static,
@@ -1808,6 +1812,7 @@ pub(crate) fn update<A, E, C>(
             debug,
             graphics_info,
             auto_size_surfaces,
+            clipboard,
         ) {
             actions.push(a);
         }
@@ -1831,6 +1836,7 @@ pub(crate) fn update<A, E, C>(
             graphics_info,
             auto_size_surfaces,
             actions,
+            clipboard,
         )
     }
 
@@ -1860,6 +1866,7 @@ fn run_command<A, E>(
         (u32, u32, Limits, bool),
     >,
     actions: &mut Vec<command::Action<A::Message>>,
+    clipboard: &mut Clipboard,
 ) where
     A: Application,
     E: Executor,
@@ -1877,6 +1884,7 @@ fn run_command<A, E>(
             debug,
             graphics_info,
             auto_size_surfaces,
+            clipboard,
         ) {
             actions.push(a);
         }
@@ -1897,6 +1905,7 @@ fn handle_actions<A, E>(
         SurfaceIdWrapper,
         (u32, u32, Limits, bool),
     >,
+    clipboard: &mut Clipboard,
 ) -> Option<command::Action<A::Message>>
 where
     A: Application,
@@ -1911,11 +1920,17 @@ where
                     })));
             }
             command::Action::Clipboard(action) => match action {
-                clipboard::Action::Read(..) => {
-                    todo!();
+                clipboard::Action::Read(s_to_msg) => {
+                    if matches!(clipboard.state,  crate::clipboard::State::Connected(_)) {
+                        let contents = clipboard.read();
+                        let message = s_to_msg(contents);
+                        proxy.send_event(Event::Message(message));
+                    }
                 }
-                clipboard::Action::Write(..) => {
-                    todo!();
+                clipboard::Action::Write(contents) => {
+                    if matches!(clipboard.state,  crate::clipboard::State::Connected(_)) {
+                        clipboard.write(contents)
+                    }
                 }
             },
             command::Action::Window(..) => {
@@ -2142,7 +2157,6 @@ fn event_is_for_surface(
         | SctkEvent::RemovedOutput(_) => false,
         SctkEvent::ScaleFactorChanged { id, .. } => &id.id() == object_id,
         SctkEvent::DndOffer { surface, .. } => &surface.id() == object_id,
-        SctkEvent::SelectionOffer(_) => true,
         SctkEvent::DataSource(_) => true,
     }
 }

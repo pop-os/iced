@@ -45,97 +45,17 @@ impl<T> DataSourceHandler for SctkState<T> {
         pipe: WritePipe,
     ) {
         let is_active_source = self
-            .selection_source
+            .dnd_source
             .as_ref()
-            .map(|s| s.source.inner() == source)
-            .unwrap_or(false)
-            || self
-                .dnd_source
-                .as_ref()
-                .and_then(|s| s.source.as_ref().map(|s| s.0.inner() == source))
-                .unwrap_or(false);
+            .and_then(|s| s.source.as_ref().map(|s| s.0.inner() == source))
+            .unwrap_or(false);
 
         if !is_active_source {
             source.destroy();
             return;
         }
 
-        if let Some(my_source) = self
-            .selection_source
-            .as_mut()
-            .filter(|s| s.source.inner() == source)
-        {
-            match self.loop_handle.insert_source(
-                pipe,
-                move |_, f, state| -> PostAction {
-                    let selection_source = match state.selection_source.as_mut()
-                    {
-                        Some(s) => s,
-                        None => {
-                            return PostAction::Continue;
-                        }
-                    };
-                    let (data, mut cur_index, token) =
-                        match selection_source.cur_write.take() {
-                            Some(s) => s,
-                            None => {
-                                return PostAction::Continue;
-                            }
-                        };
-                    let mut writer = BufWriter::new(f.as_ref());
-                    let slice = &data.as_slice()[cur_index
-                        ..(cur_index + writer.capacity()).min(data.len())];
-                    match writer.write(slice) {
-                        Ok(num_written) => {
-                            cur_index += num_written;
-                            let done = cur_index == data.len();
-                            if !done {
-                                selection_source.cur_write =
-                                    Some((data, cur_index, token));
-                            }
-                            if let Err(err) = writer.flush() {
-                                error!("Failed to flush pipe: {}", err);
-                                return PostAction::Remove;
-                            }
-                            if done {
-                                PostAction::Remove
-                            } else {
-                                PostAction::Continue
-                            }
-                        }
-                        Err(e)
-                            if matches!(
-                                e.kind(),
-                                std::io::ErrorKind::Interrupted
-                            ) =>
-                        {
-                            // try again
-                            selection_source.cur_write =
-                                Some((data, cur_index, token));
-                            PostAction::Continue
-                        }
-                        Err(_) => {
-                            error!("Failed to write to pipe");
-                            PostAction::Remove
-                        }
-                    }
-                },
-            ) {
-                Ok(s) => {
-                    my_source.cur_write = Some((
-                        my_source
-                            .data
-                            .from_mime_type(&mime)
-                            .unwrap_or_default(),
-                        0,
-                        s,
-                    ));
-                }
-                Err(err) => {
-                    error!("Failed to insert source: {}", err);
-                }
-            }
-        } else if let Some(source) = self.dnd_source.as_mut().filter(|s| {
+        if let Some(source) = self.dnd_source.as_mut().filter(|s| {
             s.source
                 .as_ref()
                 .map(|s| (s.0.inner() == source))
@@ -214,15 +134,10 @@ impl<T> DataSourceHandler for SctkState<T> {
         source: &WlDataSource,
     ) {
         let is_active_source = self
-            .selection_source
+            .dnd_source
             .as_ref()
-            .map(|s| s.source.inner() == source)
-            .unwrap_or(false)
-            || self
-                .dnd_source
-                .as_ref()
-                .and_then(|s| s.source.as_ref().map(|s| s.0.inner() == source))
-                .unwrap_or(false);
+            .and_then(|s| s.source.as_ref().map(|s| s.0.inner() == source))
+            .unwrap_or(false);
         if is_active_source {
             self.sctk_events
                 .push(SctkEvent::DataSource(DataSourceEvent::DndCancelled));

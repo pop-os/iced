@@ -17,8 +17,7 @@ use crate::{
     },
     sctk_event::{
         DndOfferEvent, IcedSctkEvent, LayerSurfaceEventVariant,
-        PopupEventVariant, SctkEvent, SelectionOfferEvent, StartCause,
-        WindowEventVariant,
+        PopupEventVariant, SctkEvent, StartCause, WindowEventVariant,
     },
     settings,
 };
@@ -65,7 +64,7 @@ use wayland_backend::client::WaylandError;
 
 use self::{
     control_flow::ControlFlow,
-    state::{Dnd, LayerSurfaceCreationError, SctkCopyPasteSource, SctkState},
+    state::{Dnd, LayerSurfaceCreationError, SctkState},
 };
 
 #[derive(Debug, Default, Clone, Copy)]
@@ -199,10 +198,8 @@ where
                 frame_events: Vec::new(),
                 pending_user_events: Vec::new(),
                 token_ctr: 0,
-                selection_source: None,
                 _accept_counter: 0,
                 dnd_offer: None,
-                selection_offer: None,
                 fractional_scaling_manager,
                 viewporter_state,
                 compositor_updates: Default::default(),
@@ -1207,92 +1204,6 @@ where
                                         Err(_) => continue,
                                     };
                                 }
-                            }
-                            platform_specific::wayland::data_device::ActionInner::RequestSelectionData { mime_type } => {
-                                if let Some(selection_offer) = self.state.selection_offer.as_mut() {
-                                    let read_pipe = match selection_offer.offer.receive(mime_type.clone()) {
-                                        Ok(p) => p,
-                                        Err(_) => continue, // TODO error handling
-                                    };
-                                    let loop_handle = self.event_loop.handle();
-                                    match self.event_loop.handle().insert_source(read_pipe, move |_, f, state| {
-                                        let selection_offer = match state.selection_offer.as_mut() {
-                                            Some(s) => s,
-                                            None => return PostAction::Continue,
-                                        };
-                                        let (mime_type, data, token) = match selection_offer.cur_read.take() {
-                                            Some(s) => s,
-                                            None => return PostAction::Continue,
-                                        };
-                                        let mut reader = BufReader::new(f.as_ref());
-                                        let consumed = match reader.fill_buf() {
-                                            Ok(buf) => {
-                                                if buf.is_empty() {
-                                                    loop_handle.remove(token);
-                                                    state.sctk_events.push(SctkEvent::SelectionOffer(SelectionOfferEvent::Data {mime_type, data }));
-                                                } else {
-                                                    let mut data = data;
-                                                    data.extend_from_slice(buf);
-                                                    selection_offer.cur_read = Some((mime_type, data, token));
-                                                }
-                                                buf.len()
-                                            },
-                                            Err(e) if matches!(e.kind(), std::io::ErrorKind::Interrupted) => {
-                                                selection_offer.cur_read = Some((mime_type, data, token));
-                                                return PostAction::Continue;
-                                            },
-                                            Err(e) => {
-                                                error!("Error reading selection data: {}", e);
-                                                return PostAction::Continue;
-                                            },
-                                        };
-                                        reader.consume(consumed);
-                                        PostAction::Continue
-                                    }) {
-                                        Ok(token) => {
-                                            selection_offer.cur_read = Some((mime_type.clone(), Vec::new(), token));
-                                        },
-                                        Err(_) => continue,
-                                    };
-                                }
-                            }
-                            platform_specific::wayland::data_device::ActionInner::SetSelection { mime_types, data } => {
-                                let qh = &self.state.queue_handle.clone();
-                                let seat = match self.state.seats.get(0) {
-                                    Some(s) => s,
-                                    None => continue,
-                                };
-                                let serial = match seat.last_ptr_press {
-                                    Some(s) => s.2,
-                                    None => continue,
-                                };
-                                // remove the old selection
-                                self.state.selection_source = None;
-                                // create a new one
-                                let source = self
-                                    .state
-                                    .data_device_manager_state
-                                    .create_copy_paste_source(qh, mime_types.iter().map(|s| s.as_str()).collect::<Vec<_>>());
-                                source.set_selection(&seat.data_device, serial);
-                                self.state.selection_source = Some(SctkCopyPasteSource {
-                                    source,
-                                    cur_write: None,
-                                    accepted_mime_types: Vec::new(),
-                                    pipe: None,
-                                    data,
-                                });
-                            }
-                            platform_specific::wayland::data_device::ActionInner::UnsetSelection => {
-                                let seat = match self.state.seats.get(0) {
-                                    Some(s) => s,
-                                    None => continue,
-                                };
-                                let serial = match seat.last_ptr_press {
-                                    Some(s) => s.2,
-                                    None => continue,
-                                };
-                                self.state.selection_source = None;
-                                seat.data_device.unset_selection(serial);
                             }
                             platform_specific::wayland::data_device::ActionInner::SetActions { preferred, accepted } => {
                                 if let Some(offer) = self.state.dnd_offer.as_ref() {
