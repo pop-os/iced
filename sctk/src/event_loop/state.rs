@@ -617,6 +617,7 @@ where
 
             size_limits,
             resizable,
+            xdg_activation_token,
             ..
         } = settings;
         // TODO Ashley: set window as opaque if transparency is false
@@ -680,6 +681,12 @@ where
         );
 
         window.commit();
+
+        if let (Some(token), Some(activation_state)) =
+            (xdg_activation_token, self.activation_state.as_ref())
+        {
+            activation_state.activate::<()>(window.wl_surface(), token);
+        }
 
         let wp_viewport = self.viewporter_state.as_ref().map(|state| {
             state.get_viewport(window.wl_surface(), &self.queue_handle)

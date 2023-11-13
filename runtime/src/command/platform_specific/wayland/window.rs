@@ -36,6 +36,9 @@ pub struct SctkWindowSettings {
 
     /// Whether the window should be transparent.
     pub transparent: bool,
+
+    /// xdg-activation token
+    pub xdg_activation_token: Option<String>,
 }
 
 impl Default for SctkWindowSettings {
@@ -55,6 +58,7 @@ impl Default for SctkWindowSettings {
             resizable: Some(8.0),
             client_decorations: true,
             transparent: false,
+            xdg_activation_token: Default::default(),
         }
     }
 }
