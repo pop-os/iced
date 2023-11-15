@@ -14,6 +14,9 @@ use crate::core::{
 
 use std::hash::Hash;
 
+#[cfg(feature = "a11y")]
+use std::borrow::Cow;
+
 pub use image::Handle;
 
 /// Creates a new [`Viewer`] with the given image `Handle`.

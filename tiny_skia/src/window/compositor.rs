@@ -6,13 +6,14 @@ use crate::{Backend, Primitive, Renderer, Settings};
 
 use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
 use std::marker::PhantomData;
+use std::num::NonZeroU32;
 
 pub struct Compositor<Theme> {
     _theme: PhantomData<Theme>,
 }
 
 pub struct Surface {
-    window: softbuffer::GraphicsContext,
+    window: softbuffer::Surface,
     buffer: Vec<u32>,
     clip_mask: tiny_skia::Mask,
     primitives: Option<Vec<Primitive>>,
@@ -39,9 +40,14 @@ impl<Theme> crate::graphics::Compositor for Compositor<Theme> {
         width: u32,
         height: u32,
     ) -> Surface {
-        let window =
-            unsafe { softbuffer::GraphicsContext::new(window, window) }
-                .expect("Create softbuffer for window");
+        let window = unsafe {
+            softbuffer::Surface::new(
+                &softbuffer::Context::new(window)
+                    .expect("Failed to create softbuffer context"),
+                window,
+            )
+        }
+        .expect("Create softbuffer for window");
 
         Surface {
             window,
@@ -168,11 +174,31 @@ pub fn present<T: AsRef<str>>(
         overlay,
     );
 
-    surface.window.set_buffer(
-        &surface.buffer,
-        physical_size.width as u16,
-        physical_size.height as u16,
-    );
+    surface
+        .window
+        .resize(
+            NonZeroU32::new(physical_size.width as u32)
+                .ok_or_else(|| compositor::SurfaceError::InvalidDimensions)?,
+            NonZeroU32::new(physical_size.height as u32)
+                .ok_or_else(|| compositor::SurfaceError::InvalidDimensions)?,
+        )
+        .map_err(|_| compositor::SurfaceError::Resize)?;
+    if let Ok(mut b) = surface.window.buffer_mut() {
+        let damage = damage
+            .iter()
+            .filter_map(|r| {
+                Some(softbuffer::Rect {
+                    x: r.x as u32,
+                    y: r.y as u32,
+                    width: NonZeroU32::new(r.width as u32)?,
+                    height: NonZeroU32::new(r.height as u32)?,
+                })
+            })
+            .collect::<Vec<_>>();
+        b.copy_from_slice(&surface.buffer);
+        b.present_with_damage(&damage)
+            .map_err(|e| compositor::SurfaceError::Present(e.to_string()))?;
+    }
 
     Ok(())
 }
