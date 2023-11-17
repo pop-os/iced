@@ -31,7 +31,7 @@ pub trait Application: Sized {
     type Theme: Default + StyleSheet;
 
     /// The data needed to initialize your [`Application`].
-    type Flags: Clone;
+    type Flags;
 
     /// Initializes the [`Application`] with the flags provided to
     /// [`run`] as part of the [`Settings`].
