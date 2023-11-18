@@ -7,7 +7,7 @@ use crate::Font;
 use iced_sctk::settings::InitialSurface;
 
 /// The settings of an application.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Settings<Flags> {
     /// The identifier of the application.
     ///
