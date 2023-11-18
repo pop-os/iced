@@ -9,7 +9,7 @@ use iced_sctk::settings::InitialSurface;
 use std::borrow::Cow;
 
 /// The settings of an application.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Settings<Flags> {
     /// The identifier of the application.
     ///

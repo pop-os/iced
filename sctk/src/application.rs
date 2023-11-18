@@ -218,12 +218,10 @@ where
     E: Executor + 'static,
     C: Compositor<Renderer = A::Renderer> + 'static,
     <A::Renderer as Renderer>::Theme: StyleSheet,
-    A::Flags: Clone,
 {
     let mut debug = Debug::new();
     debug.startup_started();
 
-    let flags = settings.flags.clone();
     let exit_on_close_request = settings.exit_on_close_request;
 
     let mut event_loop = SctkEventLoop::<A::Message>::new(&settings)
@@ -237,7 +235,7 @@ where
     };
 
     let (application, init_command) = {
-        let flags = flags;
+        let flags = settings.flags;
 
         runtime.enter(|| A::new(flags))
     };
