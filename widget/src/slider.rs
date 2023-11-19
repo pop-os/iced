@@ -13,6 +13,7 @@ use crate::core::{
     Size, Widget,
 };
 
+#[cfg(feature = "a11y")]
 use std::borrow::Cow;
 use std::ops::RangeInclusive;
 

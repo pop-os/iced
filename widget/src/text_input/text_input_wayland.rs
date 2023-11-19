@@ -1331,7 +1331,7 @@ where
                     .iter()
                     .find(|m| mime_types.contains(&m.to_string()))
                 {
-                    Some(m) => m.clone(),
+                    Some(m) => m,
                     None => {
                         state.dnd_offer = DndOfferState::None;
                         return event::Status::Captured;

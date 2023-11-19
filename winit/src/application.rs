@@ -4,6 +4,7 @@ mod drag_resize;
 mod profiler;
 mod state;
 
+#[cfg(feature = "a11y")]
 use iced_graphics::core::widget::operation::focusable::focus;
 use iced_graphics::core::widget::operation::OperationWrapper;
 use iced_graphics::core::widget::Operation;
@@ -383,6 +384,7 @@ async fn run_instance<A, E, C>(
     let mut events = Vec::new();
     let mut messages = Vec::new();
     let mut redraw_pending = false;
+    #[cfg(feature = "a11y")]
     let mut commands: Vec<Command<A::Message>> = Vec::new();
 
     #[cfg(feature = "a11y")]
@@ -1018,7 +1020,7 @@ pub fn run_command<A, C, E>(
                 window::Action::GainFocus => {
                     window.focus_window();
                 }
-                window::Action::ChangeLevel(level) => {
+                window::Action::ChangeLevel(_level) => {
                     // window.set_window_level(conversion::window_level(level));
                 }
                 window::Action::FetchId(tag) => {
