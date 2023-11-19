@@ -258,6 +258,7 @@ impl<T> crate::graphics::geometry::Renderer for Renderer<T> {
                         crate::Geometry::TinySkia(primitive) => {
                             renderer.draw_primitive(primitive);
                         }
+                        #[allow(unreachable_patterns)]
                         _ => unreachable!(),
                     }
                 }

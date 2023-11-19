@@ -1,4 +1,5 @@
 //! Show toggle controls using togglers.
+#[cfg(feature = "a11y")]
 use std::borrow::Cow;
 
 use crate::core::alignment;
