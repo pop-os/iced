@@ -267,8 +267,8 @@ impl<T> crate::graphics::geometry::Renderer for Renderer<T> {
                         crate::Geometry::TinySkia(primitive) => {
                             renderer.draw_primitive(primitive);
                         }
-                        #[cfg(feature = "wgpu")]
-                        crate::Geometry::Wgpu(_) => unreachable!(),
+                        #[allow(unreachable_patterns)]
+                        _ => unreachable!(),
                     }
                 }
             }
