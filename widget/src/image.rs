@@ -150,7 +150,7 @@ pub fn layout<Renderer, Handle>(
     width: Length,
     height: Length,
     content_fit: ContentFit,
-    border_radius: [f32; 4],
+    _border_radius: [f32; 4],
 ) -> layout::Node
 where
     Renderer: image::Renderer<Handle = Handle>,

@@ -207,7 +207,6 @@ where
     }
 
     fn diff(&mut self, tree: &mut Tree) {
-        let children = std::slice::from_mut(&mut self.content);
         tree.diff_children(std::slice::from_mut(&mut self.content))
     }
 

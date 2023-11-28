@@ -42,6 +42,7 @@ where
     content_fit: ContentFit,
     symbolic: bool,
     style: <Renderer::Theme as StyleSheet>::Style,
+    phantom_data: std::marker::PhantomData<&'a ()>,
 }
 
 impl<'a, Renderer> Svg<'a, Renderer>
@@ -65,6 +66,7 @@ where
             content_fit: ContentFit::Contain,
             symbolic: false,
             style: Default::default(),
+            phantom_data: std::marker::PhantomData,
         }
     }
 

@@ -12,8 +12,8 @@ use crate::core::touch;
 use crate::core::widget::tree::{self, Tree};
 use crate::core::widget::{self, Id};
 use crate::core::{
-    id, Alignment, Clipboard, Element, Event, Layout, Length, Pixels,
-    Rectangle, Shell, Widget,
+    id, Clipboard, Element, Event, Layout, Length, Pixels, Rectangle, Shell,
+    Widget,
 };
 
 pub use crate::style::toggler::{Appearance, StyleSheet};
