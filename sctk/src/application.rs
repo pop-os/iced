@@ -12,7 +12,7 @@ use crate::{
         DataSourceEvent, IcedSctkEvent, KeyboardEventVariant,
         LayerSurfaceEventVariant, PopupEventVariant, SctkEvent, StartCause,
     },
-    settings
+    settings,
 };
 use float_cmp::{approx_eq, F32Margin, F64Margin};
 use futures::{channel::mpsc, task, Future, FutureExt, StreamExt};
@@ -29,7 +29,7 @@ use iced_futures::{
         renderer::Style,
         time::Instant,
         widget::{
-            operation::{self, OperationWrapper, focusable::focus},
+            operation::{self, focusable::focus, OperationWrapper},
             tree, Operation, Tree,
         },
         Widget,
@@ -48,9 +48,7 @@ use std::{
 use wayland_backend::client::ObjectId;
 use wayland_protocols::wp::viewporter::client::wp_viewport::WpViewport;
 
-use iced_graphics::{
-    compositor, renderer, Viewport, Compositor,
-};
+use iced_graphics::{compositor, renderer, Compositor, Viewport};
 use iced_runtime::{
     clipboard,
     command::{
@@ -382,7 +380,12 @@ where
             &mut simple_clipboard,
         );
     }
-    runtime.track(application.subscription().map(subscription_map::<A, E, C>).into_recipes(),);
+    runtime.track(
+        application
+            .subscription()
+            .map(subscription_map::<A, E, C>)
+            .into_recipes(),
+    );
 
     let natural_scroll = application.natural_scroll();
 
@@ -831,8 +834,12 @@ where
                             children: e.as_widget().children(),
                         };
                         e.as_widget_mut().diff(&mut tree);
-                        let node =
-                          Widget::layout(e.as_widget(), &mut tree, &renderer, &Limits::NONE);
+                        let node = Widget::layout(
+                            e.as_widget(),
+                            &mut tree,
+                            &renderer,
+                            &Limits::NONE,
+                        );
                         (id, e, node)
                     }
                     DndIcon::Widget(id, widget_state) => {
@@ -844,8 +851,12 @@ where
                             children: e.as_widget().children(),
                         };
                         e.as_widget_mut().diff(&mut tree);
-                        let node =
-                          Widget::layout(e.as_widget(), &mut tree, &renderer, &Limits::NONE);
+                        let node = Widget::layout(
+                            e.as_widget(),
+                            &mut tree,
+                            &renderer,
+                            &Limits::NONE,
+                        );
                         (id, e, node)
                     }
                 };
@@ -999,8 +1010,10 @@ where
                         if matches!(surface_id, SurfaceIdWrapper::Dnd(_)) {
                             continue;
                         }
-                        let mut filtered_sctk = Vec::with_capacity(sctk_events.len());
-                        let Some(state) = states.get_mut(&surface_id.inner()) else {
+                        let mut filtered_sctk =
+                            Vec::with_capacity(sctk_events.len());
+                        let Some(state) = states.get_mut(&surface_id.inner())
+                        else {
                             continue;
                         };
                         let mut i = 0;
@@ -1043,10 +1056,18 @@ where
                                 } else {
                                     i += 1;
                                 }
-                            }                        
-                            native_events.extend(filtered_a11y.into_iter().map(|e| {
-                                iced_runtime::core::event::Event::A11y(iced_runtime::core::id::Id::from(u128::from(e.request.target.0) as u64), e.request)
-                            }));
+                            }
+                            native_events.extend(
+                                filtered_a11y.into_iter().map(|e| {
+                                    iced_runtime::core::event::Event::A11y(
+                                        iced_runtime::core::id::Id::from(
+                                            u128::from(e.request.target.0)
+                                                as u64,
+                                        ),
+                                        e.request,
+                                    )
+                                }),
+                            );
                         }
                         let has_events =
                             has_events || !native_events.is_empty();
@@ -1263,19 +1284,33 @@ where
 
                     debug.render_started();
                     #[cfg(feature = "a11y")]
-                    if let Some(Some(adapter)) = a11y_enabled.then(|| adapters.get_mut(&native_id.inner())) {
-                        use iced_accessibility::{A11yTree, accesskit::{TreeUpdate, Tree, Role}};
+                    if let Some(Some(adapter)) = a11y_enabled
+                        .then(|| adapters.get_mut(&native_id.inner()))
+                    {
+                        use iced_accessibility::{
+                            accesskit::{Role, Tree, TreeUpdate},
+                            A11yTree,
+                        };
                         // TODO send a11y tree
-                        let child_tree = user_interface.a11y_nodes(state.cursor());
+                        let child_tree =
+                            user_interface.a11y_nodes(state.cursor());
                         let mut root = NodeBuilder::new(Role::Window);
                         root.set_name(state.title().to_string());
-                        let window_tree = A11yTree::node_with_child_tree(A11yNode::new(root, adapter.id), child_tree);
+                        let window_tree = A11yTree::node_with_child_tree(
+                            A11yNode::new(root, adapter.id),
+                            child_tree,
+                        );
                         let tree = Tree::new(NodeId(adapter.id));
-                        let mut current_operation = Some(Box::new(OperationWrapper::Id(Box::new(operation::focusable::find_focused()))));
+                        let mut current_operation =
+                            Some(Box::new(OperationWrapper::Id(Box::new(
+                                operation::focusable::find_focused(),
+                            ))));
                         let mut focus = None;
-                        while let Some(mut operation) = current_operation.take() {
-                            user_interface.operate(&renderer, operation.as_mut());
-        
+                        while let Some(mut operation) = current_operation.take()
+                        {
+                            user_interface
+                                .operate(&renderer, operation.as_mut());
+
                             match operation.finish() {
                                 operation::Outcome::None => {
                                 }
@@ -1288,7 +1323,6 @@ where
                                             focus = Some(A11yId::from(id));
                                         },
                                     }
-                                   
                                 }
                                 operation::Outcome::Chain(next) => {
                                     current_operation = Some(Box::new(OperationWrapper::Wrapper(next)));
@@ -1360,7 +1394,6 @@ where
 
                     let _ =
                         interfaces.insert(native_id.inner(), user_interface);
-                    
 
                     let _ = compositor.present(
                         &mut renderer,
@@ -1384,16 +1417,24 @@ where
                 surface_id,
                 request,
             }) => {
-                use iced_accessibility::accesskit::Action;  
+                use iced_accessibility::accesskit::Action;
                 match request.action {
                     Action::Default => {
                         // TODO default operation?
                         // messages.push(focus(request.target.into()));
-                        a11y_events.push(ActionRequestEvent { surface_id, request });
-                    },
+                        a11y_events.push(ActionRequestEvent {
+                            surface_id,
+                            request,
+                        });
+                    }
                     Action::Focus => {
-                        commands.push(Command::widget(focus(iced_runtime::core::id::Id::from(u128::from(request.target.0) as u64))));
-                    },
+                        commands.push(Command::widget(focus(
+                            iced_runtime::core::id::Id::from(u128::from(
+                                request.target.0,
+                            )
+                                as u64),
+                        )));
+                    }
                     Action::Blur => todo!(),
                     Action::Collapse => todo!(),
                     Action::Expand => todo!(),
@@ -1415,7 +1456,9 @@ where
                     Action::ScrollToPoint => todo!(),
                     Action::SetScrollOffset => todo!(),
                     Action::SetTextSelection => todo!(),
-                    Action::SetSequentialFocusNavigationStartingPoint => todo!(),
+                    Action::SetSequentialFocusNavigationStartingPoint => {
+                        todo!()
+                    }
                     Action::SetValue => todo!(),
                     Action::ShowContextMenu => todo!(),
                 }
@@ -1496,7 +1539,10 @@ where
         // TODO would it be ok to diff against the current cache?
         let _state = Widget::state(view);
         view.diff(&mut Tree::empty());
-        let bounds = view.layout(&mut Tree::empty(), renderer,  &limits).bounds().size();
+        let bounds = view
+            .layout(&mut Tree::empty(), renderer, &limits)
+            .bounds()
+            .size();
         // XXX add a small number to make sure it doesn't get truncated...
         let (w, h) = (
             (bounds.width.round()) as u32,
@@ -1741,7 +1787,7 @@ where
             .map(mouse::Cursor::Available)
             .unwrap_or(mouse::Cursor::Unavailable)
     }
-    
+
     /// Returns the current keyboard modifiers of the [`State`].
     pub fn modifiers(&self) -> Modifiers {
         self.modifiers
@@ -1845,7 +1891,12 @@ pub(crate) fn update<A, E, C>(
         )
     }
 
-    runtime.track(application.subscription().map(subscription_map::<A, E, C>).into_recipes(),);
+    runtime.track(
+        application
+            .subscription()
+            .map(subscription_map::<A, E, C>)
+            .into_recipes(),
+    );
 }
 
 type MyRuntime<'a, E, M> = &'a mut Runtime<E, proxy::Proxy<Event<M>>, Event<M>>;
@@ -2002,7 +2053,6 @@ where
                                     // should not happen
                                 },
                             }
-                           
                         }
                         operation::Outcome::Chain(next) => {
                             current_operation = Some(Box::new(OperationWrapper::Wrapper(next)));
@@ -2112,11 +2162,7 @@ pub fn build_user_interfaces<'a, A>(
     ev_proxy: &mut proxy::Proxy<Event<A::Message>>,
 ) -> HashMap<
     SurfaceId,
-    UserInterface<
-        'a,
-        <A as Program>::Message,
-        <A as Program>::Renderer,
-    >,
+    UserInterface<'a, <A as Program>::Message, <A as Program>::Renderer>,
 >
 where
     A: Application + 'static,
