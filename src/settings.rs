@@ -27,9 +27,7 @@ pub struct Settings<Flags> {
     #[cfg(feature = "wayland")]
     pub initial_surface: InitialSurface,
 
-    /// The data needed to initialize the [`Application`].
-    ///
-    /// [`Application`]: crate::Application
+    /// The data needed to initialize the Application.
     pub flags: Flags,
 
     /// The fonts to load on boot.
@@ -48,12 +46,9 @@ pub struct Settings<Flags> {
     /// If set to true, the renderer will try to perform antialiasing for some
     /// primitives.
     ///
-    /// Enabling it can produce a smoother result in some widgets, like the
-    /// [`Canvas`], at a performance cost.
+    /// Enabling it can produce a smoother result in some widgets
     ///
     /// By default, it is disabled.
-    ///
-    /// [`Canvas`]: crate::widget::Canvas
     pub antialiasing: bool,
 
     /// Whether the [`Application`] should exit when the user requests the
@@ -67,9 +62,7 @@ pub struct Settings<Flags> {
 
 #[cfg(not(any(feature = "winit", feature = "wayland")))]
 impl<Flags> Settings<Flags> {
-    /// Initialize [`Application`] settings using the given data.
-    ///
-    /// [`Application`]: crate::Application
+    /// Initialize Application settings using the given data.
     pub fn with_flags(flags: Flags) -> Self {
         let default_settings = Settings::<()>::default();
         Self {

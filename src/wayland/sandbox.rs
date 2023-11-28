@@ -33,8 +33,6 @@ use crate::{
 /// slider.
 /// - [`styling`], an example showcasing custom styling with a light and dark
 /// theme.
-/// - [`svg`], an application that renders the [Ghostscript Tiger] by leveraging
-/// the [`Svg` widget].
 /// - [`tour`], a simple UI tour that can run both on native platforms and the
 /// web!
 ///
@@ -46,12 +44,9 @@ use crate::{
 /// [`pane_grid`]: https://github.com/iced-rs/iced/tree/0.4/examples/pane_grid
 /// [`progress_bar`]: https://github.com/iced-rs/iced/tree/0.4/examples/progress_bar
 /// [`styling`]: https://github.com/iced-rs/iced/tree/0.4/examples/styling
-/// [`svg`]: https://github.com/iced-rs/iced/tree/0.4/examples/svg
 /// [`tour`]: https://github.com/iced-rs/iced/tree/0.4/examples/tour
-/// [`Canvas widget`]: crate::widget::Canvas
 /// [the overview]: index.html#overview
 /// [`iced_wgpu`]: https://github.com/iced-rs/iced/tree/0.4/wgpu
-/// [`Svg` widget]: crate::widget::Svg
 /// [Ghostscript Tiger]: https://commons.wikimedia.org/wiki/File:Ghostscript_Tiger.svg
 ///
 /// ## A simple "Hello, world!"
