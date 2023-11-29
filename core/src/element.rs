@@ -298,7 +298,7 @@ where
         _renderer: &Renderer,
         _limits: &layout::Limits,
     ) -> layout::Node {
-        todo!()
+        self.widget.layout(_tree, _renderer, _limits)
     }
 
     fn draw(
@@ -311,7 +311,9 @@ where
         _cursor: Cursor,
         _viewport: &Rectangle,
     ) {
-        todo!()
+        self.widget.draw(
+            _state, _renderer, _theme, _style, _layout, _cursor, _viewport,
+        );
     }
 }
 
