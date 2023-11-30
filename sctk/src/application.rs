@@ -1534,17 +1534,9 @@ where
     let size = if let Some((auto_size_w, auto_size_h, limits, dirty)) =
         auto_size_surfaces.remove(&id)
     {
-        let view: &mut dyn Widget<
-            <A as Program>::Message,
-            <A as Program>::Renderer,
-        > = view.as_widget_mut();
         // TODO would it be ok to diff against the current cache?
-        let _state = Widget::state(view);
-        view.diff(&mut Tree::empty());
-        let bounds = view
-            .layout(&mut Tree::empty(), renderer, &limits)
-            .bounds()
-            .size();
+        let mut tree = Tree::new(view.as_widget_mut());
+        let bounds = view.layout(&mut tree, renderer, &limits).bounds().size();
         // XXX add a small number to make sure it doesn't get truncated...
         let (w, h) = (
             (bounds.width.round()) as u32,
@@ -2074,10 +2066,9 @@ where
             ) => {
                 if let platform_specific::wayland::layer_surface::Action::LayerSurface{ mut builder, _phantom } = layer_surface_action {
                     if builder.size.is_none() {
-                        let mut e = application.view(builder.id);
-                        let _state = Widget::state(e.as_widget());
-                        e.as_widget_mut().diff(&mut Tree::empty());
-                        let node = Widget::layout(e.as_widget(), &mut Tree::empty(), renderer, &builder.size_limits);
+                        let e = application.view(builder.id);
+                        let mut tree = Tree::new(e.as_widget());
+                        let node = Widget::layout(e.as_widget(), &mut tree, renderer, &builder.size_limits);
                         let bounds = node.bounds();
                         let (w, h) = ((bounds.width.round()) as u32, (bounds.height.round()) as u32);
                         auto_size_surfaces.insert(SurfaceIdWrapper::LayerSurface(builder.id), (w, h, builder.size_limits, false));
@@ -2095,10 +2086,9 @@ where
             ) => {
                 if let platform_specific::wayland::window::Action::Window{ mut builder, _phantom } = window_action {
                     if builder.autosize {
-                        let mut e = application.view(builder.window_id);
-                        let _state = Widget::state(e.as_widget());
-                        e.as_widget_mut().diff(&mut Tree::empty());
-                        let node = Widget::layout(e.as_widget(), &mut Tree::empty(), renderer, &builder.size_limits);
+                        let e = application.view(builder.window_id);
+                        let mut tree = Tree::new(e.as_widget());
+                        let node = Widget::layout(e.as_widget(), &mut tree, renderer, &builder.size_limits);
                         let bounds = node.bounds();
                         let (w, h) = ((bounds.width.round()) as u32, (bounds.height.round()) as u32);
                         auto_size_surfaces.insert(SurfaceIdWrapper::Window(builder.window_id), (w, h, builder.size_limits, false));
@@ -2116,10 +2106,9 @@ where
             ) => {
                 if let popup::Action::Popup { mut popup, _phantom } = popup_action {
                     if popup.positioner.size.is_none() {
-                        let mut e = application.view(popup.id);
-                        let _state = Widget::state(e.as_widget());
-                        e.as_widget_mut().diff(&mut Tree::empty());
-                        let node = Widget::layout( e.as_widget(), &mut Tree::empty(), renderer, &popup.positioner.size_limits);
+                        let e = application.view(popup.id);
+                        let mut tree = Tree::new(e.as_widget());
+                        let node = Widget::layout( e.as_widget(), &mut tree, renderer, &popup.positioner.size_limits);
                         let bounds = node.bounds();
                         let (w, h) = ((bounds.width.round()) as u32, (bounds.height.round()) as u32);
                         auto_size_surfaces.insert(SurfaceIdWrapper::Popup(popup.id), (w, h, popup.positioner.size_limits, false));
