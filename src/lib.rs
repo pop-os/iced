@@ -212,7 +212,7 @@ pub use style::theme;
 pub use crate::core::alignment;
 pub use crate::core::gradient;
 pub use crate::core::{
-    color, layout::Limits, Alignment, Background, BorderRadius, Color,
+    color, id, layout::Limits, Alignment, Background, BorderRadius, Color,
     ContentFit, Degrees, Gradient, Length, Padding, Pixels, Point, Radians,
     Rectangle, Size, Vector,
 };
