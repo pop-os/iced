@@ -29,7 +29,7 @@ use iced_futures::{
         renderer::Style,
         time::Instant,
         widget::{
-            operation::{self, focusable::focus, OperationWrapper},
+            operation::{self, OperationWrapper},
             tree, Operation, Tree,
         },
         Widget,
@@ -48,7 +48,7 @@ use std::{
 use wayland_backend::client::ObjectId;
 use wayland_protocols::wp::viewporter::client::wp_viewport::WpViewport;
 
-use iced_graphics::{compositor, renderer, Compositor, Viewport};
+use iced_graphics::{compositor, Compositor, Viewport};
 use iced_runtime::{
     clipboard,
     command::{
@@ -822,7 +822,7 @@ where
                 // Dnd Surfaces are only drawn once
 
                 let id = wl_surface.id();
-                let (native_id, e, node) = match dnd_icon {
+                let (native_id, _e, node) = match dnd_icon {
                     DndIcon::Custom(id) => {
                         let mut e = application.view(id);
                         let state = e.as_widget().state();
@@ -1428,12 +1428,14 @@ where
                         });
                     }
                     Action::Focus => {
-                        commands.push(Command::widget(focus(
-                            iced_runtime::core::id::Id::from(u128::from(
-                                request.target.0,
-                            )
-                                as u64),
-                        )));
+                        commands.push(Command::widget(
+                            operation::focusable::focus(
+                                iced_runtime::core::id::Id::from(u128::from(
+                                    request.target.0,
+                                )
+                                    as u64),
+                            ),
+                        ));
                     }
                     Action::Blur => todo!(),
                     Action::Collapse => todo!(),
@@ -1664,10 +1666,6 @@ where
 
     pub(crate) fn set_frame(&mut self, frame: Option<WlSurface>) {
         self.frame = frame;
-    }
-
-    pub(crate) fn frame(&self) -> Option<&WlSurface> {
-        self.frame.as_ref()
     }
 
     pub(crate) fn first(&self) -> bool {

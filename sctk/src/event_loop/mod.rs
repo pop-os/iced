@@ -244,11 +244,11 @@ where
         surface: &WlSurface,
         app_id: Option<String>,
         surface_title: Option<String>,
-        role: iced_accessibility::accesskit::Role,
+        _role: iced_accessibility::accesskit::Role,
     ) -> adapter::IcedSctkAdapter {
         use iced_accessibility::{
             accesskit::{
-                Node, NodeBuilder, NodeClassSet, NodeId, Role, Tree, TreeUpdate,
+                NodeBuilder, NodeClassSet, NodeId, Role, Tree, TreeUpdate,
             },
             accesskit_unix::Adapter,
             window_node_id,

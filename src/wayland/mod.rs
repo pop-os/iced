@@ -1,5 +1,5 @@
 use crate::runtime::window::Id;
-use crate::{Command, Element, Executor, Settings, Subscription};
+use crate::{Command, Element, Executor, Settings as Settings_, Subscription};
 
 /// wayland sandbox
 pub mod sandbox;
@@ -119,7 +119,7 @@ pub trait Application: Sized {
     /// [`Error`] during startup.
     ///
     /// [`Error`]: crate::Error
-    fn run(settings: Settings<Self::Flags>) -> crate::Result
+    fn run(settings: Settings_<Self::Flags>) -> crate::Result
     where
         Self: 'static,
     {

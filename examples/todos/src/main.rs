@@ -1,7 +1,6 @@
 use iced::alignment::{self, Alignment};
 use iced::font::{self, Font};
-use iced::keyboard::{self, KeyCode, Modifiers};
-use iced::subscription;
+use iced::keyboard;
 use iced::theme::{self, Theme};
 use iced::widget::{
     self, button, checkbox, column, container, keyed_column, row, scrollable,

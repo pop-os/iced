@@ -18,7 +18,7 @@ use sctk::{
 use xkeysym::{key, RawKeysym};
 
 lazy_static::lazy_static! {
-    pub static ref key_conversion: HashMap<u32, KeyCode> = [
+    pub static ref KEY_CONVERSION: HashMap<u32, KeyCode> = [
         (key::_1, KeyCode::Key1), (key::_2, KeyCode::Key2), (key::_3, KeyCode::Key3), (key::_4, KeyCode::Key4), (key::_5, KeyCode::Key5), (key::_6, KeyCode::Key6), (key::_7, KeyCode::Key7), (key::_8, KeyCode::Key8), (key::_9, KeyCode::Key9), (key::_0, KeyCode::Key0),
         // Letters.
         (key::A, KeyCode::A), (key::a, KeyCode::A), (key::B, KeyCode::B), (key::b, KeyCode::B), (key::C, KeyCode::C), (key::c, KeyCode::C), (key::D, KeyCode::D), (key::d, KeyCode::D), (key::E, KeyCode::E), (key::e, KeyCode::E), (key::F, KeyCode::F), (key::f, KeyCode::F), (key::G, KeyCode::G), (key::g, KeyCode::G), (key::H, KeyCode::H), (key::h, KeyCode::H), (key::I, KeyCode::I), (key::i, KeyCode::I), (key::J, KeyCode::J), (key::j, KeyCode::J), (key::K, KeyCode::K), (key::k, KeyCode::K), (key::L, KeyCode::L), (key::l, KeyCode::L), (key::M, KeyCode::M), (key::m, KeyCode::M), (key::N, KeyCode::N), (key::n, KeyCode::N), (key::O, KeyCode::O), (key::o, KeyCode::O), (key::P, KeyCode::P), (key::p, KeyCode::P), (key::Q, KeyCode::Q), (key::q, KeyCode::Q), (key::R, KeyCode::R), (key::r, KeyCode::R), (key::S, KeyCode::S), (key::s, KeyCode::S), (key::T, KeyCode::T), (key::t, KeyCode::T), (key::U, KeyCode::U), (key::u, KeyCode::U), (key::V, KeyCode::V), (key::v, KeyCode::V), (key::W, KeyCode::W), (key::w, KeyCode::W), (key::X, KeyCode::X), (key::x, KeyCode::X), (key::Y, KeyCode::Y), (key::y, KeyCode::Y), (key::Z, KeyCode::Z), (key::z, KeyCode::Z),
@@ -156,7 +156,7 @@ pub fn modifiers_to_native(mods: Modifiers) -> keyboard::Modifiers {
 }
 
 pub fn keysym_to_vkey(keysym: RawKeysym) -> Option<KeyCode> {
-    key_conversion.get(&keysym).cloned()
+    KEY_CONVERSION.get(&keysym).cloned()
 }
 
 pub(crate) fn cursor_icon(cursor: Interaction) -> CursorIcon {

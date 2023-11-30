@@ -133,10 +133,8 @@ pub mod qr_code;
 pub use qr_code::QRCode;
 
 #[cfg(feature = "wayland")]
-#[doc(no_inline)]
 pub mod dnd_listener;
 #[cfg(feature = "wayland")]
-#[doc(no_inline)]
 pub mod dnd_source;
 
 type Renderer<Theme = style::Theme> = renderer::Renderer<Theme>;
