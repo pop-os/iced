@@ -109,7 +109,7 @@ where
     fn children(&self) -> Vec<widget::Tree> {
         vec![
             widget::Tree::new(&self.content),
-            widget::Tree::new(&self.tooltip as &dyn Widget<Message, _>),
+            widget::Tree::new(&self.tooltip as &dyn Widget<Message, Renderer>),
         ]
     }
 
@@ -121,8 +121,11 @@ where
         widget::tree::Tag::of::<State>()
     }
 
-    fn diff(&mut self, tree: &mut crate::core::widget::Tree) {
-        tree.diff_children(std::slice::from_mut(&mut self.content))
+    fn diff(&mut self, tree: &mut widget::Tree) {
+        tree.diff_children(&mut [
+            self.content.as_widget_mut(),
+            &mut self.tooltip,
+        ]);
     }
 
     fn width(&self) -> Length {
