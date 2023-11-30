@@ -598,7 +598,7 @@ pub fn draw<T, R>(
                 border_color: Color::TRANSPARENT,
             },
             if auto_angle {
-                gradient.angle = Radians::from(Degrees(180.0));
+                gradient.angle = Radians::from(Degrees(90.0));
                 gradient
             } else {
                 gradient
