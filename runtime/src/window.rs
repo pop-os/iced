@@ -23,9 +23,11 @@ use crate::futures::Subscription;
 ///
 /// In any case, this [`Subscription`] is useful to smoothly draw application-driven
 /// animations without missing any frames.
-pub fn frames() -> Subscription<Instant> {
+pub fn frames() -> Subscription<(Id, Instant)> {
     event::listen_raw(|event, _status| match event {
-        iced_core::Event::Window(_, Event::RedrawRequested(at)) => Some(at),
+        iced_core::Event::Window(id, Event::RedrawRequested(at)) => {
+            Some((id, at))
+        }
         _ => None,
     })
 }
