@@ -170,7 +170,11 @@ where
             u32::MAX,
             u32::MAX,
             |renderer, limits| {
-                self.content.as_widget().layout(tree, renderer, limits)
+                self.content.as_widget().layout(
+                    &mut tree.children[0],
+                    renderer,
+                    limits,
+                )
             },
         )
     }
