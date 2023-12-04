@@ -657,7 +657,7 @@ pub fn layout<Renderer>(
 /// accordingly.
 pub fn update<Message>(
     state: &mut State,
-    event: Event,
+    #[allow(unused_mut)] mut event: Event,
     layout: Layout<'_>,
     cursor: mouse::Cursor,
     clipboard: &mut dyn Clipboard,
@@ -698,6 +698,14 @@ pub fn update<Message>(
         };
 
         let translation = state.translation(direction, bounds, content_bounds);
+
+        #[cfg(feature = "wayland")]
+        if let Event::PlatformSpecific(
+            iced_runtime::core::event::PlatformSpecific::Wayland(e),
+        ) = &mut event
+        {
+            e.translate(translation);
+        }
 
         update_content(
             event.clone(),
