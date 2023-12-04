@@ -76,7 +76,7 @@ where
             padding: Self::DEFAULT_PADDING,
             text_size: None,
             text_line_height: text::LineHeight::default(),
-            text_shaping: text::Shaping::Basic,
+            text_shaping: text::Shaping::Advanced,
             font: None,
             handle: Handle::default(),
             style: Default::default(),
