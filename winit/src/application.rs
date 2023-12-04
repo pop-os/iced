@@ -331,7 +331,6 @@ async fn run_instance<A, E, C>(
     C: Compositor<Renderer = A::Renderer> + 'static,
     <A::Renderer as core::Renderer>::Theme: StyleSheet,
 {
-    use futures::stream::StreamExt;
     use winit::event;
     use winit::event_loop::ControlFlow;
 
