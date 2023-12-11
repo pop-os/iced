@@ -33,7 +33,8 @@ log.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
 window_clipboard.workspace = true
-winit.workspace = true
+winit = { git = "https://github.com/pop-os/winit.git", branch = "master" }
+
 
 sysinfo.workspace = true
 sysinfo.optional = true

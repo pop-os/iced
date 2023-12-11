@@ -172,6 +172,3 @@ web-sys = "=0.3.64"
 wgpu = "0.18"
 winapi = "0.3"
 window_clipboard = "0.3"
-[workspace.dependencies.winit]
-git = "https://github.com/pop-os/winit.git"
-branch = "master"
