@@ -929,6 +929,9 @@ where
                             | SctkEvent::SessionLocked
                             | SctkEvent::SessionLockFinished
                             | SctkEvent::SessionUnlocked
+                            | SctkEvent::PopupEvent { .. }
+                            | SctkEvent::LayerSurfaceEvent { .. }
+                            | SctkEvent::WindowEvent { .. }
                     );
                     if remove {
                         let event = sctk_events.remove(i);
