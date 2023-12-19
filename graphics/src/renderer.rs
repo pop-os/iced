@@ -142,6 +142,7 @@ where
     type Font = Font;
     type Paragraph = text::Paragraph;
     type Editor = text::Editor;
+    type Raw = text::Raw;
 
     const ICON_FONT: Font = Font::with_name("Iced-Icons");
     const CHECKMARK_ICON: char = '\u{f00c}';
@@ -187,6 +188,10 @@ where
             color,
             clip_bounds,
         });
+    }
+
+    fn fill_raw(&mut self, raw: Self::Raw) {
+        self.primitives.push(Primitive::RawText(raw));
     }
 
     fn fill_text(

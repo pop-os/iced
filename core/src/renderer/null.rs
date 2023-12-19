@@ -44,6 +44,7 @@ impl text::Renderer for Null {
     type Font = Font;
     type Paragraph = ();
     type Editor = ();
+    type Raw = ();
 
     const ICON_FONT: Font = Font::DEFAULT;
     const CHECKMARK_ICON: char = '0';
@@ -76,6 +77,8 @@ impl text::Renderer for Null {
         _clip_bounds: Rectangle,
     ) {
     }
+
+    fn fill_raw(&mut self, _raw: Self::Raw) {}
 
     fn fill_text(
         &mut self,

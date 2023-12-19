@@ -23,8 +23,7 @@ pub use geometry::Geometry;
 use crate::core::renderer;
 use crate::core::text::{self, Text};
 use crate::core::{Background, Color, Font, Pixels, Point, Rectangle, Vector};
-use crate::graphics::text::Editor;
-use crate::graphics::text::Paragraph;
+use crate::graphics::text::{Editor, Paragraph, Raw};
 use crate::graphics::Mesh;
 
 use std::borrow::Cow;
@@ -152,6 +151,7 @@ impl<T> text::Renderer for Renderer<T> {
     type Font = Font;
     type Paragraph = Paragraph;
     type Editor = Editor;
+    type Raw = Raw;
 
     const ICON_FONT: Font = iced_tiny_skia::Renderer::<T>::ICON_FONT;
     const CHECKMARK_ICON: char = iced_tiny_skia::Renderer::<T>::CHECKMARK_ICON;
@@ -196,6 +196,10 @@ impl<T> text::Renderer for Renderer<T> {
             renderer,
             renderer.fill_editor(editor, position, color, clip_bounds)
         );
+    }
+
+    fn fill_raw(&mut self, raw: Self::Raw) {
+        delegate!(self, renderer, renderer.fill_raw(raw));
     }
 
     fn fill_text(
