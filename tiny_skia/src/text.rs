@@ -83,18 +83,20 @@ impl Pipeline {
 
         let mut font_system = font_system().write().expect("Write font system");
 
-        draw(
-            font_system.raw(),
-            &mut self.glyph_cache,
-            editor.buffer(),
-            Rectangle::new(position, editor.bounds()),
-            color,
-            alignment::Horizontal::Left,
-            alignment::Vertical::Top,
-            scale_factor,
-            pixels,
-            clip_mask,
-        );
+        editor.with_buffer(|buffer| {
+            draw(
+                font_system.raw(),
+                &mut self.glyph_cache,
+                buffer,
+                Rectangle::new(position, editor.bounds()),
+                color,
+                alignment::Horizontal::Left,
+                alignment::Vertical::Top,
+                scale_factor,
+                pixels,
+                clip_mask,
+            );
+        });
     }
 
     pub fn draw_cached(
