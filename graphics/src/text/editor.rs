@@ -30,12 +30,13 @@ impl Editor {
         Self::default()
     }
 
-    /// Runs a closure with the buffer of the [`Editor`].
-    pub fn with_buffer<F: FnOnce(&cosmic_text::Buffer) -> T, T>(
-        &self,
-        f: F,
-    ) -> T {
-        self.internal().editor.with_buffer(f)
+    /// Returns the buffer of the [`Editor`].
+    pub fn buffer(&self) -> &cosmic_text::Buffer {
+        match self.internal().editor.buffer_ref() {
+            cosmic_text::BufferRef::Owned(buffer) => buffer,
+            cosmic_text::BufferRef::Borrowed(buffer) => buffer,
+            cosmic_text::BufferRef::Arc(buffer) => buffer,
+        }
     }
 
     /// Creates a [`Weak`] reference to the [`Editor`].
@@ -86,16 +87,14 @@ impl editor::Editor for Editor {
     }
 
     fn line(&self, index: usize) -> Option<&str> {
-        let buffer = match self.internal().editor.buffer_ref() {
-            cosmic_text::BufferRef::Owned(buffer) => buffer,
-            cosmic_text::BufferRef::Borrowed(buffer) => buffer,
-            cosmic_text::BufferRef::Arc(buffer) => buffer,
-        };
-        buffer.lines.get(index).map(cosmic_text::BufferLine::text)
+        self.buffer()
+            .lines
+            .get(index)
+            .map(cosmic_text::BufferLine::text)
     }
 
     fn line_count(&self) -> usize {
-        self.with_buffer(|buffer| buffer.lines.len())
+        self.buffer().lines.len()
     }
 
     fn selection(&self) -> Option<String> {
