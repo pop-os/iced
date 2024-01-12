@@ -173,7 +173,7 @@ pub trait Renderer: crate::Renderer {
     /// The [`Editor`] of this [`Renderer`].
     type Editor: Editor<Font = Self::Font> + 'static;
 
-    /// The [`Raw`] of this [`Renderer`].
+    /// The Raw of this [`Renderer`].
     type Raw;
 
     /// The icon font of the backend.
@@ -218,7 +218,7 @@ pub trait Renderer: crate::Renderer {
         clip_bounds: Rectangle,
     );
 
-    /// Draws the given [`Raw`]
+    /// Draws the given Raw
     fn fill_raw(&mut self, raw: Self::Raw);
 
     /// Draws the given [`Text`] at the given position and with the given
