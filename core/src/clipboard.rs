@@ -8,6 +8,14 @@ pub trait Clipboard {
 
     /// Writes the given text contents to the [`Clipboard`].
     fn write(&mut self, contents: String);
+
+    #[cfg(target_family = "unix")]
+    /// Reads the current content of Primary as text.
+    fn read_primary(&self) -> Option<String>;
+
+    #[cfg(target_family = "unix")]
+    /// Writes the given text contents to Primary.
+    fn write_primary(&mut self, contents: String);
 }
 
 /// A null implementation of the [`Clipboard`] trait.
@@ -20,4 +28,12 @@ impl Clipboard for Null {
     }
 
     fn write(&mut self, _contents: String) {}
+
+    #[cfg(target_family = "unix")]
+    fn read_primary(&self) -> Option<String> {
+        None
+    }
+
+    #[cfg(target_family = "unix")]
+    fn write_primary(&mut self, _contents: String) {}
 }

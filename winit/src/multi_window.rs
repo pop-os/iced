@@ -982,6 +982,19 @@ fn run_command<A, C, E>(
                     clipboard.write(contents);
                 }
             },
+            #[cfg(target_family = "unix")]
+            command::Action::ClipboardPrimary(action) => match action {
+                clipboard::Action::Read(tag) => {
+                    let message = tag(clipboard.read_primary());
+
+                    proxy
+                        .send_event(UserEventWrapper::Message(message))
+                        .expect("Send message to event loop");
+                }
+                clipboard::Action::Write(contents) => {
+                    clipboard.write_primary(contents);
+                }
+            },
             command::Action::Window(action) => match action {
                 window::Action::Spawn(id, settings) => {
                     let monitor = window_manager.last_monitor();
