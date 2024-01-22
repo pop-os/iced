@@ -53,15 +53,15 @@ pub fn write<Message>(contents: String) -> Command<Message> {
 }
 
 /// Read the current contents of primary.
-#[cfg(target_family = "unix")]
 pub fn read_primary<Message>(
     f: impl Fn(Option<String>) -> Message + 'static,
 ) -> Command<Message> {
-    Command::single(command::Action::ClipboardPrimary(Action::Read(Box::new(f))))
+    Command::single(command::Action::ClipboardPrimary(Action::Read(Box::new(
+        f,
+    ))))
 }
 
 /// Write the given contents to primary.
-#[cfg(target_family = "unix")]
 pub fn write_primary<Message>(contents: String) -> Command<Message> {
     Command::single(command::Action::ClipboardPrimary(Action::Write(contents)))
 }

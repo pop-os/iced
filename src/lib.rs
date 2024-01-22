@@ -223,10 +223,9 @@ pub use crate::core::{
 
 pub mod clipboard {
     //! Access the clipboard.
-    pub use crate::runtime::clipboard::{read, write};
-    
-    #[cfg(target_family = "unix")]
-    pub use crate::runtime::clipboard::{read_primary, write_primary};
+    pub use crate::runtime::clipboard::{
+        read, read_primary, write, write_primary,
+    };
 }
 
 pub mod executor {

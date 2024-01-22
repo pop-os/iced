@@ -58,7 +58,6 @@ impl Clipboard {
     }
 
     /// Reads the current content of the [`Clipboard`] as text.
-    #[cfg(target_family = "unix")]
     pub fn read_primary(&self) -> Option<String> {
         match &self.state {
             State::Connected(clipboard) => {
@@ -70,7 +69,6 @@ impl Clipboard {
     }
 
     /// Writes the given text contents to the [`Clipboard`].
-    #[cfg(target_family = "unix")]
     pub fn write_primary(&mut self, contents: String) {
         match &mut self.state {
             State::Connected(clipboard) => {
@@ -90,12 +88,10 @@ impl iced_runtime::core::clipboard::Clipboard for Clipboard {
         self.write(contents)
     }
 
-    #[cfg(target_family = "unix")]
     fn read_primary(&self) -> Option<String> {
         self.read_primary()
     }
 
-    #[cfg(target_family = "unix")]
     fn write_primary(&mut self, contents: String) {
         self.write_primary(contents)
     }
@@ -114,7 +110,6 @@ pub fn write<Message>(contents: String) -> Command<Message> {
 }
 
 /// Read the current contents of the clipboard.
-#[cfg(target_family = "unix")]
 pub fn read_primary<Message>(
     f: impl Fn(Option<String>) -> Message + 'static,
 ) -> Command<Message> {
@@ -124,7 +119,6 @@ pub fn read_primary<Message>(
 }
 
 /// Write the given contents to the clipboard.
-#[cfg(target_family = "unix")]
 pub fn write_primary<Message>(contents: String) -> Command<Message> {
     Command::single(command::Action::ClipboardPrimary(Action::Write(contents)))
 }

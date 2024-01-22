@@ -982,7 +982,6 @@ fn run_command<A, C, E>(
                     clipboard.write(contents);
                 }
             },
-            #[cfg(target_family = "unix")]
             command::Action::ClipboardPrimary(action) => match action {
                 clipboard::Action::Read(tag) => {
                     let message = tag(clipboard.read_primary());

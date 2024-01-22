@@ -27,7 +27,6 @@ pub enum Action<T> {
     Clipboard(clipboard::Action<T>),
 
     /// Run a clipboard action on primary.
-    #[cfg(target_family = "unix")]
     ClipboardPrimary(clipboard::Action<T>),
 
     /// Run a window action.
@@ -70,7 +69,6 @@ impl<T> Action<T> {
             Self::Future(future) => Action::Future(Box::pin(future.map(f))),
             Self::Stream(stream) => Action::Stream(Box::pin(stream.map(f))),
             Self::Clipboard(action) => Action::Clipboard(action.map(f)),
-            #[cfg(target_family = "unix")]
             Self::ClipboardPrimary(action) => {
                 Action::ClipboardPrimary(action.map(f))
             }
@@ -98,7 +96,6 @@ impl<T> fmt::Debug for Action<T> {
             Self::Clipboard(action) => {
                 write!(f, "Action::Clipboard({action:?})")
             }
-            #[cfg(target_family = "unix")]
             Self::ClipboardPrimary(action) => {
                 write!(f, "Action::ClipboardPrimary({action:?})")
             }
