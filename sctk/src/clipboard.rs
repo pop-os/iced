@@ -56,6 +56,27 @@ impl Clipboard {
             State::Unavailable => {}
         }
     }
+
+    /// Reads the current content of the [`Clipboard`] as text.
+    pub fn read_primary(&self) -> Option<String> {
+        match &self.state {
+            State::Connected(clipboard) => {
+                let clipboard = clipboard.lock().unwrap();
+                clipboard.load_primary().ok()
+            }
+            State::Unavailable => None,
+        }
+    }
+
+    /// Writes the given text contents to the [`Clipboard`].
+    pub fn write_primary(&mut self, contents: String) {
+        match &mut self.state {
+            State::Connected(clipboard) => {
+                clipboard.lock().unwrap().store_primary(contents)
+            }
+            State::Unavailable => {}
+        }
+    }
 }
 
 impl iced_runtime::core::clipboard::Clipboard for Clipboard {
@@ -65,6 +86,14 @@ impl iced_runtime::core::clipboard::Clipboard for Clipboard {
 
     fn write(&mut self, contents: String) {
         self.write(contents)
+    }
+
+    fn read_primary(&self) -> Option<String> {
+        self.read_primary()
+    }
+
+    fn write_primary(&mut self, contents: String) {
+        self.write_primary(contents)
     }
 }
 
@@ -78,4 +107,18 @@ pub fn read<Message>(
 /// Write the given contents to the clipboard.
 pub fn write<Message>(contents: String) -> Command<Message> {
     Command::single(command::Action::Clipboard(Action::Write(contents)))
+}
+
+/// Read the current contents of the clipboard.
+pub fn read_primary<Message>(
+    f: impl Fn(Option<String>) -> Message + 'static,
+) -> Command<Message> {
+    Command::single(command::Action::ClipboardPrimary(Action::Read(Box::new(
+        f,
+    ))))
+}
+
+/// Write the given contents to the clipboard.
+pub fn write_primary<Message>(contents: String) -> Command<Message> {
+    Command::single(command::Action::ClipboardPrimary(Action::Write(contents)))
 }
