@@ -22,7 +22,7 @@ enum-repr = "0.2"
 futures = "0.3"
 wayland-backend = {version = "0.3.1", features = ["client_system"]}
 float-cmp = "0.9"
-smithay-clipboard = "0.6"
+smithay-clipboard = "0.7.0"
 accesskit = { version = "0.8.1", optional = true }
 accesskit_unix = { version = "0.1.1", optional = true }
 itertools = "0.10"
