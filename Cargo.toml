@@ -138,7 +138,7 @@ bytemuck = { version = "1.0", features = ["derive"] }
 cosmic-text = { git = "https://github.com/pop-os/cosmic-text.git", rev = "1b025ae" }
 futures = "0.3"
 glam = "0.24"
-glyphon = { git = "https://github.com/wash2/glyphon.git", tag = "cosmic-0.5" }
+glyphon = { git = "https://github.com/pop-os/glyphon.git", tag = "cosmic-0.5-wgpu" }
 guillotiere = "0.6"
 half = "2.2"
 image = "0.24"
@@ -172,7 +172,9 @@ wasm-timer = "0.2"
 wayland-protocols = { version = "0.31.0", features = [ "staging"]}
 web-sys = "0.3"
 web-time = "0.2"
-wgpu = "0.19"
+# wgpu = "0.19"
+# Newer wgpu commit that fixes Vulkan backend on Nvidia
+wgpu = { git = "https://github.com/gfx-rs/wgpu", rev = "20fda69" }
 winapi = "0.3"
 window_clipboard = "0.4"
 winit = { git = "https://github.com/iced-rs/winit.git", rev = "b91e39ece2c0d378c3b80da7f3ab50e17bb798a5" }
