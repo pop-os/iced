@@ -419,9 +419,7 @@ where
         cursor: mouse::Cursor,
     ) -> iced_accessibility::A11yTree {
         use iced_accessibility::{
-            accesskit::{
-                Action, CheckedState, NodeBuilder, NodeId, Rect, Role,
-            },
+            accesskit::{Action, Checked, NodeBuilder, NodeId, Rect, Role},
             A11yNode, A11yTree,
         };
 
@@ -462,10 +460,10 @@ where
             }
             None => {}
         }
-        node.set_checked_state(if self.is_toggled {
-            CheckedState::True
+        node.set_checked(if self.is_toggled {
+            Checked::True
         } else {
-            CheckedState::False
+            Checked::False
         });
         if is_hovered {
             node.set_hovered();

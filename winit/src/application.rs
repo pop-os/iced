@@ -387,10 +387,11 @@ async fn run_instance<A, E, C>(
                     let mut node = NodeBuilder::new(Role::Window);
                     node.set_name(title.clone());
                     let node = node.build(&mut iced_accessibility::accesskit::NodeClassSet::lock_global());
+                    let root = NodeId(node_id);
                     TreeUpdate {
-                        nodes: vec![(NodeId(node_id), node)],
-                        tree: Some(Tree::new(NodeId(node_id))),
-                        focus: None,
+                        nodes: vec![(root, node)],
+                        tree: Some(Tree::new(root)),
+                        focus: root,
                     }
                 },
                 proxy.clone(),
@@ -409,17 +410,6 @@ async fn run_instance<A, E, C>(
             ) if !redraw_pending => {
                 window.request_redraw();
                 redraw_pending = true;
-            }
-            event::Event::PlatformSpecific(event::PlatformSpecific::MacOS(
-                event::MacOS::ReceivedUrl(url),
-            )) => {
-                use crate::core::event;
-
-                events.push(Event::PlatformSpecific(
-                    event::PlatformSpecific::MacOS(event::MacOS::ReceivedUrl(
-                        url,
-                    )),
-                ));
             }
             event::Event::PlatformSpecific(event::PlatformSpecific::MacOS(
                 event::MacOS::ReceivedUrl(url),
@@ -617,8 +607,9 @@ async fn run_instance<A, E, C>(
                     // TODO maybe optimize this?
                     let focus = focus
                         .filter(|f_id| window_tree.contains(f_id))
-                        .map(|id| id.into());
-                    adapter.update(TreeUpdate {
+                        .map(|id| id.into())
+                        .unwrap_or_else(|| tree.root);
+                    adapter.update_if_active(|| TreeUpdate {
                         nodes: window_tree.into(),
                         tree: Some(tree),
                         focus,

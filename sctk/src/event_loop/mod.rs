@@ -259,9 +259,6 @@ where
         let event_list = self.a11y_events.clone();
         adapter::IcedSctkAdapter {
             adapter: Adapter::new(
-                app_id.unwrap_or_else(|| String::from("None")),
-                "Iced".to_string(),
-                env!("CARGO_PKG_VERSION").to_string(),
                 move || {
                     event_list
                         .lock()
@@ -272,18 +269,18 @@ where
                         node.set_name(name);
                     }
                     let node = node.build(&mut NodeClassSet::lock_global());
+                    let root = NodeId(node_id);
                     TreeUpdate {
-                        nodes: vec![(NodeId(node_id), node)],
-                        tree: Some(Tree::new(NodeId(node_id))),
-                        focus: None,
+                        nodes: vec![(root, node)],
+                        tree: Some(Tree::new(root)),
+                        focus: root,
                     }
                 },
                 Box::new(adapter::IcedSctkActionHandler {
                     wl_surface: surface.clone(),
                     event_list: self.a11y_events.clone(),
                 }),
-            )
-            .unwrap(),
+            ),
             id: node_id,
         }
     }

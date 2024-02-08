@@ -2,10 +2,7 @@ use crate::sctk_event::ActionRequestEvent;
 use iced_accessibility::{accesskit, accesskit_unix};
 use sctk::reexports::client::protocol::wl_surface::WlSurface;
 use sctk::reexports::client::Proxy;
-use std::{
-    num::NonZeroU128,
-    sync::{Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
 
 pub enum A11yWrapper {
     Enabled,
@@ -13,7 +10,7 @@ pub enum A11yWrapper {
 }
 
 pub struct IcedSctkAdapter {
-    pub(crate) id: NonZeroU128,
+    pub(crate) id: u64,
     pub(crate) adapter: accesskit_unix::Adapter,
 }
 
@@ -22,7 +19,7 @@ pub struct IcedSctkActionHandler {
     pub(crate) event_list: Arc<Mutex<Vec<A11yWrapper>>>,
 }
 impl accesskit::ActionHandler for IcedSctkActionHandler {
-    fn do_action(&self, request: accesskit::ActionRequest) {
+    fn do_action(&mut self, request: accesskit::ActionRequest) {
         let mut event_list = self.event_list.lock().unwrap();
         event_list.push(A11yWrapper::Event(
             crate::sctk_event::ActionRequestEvent {

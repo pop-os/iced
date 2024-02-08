@@ -8,7 +8,7 @@ publish = false
 [dependencies]
 iced.workspace = true
 iced_core.workspace = true
-iced.features = ["async-std", "debug", "winit"]
+iced.features = ["async-std", "debug", "winit", "a11y"]
 
 once_cell.workspace = true
 serde = { version = "1.0", features = ["derive"] }

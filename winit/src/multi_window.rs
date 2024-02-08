@@ -377,10 +377,11 @@ async fn run_instance<A, E, C>(
                     let mut node = NodeBuilder::new(Role::Window);
                     node.set_name(title.clone());
                     let node = node.build(&mut iced_accessibility::accesskit::NodeClassSet::lock_global());
+                    let root = NodeId(node_id);
                     TreeUpdate {
-                        nodes: vec![(NodeId(node_id), node)],
-                        tree: Some(Tree::new(NodeId(node_id))),
-                        focus: None,
+                        nodes: vec![(root, node)],
+                        tree: Some(Tree::new(root)),
+                        focus: root,
                     }
                 },
                 proxy.clone(),

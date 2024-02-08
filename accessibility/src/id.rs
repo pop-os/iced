@@ -1,12 +1,12 @@
 //! Widget and Window IDs.
 
+use std::borrow;
 use std::hash::Hash;
 use std::sync::atomic::{self, AtomicU64};
-use std::{borrow, num::NonZeroU128};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum A11yId {
-    Window(NonZeroU128),
+    Window(u64),
     Widget(Id),
 }
 
@@ -20,8 +20,8 @@ pub enum A11yId {
 //     }
 // }
 
-impl From<NonZeroU128> for A11yId {
-    fn from(id: NonZeroU128) -> Self {
+impl From<u64> for A11yId {
+    fn from(id: u64) -> Self {
         Self::Window(id)
     }
 }
@@ -46,8 +46,8 @@ impl IdEq for A11yId {
 
 impl From<accesskit::NodeId> for A11yId {
     fn from(value: accesskit::NodeId) -> Self {
-        let val = u128::from(value.0);
-        if val > u64::MAX as u128 {
+        let val = u64::from(value.0);
+        if val > u32::MAX as u64 {
             Self::Window(value.0)
         } else {
             Self::Widget(Id::from(val as u64))
@@ -110,13 +110,11 @@ impl From<u64> for Id {
 }
 
 // Not meant to be used directly
-impl From<Id> for NonZeroU128 {
-    fn from(val: Id) -> NonZeroU128 {
+impl From<Id> for u64 {
+    fn from(val: Id) -> u64 {
         match &val.0 {
-            Internal::Unique(id) => NonZeroU128::try_from(*id as u128).unwrap(),
-            Internal::Custom(id, _) => {
-                NonZeroU128::try_from(*id as u128).unwrap()
-            }
+            Internal::Unique(id) => *id,
+            Internal::Custom(id, _) => *id,
             // this is a set id, which is not a valid id and will not ever be converted to a NonZeroU128
             // so we panic
             Internal::Set(_) => {
@@ -136,14 +134,11 @@ impl ToString for Id {
     }
 }
 
-// XXX WIndow IDs are made unique by adding u64::MAX to them
+// XXX WIndow IDs are made unique by adding u32::MAX to them
 /// get window node id that won't conflict with other node ids for the duration of the program
-pub fn window_node_id() -> NonZeroU128 {
-    std::num::NonZeroU128::try_from(
-        u64::MAX as u128
-            + NEXT_WINDOW_ID.fetch_add(1, atomic::Ordering::Relaxed) as u128,
-    )
-    .unwrap()
+pub fn window_node_id() -> u64 {
+    u32::MAX as u64
+        + NEXT_WINDOW_ID.fetch_add(1, atomic::Ordering::Relaxed) as u64
 }
 
 // TODO refactor to make panic impossible?

@@ -1347,8 +1347,9 @@ where
                         );
                         let focus = focus
                             .filter(|f_id| window_tree.contains(f_id))
-                            .map(|id| id.into());
-                        adapter.adapter.update(TreeUpdate {
+                            .map(|id| id.into())
+                            .unwrap_or_else(|| tree.root);
+                        adapter.adapter.update_if_active(|| TreeUpdate {
                             nodes: window_tree.into(),
                             tree: Some(tree),
                             focus,
@@ -1459,8 +1460,6 @@ where
                     Action::Increment => todo!(),
                     Action::HideTooltip => todo!(),
                     Action::ShowTooltip => todo!(),
-                    Action::InvalidateTree => todo!(),
-                    Action::LoadInlineTextBoxes => todo!(),
                     Action::ReplaceSelectedText => todo!(),
                     Action::ScrollBackward => todo!(),
                     Action::ScrollDown => todo!(),
