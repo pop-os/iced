@@ -533,8 +533,6 @@ async fn run_instance<A, E, C>(
                     mouse_interaction = new_mouse_interaction;
                 }
 
-                window.request_redraw();
-
                 redraw_pending = false;
 
                 let physical_size = state.physical_size();
