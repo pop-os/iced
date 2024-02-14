@@ -3,7 +3,7 @@ use crate::sctk_event::ActionRequestEvent;
 use crate::{
     clipboard::Clipboard,
     commands::{layer_surface::get_layer_surface, window::get_window},
-    dpi::{LogicalPosition, LogicalSize, PhysicalPosition, PhysicalSize},
+    dpi::{LogicalPosition, PhysicalPosition},
     error::{self, Error},
     event_loop::{
         control_flow::ControlFlow, proxy, state::SctkState, SctkEventLoop,
@@ -43,14 +43,8 @@ use sctk::{
     seat::{keyboard::Modifiers, pointer::PointerEventKind},
 };
 use std::{
-    borrow::BorrowMut,
-    collections::HashMap,
-    hash::Hash,
-    marker::PhantomData,
-    os::raw::c_void,
-    ptr::NonNull,
-    sync::{Arc, Mutex},
-    time::Duration,
+    collections::HashMap, hash::Hash, marker::PhantomData, os::raw::c_void,
+    ptr::NonNull, time::Duration,
 };
 use wayland_backend::client::ObjectId;
 use wayland_protocols::wp::viewporter::client::wp_viewport::WpViewport;
@@ -65,7 +59,7 @@ use iced_runtime::{
             wayland::{data_device::DndIcon, popup},
         },
     },
-    core::{mouse::Interaction, Color, Point, Renderer, Size},
+    core::{mouse::Interaction, Color, Point, Size},
     multi_window::Program,
     system, user_interface,
     window::Id as SurfaceId,
@@ -74,9 +68,9 @@ use iced_runtime::{
 use iced_style::application::{self, StyleSheet};
 use itertools::Itertools;
 use raw_window_handle::{
-    DisplayHandle, HandleError, HasDisplayHandle, HasRawDisplayHandle,
-    HasRawWindowHandle, HasWindowHandle, RawDisplayHandle, RawWindowHandle,
-    WaylandDisplayHandle, WaylandWindowHandle, WindowHandle,
+    DisplayHandle, HandleError, HasDisplayHandle, HasWindowHandle,
+    RawDisplayHandle, RawWindowHandle, WaylandDisplayHandle,
+    WaylandWindowHandle, WindowHandle,
 };
 use std::mem::ManuallyDrop;
 
@@ -116,11 +110,11 @@ pub struct SurfaceDisplayWrapper {
 
 impl HasDisplayHandle for SurfaceDisplayWrapper {
     fn display_handle(&self) -> Result<DisplayHandle, HandleError> {
-        let mut ptr = self.backend.display_ptr() as *mut c_void;
+        let ptr = self.backend.display_ptr() as *mut c_void;
         let Some(ptr) = NonNull::new(ptr) else {
             return Err(HandleError::Unavailable);
         };
-        let mut display_handle = WaylandDisplayHandle::new(ptr);
+        let display_handle = WaylandDisplayHandle::new(ptr);
         Ok(unsafe {
             DisplayHandle::borrow_raw(RawDisplayHandle::Wayland(display_handle))
         })
@@ -298,6 +292,7 @@ where
         init_command,
         exit_on_close_request,
         qh,
+        settings.control_flow_timeout,
     ));
 
     let mut context = task::Context::from_waker(task::noop_waker_ref());
@@ -352,6 +347,7 @@ async fn run_instance<A, E, C>(
     init_command: Command<A::Message>,
     exit_on_close_request: bool,
     queue_handle: QueueHandle<SctkState<<A as Program>::Message>>,
+    wait: Option<Duration>,
 ) -> Result<(), Error>
 where
     A: Application + 'static,
@@ -527,6 +523,12 @@ where
                                     compositor.configure_surface(&mut c_surface, configure.new_size.0.unwrap().get(), configure.new_size.1.unwrap().get());
                                     state.surface = Some(c_surface);
                                 }
+                                if let Some((w, h, _, is_dirty)) = auto_size_surfaces.get_mut(id) {
+                                    *is_dirty = first || *w != configure.new_size.0.map(|w| w.get()).unwrap_or_default() || *h != configure.new_size.1.map(|h| h.get()).unwrap_or_default();
+                                    state.set_logical_size(*w as f32, *h as f32);
+                                } else {
+                                    state.set_logical_size(configure.new_size.0.unwrap().get() as f32 , configure.new_size.1.unwrap().get() as f32);
+                                }
                                 if first {
                                     let user_interface = build_user_interface(
                                         &application,
@@ -541,14 +543,6 @@ where
                                     );
                                     interfaces.insert(id.inner(), user_interface);
                                 }
-                                if let Some((w, h, _, dirty)) = auto_size_surfaces.get_mut(id) {
-                                    if *w == configure.new_size.0.unwrap().get() && *h == configure.new_size.1.unwrap().get() {
-                                        *dirty = false;
-                                    } else {
-                                        continue;
-                                    }
-                                }
-                                state.set_logical_size(configure.new_size.0.unwrap().get() as f64 , configure.new_size.1.unwrap().get() as f64);
                             }
                         }
                         crate::sctk_event::WindowEventVariant::ScaleFactorChanged(sf, viewport) => {
@@ -607,6 +601,15 @@ where
                                      compositor.configure_surface(&mut c_surface, configure.new_size.0, configure.new_size.1);
                                      state.surface = Some(c_surface);
                                 };
+                                if let Some((w, h, _, is_dirty)) = auto_size_surfaces.get_mut(id) {
+                                    *is_dirty = first || *w != configure.new_size.0 || *h != configure.new_size.1;
+                                    state.set_logical_size(*w as f32, *h as f32);
+                                } else {
+                                    state.set_logical_size(
+                                        configure.new_size.0 as f32,
+                                        configure.new_size.1 as f32,
+                                    );
+                                }
                                 if first {
                                     let user_interface = build_user_interface(
                                         &application,
@@ -620,19 +623,6 @@ where
                                         &mut ev_proxy
                                     );
                                     interfaces.insert(id.inner(), user_interface);
-                                }
-                                if let Some((w, h, _, dirty)) = auto_size_surfaces.get_mut(id) {
-                                    if *w == configure.new_size.0 && *h == configure.new_size.1 {
-                                        *dirty = false;
-                                    } else {
-                                        continue;
-                                    }
-                                }
-                                if let Some(state) = states.get_mut(&id.inner()) {
-                                    state.set_logical_size(
-                                        configure.new_size.0 as f64,
-                                        configure.new_size.1 as f64,
-                                    );
                                 }
                             }
                         }
@@ -658,8 +648,6 @@ where
                                 backend: backend.clone(),
                                 wl_surface
                             }));
-
-
                         }
                         PopupEventVariant::Done => {
                             if let Some(surface_id) = surface_ids.remove(&wl_surface.id()) {
@@ -683,6 +671,15 @@ where
 
                                     state.surface = Some(c_surface);
                                 }
+                                if let Some((w, h, _, is_dirty)) = auto_size_surfaces.get_mut(id) {
+                                        *is_dirty |= first || *w != configure.width as u32 || *h != configure.height as u32;
+                                        state.set_logical_size(*w as f32, *h as f32);
+                                } else {
+                                    state.set_logical_size(
+                                        configure.width as f32,
+                                        configure.height as f32,
+                                    );
+                                };
                                 if first {
                                     let user_interface = build_user_interface(
                                         &application,
@@ -697,33 +694,20 @@ where
                                     );
                                     interfaces.insert(id.inner(), user_interface);
                                 }
-                                if let Some((w, h, _, dirty)) = auto_size_surfaces.get_mut(id) {
-                                    if *w == configure.width as u32 && *h == configure.height as u32 {
-                                        *dirty = false;
-                                    } else {
-                                        continue;
-                                    }
-                                }
-                                state.set_logical_size(
-                                    configure.width as f64,
-                                    configure.height as f64,
-                                );
                             }
                         }
                         PopupEventVariant::RepositionionedPopup { .. } => {}
                         PopupEventVariant::Size(width, height) => {
                             if let Some(id) = surface_ids.get(&wl_surface.id()) {
                                 if let Some(state) = states.get_mut(&id.inner()) {
-                                    state.set_logical_size(
-                                        width as f64,
-                                        height as f64,
-                                    );
-                                }
-                                if let Some((w, h, _, dirty)) = auto_size_surfaces.get_mut(id) {
-                                    if *w == width && *h == height {
-                                        *dirty = false;
+                                    if let Some((w, h, _, is_dirty)) = auto_size_surfaces.get_mut(id) {
+                                        *is_dirty = *w != width || *h != height;
+                                        state.set_logical_size(*w as f32, *h as f32);
                                     } else {
-                                        continue;
+                                        state.set_logical_size(
+                                            width as f32,
+                                            height as f32,
+                                        );
                                     }
                                 }
                             }
@@ -791,7 +775,7 @@ where
                                 interfaces.insert(id.inner(), user_interface);
                             }
 
-                            state.set_logical_size(configure.new_size.0 as f64 , configure.new_size.1 as f64);
+                            state.set_logical_size(configure.new_size.0 as f32 , configure.new_size.1 as f32);
                         }
 
                     }
@@ -854,8 +838,8 @@ where
 
                 let bounds = node.bounds();
                 let (w, h) = (
-                    (bounds.width.round()) as u32,
-                    (bounds.height.round()) as u32,
+                    (bounds.width.ceil()) as u32,
+                    (bounds.height.ceil()) as u32,
                 );
                 if w == 0 || h == 0 {
                     error!("Dnd surface has zero size, ignoring");
@@ -883,7 +867,7 @@ where
                     wrapper,
                 );
                 state.surface = Some(c_surface);
-                state.set_logical_size(w as f64, h as f64);
+                state.set_logical_size(w as f32, h as f32);
                 let mut user_interface = build_user_interface(
                     &application,
                     user_interface::Cache::default(),
@@ -1182,8 +1166,8 @@ where
                                             *dirty || {
                                                 let Size { width, height } =
                                                     s.logical_size();
-                                                width.round() as u32 != *w
-                                                    || height.round() as u32
+                                                width.ceil() as u32 != *w
+                                                    || height.ceil() as u32
                                                         != *h
                                             }
                                         })
@@ -1246,10 +1230,14 @@ where
                             });
                     }
                     if !sent_control_flow {
-                        let mut wait_500_ms = Instant::now();
-                        wait_500_ms += Duration::from_millis(250);
-                        _ = control_sender
-                            .start_send(ControlFlow::WaitUntil(wait_500_ms));
+                        if let Some(d) = wait {
+                            let mut wait_until = Instant::now();
+                            wait_until += d;
+                            _ = control_sender
+                                .start_send(ControlFlow::WaitUntil(wait_until));
+                        } else {
+                            _ = control_sender.start_send(ControlFlow::Wait);
+                        }
                     }
                     redraw_pending = false;
                 }
@@ -1358,7 +1346,7 @@ where
 
                     if state.viewport_changed() {
                         let physical_size = state.physical_size();
-                        let logical_size = state.logical_size();
+                        let mut logical_size = state.logical_size();
                         compositor.configure_surface(
                             &mut comp_surface,
                             physical_size.width,
@@ -1366,6 +1354,11 @@ where
                         );
 
                         debug.layout_started();
+                        // XXX must add a small number to the autosize surface size here
+                        if auto_size_surfaces.contains_key(&native_id) {
+                            logical_size.width += 0.001;
+                            logical_size.height += 0.001;
+                        }
                         user_interface = user_interface
                             .relayout(logical_size, &mut renderer);
                         debug.layout_finished();
@@ -1557,14 +1550,13 @@ where
             .layout(&mut tree, renderer, &limits)
             .bounds()
             .size();
-        // XXX add a small number to make sure it doesn't get truncated...
         let (w, h) = (
-            (bounds.width.round()) as u32,
-            (bounds.height.round()) as u32,
+            (bounds.width.ceil()).max(1.0) as u32,
+            (bounds.height.ceil()).max(1.0) as u32,
         );
         let dirty = dirty
-            || w != size.width.round() as u32
-            || h != size.height.round() as u32
+            || w != size.width.ceil() as u32
+            || h != size.height.ceil() as u32
             || w != auto_size_w
             || h != auto_size_h;
 
@@ -1597,7 +1589,11 @@ where
             };
         }
 
-        Size::new(w as f32, h as f32)
+        // XXX must add a small amount to the size.
+        // Layout seems to sometimes build the interface slightly
+        // differently when given a size versus just limits
+        // this is problematic for autosize surfaces that rely on the size previously calculated
+        Size::new(w as f32 + 0.001, h as f32 + 0.001)
     } else {
         size
     };
@@ -1722,26 +1718,19 @@ where
     }
 
     /// Sets the logical [`Size`] of the [`Viewport`] of the [`State`].
-    pub fn set_logical_size(&mut self, w: f64, h: f64) {
+    pub fn set_logical_size(&mut self, w: f32, h: f32) {
         let old_size = self.viewport.logical_size();
         if !approx_eq!(f32, w as f32, old_size.width, F32Margin::default())
             || !approx_eq!(f32, h as f32, old_size.height, F32Margin::default())
         {
-            let logical_size = LogicalSize::<f64>::new(w, h);
-            let physical_size: PhysicalSize<u32> =
-                logical_size.to_physical(self.scale_factor());
+            let logical_size = Size::<f32>::new(w, h);
             self.viewport_changed = true;
-            self.viewport = Viewport::with_physical_size(
-                Size {
-                    width: physical_size.width,
-                    height: physical_size.height,
-                },
-                self.scale_factor(),
-            );
+            self.viewport =
+                Viewport::with_logical_size(logical_size, self.scale_factor());
             if let Some(wp_viewport) = self.wp_viewport.as_ref() {
                 wp_viewport.set_destination(
-                    logical_size.width.round() as i32,
-                    logical_size.height.round() as i32,
+                    logical_size.width.ceil() as i32,
+                    logical_size.height.ceil() as i32,
                 );
             }
         }
@@ -1761,25 +1750,15 @@ where
         ) {
             self.viewport_changed = true;
             let logical_size = self.viewport.logical_size();
-            let logical_size = LogicalSize::<f64>::new(
-                logical_size.width as f64,
-                logical_size.height as f64,
-            );
             self.surface_scale_factor = scale_factor;
-            let physical_size: PhysicalSize<u32> = logical_size.to_physical(
-                self.application_scale_factor * self.surface_scale_factor,
-            );
-            self.viewport = Viewport::with_physical_size(
-                Size {
-                    width: physical_size.width,
-                    height: physical_size.height,
-                },
+            self.viewport = Viewport::with_logical_size(
+                logical_size,
                 self.application_scale_factor * self.surface_scale_factor,
             );
             if let Some(wp_viewport) = self.wp_viewport.as_ref() {
                 wp_viewport.set_destination(
-                    logical_size.width.round() as i32,
-                    logical_size.height.round() as i32,
+                    logical_size.width.ceil() as i32,
+                    logical_size.height.ceil() as i32,
                 );
             }
         }
@@ -2100,7 +2079,7 @@ where
                         let mut tree = Tree::new(e.as_widget());
                         let node = Widget::layout(e.as_widget(), &mut tree, renderer, &builder.size_limits);
                         let bounds = node.bounds();
-                        let (w, h) = ((bounds.width.round()) as u32, (bounds.height.round()) as u32);
+                        let (w, h) = ((bounds.width.ceil()).max(1.0) as u32, (bounds.height.ceil()).max(1.0) as u32);
                         auto_size_surfaces.insert(SurfaceIdWrapper::LayerSurface(builder.id), (w, h, builder.size_limits, false));
                         builder.size = Some((Some(bounds.width as u32), Some(bounds.height as u32)));
                     }
@@ -2120,7 +2099,7 @@ where
                         let mut tree = Tree::new(e.as_widget());
                         let node = Widget::layout(e.as_widget(), &mut tree, renderer, &builder.size_limits);
                         let bounds = node.bounds();
-                        let (w, h) = ((bounds.width.round()) as u32, (bounds.height.round()) as u32);
+                        let (w, h) = ((bounds.width.ceil()).max(1.0) as u32, (bounds.height.ceil()).max(1.0) as u32);
                         auto_size_surfaces.insert(SurfaceIdWrapper::Window(builder.window_id), (w, h, builder.size_limits, false));
                         builder.size = (bounds.width as u32, bounds.height as u32);
                     }
@@ -2140,7 +2119,7 @@ where
                         let mut tree = Tree::new(e.as_widget());
                         let node = Widget::layout( e.as_widget(), &mut tree, renderer, &popup.positioner.size_limits);
                         let bounds = node.bounds();
-                        let (w, h) = ((bounds.width.round()) as u32, (bounds.height.round()) as u32);
+                        let (w, h) = (bounds.width.ceil().max(1.0) as u32, bounds.height.ceil().max(1.0) as u32);
                         auto_size_surfaces.insert(SurfaceIdWrapper::Popup(popup.id), (w, h, popup.positioner.size_limits, false));
                         popup.positioner.size = Some((w, h));
                     }
@@ -2162,7 +2141,7 @@ where
             command::Action::PlatformSpecific(platform_specific::Action::Wayland(platform_specific::wayland::Action::SessionLock(session_lock_action))) => {
                 proxy.send_event(Event::SessionLock(session_lock_action));
             }
-            _ => {}
+        _ => {}
         };
     None
 }

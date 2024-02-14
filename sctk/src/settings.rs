@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use iced_runtime::command::platform_specific::wayland::{
     layer_surface::SctkLayerSurfaceSettings, window::SctkWindowSettings,
 };
@@ -16,6 +18,8 @@ pub struct Settings<Flags> {
     pub surface: InitialSurface,
     /// whether the application should exit on close of all windows
     pub exit_on_close_request: bool,
+    /// event loop dispatch timeout
+    pub control_flow_timeout: Option<Duration>,
 }
 
 #[derive(Debug, Clone)]

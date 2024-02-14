@@ -190,6 +190,7 @@ impl<Flags> From<Settings<Flags>> for iced_sctk::Settings<Flags> {
             flags: settings.flags,
             exit_on_close_request: settings.exit_on_close_request,
             ptr_theme: None,
+            control_flow_timeout: Some(std::time::Duration::from_millis(250)),
         }
     }
 }

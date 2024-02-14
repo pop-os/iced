@@ -12,6 +12,23 @@ pub struct Viewport {
 }
 
 impl Viewport {
+    /// Creates a new [`Viewport`] with the given logical dimensions and scale factor
+    pub fn with_logical_size(size: Size<f32>, scale_factor: f64) -> Viewport {
+        let physical_size = Size::new(
+            (size.width as f64 * scale_factor).ceil() as u32,
+            (size.height as f64 * scale_factor).ceil() as u32,
+        );
+        Viewport {
+            physical_size,
+            logical_size: size,
+            scale_factor,
+            projection: Transformation::orthographic(
+                physical_size.width,
+                physical_size.height,
+            ),
+        }
+    }
+
     /// Creates a new [`Viewport`] with the given physical dimensions and scale
     /// factor.
     pub fn with_physical_size(size: Size<u32>, scale_factor: f64) -> Viewport {
