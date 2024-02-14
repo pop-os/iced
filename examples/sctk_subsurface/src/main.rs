@@ -26,6 +26,7 @@ struct SubsurfaceApp {
 pub enum Message {
     WaylandEvent(WaylandEvent),
     Wayland(wayland::Event),
+    Pressed(&'static str),
 }
 
 impl Application for SubsurfaceApp {
@@ -65,16 +66,32 @@ impl Application for SubsurfaceApp {
                     self.red_buffer = Some(buffer);
                 }
             },
+            Message::Pressed(side) => println!("{side} surface pressed"),
         }
         Command::none()
     }
 
     fn view(&self, _id: window::Id) -> Element<Self::Message> {
         if let Some(buffer) = &self.red_buffer {
-            iced_sctk::subsurface_widget::Subsurface::new(1, 1, buffer)
+            iced::widget::row![
+                iced::widget::button(
+                    iced_sctk::subsurface_widget::Subsurface::new(1, 1, buffer)
+                        .width(Length::Fill)
+                        .height(Length::Fill)
+                )
                 .width(Length::Fill)
                 .height(Length::Fill)
-                .into()
+                .on_press(Message::Pressed("left")),
+                iced::widget::button(
+                    iced_sctk::subsurface_widget::Subsurface::new(1, 1, buffer)
+                        .width(Length::Fill)
+                        .height(Length::Fill)
+                )
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .on_press(Message::Pressed("right"))
+            ]
+            .into()
         } else {
             text("No subsurface").into()
         }
