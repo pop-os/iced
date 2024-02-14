@@ -299,6 +299,7 @@ impl<T: std::fmt::Debug + 'static> SubsurfaceState<T> {
             wl_subsurface,
             wp_viewport,
             wl_buffer: None,
+            bounds: None,
         }
     }
 
@@ -337,6 +338,7 @@ pub(crate) struct SubsurfaceInstance {
     wl_subsurface: WlSubsurface,
     wp_viewport: WpViewport,
     wl_buffer: Option<WlBuffer>,
+    bounds: Option<Rectangle<f32>>,
 }
 
 impl SubsurfaceInstance {
@@ -348,12 +350,14 @@ impl SubsurfaceInstance {
         dmabuf: Option<&ZwpLinuxDmabufV1>,
         qh: &QueueHandle<SctkState<T>>,
     ) {
+        let buffer_changed;
         let buffer = match self.wl_buffer.take() {
             Some(buffer)
                 if SubsurfaceBuffer::for_buffer(&buffer)
                     == Some(&info.buffer) =>
             {
                 // Same buffer is already attached to this subsurface. Don't create new `wl_buffer`.
+                buffer_changed = false;
                 buffer
             }
             buffer => {
@@ -362,6 +366,7 @@ impl SubsurfaceInstance {
                 }
                 if let Some(buffer) = info.buffer.create_buffer(shm, dmabuf, qh)
                 {
+                    buffer_changed = true;
                     buffer
                 } else {
                     // TODO log error
@@ -372,17 +377,26 @@ impl SubsurfaceInstance {
         };
 
         // XXX scale factor?
-        self.wl_subsurface
-            .set_position(info.bounds.x as i32, info.bounds.y as i32);
-        self.wp_viewport.set_destination(
-            info.bounds.width as i32,
-            info.bounds.height as i32,
-        );
-        self.wl_surface.attach(Some(&buffer), 0, 0);
-        self.wl_surface.damage(0, 0, i32::MAX, i32::MAX);
-        self.wl_surface.commit();
+        let bounds_changed = self.bounds != Some(info.bounds);
+        // wlroots seems to have issues changing buffer without running this
+        if bounds_changed || buffer_changed {
+            self.wl_subsurface
+                .set_position(info.bounds.x as i32, info.bounds.y as i32);
+            self.wp_viewport.set_destination(
+                info.bounds.width as i32,
+                info.bounds.height as i32,
+            );
+        }
+        if buffer_changed {
+            self.wl_surface.attach(Some(&buffer), 0, 0);
+            self.wl_surface.damage(0, 0, i32::MAX, i32::MAX);
+        }
+        if buffer_changed || bounds_changed {
+            self.wl_surface.commit();
+        }
 
         self.wl_buffer = Some(buffer);
+        self.bounds = Some(info.bounds);
     }
 }
 
