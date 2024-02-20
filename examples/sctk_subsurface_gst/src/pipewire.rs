@@ -1,8 +1,48 @@
 use drm_fourcc::{DrmFourcc, DrmModifier};
+use gst::glib::{self, translate::IntoGlib};
 use gst::prelude::*;
 use iced::futures::{executor::block_on, SinkExt};
-use iced_sctk::subsurface_widget::{Dmabuf, Plane, SubsurfaceBuffer};
-use std::{os::unix::io::BorrowedFd, sync::Arc, thread};
+use iced_sctk::subsurface_widget::{
+    BufferSource, Dmabuf, Plane, SubsurfaceBuffer,
+};
+use std::{ffi::c_void, os::unix::io::BorrowedFd, sync::Arc, thread};
+
+// Store a reference to the `BufferSource` in the data assocaited with the `BufferRef`.
+// So the `BufferSource` can be re-used, instead of dupping fds and creating a new
+// `wl_buffer` each buffer swap.
+//
+// See https://gitlab.freedesktop.org/gstreamer/gstreamer/-/blob/main/subprojects/gst-plugins-bad/gst-libs/gst/wayland/gstwlbuffer.c
+// for information about how `waylandsink` does this.
+fn get_buffer_source(buffer: &gst::BufferRef) -> Option<Arc<BufferSource>> {
+    let buffer_source_quark = glib::Quark::from_str("SctkBufferSource");
+    unsafe {
+        let data = gst::ffi::gst_mini_object_get_qdata(
+            buffer.upcast_ref().as_mut_ptr(),
+            buffer_source_quark.into_glib(),
+        );
+        if data.is_null() {
+            None
+        } else {
+            Arc::increment_strong_count(data as *const BufferSource);
+            Some(Arc::from_raw(data as *const BufferSource))
+        }
+    }
+}
+
+fn set_buffer_source(buffer: &gst::BufferRef, source: Arc<BufferSource>) {
+    let buffer_source_quark = glib::Quark::from_str("SctkBufferSource");
+    unsafe extern "C" fn destroy_buffer_source(data: *mut c_void) {
+        Arc::from_raw(data);
+    }
+    unsafe {
+        gst::ffi::gst_mini_object_set_qdata(
+            buffer.upcast_ref().as_mut_ptr(),
+            buffer_source_quark.into_glib(),
+            Arc::into_raw(source) as *mut c_void,
+            Some(destroy_buffer_source),
+        );
+    }
+}
 
 #[derive(Debug, Clone)]
 pub enum Event {
@@ -55,42 +95,50 @@ fn pipewire_thread(
                 let buffer = sample.buffer().unwrap();
                 let meta = buffer.meta::<gst_video::VideoMeta>().unwrap();
 
-                let planes = (0..meta.n_planes())
-                    .map(|plane_idx| {
-                        let memory = buffer
-                            .memory(plane_idx)
-                            .unwrap()
-                            .downcast_memory::<gst_allocators::DmaBufMemory>()
-                            .unwrap();
+                let buffer_source = if let Some(buffer_source) = get_buffer_source(buffer) {
+                    buffer_source
+                } else {
+                    let planes = (0..meta.n_planes())
+                        .map(|plane_idx| {
+                            let memory = buffer
+                                .memory(plane_idx)
+                                .unwrap()
+                                .downcast_memory::<gst_allocators::DmaBufMemory>()
+                                .unwrap();
 
-                        // TODO avoid dup?
-                        let fd = unsafe { BorrowedFd::borrow_raw(memory.fd()) }
-                            .try_clone_to_owned()
-                            .unwrap();
+                            // TODO avoid dup?
+                            let fd = unsafe { BorrowedFd::borrow_raw(memory.fd()) }
+                                .try_clone_to_owned()
+                                .unwrap();
 
-                        Plane {
-                            fd,
-                            plane_idx,
-                            offset: meta.offset()[plane_idx as usize] as u32,
-                            stride: meta.stride()[plane_idx as usize] as u32,
-                        }
-                    })
-                    .collect();
+                            Plane {
+                                fd,
+                                plane_idx,
+                                offset: meta.offset()[plane_idx as usize] as u32,
+                                stride: meta.stride()[plane_idx as usize] as u32,
+                            }
+                        })
+                        .collect();
 
-                let dmabuf = Dmabuf {
-                    width: meta.width() as i32,
-                    height: meta.height() as i32,
-                    planes,
-                    // TODO should use dmabuf protocol to get supported formats,
-                    // convert if needed.
-                    format: DrmFourcc::Argb8888 as u32,
-                    //format: DrmFourcc::Nv12 as u32,
-                    // TODO modifier negotiation
-                    modifier: DrmModifier::Linear.into(),
+                    let dmabuf = Dmabuf {
+                        width: meta.width() as i32,
+                        height: meta.height() as i32,
+                        planes,
+                        // TODO should use dmabuf protocol to get supported formats,
+                        // convert if needed.
+                        format: DrmFourcc::Argb8888 as u32,
+                        //format: DrmFourcc::Nv12 as u32,
+                        // TODO modifier negotiation
+                        modifier: DrmModifier::Linear.into(),
+                    };
+
+                    let buffer_source = Arc::new(BufferSource::from(dmabuf));
+                    set_buffer_source(buffer, buffer_source.clone());
+                    buffer_source
                 };
 
                 let (buffer, new_subsurface_release) =
-                    SubsurfaceBuffer::new(Arc::new(dmabuf.into()));
+                    SubsurfaceBuffer::new(buffer_source);
                 block_on(sender.send(Event::Frame(buffer))).unwrap();
 
                 // Wait for server to release other buffer
