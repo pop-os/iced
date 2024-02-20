@@ -898,7 +898,7 @@ where
                 );
 
                 let subsurfaces = crate::subsurface_widget::take_subsurfaces();
-                if let Some(subsurface_state) = subsurface_state.as_ref() {
+                if let Some(subsurface_state) = subsurface_state.as_mut() {
                     subsurface_state.update_subsurfaces(
                         &state.wrapper.wl_surface,
                         &mut state.subsurfaces,
@@ -1385,7 +1385,7 @@ where
                     // Update subsurfaces based on what view requested.
                     let subsurfaces =
                         crate::subsurface_widget::take_subsurfaces();
-                    if let Some(subsurface_state) = subsurface_state.as_ref() {
+                    if let Some(subsurface_state) = subsurface_state.as_mut() {
                         subsurface_state.update_subsurfaces(
                             &state.wrapper.wl_surface,
                             &mut state.subsurfaces,

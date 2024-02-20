@@ -333,6 +333,7 @@ where
                         wl_shm,
                         wp_dmabuf,
                         qh: self.state.queue_handle.clone(),
+                        buffers: HashMap::new(),
                     }),
                     &self.state,
                     &mut control_flow,
