@@ -419,7 +419,7 @@ impl<T> Drop for SubsurfaceState<T> {
 }
 
 pub(crate) struct SubsurfaceInstance {
-    wl_surface: WlSurface,
+    pub(crate) wl_surface: WlSurface,
     wl_subsurface: WlSubsurface,
     wp_viewport: WpViewport,
     wl_buffer: Option<WlBuffer>,
@@ -482,6 +482,7 @@ impl SubsurfaceInstance {
             self.wl_surface.damage(0, 0, i32::MAX, i32::MAX);
         }
         if buffer_changed || bounds_changed {
+            self.wl_surface.frame(&state.qh, self.wl_surface.clone());
             self.wl_surface.commit();
         }
 

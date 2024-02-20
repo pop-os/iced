@@ -296,7 +296,7 @@ pub struct SctkState<T> {
     /// A sink for window and device events that is being filled during dispatching
     /// event loop and forwarded downstream afterwards.
     pub(crate) sctk_events: Vec<SctkEvent>,
-    pub(crate) frame_events: Vec<WlSurface>,
+    pub(crate) frame_events: Vec<(WlSurface, u32)>,
 
     /// pending user events
     pub pending_user_events: Vec<Event<T>>,

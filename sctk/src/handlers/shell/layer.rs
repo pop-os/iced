@@ -72,7 +72,8 @@ impl<T: Debug> LayerShellHandler for SctkState<T> {
             ),
             id: layer.surface.wl_surface().clone(),
         });
-        self.frame_events.push(layer.surface.wl_surface().clone());
+        self.frame_events
+            .push((layer.surface.wl_surface().clone(), 0));
     }
 }
 

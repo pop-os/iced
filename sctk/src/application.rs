@@ -1091,7 +1091,7 @@ where
                             || state.viewport_changed;
                         if redraw_pending || needs_update {
                             state.set_needs_redraw(
-                                state.frame.is_some() || needs_update,
+                                state.frame_pending || needs_update,
                             );
                             state.set_first(false);
                         }
@@ -1259,14 +1259,6 @@ where
                     let state = states.get_mut(&id.inner());
                     Some((*id, interface, state))
                 }) {
-                    // request a new frame
-                    // NOTE Ashley: this is done here only after a redraw for now instead of the event handler.
-                    // Otherwise cpu goes up in the running application as well as in cosmic-comp
-                    if let Some(surface) = state.frame.take() {
-                        surface.frame(&queue_handle, surface.clone());
-                        surface.commit();
-                    }
-
                     let Some(mut comp_surface) = state.surface.take() else {
                         error!("missing surface!");
                         continue;
@@ -1403,6 +1395,13 @@ where
                     let _ =
                         interfaces.insert(native_id.inner(), user_interface);
 
+                    if state.frame_pending {
+                        // request a new frame
+                        state.wrapper.wl_surface.frame(
+                            &queue_handle,
+                            state.wrapper.wl_surface.clone(),
+                        );
+                    }
                     let _ = compositor.present(
                         &mut renderer,
                         &mut comp_surface,
@@ -1410,6 +1409,9 @@ where
                         state.background_color(),
                         &debug.overlay(),
                     );
+                    // Need commit to get frame event, and update subsurfaces, even if main surface wasn't changed
+                    state.wrapper.wl_surface.commit();
+                    state.frame_pending = false;
                     state.surface = Some(comp_surface);
                     debug.render_finished();
                 }
@@ -1479,12 +1481,20 @@ where
             IcedSctkEvent::A11ySurfaceCreated(surface_id, adapter) => {
                 adapters.insert(surface_id.inner(), adapter);
             }
-            IcedSctkEvent::Frame(surface) => {
+            IcedSctkEvent::Frame(surface, time) => {
                 if let Some(id) = surface_ids.get(&surface.id()) {
                     if let Some(state) = states.get_mut(&id.inner()) {
-                        // TODO set this to the callback?
-                        state.set_frame(Some(surface));
+                        state.set_frame(time);
+                        continue;
                     }
+                }
+                if let Some(state) = states.values_mut().find(|state| {
+                    state
+                        .subsurfaces
+                        .iter()
+                        .any(|subsurface| subsurface.wl_surface == surface)
+                }) {
+                    state.set_frame(time);
                 }
             }
             IcedSctkEvent::Subcompositor(state) => {
@@ -1622,7 +1632,9 @@ where
     theme: <A as Program>::Theme,
     appearance: application::Appearance,
     application: PhantomData<A>,
-    frame: Option<WlSurface>,
+    // Time of last frame event, or 0
+    frame_pending: bool,
+    last_frame_time: u32,
     needs_redraw: bool,
     first: bool,
     wp_viewport: Option<WpViewport>,
@@ -1661,7 +1673,8 @@ where
             theme,
             appearance,
             application: PhantomData,
-            frame: None,
+            frame_pending: false,
+            last_frame_time: 0,
             needs_redraw: false,
             first: true,
             wp_viewport: None,
@@ -1680,8 +1693,13 @@ where
         self.needs_redraw
     }
 
-    pub(crate) fn set_frame(&mut self, frame: Option<WlSurface>) {
-        self.frame = frame;
+    fn set_frame(&mut self, time: u32) {
+        // If we get frame events from mulitple subsurface, should have same time. So ignore if
+        // time isn't newer.
+        if time == 0 || time > self.last_frame_time {
+            self.frame_pending = true;
+            self.last_frame_time = time;
+        }
     }
 
     pub(crate) fn first(&self) -> bool {

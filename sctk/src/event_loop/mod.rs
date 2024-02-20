@@ -528,7 +528,7 @@ where
 
             for event in frame_event_back_buffer.drain(..) {
                 sticky_exit_callback(
-                    IcedSctkEvent::Frame(event),
+                    IcedSctkEvent::Frame(event.0, event.1),
                     &self.state,
                     &mut control_flow,
                     &mut callback,

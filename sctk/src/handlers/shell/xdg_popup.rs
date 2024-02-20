@@ -36,7 +36,7 @@ impl<T: Debug> PopupHandler for SctkState<T> {
                 SctkSurface::Popup(s) => s.clone(),
             },
         });
-        self.frame_events.push(popup.wl_surface().clone());
+        self.frame_events.push((popup.wl_surface().clone(), 0));
     }
 
     fn done(

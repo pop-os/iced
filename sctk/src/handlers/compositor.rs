@@ -26,7 +26,8 @@ impl<T: Debug> CompositorHandler for SctkState<T> {
         surface: &wl_surface::WlSurface,
         _time: u32,
     ) {
-        self.frame_events.push(surface.clone());
+        // TODO time; map subsurface to parent:w
+        self.frame_events.push((surface.clone(), 0));
     }
 
     fn transform_changed(

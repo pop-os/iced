@@ -122,7 +122,7 @@ pub enum IcedSctkEvent<T> {
     DndSurfaceCreated(WlSurface, DndIcon, SurfaceId),
 
     /// Frame callback event
-    Frame(WlSurface),
+    Frame(WlSurface, u32),
 
     Subcompositor(SubsurfaceState<T>),
 }

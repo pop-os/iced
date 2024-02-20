@@ -104,7 +104,7 @@ impl<T: Debug> WindowHandler for SctkState<T> {
             ),
             id,
         });
-        self.frame_events.push(wl_surface.clone());
+        self.frame_events.push((wl_surface.clone(), 0));
     }
 }
 
