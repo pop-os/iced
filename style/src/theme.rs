@@ -501,6 +501,9 @@ impl slider::StyleSheet for Theme {
                         border_color: palette.primary.base.color,
                         ..handle
                     },
+                    breakpoint: slider::Breakpoint {
+                        color: palette.background.weak.text,
+                    },
                 }
             }
             Slider::Custom(custom) => custom.active(self),

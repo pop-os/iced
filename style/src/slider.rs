@@ -8,6 +8,15 @@ pub struct Appearance {
     pub rail: Rail,
     /// The appearance of the [`Handle`] of the slider.
     pub handle: Handle,
+    /// The appearance of breakpoints.
+    pub breakpoint: Breakpoint,
+}
+
+/// The appearance of slider breakpoints.
+#[derive(Debug, Clone, Copy)]
+pub struct Breakpoint {
+    /// The color of the slider breakpoint.
+    pub color: Color,
 }
 
 /// The appearance of a slider rail
