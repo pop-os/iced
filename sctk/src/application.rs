@@ -940,35 +940,6 @@ where
                     continue;
                 }
 
-                let mut i = 0;
-                while i < sctk_events.len() {
-                    let remove = matches!(
-                        sctk_events[i],
-                        SctkEvent::NewOutput { .. }
-                            | SctkEvent::UpdateOutput { .. }
-                            | SctkEvent::RemovedOutput(_)
-                            | SctkEvent::SessionLocked
-                            | SctkEvent::SessionLockFinished
-                            | SctkEvent::SessionUnlocked
-                            | SctkEvent::PopupEvent { .. }
-                            | SctkEvent::LayerSurfaceEvent { .. }
-                            | SctkEvent::WindowEvent { .. }
-                    );
-                    if remove {
-                        let event = sctk_events.remove(i);
-                        for native_event in event.to_native(
-                            &mut mods,
-                            &surface_ids,
-                            &destroyed_surface_ids,
-                            &subsurface_ids,
-                        ) {
-                            runtime.broadcast(native_event, Status::Ignored);
-                        }
-                    } else {
-                        i += 1;
-                    }
-                }
-
                 if surface_ids.is_empty() && !messages.is_empty() {
                     // Update application
                     let pure_states: HashMap<_, _> =
@@ -1256,6 +1227,35 @@ where
                         }
                     }
                     redraw_pending = false;
+                }
+
+                let mut i = 0;
+                while i < sctk_events.len() {
+                    let remove = matches!(
+                        sctk_events[i],
+                        SctkEvent::NewOutput { .. }
+                            | SctkEvent::UpdateOutput { .. }
+                            | SctkEvent::RemovedOutput(_)
+                            | SctkEvent::SessionLocked
+                            | SctkEvent::SessionLockFinished
+                            | SctkEvent::SessionUnlocked
+                            | SctkEvent::PopupEvent { .. }
+                            | SctkEvent::LayerSurfaceEvent { .. }
+                            | SctkEvent::WindowEvent { .. }
+                    );
+                    if remove {
+                        let event = sctk_events.remove(i);
+                        for native_event in event.to_native(
+                            &mut mods,
+                            &surface_ids,
+                            &destroyed_surface_ids,
+                            &subsurface_ids,
+                        ) {
+                            runtime.broadcast(native_event, Status::Ignored);
+                        }
+                    } else {
+                        i += 1;
+                    }
                 }
 
                 sctk_events.clear();
