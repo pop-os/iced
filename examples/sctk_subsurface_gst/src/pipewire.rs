@@ -7,6 +7,8 @@ use iced_sctk::subsurface_widget::{
 };
 use std::{ffi::c_void, os::unix::io::BorrowedFd, sync::Arc, thread};
 
+const USE_NV12: bool = false;
+
 // Store a reference to the `BufferSource` in the data assocaited with the `BufferRef`.
 // So the `BufferSource` can be re-used, instead of dupping fds and creating a new
 // `wl_buffer` each buffer swap.
@@ -63,20 +65,40 @@ fn pipewire_thread(
 ) {
     gst::init().unwrap();
 
-    // `vapostproc` can be added to convert color format
-    // TODO had issue on smithay using NV12?
     let pipeline = gst::parse_launch(&format!(
-        "filesrc location={path} !
+        "filesrc name=filesrc !
          qtdemux !
          h264parse !
          vah264dec !
-         vapostproc !
-         video/x-raw(memory:DMABuf),format=BGRA !
+         vapostproc name=postproc !
+         capsfilter name=capfilter !
          appsink name=sink",
     ))
     .unwrap()
     .dynamic_cast::<gst::Pipeline>()
     .unwrap();
+    pipeline
+        .by_name("filesrc")
+        .unwrap()
+        .set_property("location", path);
+
+    let format = if USE_NV12 {
+        /*
+        pipeline
+            .remove(&pipeline.by_name("postproc").unwrap())
+            .unwrap();
+        */
+        gst_video::VideoFormat::Nv12
+    } else {
+        gst_video::VideoFormat::Bgra
+    };
+    pipeline.by_name("capfilter").unwrap().set_property(
+        "caps",
+        gst_video::VideoCapsBuilder::new()
+            .features(["memory:DMABuf"])
+            .format(format)
+            .build(),
+    );
 
     let appsink = pipeline
         .by_name("sink")
@@ -120,14 +142,18 @@ fn pipewire_thread(
                         })
                         .collect();
 
+                    let format = if USE_NV12 {
+                        DrmFourcc::Nv12
+                    } else {
+                        DrmFourcc::Argb8888
+                    };
                     let dmabuf = Dmabuf {
                         width: meta.width() as i32,
                         height: meta.height() as i32,
                         planes,
                         // TODO should use dmabuf protocol to get supported formats,
                         // convert if needed.
-                        format: DrmFourcc::Argb8888 as u32,
-                        //format: DrmFourcc::Nv12 as u32,
+                        format: format as u32,
                         // TODO modifier negotiation
                         modifier: DrmModifier::Linear.into(),
                     };
