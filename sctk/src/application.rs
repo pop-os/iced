@@ -437,22 +437,30 @@ where
                         variant,
                         ..
                     } => {
+                        let mut offset = (0., 0.);
                         let (state, _native_id) = match surface_ids
                             .get(&variant.surface.id())
                             .and_then(|id| states.get_mut(&id.inner()).map(|state| (state, id)))
                         {
                             Some(s) => s,
-                            None => continue,
+                            None => {
+                                if let Some((x_offset, y_offset, id)) = subsurface_ids.get(&variant.surface.id()) {
+                                    offset = (f64::from(*x_offset), f64::from(*y_offset));
+                                    states.get_mut(&id.inner()).map(|state| (state, id)).unwrap()
+                                } else {
+                                    continue
+                                }
+                            },
                         };
                         match variant.kind {
                             PointerEventKind::Enter { .. } => {
-                                state.set_cursor_position(Some(LogicalPosition { x: variant.position.0, y: variant.position.1 }));
+                                state.set_cursor_position(Some(LogicalPosition { x: variant.position.0 + offset.0, y: variant.position.1 + offset.1 }));
                             }
                             PointerEventKind::Leave { .. } => {
                                 state.set_cursor_position(None);
                             }
                             PointerEventKind::Motion { .. } => {
-                                state.set_cursor_position(Some(LogicalPosition { x: variant.position.0, y: variant.position.1 }));
+                                state.set_cursor_position(Some(LogicalPosition { x: variant.position.0 + offset.0, y: variant.position.1 + offset.1 }));
                             }
                             PointerEventKind::Press { .. }
                             | PointerEventKind::Release { .. }
@@ -952,6 +960,7 @@ where
                             &mut mods,
                             &surface_ids,
                             &destroyed_surface_ids,
+                            &subsurface_ids,
                         ) {
                             runtime.broadcast(native_event, Status::Ignored);
                         }
@@ -1017,6 +1026,7 @@ where
                             if event_is_for_surface(
                                 &sctk_events[i],
                                 object_id,
+                                state,
                                 has_kbd_focus,
                             ) {
                                 filtered_sctk.push(sctk_events.remove(i));
@@ -1034,6 +1044,7 @@ where
                                     &mut mods,
                                     &surface_ids,
                                     &destroyed_surface_ids,
+                                    &subsurface_ids,
                                 )
                             })
                             .collect();
@@ -2215,15 +2226,26 @@ where
 }
 
 // Determine if `SctkEvent` is for surface with given object id.
-fn event_is_for_surface(
+fn event_is_for_surface<'a, A, C>(
     evt: &SctkEvent,
     object_id: &ObjectId,
+    state: &State<A, C>,
     has_kbd_focus: bool,
-) -> bool {
+) -> bool
+where
+    A: Application + 'static,
+    <A as Program>::Theme: StyleSheet,
+    C: Compositor,
+{
     match evt {
         SctkEvent::SeatEvent { id, .. } => &id.id() == object_id,
         SctkEvent::PointerEvent { variant, .. } => {
-            &variant.surface.id() == object_id
+            let event_object_id = variant.surface.id();
+            &event_object_id == object_id
+                || state
+                    .subsurfaces
+                    .iter()
+                    .any(|s| s.wl_surface.id() == event_object_id)
         }
         SctkEvent::KeyboardEvent { variant, .. } => match variant {
             KeyboardEventVariant::Leave(id) => &id.id() == object_id,
