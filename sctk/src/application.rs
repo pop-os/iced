@@ -270,6 +270,7 @@ where
     let auto_size_surfaces = HashMap::new();
 
     let surface_ids = Default::default();
+    let subsurface_ids = Default::default();
 
     let (mut sender, receiver) = mpsc::unbounded::<IcedSctkEvent<A::Message>>();
     let (control_sender, mut control_receiver) = mpsc::unbounded();
@@ -284,6 +285,7 @@ where
         receiver,
         control_sender,
         surface_ids,
+        subsurface_ids,
         auto_size_surfaces,
         // display,
         // context,
@@ -342,6 +344,7 @@ async fn run_instance<A, E, C>(
     mut receiver: mpsc::UnboundedReceiver<IcedSctkEvent<A::Message>>,
     mut control_sender: mpsc::UnboundedSender<ControlFlow>,
     mut surface_ids: HashMap<ObjectId, SurfaceIdWrapper>,
+    mut subsurface_ids: HashMap<ObjectId, (i32, i32, SurfaceIdWrapper)>,
     mut auto_size_surfaces: HashMap<SurfaceIdWrapper, (u32, u32, Limits, bool)>,
     backend: wayland_backend::client::Backend,
     init_command: Command<A::Message>,
@@ -900,7 +903,9 @@ where
                 let subsurfaces = crate::subsurface_widget::take_subsurfaces();
                 if let Some(subsurface_state) = subsurface_state.as_mut() {
                     subsurface_state.update_subsurfaces(
+                        &mut subsurface_ids,
                         &state.wrapper.wl_surface,
+                        state.id,
                         &mut state.subsurfaces,
                         &subsurfaces,
                     );
@@ -1379,7 +1384,9 @@ where
                         crate::subsurface_widget::take_subsurfaces();
                     if let Some(subsurface_state) = subsurface_state.as_mut() {
                         subsurface_state.update_subsurfaces(
+                            &mut subsurface_ids,
                             &state.wrapper.wl_surface,
+                            state.id,
                             &mut state.subsurfaces,
                             &subsurfaces,
                         );
@@ -1482,19 +1489,13 @@ where
                 adapters.insert(surface_id.inner(), adapter);
             }
             IcedSctkEvent::Frame(surface, time) => {
-                if let Some(id) = surface_ids.get(&surface.id()) {
+                if let Some(id) = surface_ids
+                    .get(&surface.id())
+                    .or_else(|| Some(&subsurface_ids.get(&surface.id())?.2))
+                {
                     if let Some(state) = states.get_mut(&id.inner()) {
                         state.set_frame(time);
-                        continue;
                     }
-                }
-                if let Some(state) = states.values_mut().find(|state| {
-                    state
-                        .subsurfaces
-                        .iter()
-                        .any(|subsurface| subsurface.wl_surface == surface)
-                }) {
-                    state.set_frame(time);
                 }
             }
             IcedSctkEvent::Subcompositor(state) => {

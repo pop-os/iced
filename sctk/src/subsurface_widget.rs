@@ -1,5 +1,6 @@
 // TODO z-order option?
 
+use crate::application::SurfaceIdWrapper;
 use crate::core::{
     layout::{self, Layout},
     mouse, renderer,
@@ -37,6 +38,7 @@ use sctk::{
         Connection, Dispatch, Proxy, QueueHandle,
     },
 };
+use wayland_backend::client::ObjectId;
 use wayland_protocols::wp::{
     linux_dmabuf::zv1::client::{
         zwp_linux_buffer_params_v1::{self, ZwpLinuxBufferParamsV1},
@@ -342,7 +344,9 @@ impl<T: Debug + 'static> SubsurfaceState<T> {
     // Update `subsurfaces` from `view_subsurfaces`
     pub(crate) fn update_subsurfaces(
         &mut self,
+        subsurface_ids: &mut HashMap<ObjectId, (i32, i32, SurfaceIdWrapper)>,
         parent: &WlSurface,
+        parent_id: SurfaceIdWrapper,
         subsurfaces: &mut Vec<SubsurfaceInstance>,
         view_subsurfaces: &[SubsurfaceInfo],
     ) {
@@ -368,7 +372,16 @@ impl<T: Debug + 'static> SubsurfaceState<T> {
         for (subsurface_data, subsurface) in
             view_subsurfaces.iter().zip(subsurfaces.iter_mut())
         {
-            subsurface.attach_and_commit(subsurface_data, self);
+            subsurface.attach_and_commit(
+                parent_id,
+                subsurface_ids,
+                subsurface_data,
+                self,
+            );
+        }
+
+        if let Some(backend) = parent.backend().upgrade() {
+            subsurface_ids.retain(|k, _| backend.info(k.clone()).is_ok());
         }
     }
 
@@ -430,6 +443,8 @@ impl SubsurfaceInstance {
     // TODO correct damage? no damage/commit if unchanged?
     fn attach_and_commit<T: Debug + 'static>(
         &mut self,
+        parent_id: SurfaceIdWrapper,
+        subsurface_ids: &mut HashMap<ObjectId, (i32, i32, SurfaceIdWrapper)>,
         info: &SubsurfaceInfo,
         state: &mut SubsurfaceState<T>,
     ) {
@@ -485,6 +500,11 @@ impl SubsurfaceInstance {
             self.wl_surface.frame(&state.qh, self.wl_surface.clone());
             self.wl_surface.commit();
         }
+
+        subsurface_ids.insert(
+            self.wl_surface.id(),
+            (info.bounds.x as i32, info.bounds.y as i32, parent_id),
+        );
 
         self.wl_buffer = Some(buffer);
         self.bounds = Some(info.bounds);
