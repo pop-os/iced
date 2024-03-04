@@ -5,13 +5,13 @@ pub fn event_func(
     window: &winit::window::Window,
     border_size: f64,
 ) -> Option<
-    impl FnMut(&winit::window::Window, &winit::event::WindowEvent) -> bool,
+    Box<dyn FnMut(&winit::window::Window, &winit::event::WindowEvent) -> bool>,
 > {
     if window.drag_resize_window(ResizeDirection::East).is_ok() {
         // Keep track of cursor when it is within a resizeable border.
         let mut cursor_prev_resize_direction = None;
 
-        Some(
+        Some(Box::new(
             move |window: &winit::window::Window,
                   window_event: &winit::event::WindowEvent|
                   -> bool {
@@ -50,7 +50,7 @@ pub fn event_func(
 
                 false
             },
-        )
+        ))
     } else {
         None
     }
