@@ -38,17 +38,7 @@ use iced_futures::{
 };
 use tracing::error;
 
-use sctk::{
-    reexports::client::{protocol::wl_surface::WlSurface, Proxy, QueueHandle},
-    seat::{keyboard::Modifiers, pointer::PointerEventKind},
-};
-use std::{
-    collections::HashMap, hash::Hash, marker::PhantomData, os::raw::c_void,
-    ptr::NonNull, time::Duration,
-};
-use wayland_backend::client::ObjectId;
-use wayland_protocols::wp::viewporter::client::wp_viewport::WpViewport;
-
+use iced_futures::core::Clipboard as IcedClipboard;
 use iced_graphics::{compositor, Compositor, Viewport};
 use iced_runtime::{
     clipboard,
@@ -72,7 +62,17 @@ use raw_window_handle::{
     RawDisplayHandle, RawWindowHandle, WaylandDisplayHandle,
     WaylandWindowHandle, WindowHandle,
 };
+use sctk::{
+    reexports::client::{protocol::wl_surface::WlSurface, Proxy, QueueHandle},
+    seat::{keyboard::Modifiers, pointer::PointerEventKind},
+};
 use std::mem::ManuallyDrop;
+use std::{
+    collections::HashMap, hash::Hash, marker::PhantomData, os::raw::c_void,
+    ptr::NonNull, time::Duration,
+};
+use wayland_backend::client::ObjectId;
+use wayland_protocols::wp::viewporter::client::wp_viewport::WpViewport;
 
 use crate::subsurface_widget::{SubsurfaceInstance, SubsurfaceState};
 
@@ -523,7 +523,7 @@ where
                                         backend: backend.clone(),
                                         wl_surface
                                     };
-                                    if matches!(simple_clipboard.state,  crate::clipboard::State::Unavailable) {
+                                    if matches!(simple_clipboard.state(),  crate::clipboard::State::Unavailable) {
                                        if let Ok(h) = wrapper.display_handle() {
                                            if let RawDisplayHandle::Wayland(mut h) = h.as_raw() {
                                            simple_clipboard = unsafe { Clipboard::connect(h.display.as_mut()) };
@@ -601,7 +601,7 @@ where
                                          backend: backend.clone(),
                                          wl_surface
                                      };
-                                     if matches!(simple_clipboard.state,  crate::clipboard::State::Unavailable) {
+                                     if matches!(simple_clipboard.state(),  crate::clipboard::State::Unavailable) {
                                         if let Ok(h) = wrapper.display_handle() {
                                             if let RawDisplayHandle::Wayland(mut h) = h.as_raw() {
                                             simple_clipboard = unsafe { Clipboard::connect(h.display.as_mut()) };
@@ -2006,14 +2006,14 @@ where
             }
             command::Action::Clipboard(action) => match action {
                 clipboard::Action::Read(s_to_msg) => {
-                    if matches!(clipboard.state,  crate::clipboard::State::Connected(_)) {
+                    if matches!(clipboard.state(),  crate::clipboard::State::Connected(_)) {
                         let contents = clipboard.read();
                         let message = s_to_msg(contents);
                         proxy.send_event(Event::Message(message));
                     }
                 }
                 clipboard::Action::Write(contents) => {
-                    if matches!(clipboard.state,  crate::clipboard::State::Connected(_)) {
+                    if matches!(clipboard.state(),  crate::clipboard::State::Connected(_)) {
                         clipboard.write(contents)
                     }
                 }

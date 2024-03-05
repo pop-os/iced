@@ -28,6 +28,10 @@ impl Clipboard {
         }
     }
 
+    pub fn state(&self) -> State {
+        self.state
+    }
+
     /// Creates a new [`Clipboard`] that isn't associated with a window.
     /// This clipboard will never contain a copied value.
     pub fn unconnected() -> Clipboard {
