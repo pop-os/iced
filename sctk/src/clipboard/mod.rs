@@ -15,12 +15,12 @@ mod clipboard {
     }
 
     impl Clipboard {
-        pub unsafe fn connect(display: *mut c_void) -> Clipboard {
+        pub unsafe fn connect(_display: *mut c_void) -> Clipboard {
             Clipboard
         }
 
-        pub fn state(&self) -> State {
-            State::Connected(())
+        pub(crate) fn state(&self) -> &State {
+            &State::Connected(())
         }
 
         /// Creates a new [`Clipboard`]
@@ -33,7 +33,7 @@ mod clipboard {
         fn read(&self) -> Option<String> {
             None
         }
-    
+
         fn write(&mut self, _contents: String) {}
     }
 }

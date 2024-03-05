@@ -6,7 +6,7 @@ edition = "2021"
 publish = false
 
 [dependencies]
-iced = { path = "../..", default-features=false, features = ["async-std", "wayland", "debug", "a11y"] }
+iced = { path = "../..", default-features=false, features = ["async-std", "wayland", "debug", "a11y", "wayland-clipboard"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 iced_core.workspace = true

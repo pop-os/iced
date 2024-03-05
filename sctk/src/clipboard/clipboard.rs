@@ -28,8 +28,8 @@ impl Clipboard {
         }
     }
 
-    pub fn state(&self) -> State {
-        self.state
+    pub(crate) fn state(&self) -> &State {
+        &self.state
     }
 
     /// Creates a new [`Clipboard`] that isn't associated with a window.
