@@ -28,14 +28,14 @@ mod clipboard {
             Clipboard
         }
     }
-}
 
-impl iced_runtime::core::clipboard::Clipboard for Clipboard {
-    fn read(&self) -> Option<String> {
-        None
+    impl iced_runtime::core::clipboard::Clipboard for Clipboard {
+        fn read(&self) -> Option<String> {
+            None
+        }
+    
+        fn write(&mut self, _contents: String) {}
     }
-
-    fn write(&mut self, contents: String) {}
 }
 
 pub use clipboard::*;
