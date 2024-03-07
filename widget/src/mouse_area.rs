@@ -30,6 +30,7 @@ pub struct MouseArea<
     on_right_release: Option<Message>,
     on_middle_press: Option<Message>,
     on_middle_release: Option<Message>,
+    on_mouse_wheel: Option<Box<dyn Fn(mouse::ScrollDelta) -> Message + 'a>>,
 }
 
 impl<'a, Message, Theme, Renderer> MouseArea<'a, Message, Theme, Renderer> {
@@ -81,6 +82,15 @@ impl<'a, Message, Theme, Renderer> MouseArea<'a, Message, Theme, Renderer> {
         self.on_middle_release = Some(message);
         self
     }
+    #[must_use]
+    /// The message to emit when the mouse wheel is released.
+    pub fn on_mouse_wheel(
+        mut self,
+        message: impl Fn(mouse::ScrollDelta) -> Message + 'a,
+    ) -> Self {
+        self.on_mouse_wheel = Some(Box::new(message));
+        self
+    }
 }
 
 /// Local state of the [`MouseArea`].
@@ -104,6 +114,7 @@ impl<'a, Message, Theme, Renderer> MouseArea<'a, Message, Theme, Renderer> {
             on_right_release: None,
             on_middle_press: None,
             on_middle_release: None,
+            on_mouse_wheel: None,
         }
     }
 }
@@ -335,6 +346,20 @@ fn update<Message: Clone, Theme, Renderer>(
         {
             shell.publish(message.clone());
 
+            return event::Status::Captured;
+        }
+    }
+
+    if let Some(message) = widget.on_mouse_wheel.as_ref() {
+        if let Event::Mouse(mouse::Event::WheelScrolled { delta }) = event {
+            // todo should scroll x and y be seperate functions or parameters?
+            // todo threshold, local state, parameter? (pixels laptop scroll)
+            if let mouse::ScrollDelta::Pixels { y, .. } = delta {
+                if y.abs() < 5. {
+                    return event::Status::Ignored;
+                }
+            }
+            shell.publish((message)(*delta));
             return event::Status::Captured;
         }
     }
