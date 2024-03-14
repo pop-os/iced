@@ -7,7 +7,9 @@ use iced_graphics::core::widget::operation::focusable::focus;
 use iced_graphics::core::widget::operation::OperationWrapper;
 use iced_graphics::core::widget::Operation;
 use iced_runtime::futures::futures::FutureExt;
+use iced_style::core::Clipboard as CoreClipboard;
 pub use state::State;
+use window_clipboard::mime::ClipboardStoreData;
 
 use crate::conversion;
 use crate::core;
@@ -907,6 +909,30 @@ pub fn run_command<A, C, E>(
                 }
                 clipboard::Action::Write(contents) => {
                     clipboard.write(contents);
+                }
+                clipboard::Action::WriteData(contents) => {
+                    clipboard.write_data(ClipboardStoreData(contents))
+                }
+                clipboard::Action::ReadData(allowed, to_msg) => {
+                    let contents = clipboard.read_data(allowed);
+                    let message = to_msg(contents);
+                    _ = proxy.send_event(UserEventWrapper::Message(message));
+                }
+                clipboard::Action::ReadPrimary(s_to_msg) => {
+                    let contents = clipboard.read_primary();
+                    let message = s_to_msg(contents);
+                    _ = proxy.send_event(UserEventWrapper::Message(message));
+                }
+                clipboard::Action::WritePrimary(content) => {
+                    clipboard.write_primary(content)
+                }
+                clipboard::Action::WritePrimaryData(content) => {
+                    clipboard.write_primary_data(ClipboardStoreData(content))
+                }
+                clipboard::Action::ReadPrimaryData(a, to_msg) => {
+                    let contents = clipboard.read_primary_data(a);
+                    let message = to_msg(contents);
+                    _ = proxy.send_event(UserEventWrapper::Message(message));
                 }
             },
             command::Action::Window(action) => match action {
