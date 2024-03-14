@@ -65,7 +65,6 @@ impl crate::core::Clipboard for Clipboard {
         self.write(contents);
     }
 
-    /// Read the current content of the primary [`Clipboard`] as text.
     fn read_primary(&self) -> Option<String> {
         match &self.state {
             State::Connected(clipboard) => {
@@ -75,7 +74,6 @@ impl crate::core::Clipboard for Clipboard {
         }
     }
 
-    /// Writes the given text contents to the primary [`Clipboard`].
     fn write_primary(&mut self, contents: String) {
         match &mut self.state {
             State::Connected(clipboard) => {
@@ -85,8 +83,6 @@ impl crate::core::Clipboard for Clipboard {
         }
     }
 
-    /// Consider using [`read_data`] instead
-    /// Reads the current content of the [`Clipboard`] as text.
     fn read_data(&self, mimes: Vec<String>) -> Option<(Vec<u8>, String)> {
         match &self.state {
             State::Connected(clipboard) => {
@@ -96,7 +92,6 @@ impl crate::core::Clipboard for Clipboard {
         }
     }
 
-    /// Writes the given contents to the [`Clipboard`].
     fn write_data(
         &mut self,
         contents: ClipboardStoreData<
@@ -109,8 +104,6 @@ impl crate::core::Clipboard for Clipboard {
         }
     }
 
-    /// Consider using [`read_primary_data`] instead
-    /// Reads the current content of the primary [`Clipboard`] as text.
     fn read_primary_data(
         &self,
         mimes: Vec<String>,
@@ -123,7 +116,6 @@ impl crate::core::Clipboard for Clipboard {
         }
     }
 
-    /// Writes the given text contents to the primary [`Clipboard`].
     fn write_primary_data(
         &mut self,
         contents: ClipboardStoreData<
