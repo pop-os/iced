@@ -524,11 +524,9 @@ where
                                         wl_surface
                                     };
                                     if matches!(simple_clipboard.state(),  crate::clipboard::State::Unavailable) {
-                                       if let Ok(h) = wrapper.display_handle() {
-                                           if let RawDisplayHandle::Wayland(mut h) = h.as_raw() {
-                                           simple_clipboard = unsafe { Clipboard::connect(h.display.as_mut()) };
-                                           }
-                                       }
+                                        if let Ok(h) = wrapper.display_handle() {
+                                            simple_clipboard = unsafe {Clipboard::connect(&h)};
+                                        }
                                     }
                                     let mut c_surface = compositor.create_surface(wrapper.clone(), configure.new_size.0.unwrap().get(), configure.new_size.1.unwrap().get());
                                     compositor.configure_surface(&mut c_surface, configure.new_size.0.unwrap().get(), configure.new_size.1.unwrap().get());
@@ -603,9 +601,7 @@ where
                                      };
                                      if matches!(simple_clipboard.state(),  crate::clipboard::State::Unavailable) {
                                         if let Ok(h) = wrapper.display_handle() {
-                                            if let RawDisplayHandle::Wayland(mut h) = h.as_raw() {
-                                            simple_clipboard = unsafe { Clipboard::connect(h.display.as_mut()) };
-                                            }
+                                            simple_clipboard = unsafe {Clipboard::connect(&h)};
                                         }
                                      }
                                      let mut c_surface = compositor.create_surface(wrapper.clone(), configure.new_size.0, configure.new_size.1);

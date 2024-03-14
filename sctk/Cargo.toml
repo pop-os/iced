@@ -10,20 +10,20 @@ debug = ["iced_runtime/debug"]
 system = ["sysinfo"]
 application = []
 a11y = ["iced_accessibility", "iced_runtime/a11y"]
-clipboard = ["smithay-clipboard"]
+clipboard = []
 
 [dependencies]
 tracing = "0.1"
 thiserror = "1.0"
 sctk.workspace = true
 wayland-protocols.workspace = true
+window_clipboard.workspace = true
 # sctk = { package = "smithay-client-toolkit", path = "../../fork/client-toolkit/" }
 raw-window-handle = "0.6"
 enum-repr = "0.2"
 futures = "0.3"
 wayland-backend = {version = "0.3.1", features = ["client_system"]}
 float-cmp = "0.9"
-smithay-clipboard = { version = "0.7", optional = true }
 xkbcommon-dl = "0.4.1"
 xkbcommon = { version = "0.7", features = ["wayland"] }
 itertools = "0.12"

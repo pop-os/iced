@@ -22,6 +22,7 @@ smol_str.workspace = true
 thiserror.workspace = true
 web-time.workspace = true
 xxhash-rust.workspace = true
+window_clipboard.workspace = true
 
 sctk.workspace = true
 sctk.optional = true
