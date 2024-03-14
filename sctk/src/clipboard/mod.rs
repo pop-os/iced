@@ -15,7 +15,9 @@ mod clipboard {
     }
 
     impl Clipboard {
-        pub unsafe fn connect(_display: *mut c_void) -> Clipboard {
+        pub unsafe fn connect(
+            _display: &impl raw_window_handle::HasDisplayHandle,
+        ) -> Clipboard {
             Clipboard
         }
 

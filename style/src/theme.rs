@@ -22,12 +22,6 @@ use crate::text_editor;
 use crate::text_input;
 use crate::toggler;
 
-use ::palette::FromColor;
-use ::palette::RgbHue;
-use iced_core::gradient::ColorStop;
-use iced_core::gradient::Linear;
-use iced_core::Degrees;
-use iced_core::Radians;
 use iced_core::{Background, Border, Color, Shadow, Vector};
 
 use std::fmt;

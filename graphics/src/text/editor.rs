@@ -7,7 +7,7 @@ use crate::core::text::LineHeight;
 use crate::core::{Font, Pixels, Point, Rectangle, Size};
 use crate::text;
 
-use cosmic_text::{BufferRef, Edit as _};
+use cosmic_text::Edit as _;
 
 use std::fmt;
 use std::sync::{self, Arc};

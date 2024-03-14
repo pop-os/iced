@@ -1,7 +1,7 @@
 use crate::event::{self, Event};
 use crate::id::Id;
 use crate::layout;
-use crate::mouse::{self, Cursor};
+use crate::mouse;
 use crate::overlay;
 use crate::renderer;
 use crate::widget;
@@ -489,7 +489,7 @@ where
         &self,
         _layout: Layout<'_>,
         _state: &Tree,
-        _cursor_position: Cursor,
+        _cursor_position: mouse::Cursor,
     ) -> iced_accessibility::A11yTree {
         self.widget.a11y_nodes(_layout, _state, _cursor_position)
     }

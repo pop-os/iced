@@ -161,7 +161,7 @@ impl Tree {
             } else if child_state_i < id_list.len() {
                 let c = &mut id_list[child_state_i];
                 if len_changed {
-                    c.id = new_id.clone();
+                    c.id.clone_from(new_id);
                 }
                 child_state_i += 1;
                 c

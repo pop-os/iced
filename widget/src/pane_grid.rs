@@ -111,6 +111,7 @@ pub struct PaneGrid<
     spacing: f32,
     on_click: Option<Box<dyn Fn(Pane) -> Message + 'a>>,
     on_drag: Option<Box<dyn Fn(DragEvent) -> Message + 'a>>,
+    #[allow(clippy::type_complexity)]
     on_resize: Option<(f32, Box<dyn Fn(ResizeEvent) -> Message + 'a>)>,
     style: <Theme as StyleSheet>::Style,
 }
@@ -534,7 +535,10 @@ pub fn update<'a, Message, T: Draggable>(
     contents: impl Iterator<Item = (Pane, T)>,
     on_click: &Option<Box<dyn Fn(Pane) -> Message + 'a>>,
     on_drag: &Option<Box<dyn Fn(DragEvent) -> Message + 'a>>,
-    on_resize: &Option<(f32, Box<dyn Fn(ResizeEvent) -> Message + 'a>)>,
+    #[allow(clippy::type_complexity)] on_resize: &Option<(
+        f32,
+        Box<dyn Fn(ResizeEvent) -> Message + 'a>,
+    )>,
 ) -> event::Status {
     const DRAG_DEADBAND_DISTANCE: f32 = 10.0;
 

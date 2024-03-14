@@ -184,7 +184,7 @@ where
         );
 
         if state.keys != self.keys {
-            state.keys = self.keys.clone();
+            state.keys.clone_from(&self.keys);
         }
     }
 

@@ -19,6 +19,7 @@ pub enum Action<T> {
     /// Write the given contents to the clipboard.
     WriteData(Box<dyn AsMimeTypes + Send + Sync + 'static>),
 
+    #[allow(clippy::type_complexity)]
     /// Read the clipboard and produce `T` with the result.
     ReadData(Vec<String>, Box<dyn Fn(Option<(Vec<u8>, String)>) -> T>),
 
@@ -31,6 +32,7 @@ pub enum Action<T> {
     /// Write the given contents to the clipboard.
     WritePrimaryData(Box<dyn AsMimeTypes + Send + Sync + 'static>),
 
+    #[allow(clippy::type_complexity)]
     /// Read the clipboard and produce `T` with the result.
     ReadPrimaryData(Vec<String>, Box<dyn Fn(Option<(Vec<u8>, String)>) -> T>),
 }
