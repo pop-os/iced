@@ -26,7 +26,7 @@ use crate::runtime::user_interface::{self, UserInterface};
 use crate::runtime::Debug;
 use crate::style::application::StyleSheet;
 use crate::{Clipboard, Error, Proxy, Settings};
-use core::Clipboard as CoreClipboard;
+use crate::core::Clipboard as CoreClipboard;
 use iced_runtime::futures::futures::FutureExt;
 use iced_style::Theme;
 pub use state::State;
