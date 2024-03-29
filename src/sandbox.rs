@@ -84,7 +84,7 @@ use crate::{Application, Command, Element, Error, Settings, Subscription};
 /// ```
 pub trait Sandbox {
     /// The type of __messages__ your [`Sandbox`] will produce.
-    type Message: std::fmt::Debug + Send;
+    type Message: std::fmt::Debug + Send + Sync + 'static;
 
     /// Initializes the [`Sandbox`].
     ///
@@ -155,6 +155,7 @@ pub trait Sandbox {
 impl<T> Application for T
 where
     T: Sandbox,
+    T::Message: Send + Sync + 'static,
 {
     type Executor = iced_futures::backend::null::Executor;
     type Flags = ();

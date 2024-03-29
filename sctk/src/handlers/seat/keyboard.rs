@@ -172,6 +172,7 @@ impl<T: Debug> KeyboardHandler for SctkState<T> {
         keyboard: &sctk::reexports::client::protocol::wl_keyboard::WlKeyboard,
         _serial: u32,
         modifiers: sctk::seat::keyboard::Modifiers,
+        layout: u32,
     ) {
         let (is_active, my_seat) =
             match self.seats.iter_mut().enumerate().find_map(|(i, s)| {

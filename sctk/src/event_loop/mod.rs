@@ -1079,11 +1079,11 @@ where
                     Event::DataDevice(action) => {
                         match action.inner {
                             platform_specific::wayland::data_device::ActionInner::Accept(mime_type) => {
-                                let drag_offer = match self.state.dnd_offer.as_mut() {
+                                let drag_offer = match self.state.dnd_offer.as_mut().and_then(|o| o.offer.as_ref()) {
                                     Some(d) => d,
                                     None => continue,
                                 };
-                                drag_offer.offer.accept_mime_type(drag_offer.offer.serial, mime_type);
+                                drag_offer.accept_mime_type(drag_offer.serial, mime_type);
                             }
                             platform_specific::wayland::data_device::ActionInner::StartInternalDnd { origin_id, icon_id } => {
                                 let qh = &self.state.queue_handle.clone();
@@ -1188,9 +1188,9 @@ where
                                 self.state.dnd_source = Some(Dnd { origin_id, origin, source: Some((source, data)), icon_surface, pending_requests: Vec::new(), pipe: None, cur_write: None });
                             },
                             platform_specific::wayland::data_device::ActionInner::DndFinished => {
-                                if let Some(offer) = self.state.dnd_offer.take() {
+                                if let Some(offer) = self.state.dnd_offer.take().filter(|o| o.offer.is_some()) {
                                     if offer.dropped {
-                                        offer.offer.finish();
+                                        offer.offer.unwrap().finish();
                                     }
                                     else {
                                         self.state.dnd_offer = Some(offer);
@@ -1212,7 +1212,10 @@ where
                             },
                             platform_specific::wayland::data_device::ActionInner::RequestDndData (mime_type) => {
                                 if let Some(dnd_offer) = self.state.dnd_offer.as_mut() {
-                                    let read_pipe = match dnd_offer.offer.receive(mime_type.clone()) {
+                                    let Some(offer) = dnd_offer.offer.as_ref() else {
+                                        continue;
+                                    };
+                                    let read_pipe = match offer.receive(mime_type.clone()) {
                                         Ok(p) => p,
                                         Err(_) => continue, // TODO error handling
                                     };
@@ -1221,6 +1224,9 @@ where
                                         let mut dnd_offer = match state.dnd_offer.take() {
                                             Some(s) => s,
                                             None => return PostAction::Continue,
+                                        };
+                                        let Some(offer) = dnd_offer.offer.as_ref() else {
+                                            return PostAction::Remove;
                                         };
                                         let (mime_type, data, token) = match dnd_offer.cur_read.take() {
                                             Some(s) => s,
@@ -1231,9 +1237,9 @@ where
                                             Ok(buf) => {
                                                 if buf.is_empty() {
                                                     loop_handle.remove(token);
-                                                    state.sctk_events.push(SctkEvent::DndOffer { event: DndOfferEvent::Data { data, mime_type }, surface: dnd_offer.offer.surface.clone() });
+                                                    state.sctk_events.push(SctkEvent::DndOffer { event: DndOfferEvent::Data { data, mime_type }, surface: dnd_offer.surface.clone() });
                                                     if dnd_offer.dropped {
-                                                        dnd_offer.offer.finish();
+                                                        offer.finish();
                                                     } else {
                                                         state.dnd_offer = Some(dnd_offer);
                                                     }
@@ -1269,8 +1275,8 @@ where
                                 }
                             }
                             platform_specific::wayland::data_device::ActionInner::SetActions { preferred, accepted } => {
-                                if let Some(offer) = self.state.dnd_offer.as_ref() {
-                                    offer.offer.set_actions(accepted, preferred);
+                                if let Some(offer) = self.state.dnd_offer.as_ref().and_then(|o| o.offer.as_ref()) {
+                                    offer.set_actions(accepted, preferred);
                                 }
                             }
                         }

@@ -53,6 +53,21 @@ impl Tree {
         }
     }
 
+    /// Finds a widget state in the tree by its id.
+    pub fn find<'a>(&'a self, id: &Id) -> Option<&'a Tree> {
+        if self.id == Some(id.clone()) {
+            return Some(self);
+        }
+
+        for child in self.children.iter() {
+            if let Some(tree) = child.find(id) {
+                return Some(tree);
+            }
+        }
+
+        None
+    }
+
     /// Reconciliates the current tree with the provided [`Widget`].
     ///
     /// If the tag of the [`Widget`] matches the tag of the [`Tree`], then the

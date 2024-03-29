@@ -4,6 +4,7 @@ use crate::font;
 use crate::system;
 use crate::window;
 
+use dnd::DndAction;
 use iced_futures::MaybeSend;
 
 use std::borrow::Cow;
@@ -34,6 +35,9 @@ pub enum Action<T> {
 
     /// Run a widget action.
     Widget(Box<dyn widget::Operation<T>>),
+
+    /// Run a Dnd action.
+    Dnd(crate::dnd::DndAction<T>),
 
     /// Load a font from its bytes.
     LoadFont {
@@ -78,6 +82,9 @@ impl<T> Action<T> {
             Self::PlatformSpecific(action) => {
                 Action::PlatformSpecific(action.map(f))
             }
+            Self::Dnd(a) => Action::Dnd(a.map(f)),
+            Action::LoadFont { bytes, tagger } => todo!(),
+            Action::PlatformSpecific(_) => todo!(),
         }
     }
 }
@@ -99,6 +106,7 @@ impl<T> fmt::Debug for Action<T> {
             Self::PlatformSpecific(action) => {
                 write!(f, "Action::PlatformSpecific({:?})", action)
             }
+            Self::Dnd(action) => write!(f, "Action::Dnd"),
         }
     }
 }

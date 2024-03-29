@@ -1,4 +1,7 @@
 //! Handle events of a user interface.
+use dnd::DndEvent;
+use dnd::DndSurface;
+
 use crate::keyboard;
 use crate::mouse;
 use crate::touch;
@@ -32,6 +35,9 @@ pub enum Event {
         crate::widget::Id,
         iced_accessibility::accesskit::ActionRequest,
     ),
+
+    /// A DnD event.
+    Dnd(DndEvent<DndSurface>),
 
     /// A platform specific event
     PlatformSpecific(PlatformSpecific),

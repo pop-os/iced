@@ -12,6 +12,7 @@ use crate::core::renderer;
 use crate::core::widget::operation;
 use crate::core::widget::Operation;
 use crate::core::window;
+use crate::core::Clipboard as CoreClipboard;
 use crate::core::Size;
 use crate::futures::futures::channel::mpsc;
 use crate::futures::futures::{task, Future, StreamExt};
@@ -26,12 +27,17 @@ use crate::runtime::user_interface::{self, UserInterface};
 use crate::runtime::Debug;
 use crate::style::application::StyleSheet;
 use crate::{Clipboard, Error, Proxy, Settings};
-use crate::core::Clipboard as CoreClipboard;
+use dnd::DndAction;
+use dnd::DndSurface;
+use dnd::Icon;
+use iced_graphics::Viewport;
 use iced_runtime::futures::futures::FutureExt;
 use iced_style::Theme;
 pub use state::State;
 use window_clipboard::mime::ClipboardStoreData;
+use winit::raw_window_handle::HasWindowHandle;
 
+use std::any::Any;
 use std::collections::HashMap;
 use std::mem::ManuallyDrop;
 use std::sync::Arc;
@@ -127,6 +133,7 @@ where
     A: Application + 'static,
     E: Executor + 'static,
     C: Compositor<Renderer = A::Renderer> + 'static,
+    A::Message: Send + Sync + 'static,
     A::Theme: StyleSheet,
 {
     use winit::event_loop::EventLoopBuilder;
@@ -350,6 +357,7 @@ async fn run_instance<A, E, C>(
     A: Application + 'static,
     E: Executor + 'static,
     C: Compositor<Renderer = A::Renderer> + 'static,
+    A::Message: Send + Sync + 'static,
     A::Theme: StyleSheet,
 {
     use winit::event;
@@ -363,7 +371,8 @@ async fn run_instance<A, E, C>(
         main_window.raw.set_visible(true);
     }
 
-    let mut clipboard = Clipboard::connect(&main_window.raw);
+    let mut clipboard =
+        Clipboard::connect(&main_window.raw, Proxy::new(proxy.clone()));
 
     #[cfg(feature = "a11y")]
     let (window_a11y_id, adapter, mut a11y_enabled) = {
@@ -445,6 +454,8 @@ async fn run_instance<A, E, C>(
     let mut messages = Vec::new();
 
     debug.startup_finished();
+
+    let mut cur_dnd_surface: Option<window::Id> = None;
 
     'main: while let Some(event) = event_receiver.next().await {
         match event {
@@ -971,6 +982,192 @@ async fn run_instance<A, E, C>(
                             UserEventWrapper::A11yEnabled => {
                                 a11y_enabled = true
                             }
+                            UserEventWrapper::StartDnd {
+                                internal,
+                                source_surface,
+                                icon_surface,
+                                content,
+                                actions,
+                            } => {
+                                let Some(window_id) =
+                                    source_surface.and_then(|source| {
+                                        match source {
+                                        core::clipboard::DndSource::Surface(
+                                            s,
+                                        ) => Some(s),
+                                        core::clipboard::DndSource::Widget(
+                                            w,
+                                        ) => {
+                                            // search windows for widget
+                                            user_interfaces.iter().find_map(
+                                                |(id, ui)| {
+                                                    if ui.
+                                                        find(&w).is_some()
+                                                    {
+                                                        Some(*id)
+                                                    } else {
+                                                        None
+                                                    }
+                                                },
+                                            )
+                                        },
+                                    }
+                                    })
+                                else {
+                                    continue;
+                                };
+
+                                let Some(window) =
+                                    window_manager.get_mut(window_id)
+                                else {
+                                    continue;
+                                };
+                                let state = &window.state;
+
+                                let icon_surface = icon_surface
+                                    .map(|i| {
+                                        let i: Box<dyn Any> = i;
+                                        i
+                                    })
+                                    .and_then(|i| {
+                                        i.downcast::<Arc<
+                                            core::Element<
+                                                'static,
+                                                A::Message,
+                                                A::Theme,
+                                                A::Renderer,
+                                            >,
+                                        >>(
+                                        )
+                                        .ok()
+                                    })
+                                    .map(|e| {
+                                        let size = e.as_widget().size();
+                                        let lim = core::layout::Limits::new(
+                                            Size::new(1., 1.),
+                                            Size::new(
+                                                state
+                                                    .viewport()
+                                                    .physical_width()
+                                                    as f32,
+                                                state
+                                                    .viewport()
+                                                    .physical_height()
+                                                    as f32,
+                                            ),
+                                        );
+                                        let size = lim.resolve(
+                                            size.width,
+                                            size.height,
+                                            Size::ZERO,
+                                        );
+                                        let mut surface = compositor
+                                            .create_surface(
+                                                window.raw.clone(),
+                                                size.width.ceil() as u32,
+                                                size.height.ceil() as u32,
+                                            );
+                                        let viewport =
+                                            Viewport::with_logical_size(
+                                                size,
+                                                state.viewport().scale_factor(),
+                                            );
+                                        let mut renderer =
+                                            compositor.create_renderer();
+
+                                        let e = Arc::into_inner(*e).unwrap();
+                                        let mut ui = UserInterface::build(
+                                            e,
+                                            size,
+                                            user_interface::Cache::default(),
+                                            &mut renderer,
+                                        );
+                                        _ = ui.draw(
+                                            &mut renderer,
+                                            state.theme(),
+                                            &renderer::Style {
+                                                icon_color: state.icon_color(),
+                                                text_color: state.text_color(),
+                                                scale_factor: state
+                                                    .scale_factor(),
+                                            },
+                                            Default::default(),
+                                        );
+                                        let bytes = compositor.screenshot(
+                                            &mut renderer,
+                                            &mut surface,
+                                            &viewport,
+                                            state.background_color(),
+                                            &debug.overlay(),
+                                        );
+                                        Icon::Buffer {
+                                            data: Arc::new(bytes),
+                                            width: viewport.physical_width(),
+                                            height: viewport.physical_height(),
+                                            transparent: false,
+                                        }
+                                    });
+
+                                clipboard.start_dnd_winit(
+                                    internal,
+                                    DndSurface(Arc::new(Box::new(
+                                        window.raw.clone(),
+                                    ))),
+                                    icon_surface,
+                                    content,
+                                    actions,
+                                );
+                            }
+                            UserEventWrapper::Dnd(e) => match &e {
+                                dnd::DndEvent::Offer(
+                                    _,
+                                    dnd::OfferEvent::Leave,
+                                ) => {
+                                    events.push((
+                                        cur_dnd_surface,
+                                        core::Event::Dnd(e),
+                                    ));
+                                    cur_dnd_surface = None;
+                                }
+                                dnd::DndEvent::Offer(
+                                    _,
+                                    dnd::OfferEvent::Enter { surface, .. },
+                                ) => {
+                                    let window_handle =
+                                        surface.0.window_handle().ok();
+                                    let window_id = window_manager
+                                        .iter_mut()
+                                        .find_map(|(id, window)| {
+                                            if window
+                                                .raw
+                                                .window_handle()
+                                                .ok()
+                                                .zip(window_handle)
+                                                .map(|(a, b)| a == b)
+                                                .unwrap_or_default()
+                                            {
+                                                Some(id)
+                                            } else {
+                                                None
+                                            }
+                                        });
+
+                                    cur_dnd_surface = window_id;
+                                    events.push((
+                                        cur_dnd_surface,
+                                        core::Event::Dnd(e),
+                                    ));
+                                }
+                                dnd::DndEvent::Offer(..) => {
+                                    events.push((
+                                        cur_dnd_surface,
+                                        core::Event::Dnd(e),
+                                    ));
+                                }
+                                dnd::DndEvent::Source(_) => {
+                                    events.push((None, core::Event::Dnd(e)))
+                                }
+                            },
                         };
                     }
                     event::Event::WindowEvent {
@@ -1059,7 +1256,7 @@ fn update<A: Application + 'static, C, E: Executor + 'static>(
         Proxy<UserEventWrapper<A::Message>>,
         UserEventWrapper<A::Message>,
     >,
-    clipboard: &mut Clipboard,
+    clipboard: &mut Clipboard<A::Message>,
     control_sender: &mut mpsc::UnboundedSender<Control>,
     proxy: &mut winit::event_loop::EventLoopProxy<UserEventWrapper<A::Message>>,
     debug: &mut Debug,
@@ -1068,6 +1265,7 @@ fn update<A: Application + 'static, C, E: Executor + 'static>(
     ui_caches: &mut HashMap<window::Id, user_interface::Cache>,
 ) where
     C: Compositor<Renderer = A::Renderer> + 'static,
+    A::Message: Send + Sync + 'static,
     A::Theme: StyleSheet,
 {
     for message in messages.drain(..) {
@@ -1108,7 +1306,7 @@ fn run_command<A, C, E>(
         Proxy<UserEventWrapper<A::Message>>,
         UserEventWrapper<A::Message>,
     >,
-    clipboard: &mut Clipboard,
+    clipboard: &mut Clipboard<A::Message>,
     control_sender: &mut mpsc::UnboundedSender<Control>,
     proxy: &mut winit::event_loop::EventLoopProxy<UserEventWrapper<A::Message>>,
 
@@ -1119,6 +1317,7 @@ fn run_command<A, C, E>(
     A: Application,
     E: Executor,
     C: Compositor<Renderer = A::Renderer> + 'static,
+    A::Message: Send + Sync + 'static,
     A::Theme: StyleSheet,
 {
     use crate::runtime::clipboard;
@@ -1442,6 +1641,40 @@ fn run_command<A, C, E>(
             command::Action::PlatformSpecific(_) => {
                 tracing::warn!("Platform specific commands are not supported yet in multi-window winit mode.");
             }
+            command::Action::Dnd(a) => match a {
+                iced_runtime::dnd::DndAction::RegisterDndDestination {
+                    surface,
+                    rectangles,
+                } => {
+                    clipboard.register_dnd_destination(surface, rectangles);
+                }
+                iced_runtime::dnd::DndAction::StartDnd {
+                    internal,
+                    source_surface,
+                    icon_surface,
+                    content,
+                    actions,
+                } => clipboard.start_dnd(
+                    internal,
+                    source_surface,
+                    icon_surface,
+                    content,
+                    actions,
+                ),
+                iced_runtime::dnd::DndAction::EndDnd => {
+                    clipboard.end_dnd();
+                }
+                iced_runtime::dnd::DndAction::PeekDnd(m, to_msg) => {
+                    let data = clipboard.peek_dnd(m);
+                    let message = to_msg(data);
+                    proxy
+                        .send_event(UserEventWrapper::Message(message))
+                        .expect("Send message to event loop");
+                }
+                iced_runtime::dnd::DndAction::SetAction(a) => {
+                    clipboard.set_action(a);
+                }
+            },
         }
     }
 }
