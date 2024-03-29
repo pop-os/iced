@@ -73,7 +73,7 @@ impl<T> std::fmt::Debug for DndAction<T> {
 }
 
 impl<T> DndAction<T> {
-    /// Maps the output of a system [`Action`] using the provided closure.
+    /// Maps the output of a [`DndAction`] using the provided closure.
     pub fn map<A>(
         self,
         f: impl Fn(T) -> A + 'static + MaybeSend + Sync,
