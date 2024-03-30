@@ -27,11 +27,11 @@ use crate::runtime::user_interface::{self, UserInterface};
 use crate::runtime::Debug;
 use crate::style::application::StyleSheet;
 use crate::{Clipboard, Error, Proxy, Settings};
-use dnd::DndAction;
 use dnd::DndSurface;
 use dnd::Icon;
 use iced_graphics::Viewport;
 use iced_runtime::futures::futures::FutureExt;
+use iced_style::core::Length;
 use iced_style::Theme;
 pub use state::State;
 use window_clipboard::mime::ClipboardStoreData;
@@ -1023,26 +1023,30 @@ async fn run_instance<A, E, C>(
                                     continue;
                                 };
                                 let state = &window.state;
-
                                 let icon_surface = icon_surface
                                     .map(|i| {
                                         let i: Box<dyn Any> = i;
                                         i
                                     })
                                     .and_then(|i| {
-                                        i.downcast::<Arc<
+                                        i.downcast::<Arc<(
                                             core::Element<
                                                 'static,
                                                 A::Message,
                                                 A::Theme,
                                                 A::Renderer,
                                             >,
-                                        >>(
+                                            core::widget::tree::State,
+                                        )>>(
                                         )
                                         .ok()
                                     })
                                     .map(|e| {
-                                        let size = e.as_widget().size();
+                                        let mut renderer =
+                                            compositor.create_renderer();
+
+                                        let e = Arc::into_inner(*e).unwrap();
+                                        let (mut e, widget_state) = e;
                                         let lim = core::layout::Limits::new(
                                             Size::new(1., 1.),
                                             Size::new(
@@ -1056,10 +1060,23 @@ async fn run_instance<A, E, C>(
                                                     as f32,
                                             ),
                                         );
+
+                                        let mut tree = core::widget::Tree {
+                                            id: e.as_widget().id(),
+                                            tag: e.as_widget().tag(),
+                                            state: widget_state,
+                                            children: e.as_widget().children(),
+                                        };
+
+                                        let size = e
+                                            .as_widget()
+                                            .layout(&mut tree, &renderer, &lim);
+                                        e.as_widget_mut().diff(&mut tree);
+
                                         let size = lim.resolve(
-                                            size.width,
-                                            size.height,
-                                            Size::ZERO,
+                                            Length::Shrink,
+                                            Length::Shrink,
+                                            size.size(),
                                         );
                                         let mut surface = compositor
                                             .create_surface(
@@ -1072,10 +1089,6 @@ async fn run_instance<A, E, C>(
                                                 size,
                                                 state.viewport().scale_factor(),
                                             );
-                                        let mut renderer =
-                                            compositor.create_renderer();
-
-                                        let e = Arc::into_inner(*e).unwrap();
                                         let mut ui = UserInterface::build(
                                             e,
                                             size,
@@ -1093,13 +1106,17 @@ async fn run_instance<A, E, C>(
                                             },
                                             Default::default(),
                                         );
-                                        let bytes = compositor.screenshot(
+                                        let mut bytes = compositor.screenshot(
                                             &mut renderer,
                                             &mut surface,
                                             &viewport,
                                             state.background_color(),
                                             &debug.overlay(),
                                         );
+                                        for pix in bytes.chunks_exact_mut(4) {
+                                            // rgba -> argb little endian
+                                            pix.swap(0, 2);
+                                        }
                                         Icon::Buffer {
                                             data: Arc::new(bytes),
                                             width: viewport.physical_width(),

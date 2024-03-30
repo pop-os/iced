@@ -580,13 +580,17 @@ async fn run_instance<A, E, C>(
                                     },
                                     Default::default(),
                                 );
-                                let bytes = compositor.screenshot(
+                                let mut bytes = compositor.screenshot(
                                     &mut renderer,
                                     &mut surface,
                                     &viewport,
                                     state.background_color(),
                                     &debug.overlay(),
                                 );
+                                for pix in bytes.chunks_exact_mut(4) {
+                                    // rgba -> argb little endian
+                                    pix.swap(0, 2);
+                                }
                                 Icon::Buffer {
                                     data: Arc::new(bytes),
                                     width: viewport.physical_width(),
