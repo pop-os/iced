@@ -69,6 +69,7 @@ where
                 surface,
                 renderer,
                 mouse_interaction: mouse::Interaction::Idle,
+                prev_dnd_destination_rectangles_count: 0,
             },
         );
 
@@ -142,6 +143,7 @@ where
             ) -> bool,
         >,
     >,
+    pub prev_dnd_destination_rectangles_count: usize,
     pub mouse_interaction: mouse::Interaction,
     pub surface: C::Surface,
     pub renderer: A::Renderer,

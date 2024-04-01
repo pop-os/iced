@@ -1,4 +1,5 @@
 //! Implement your own event loop to drive a user interface.
+use iced_core::clipboard::DndDestinationRectangles;
 use iced_core::widget::{Operation, OperationOutputWrapper};
 
 use crate::core::event::{self, Event};
@@ -624,6 +625,20 @@ where
     /// Find widget with given id
     pub fn find(&self, id: &widget::Id) -> Option<&widget::Tree> {
         self.state.find(id)
+    }
+
+    /// Get the destination rectangles for the user interface.
+    pub fn dnd_rectangles(
+        &self,
+        prev_capacity: usize,
+    ) -> DndDestinationRectangles {
+        let ret = DndDestinationRectangles::with_capacity(prev_capacity);
+        self.root.as_widget().drag_destinations(
+            &self.state,
+            Layout::new(&self.base),
+            &mut ret.clone(),
+        );
+        ret
     }
 }
 

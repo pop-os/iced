@@ -167,4 +167,14 @@ where
     /// Sets the id of the widget
     /// This may be called while diffing the widget tree
     fn set_id(&mut self, _id: Id) {}
+
+    /// Adds the drag destination rectangles of the widget.
+    /// Runs after the layout phase for each widget in the tree.
+    fn drag_destinations(
+        &self,
+        _state: &Tree,
+        _layout: Layout<'_>,
+        _dnd_rectangles: &mut crate::clipboard::DndDestinationRectangles,
+    ) {
+    }
 }

@@ -284,6 +284,23 @@ where
                 }),
         )
     }
+
+    fn drag_destinations(
+        &self,
+        state: &Tree,
+        layout: Layout<'_>,
+        dnd_rectangles: &mut iced_style::core::clipboard::DndDestinationRectangles,
+    ) {
+        for ((e, layout), state) in self
+            .children
+            .iter()
+            .zip(layout.children())
+            .zip(state.children.iter())
+        {
+            e.as_widget()
+                .drag_destinations(state, layout, dnd_rectangles);
+        }
+    }
 }
 
 impl<'a, Message, Theme, Renderer> From<Column<'a, Message, Theme, Renderer>>

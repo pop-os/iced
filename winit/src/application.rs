@@ -23,7 +23,6 @@ use crate::conversion;
 use crate::core;
 use crate::core::mouse;
 use crate::core::renderer;
-use crate::core::renderer::Renderer;
 use crate::core::time::Instant;
 use crate::core::widget::operation;
 use crate::core::window;
@@ -410,6 +409,8 @@ async fn run_instance<A, E, C>(
         state.logical_size(),
         &mut debug,
     ));
+
+    let mut prev_dnd_rectangles_count = 0;
 
     // Creates closure for handling the window drag resize state with winit.
     let mut drag_resize_window_func = drag_resize::event_func(
@@ -892,6 +893,22 @@ async fn run_instance<A, E, C>(
                         state.logical_size(),
                         &mut debug,
                     ));
+
+                    let dnd_rectangles = user_interface
+                        .dnd_rectangles(prev_dnd_rectangles_count);
+                    let new_dnd_rectangles_count =
+                        dnd_rectangles.as_ref().len();
+
+                    if new_dnd_rectangles_count > 0
+                        || prev_dnd_rectangles_count > 0
+                    {
+                        clipboard.register_dnd_destination(
+                            DndSurface(Arc::new(Box::new(window.clone()))),
+                            dnd_rectangles.into_rectangles(),
+                        );
+                    }
+
+                    prev_dnd_rectangles_count = new_dnd_rectangles_count;
 
                     if should_exit {
                         break;

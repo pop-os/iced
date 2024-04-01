@@ -1,6 +1,6 @@
 //! Access the clipboard.
 
-use std::{any::Any, borrow::Cow, sync::Arc};
+use std::{any::Any, sync::Arc};
 
 use dnd::{DndAction, DndDestinationRectangle, DndSurface};
 use mime::{self, AllowedMimeTypes, AsMimeTypes, ClipboardStoreData};
@@ -164,4 +164,50 @@ pub enum DndSource {
     Widget(crate::id::Id),
     /// A surface is the source of the DnD operation.
     Surface(window::Id),
+}
+
+/// A list of DnD destination rectangles.
+#[derive(Debug, Clone)]
+pub struct DndDestinationRectangles {
+    /// The rectangle of the DnD destination.
+    rectangles: Vec<DndDestinationRectangle>,
+}
+
+impl DndDestinationRectangles {
+    /// Creates a new [`DestinationRectangle`].
+    pub fn new() -> Self {
+        Self {
+            rectangles: Vec::new(),
+        }
+    }
+
+    /// Creates a new [`DestinationRectangle`] with the given capacity.
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self {
+            rectangles: Vec::with_capacity(capacity),
+        }
+    }
+
+    /// Pushes a new rectangle to the list of DnD destination rectangles.
+    pub fn push(&mut self, rectangle: DndDestinationRectangle) {
+        self.rectangles.push(rectangle);
+    }
+
+    /// Appends the list of DnD destination rectangles to the current list.
+    pub fn append(&mut self, other: &mut Vec<DndDestinationRectangle>) {
+        self.rectangles.append(other);
+    }
+
+    /// Returns the list of DnD destination rectangles.
+    /// This consumes the [`DestinationRectangles`].
+    pub fn into_rectangles(mut self) -> Vec<DndDestinationRectangle> {
+        self.rectangles.reverse();
+        self.rectangles
+    }
+}
+
+impl AsRef<[DndDestinationRectangle]> for DndDestinationRectangles {
+    fn as_ref(&self) -> &[DndDestinationRectangle] {
+        &self.rectangles
+    }
 }

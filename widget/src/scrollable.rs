@@ -1,5 +1,6 @@
 //! Navigate an endless amount of content with a scrollbar.
 use iced_runtime::core::widget::Id;
+use iced_style::core::clipboard::DndDestinationRectangles;
 #[cfg(feature = "a11y")]
 use std::borrow::Cow;
 
@@ -586,6 +587,36 @@ where
                 self.id.0 = list[0].clone();
                 self.scrollbar_id.0 = list[1].clone();
             }
+        }
+    }
+
+    fn drag_destinations(
+        &self,
+        state: &Tree,
+        layout: Layout<'_>,
+        dnd_rectangles: &mut iced_style::core::clipboard::DndDestinationRectangles,
+    ) {
+        if let Some((c_layout, c_state)) =
+            layout.children().zip(state.children.iter()).next()
+        {
+            let mut my_dnd_rectangles = DndDestinationRectangles::new();
+            self.content.as_widget().drag_destinations(
+                c_state,
+                layout,
+                &mut my_dnd_rectangles,
+            );
+            let mut my_dnd_rectangles = my_dnd_rectangles.into_rectangles();
+
+            let bounds = layout.bounds();
+            let content_bounds = c_layout.bounds();
+            let state = state.state.downcast_ref::<State>();
+            for r in &mut my_dnd_rectangles {
+                let translation =
+                    state.translation(self.direction, bounds, content_bounds);
+                r.rectangle.x -= translation.x as f64;
+                r.rectangle.y -= translation.y as f64;
+            }
+            dnd_rectangles.append(&mut my_dnd_rectangles);
         }
     }
 }
