@@ -174,14 +174,14 @@ pub struct DndDestinationRectangles {
 }
 
 impl DndDestinationRectangles {
-    /// Creates a new [`DestinationRectangle`].
+    /// Creates a new [`DndDestinationRectangles`].
     pub fn new() -> Self {
         Self {
             rectangles: Vec::new(),
         }
     }
 
-    /// Creates a new [`DestinationRectangle`] with the given capacity.
+    /// Creates a new [`DndDestinationRectangles`] with the given capacity.
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
             rectangles: Vec::with_capacity(capacity),
@@ -199,7 +199,7 @@ impl DndDestinationRectangles {
     }
 
     /// Returns the list of DnD destination rectangles.
-    /// This consumes the [`DestinationRectangles`].
+    /// This consumes the [`DndDestinationRectangles`].
     pub fn into_rectangles(mut self) -> Vec<DndDestinationRectangle> {
         self.rectangles.reverse();
         self.rectangles
