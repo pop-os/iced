@@ -251,9 +251,7 @@ where
         layout: Layout<'_>,
         dnd_rectangles: &mut iced_style::core::clipboard::DndDestinationRectangles,
     ) {
-        if let Some((layout, state)) =
-            layout.children().zip(state.children.iter()).next()
-        {
+        if let Some(state) = state.children.iter().next() {
             self.content.as_widget().drag_destinations(
                 state,
                 layout,
