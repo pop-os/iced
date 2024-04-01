@@ -24,7 +24,7 @@ enum State<M: 'static> {
     Unavailable,
 }
 
-impl<M: Send + Sync + 'static> Clipboard<M> {
+impl<M: Send + 'static> Clipboard<M> {
     /// Creates a new [`Clipboard`] for the given window.
     pub fn connect(
         window: &winit::window::Window,

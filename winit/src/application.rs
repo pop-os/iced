@@ -77,7 +77,6 @@ pub enum UserEventWrapper<Message> {
 }
 
 unsafe impl<M> Send for UserEventWrapper<M> {}
-unsafe impl<M> Sync for UserEventWrapper<M> {}
 
 impl<M: std::fmt::Debug> std::fmt::Debug for UserEventWrapper<M> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -194,7 +193,6 @@ where
     E: Executor + 'static,
     C: Compositor<Renderer = A::Renderer> + 'static,
     A::Theme: StyleSheet,
-    <A>::Message: Sync,
 {
     use futures::task;
     use futures::Future;
@@ -357,7 +355,7 @@ async fn run_instance<A, E, C>(
     E: Executor + 'static,
     C: Compositor<Renderer = A::Renderer> + 'static,
     A::Theme: StyleSheet,
-    A::Message: Send + Sync + 'static,
+    A::Message: Send + 'static,
 {
     use winit::event;
     use winit::event_loop::ControlFlow;

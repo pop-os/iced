@@ -97,7 +97,7 @@ pub trait Application: Sized {
     type Executor: Executor;
 
     /// The type of __messages__ your [`Application`] will produce.
-    type Message: std::fmt::Debug + Send + Sync + 'static;
+    type Message: std::fmt::Debug + Send + 'static;
 
     /// The theme of your [`Application`].
     type Theme: Default + StyleSheet;
