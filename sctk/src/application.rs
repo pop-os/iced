@@ -2275,7 +2275,14 @@ where
         | SctkEvent::UpdateOutput { .. }
         | SctkEvent::RemovedOutput(_) => false,
         SctkEvent::ScaleFactorChanged { id, .. } => &id.id() == object_id,
-        SctkEvent::DndOffer { surface, .. } => &surface.id() == object_id,
+        SctkEvent::DndOffer { surface, .. } => {
+            let event_object_id = surface.id();
+            &event_object_id == object_id
+                || state
+                    .subsurfaces
+                    .iter()
+                    .any(|s| s.wl_surface.id() == event_object_id)
+        }
         SctkEvent::DataSource(_) => true,
         SctkEvent::SessionLocked => false,
         SctkEvent::SessionLockFinished => false,

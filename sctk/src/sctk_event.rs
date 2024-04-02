@@ -785,7 +785,7 @@ impl SctkEvent {
                 id: _,
                 inner_size: _,
             } => Default::default(),
-            SctkEvent::DndOffer { event, .. } => match event {
+            SctkEvent::DndOffer { event, surface } => match event {
                 DndOfferEvent::Enter { mime_types, x, y } => {
                     Some(iced_runtime::core::Event::PlatformSpecific(
                         PlatformSpecific::Wayland(wayland::Event::DndOffer(
@@ -796,9 +796,19 @@ impl SctkEvent {
                     .collect()
                 }
                 DndOfferEvent::Motion { x, y } => {
+                    let offset = if let Some((x_offset, y_offset, _)) =
+                        subsurface_ids.get(&surface.id())
+                    {
+                        (*x_offset, *y_offset)
+                    } else {
+                        (0, 0)
+                    };
                     Some(iced_runtime::core::Event::PlatformSpecific(
                         PlatformSpecific::Wayland(wayland::Event::DndOffer(
-                            wayland::DndOfferEvent::Motion { x, y },
+                            wayland::DndOfferEvent::Motion {
+                                x: x + offset.0 as f64,
+                                y: y + offset.1 as f64,
+                            },
                         )),
                     ))
                     .into_iter()
