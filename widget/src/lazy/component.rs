@@ -540,6 +540,21 @@ where
             }
         })
     }
+
+    fn drag_destinations(
+        &self,
+        state: &Tree,
+        layout: Layout<'_>,
+        dnd_rectangles: &mut core::clipboard::DndDestinationRectangles,
+    ) {
+        self.with_element(|element| {
+            element.as_widget().drag_destinations(
+                &state.children[0],
+                layout,
+                dnd_rectangles,
+            )
+        });
+    }
 }
 
 struct Overlay<'a, 'b, Message, Theme, Renderer, Event, S>(

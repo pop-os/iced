@@ -354,6 +354,19 @@ where
             .as_widget_mut()
             .set_id(_id);
     }
+
+    fn drag_destinations(
+        &self,
+        state: &Tree,
+        layout: Layout<'_>,
+        dnd_rectangles: &mut core::clipboard::DndDestinationRectangles,
+    ) {
+        self.content.borrow().element.as_widget().drag_destinations(
+            state,
+            layout,
+            dnd_rectangles,
+        );
+    }
 }
 
 impl<'a, Message, Theme, Renderer>

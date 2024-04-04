@@ -632,11 +632,11 @@ where
         &self,
         prev_capacity: usize,
     ) -> DndDestinationRectangles {
-        let ret = DndDestinationRectangles::with_capacity(prev_capacity);
+        let mut ret = DndDestinationRectangles::with_capacity(prev_capacity);
         self.root.as_widget().drag_destinations(
             &self.state,
             Layout::new(&self.base),
-            &mut ret.clone(),
+            &mut ret,
         );
         ret
     }

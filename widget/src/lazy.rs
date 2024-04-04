@@ -308,6 +308,21 @@ where
         }
         None
     }
+
+    fn drag_destinations(
+        &self,
+        state: &Tree,
+        layout: Layout<'_>,
+        dnd_rectangles: &mut core::clipboard::DndDestinationRectangles,
+    ) {
+        self.with_element(|element| {
+            element.as_widget().drag_destinations(
+                &state.children[0],
+                layout,
+                dnd_rectangles,
+            );
+        });
+    }
 }
 
 #[self_referencing]

@@ -316,11 +316,21 @@ where
         layout: Layout<'_>,
         dnd_rectangles: &mut iced_style::core::clipboard::DndDestinationRectangles,
     ) {
-        self.content.as_widget().drag_destinations(
-            state,
-            layout,
-            dnd_rectangles,
-        );
+        if let Some(l) = layout.children().next() {
+            self.content.as_widget().drag_destinations(
+                state,
+                l,
+                dnd_rectangles,
+            );
+        }
+    }
+
+    fn id(&self) -> Option<Id> {
+        self.id.clone()
+    }
+
+    fn set_id(&mut self, id: Id) {
+        self.id = Some(id);
     }
 }
 

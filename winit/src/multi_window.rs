@@ -1014,14 +1014,17 @@ async fn run_instance<A, E, C>(
                                     }
                                     })
                                 else {
+                                    eprintln!("No source surface");
                                     continue;
                                 };
 
                                 let Some(window) =
                                     window_manager.get_mut(window_id)
                                 else {
+                                    eprintln!("No window");
                                     continue;
                                 };
+
                                 let state = &window.state;
                                 let icon_surface = icon_surface
                                     .map(|i| {
@@ -1110,7 +1113,7 @@ async fn run_instance<A, E, C>(
                                             &mut renderer,
                                             &mut surface,
                                             &viewport,
-                                            state.background_color(),
+                                            core::Color::TRANSPARENT,
                                             &debug.overlay(),
                                         );
                                         for pix in bytes.chunks_exact_mut(4) {
@@ -1121,7 +1124,7 @@ async fn run_instance<A, E, C>(
                                             data: Arc::new(bytes),
                                             width: viewport.physical_width(),
                                             height: viewport.physical_height(),
-                                            transparent: false,
+                                            transparent: true,
                                         }
                                     });
 
@@ -1725,7 +1728,6 @@ where
             let dnd_rectangles = interface
                 .dnd_rectangles(window.prev_dnd_destination_rectangles_count);
             let new_dnd_rectangles_count = dnd_rectangles.as_ref().len();
-
             if new_dnd_rectangles_count > 0
                 || window.prev_dnd_destination_rectangles_count > 0
             {

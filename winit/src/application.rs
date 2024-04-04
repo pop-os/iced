@@ -583,7 +583,7 @@ async fn run_instance<A, E, C>(
                                     &mut renderer,
                                     &mut surface,
                                     &viewport,
-                                    state.background_color(),
+                                    core::Color::TRANSPARENT,
                                     &debug.overlay(),
                                 );
                                 for pix in bytes.chunks_exact_mut(4) {
@@ -594,7 +594,7 @@ async fn run_instance<A, E, C>(
                                     data: Arc::new(bytes),
                                     width: viewport.physical_width(),
                                     height: viewport.physical_height(),
-                                    transparent: false,
+                                    transparent: true,
                                 }
                             });
 

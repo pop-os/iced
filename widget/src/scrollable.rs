@@ -592,12 +592,13 @@ where
 
     fn drag_destinations(
         &self,
-        state: &Tree,
+        tree: &Tree,
         layout: Layout<'_>,
         dnd_rectangles: &mut iced_style::core::clipboard::DndDestinationRectangles,
     ) {
+        let my_state = tree.state.downcast_ref::<State>();
         if let Some((c_layout, c_state)) =
-            layout.children().zip(state.children.iter()).next()
+            layout.children().zip(tree.children.iter()).next()
         {
             let mut my_dnd_rectangles = DndDestinationRectangles::new();
             self.content.as_widget().drag_destinations(
@@ -609,10 +610,12 @@ where
 
             let bounds = layout.bounds();
             let content_bounds = c_layout.bounds();
-            let state = state.state.downcast_ref::<State>();
             for r in &mut my_dnd_rectangles {
-                let translation =
-                    state.translation(self.direction, bounds, content_bounds);
+                let translation = my_state.translation(
+                    self.direction,
+                    bounds,
+                    content_bounds,
+                );
                 r.rectangle.x -= translation.x as f64;
                 r.rectangle.y -= translation.y as f64;
             }
