@@ -787,6 +787,17 @@ where
                         }
 
                     }
+                    SctkEvent::SessionLockSurfaceDone { surface } => {
+                        if let Some(surface_id) = surface_ids.remove(&surface.id()) {
+                            if kbd_surface_id == Some(surface.id()) {
+                                kbd_surface_id = None;
+                            }
+                            auto_size_surfaces.remove(&surface_id);
+                            interfaces.remove(&surface_id.inner());
+                            states.remove(&surface_id.inner());
+                            destroyed_surface_ids.insert(surface.id(), surface_id);
+                        }
+                    }
                     _ => {}
                 }
             }
@@ -2290,6 +2301,9 @@ where
             &surface.id() == object_id
         }
         SctkEvent::SessionLockSurfaceConfigure { surface, .. } => {
+            &surface.id() == object_id
+        }
+        SctkEvent::SessionLockSurfaceDone { surface } => {
             &surface.id() == object_id
         }
         SctkEvent::SessionUnlocked => false,

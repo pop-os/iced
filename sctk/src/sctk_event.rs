@@ -206,6 +206,9 @@ pub enum SctkEvent {
         configure: SessionLockSurfaceConfigure,
         first: bool,
     },
+    SessionLockSurfaceDone {
+        surface: WlSurface,
+    },
     SessionUnlocked,
 }
 
@@ -947,6 +950,7 @@ impl SctkEvent {
             }
             SctkEvent::SessionLockSurfaceCreated { .. } => vec![],
             SctkEvent::SessionLockSurfaceConfigure { .. } => vec![],
+            SctkEvent::SessionLockSurfaceDone { .. } => vec![],
             SctkEvent::SessionUnlocked => {
                 Some(iced_runtime::core::Event::PlatformSpecific(
                     PlatformSpecific::Wayland(wayland::Event::SessionLock(

@@ -1368,7 +1368,15 @@ where
                                     s.id == id
                                 })
                             {
-                                self.state.lock_surfaces.remove(i);
+                                let surface = self.state.lock_surfaces.remove(i);
+                                sticky_exit_callback(
+                                    IcedSctkEvent::SctkEvent(SctkEvent::SessionLockSurfaceDone {
+                                        surface: surface.session_lock_surface.wl_surface().clone()
+                                    }),
+                                    &self.state,
+                                    &mut control_flow,
+                                    &mut callback,
+                                );
                             }
                         }
                     }
