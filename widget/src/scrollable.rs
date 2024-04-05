@@ -603,7 +603,7 @@ where
             let mut my_dnd_rectangles = DndDestinationRectangles::new();
             self.content.as_widget().drag_destinations(
                 c_state,
-                layout,
+                c_layout,
                 &mut my_dnd_rectangles,
             );
             let mut my_dnd_rectangles = my_dnd_rectangles.into_rectangles();
