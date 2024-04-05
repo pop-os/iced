@@ -1203,9 +1203,8 @@ async fn run_instance<A, E, C>(
                         if matches!(
                             window_event,
                             winit::event::WindowEvent::CloseRequested
-                        ) && window.exit_on_close_request
-                        {
-                            let _ = window_manager.remove(id);
+                        ) {
+                            let w = window_manager.remove(id);
                             let _ = user_interfaces.remove(&id);
                             let _ = ui_caches.remove(&id);
 
@@ -1214,7 +1213,9 @@ async fn run_instance<A, E, C>(
                                 core::Event::Window(id, window::Event::Closed),
                             ));
 
-                            if window_manager.is_empty() {
+                            if window_manager.is_empty()
+                                && w.is_some_and(|w| w.exit_on_close_request)
+                            {
                                 break 'main;
                             }
                         } else {
@@ -1402,10 +1403,12 @@ fn run_command<A, C, E>(
                         .expect("Send control action");
                 }
                 window::Action::Close(id) => {
-                    let _ = window_manager.remove(id);
+                    let w = window_manager.remove(id);
                     let _ = ui_caches.remove(&id);
 
-                    if window_manager.is_empty() {
+                    if window_manager.is_empty()
+                        && w.is_some_and(|w| w.exit_on_close_request)
+                    {
                         control_sender
                             .start_send(Control::Exit)
                             .expect("Send control action");
