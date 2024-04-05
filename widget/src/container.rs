@@ -29,7 +29,6 @@ pub struct Container<
     Theme: StyleSheet,
     Renderer: crate::core::Renderer,
 {
-    id: Option<Id>,
     padding: Padding,
     width: Length,
     height: Length,
@@ -55,7 +54,6 @@ where
         let size = content.as_widget().size_hint();
 
         Container {
-            id: None,
             padding: Padding::ZERO,
             width: size.width.fluid(),
             height: size.height.fluid(),
@@ -66,12 +64,6 @@ where
             style: Default::default(),
             content,
         }
-    }
-
-    /// Sets the [`Id`] of the [`Container`].
-    pub fn id(mut self, id: Id) -> Self {
-        self.id = Some(id);
-        self
     }
 
     /// Sets the [`Padding`] of the [`Container`].
@@ -191,7 +183,7 @@ where
         operation: &mut dyn Operation<OperationOutputWrapper<Message>>,
     ) {
         operation.container(
-            self.id.as_ref(),
+            self.content.as_widget().id().as_ref(),
             layout.bounds(),
             &mut |operation| {
                 self.content.as_widget().operate(
@@ -326,11 +318,11 @@ where
     }
 
     fn id(&self) -> Option<Id> {
-        self.id.clone()
+        self.content.as_widget().id().clone()
     }
 
     fn set_id(&mut self, id: Id) {
-        self.id = Some(id);
+        self.content.as_widget_mut().set_id(id);
     }
 }
 
