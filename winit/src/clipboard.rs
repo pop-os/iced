@@ -73,6 +73,32 @@ impl<M: Send + 'static> Clipboard<M> {
         }
     }
 
+    /// Reads the current content of the Primary as text.
+    pub fn read_primary(&self) -> Option<String> {
+        match &self.state {
+            State::Connected(clipboard, _) => {
+                clipboard.read_primary().and_then(|res| res.ok())
+            }
+            State::Unavailable => None,
+        }
+    }
+
+    /// Writes the given text contents to the Primary.
+    pub fn write_primary(&mut self, contents: String) {
+        match &mut self.state {
+            State::Connected(clipboard, _) => {
+                match clipboard.write_primary(contents) {
+                    Some(Ok(())) => {}
+                    Some(Err(error)) => {
+                        log::warn!("error writing to clipboard: {error}");
+                    }
+                    None => {} //Primary not available
+                }
+            }
+            State::Unavailable => {}
+        }
+    }
+
     //
     pub(crate) fn start_dnd_winit(
         &self,

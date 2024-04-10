@@ -94,6 +94,20 @@ pub fn write<Message>(contents: String) -> Command<Message> {
     Command::single(command::Action::Clipboard(Action::Write(contents)))
 }
 
+/// Read the current contents of primary.
+pub fn read_primary<Message>(
+    f: impl Fn(Option<String>) -> Message + 'static,
+) -> Command<Message> {
+    Command::single(command::Action::Clipboard(Action::ReadPrimary(Box::new(
+        f,
+    ))))
+}
+
+/// Write the given contents to primary.
+pub fn write_primary<Message>(contents: String) -> Command<Message> {
+    Command::single(command::Action::Clipboard(Action::WritePrimary(contents)))
+}
+
 /// Read the current contents of the clipboard.
 pub fn read_data<T: AllowedMimeTypes + Send + Sync + 'static, Message>(
     f: impl Fn(Option<T>) -> Message + 'static,
