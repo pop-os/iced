@@ -2,7 +2,7 @@ use bitflags::bitflags;
 
 bitflags! {
     /// The current state of the keyboard modifiers.
-    #[derive(Default)]
+    #[derive(Default, Debug, PartialEq, Eq, Clone, Copy)]
     pub struct Modifiers: u32{
         /// The "shift" key.
         const SHIFT = 0b100;

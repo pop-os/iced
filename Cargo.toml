@@ -149,7 +149,7 @@ iced_sctk = { version = "0.1", path = "sctk" }
 iced_accessibility = { version = "0.1", path = "accessibility" }
 
 async-std = "1.0"
-bitflags = "1.0"
+bitflags = "2.5"
 bytemuck = { version = "1.0", features = ["derive"] }
 cosmic-text = { git = "https://github.com/pop-os/cosmic-text.git" }
 futures = "0.3"

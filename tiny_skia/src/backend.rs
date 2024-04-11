@@ -379,26 +379,32 @@ impl Backend {
                             clip_mask,
                         );
                     } else {
+                        let transform = tiny_skia::Transform::from_translate(
+                            translation.x,
+                            translation.y,
+                        );
+
                         // Draw corners that have too small border radii as having no border radius,
                         // but mask them with the rounded rectangle with the correct border radius.
                         let mut temp_pixmap = tiny_skia::Pixmap::new(
-                            bounds.width as u32,
-                            bounds.height as u32,
+                            physical_bounds.width as u32,
+                            physical_bounds.height as u32,
                         )
                         .unwrap();
 
                         let mut quad_mask = tiny_skia::Mask::new(
-                            bounds.width as u32,
-                            bounds.height as u32,
+                            physical_bounds.width as u32,
+                            physical_bounds.height as u32,
                         )
                         .unwrap();
 
                         let zero_bounds = Rectangle {
                             x: 0.0,
                             y: 0.0,
-                            width: bounds.width,
-                            height: bounds.height,
+                            width: physical_bounds.width,
+                            height: physical_bounds.height,
                         };
+
                         let path =
                             rounded_rectangle(zero_bounds, fill_border_radius);
 
@@ -409,12 +415,17 @@ impl Backend {
                             transform,
                         );
                         let path_bounds = Rectangle {
-                            x: border_width / 2.0,
-                            y: border_width / 2.0,
-                            width: bounds.width - border_width,
-                            height: bounds.height - border_width,
+                            x: (border_width / 2.0) * scale_factor,
+                            y: (border_width / 2.0) * scale_factor,
+                            width: physical_bounds.width
+                                - border_width * scale_factor,
+                            height: physical_bounds.height
+                                - border_width * scale_factor,
                         };
 
+                        for r in &mut border_radius {
+                            *r /= scale_factor;
+                        }
                         let border_radius_path =
                             rounded_rectangle(path_bounds, border_radius);
 
@@ -428,7 +439,7 @@ impl Backend {
                                 ..tiny_skia::Paint::default()
                             },
                             &tiny_skia::Stroke {
-                                width: border_width,
+                                width: border_width * scale_factor,
                                 ..tiny_skia::Stroke::default()
                             },
                             transform,
@@ -436,8 +447,8 @@ impl Backend {
                         );
 
                         pixels.draw_pixmap(
-                            bounds.x as i32,
-                            bounds.y as i32,
+                            (bounds.x / scale_factor) as i32,
+                            (bounds.y / scale_factor) as i32,
                             temp_pixmap.as_ref(),
                             &tiny_skia::PixmapPaint::default(),
                             transform,
