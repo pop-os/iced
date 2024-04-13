@@ -30,6 +30,8 @@ pub struct MouseArea<
     on_right_release: Option<Message>,
     on_middle_press: Option<Message>,
     on_middle_release: Option<Message>,
+    on_mouse_enter: Option<Message>,
+    on_mouse_exit: Option<Message>,
 }
 
 impl<'a, Message, Theme, Renderer> MouseArea<'a, Message, Theme, Renderer> {
@@ -81,13 +83,33 @@ impl<'a, Message, Theme, Renderer> MouseArea<'a, Message, Theme, Renderer> {
         self.on_middle_release = Some(message);
         self
     }
+    #[must_use]
+    /// The message to emit on mouse enter.
+    pub fn on_mouse_enter(mut self, message: Message) -> Self {
+        self.on_mouse_enter = Some(message);
+        self
+    }
+    #[must_use]
+    /// The message to emit on mouse exit.
+    pub fn on_mouse_exit(mut self, message: Message) -> Self {
+        self.on_mouse_exit = Some(message);
+        self
+    }
 }
 
 /// Local state of the [`MouseArea`].
-#[derive(Default)]
 struct State {
     // TODO: Support on_mouse_enter and on_mouse_exit
     drag_initiated: Option<Point>,
+    is_out_of_bounds: bool,
+}
+impl Default for State {
+    fn default() -> Self {
+        Self {
+            drag_initiated: Default::default(),
+            is_out_of_bounds: true,
+        }
+    }
 }
 
 impl<'a, Message, Theme, Renderer> MouseArea<'a, Message, Theme, Renderer> {
@@ -104,6 +126,8 @@ impl<'a, Message, Theme, Renderer> MouseArea<'a, Message, Theme, Renderer> {
             on_right_release: None,
             on_middle_press: None,
             on_middle_release: None,
+            on_mouse_enter: None,
+            on_mouse_exit: None,
         }
     }
 }
@@ -231,7 +255,6 @@ where
             viewport,
         );
     }
-
     fn overlay<'b>(
         &'b mut self,
         tree: &'b mut Tree,
@@ -244,7 +267,6 @@ where
             renderer,
         )
     }
-
     fn drag_destinations(
         &self,
         state: &Tree,
@@ -286,6 +308,23 @@ fn update<Message: Clone, Theme, Renderer>(
     state: &mut State,
 ) -> event::Status {
     if !cursor.is_over(layout.bounds()) {
+        if !state.is_out_of_bounds {
+            if widget
+                .on_mouse_enter
+                .as_ref()
+                .or(widget.on_mouse_exit.as_ref())
+                .is_some()
+            {
+                if let Event::Mouse(mouse::Event::CursorMoved { .. }) = event {
+                    state.is_out_of_bounds = true;
+                    if let Some(message) = widget.on_mouse_exit.as_ref() {
+                        shell.publish(message.clone());
+                    }
+                    return event::Status::Captured;
+                }
+            }
+        }
+
         return event::Status::Ignored;
     }
 
@@ -351,6 +390,21 @@ fn update<Message: Clone, Theme, Renderer>(
             shell.publish(message.clone());
 
             return event::Status::Captured;
+        }
+    }
+    if let Some(message) = widget
+        .on_mouse_enter
+        .as_ref()
+        .or(widget.on_mouse_exit.as_ref())
+    {
+        if let Event::Mouse(mouse::Event::CursorMoved { .. }) = event {
+            if state.is_out_of_bounds {
+                state.is_out_of_bounds = false;
+                if widget.on_mouse_enter.is_some() {
+                    shell.publish(message.clone());
+                }
+                return event::Status::Captured;
+            }
         }
     }
 
