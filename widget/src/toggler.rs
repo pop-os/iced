@@ -243,12 +243,7 @@ where
         layout::next_to_each_other(
             &limits,
             self.spacing,
-            |_| {
-                layout::Node::new(crate::core::Size::new(
-                    2.0 * self.size,
-                    self.size,
-                ))
-            },
+            |_| layout::Node::new(crate::core::Size::new(48., 24.)),
             |limits| {
                 if let Some(label) = self.label.as_deref() {
                     let state = tree
@@ -329,13 +324,6 @@ where
         cursor: mouse::Cursor,
         viewport: &Rectangle,
     ) {
-        /// Makes sure that the border radius of the toggler looks good at every size.
-        const BORDER_RADIUS_RATIO: f32 = 32.0 / 13.0;
-
-        /// The space ratio between the background Quad and the Toggler bounds, and
-        /// between the background Quad and foreground Quad.
-        const SPACE_RATIO: f32 = 0.05;
-
         let mut children = layout.children();
         let toggler_layout = children.next().unwrap();
 
@@ -361,23 +349,21 @@ where
             theme.active(&self.style, self.is_toggled)
         };
 
-        let border_radius = bounds.height / BORDER_RADIUS_RATIO;
-        let space = SPACE_RATIO * bounds.height;
+        let space = style.handle_margin;
 
         let toggler_background_bounds = Rectangle {
-            x: bounds.x + space,
-            y: bounds.y + space,
-            width: bounds.width - (2.0 * space),
-            height: bounds.height - (2.0 * space),
+            x: bounds.x,
+            y: bounds.y,
+            width: bounds.width,
+            height: bounds.height,
         };
 
         renderer.fill_quad(
             renderer::Quad {
                 bounds: toggler_background_bounds,
                 border: Border {
-                    radius: border_radius.into(),
-                    width: 1.0,
-                    color: style.background_border.unwrap_or(style.background),
+                    radius: style.border_radius,
+                    ..Default::default()
                 },
                 ..renderer::Quad::default()
             },
@@ -387,22 +373,21 @@ where
         let toggler_foreground_bounds = Rectangle {
             x: bounds.x
                 + if self.is_toggled {
-                    bounds.width - 2.0 * space - (bounds.height - (4.0 * space))
+                    bounds.width - space - (bounds.height - (2.0 * space))
                 } else {
-                    2.0 * space
+                    space
                 },
-            y: bounds.y + (2.0 * space),
-            width: bounds.height - (4.0 * space),
-            height: bounds.height - (4.0 * space),
+            y: bounds.y + space,
+            width: bounds.height - (2.0 * space),
+            height: bounds.height - (2.0 * space),
         };
 
         renderer.fill_quad(
             renderer::Quad {
                 bounds: toggler_foreground_bounds,
                 border: Border {
-                    radius: border_radius.into(),
-                    width: 1.0,
-                    color: style.foreground_border.unwrap_or(style.foreground),
+                    radius: style.handle_radius,
+                    ..Default::default()
                 },
                 ..renderer::Quad::default()
             },

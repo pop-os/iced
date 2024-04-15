@@ -522,17 +522,24 @@ pub fn draw<T, Theme, Renderer>(
                 (radius * 2.0, radius * 2.0, Radius::from(radius))
             }
             HandleShape::Rectangle {
+                height,
                 width,
                 border_radius,
             } => {
                 let width = (f32::from(width))
                     .max(2.0 * border_width)
                     .min(bounds.width);
-                let height = bounds.height;
+                let height = (f32::from(height))
+                    .max(2.0 * border_width)
+                    .min(bounds.height);
                 let mut border_radius: [f32; 4] = border_radius.into();
                 for r in &mut border_radius {
-                    *r = (*r).min(height / 2.0).min(width / 2.0).max(0.0);
+                    *r = (*r)
+                        .min(height / 2.0)
+                        .min(width / 2.0)
+                        .max(*r * (width + border_width * 2.0) / width);
                 }
+
                 (width, height, border_radius.into())
             }
         };

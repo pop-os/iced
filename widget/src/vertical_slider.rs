@@ -366,9 +366,10 @@ pub fn draw<T, Theme, Renderer>(
                 (radius * 2.0, radius * 2.0, radius.into())
             }
             HandleShape::Rectangle {
+                height,
                 width,
                 border_radius,
-            } => (f32::from(width), bounds.width, border_radius),
+            } => (f32::from(width), f32::from(height), border_radius),
         };
 
     let value = value.into() as f32;

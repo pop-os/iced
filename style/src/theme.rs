@@ -22,6 +22,7 @@ use crate::text_editor;
 use crate::text_input;
 use crate::toggler;
 
+use iced_core::border::Radius;
 use iced_core::{Background, Border, Color, Shadow, Vector};
 
 use std::fmt;
@@ -473,6 +474,7 @@ impl slider::StyleSheet for Theme {
 
                 let handle = slider::Handle {
                     shape: slider::HandleShape::Rectangle {
+                        height: 8,
                         width: 8,
                         border_radius: 4.0.into(),
                     },
@@ -734,6 +736,9 @@ impl toggler::StyleSheet for Theme {
                         palette.background.base.color
                     },
                     foreground_border: None,
+                    border_radius: Radius::from(8.0),
+                    handle_radius: Radius::from(8.0),
+                    handle_margin: 2.0,
                 }
             }
             Toggler::Custom(custom) => custom.active(self, is_active),

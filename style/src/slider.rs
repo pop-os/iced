@@ -70,6 +70,8 @@ pub enum HandleShape {
     Rectangle {
         /// The width of the rectangle.
         width: u16,
+        /// The height of the rectangle.
+        height: u16,
         /// The border radius of the corners of the rectangle.
         border_radius: border::Radius,
     },
