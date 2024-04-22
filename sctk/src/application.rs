@@ -1002,7 +1002,10 @@ where
                         while i < sctk_events.len() {
                             let has_kbd_focus =
                                 kbd_surface_id.as_ref() == Some(object_id);
-                            if event_is_for_surface(
+                            if event_is_for_all_surfaces(&sctk_events[i]) {
+                                filtered_sctk.push(sctk_events[i].clone());
+                                i += 1;
+                            } else if event_is_for_surface(
                                 &sctk_events[i],
                                 object_id,
                                 state,
@@ -2251,6 +2254,13 @@ where
     }
 
     interfaces
+}
+
+fn event_is_for_all_surfaces(evt: &SctkEvent) -> bool {
+    match evt {
+        SctkEvent::DataSource(_) => true,
+        _ => false,
+    }
 }
 
 // Determine if `SctkEvent` is for surface with given object id.
