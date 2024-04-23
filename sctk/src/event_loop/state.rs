@@ -514,11 +514,13 @@ where
 
         let (toplevel, popup) = match &parent {
             SctkSurface::LayerSurface(parent) => {
-                let parent_layer_surface = self
+                let Some(parent_layer_surface) = self
                     .layer_surfaces
                     .iter()
                     .find(|w| w.surface.wl_surface() == parent)
-                    .unwrap();
+                else {
+                    return Err(PopupCreationError::ParentMissing);
+                };
                 let popup = Popup::from_surface(
                     None,
                     &positioner,
@@ -531,11 +533,13 @@ where
                 (parent_layer_surface.surface.wl_surface(), popup)
             }
             SctkSurface::Window(parent) => {
-                let parent_window = self
+                let Some(parent_window) = self
                     .windows
                     .iter()
                     .find(|w| w.window.wl_surface() == parent)
-                    .unwrap();
+                else {
+                    return Err(PopupCreationError::ParentMissing);
+                };
                 (
                     parent_window.window.wl_surface(),
                     Popup::from_surface(
@@ -549,17 +553,12 @@ where
                 )
             }
             SctkSurface::Popup(parent) => {
-                let parent_xdg = self
-                    .windows
-                    .iter()
-                    .find_map(|w| {
-                        if w.window.wl_surface() == parent {
-                            Some(w.window.xdg_surface())
-                        } else {
-                            None
-                        }
-                    })
-                    .unwrap();
+                let Some(parent_xdg) = self.popups.iter().find_map(|p| {
+                    (p.popup.wl_surface() == parent)
+                        .then(|| p.popup.xdg_surface())
+                }) else {
+                    return Err(PopupCreationError::ParentMissing);
+                };
 
                 (
                     &toplevel,
