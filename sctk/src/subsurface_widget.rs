@@ -321,17 +321,25 @@ impl<T: Debug + 'static> SubsurfaceState<T> {
         let wl_surface = self
             .wl_compositor
             .create_surface(&self.qh, SurfaceData::new(None, 1));
+
+        // Use empty input region so parent surface gets pointer events
+        let region = self.wl_compositor.create_region(&self.qh, ());
+        wl_surface.set_input_region(Some(&region));
+        region.destroy();
+
         let wl_subsurface = self.wl_subcompositor.get_subsurface(
             &wl_surface,
             parent,
             &self.qh,
             (),
         );
+
         let wp_viewport = self.wp_viewporter.get_viewport(
             &wl_surface,
             &self.qh,
             sctk::globals::GlobalData,
         );
+
         SubsurfaceInstance {
             wl_surface,
             wl_subsurface,
