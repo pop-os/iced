@@ -800,6 +800,13 @@ pub fn update<Message>(
                 }
                 mouse::ScrollDelta::Pixels { x, y } => Vector::new(x, y),
             };
+            if matches!(direction, Direction::Vertical(_))
+                && delta.y.abs() < 0.1
+                || matches!(direction, Direction::Horizontal(_))
+                    && delta.x.abs() < 0.1
+            {
+                return event::Status::Ignored;
+            }
 
             state.scroll(delta, direction, bounds, content_bounds);
 
