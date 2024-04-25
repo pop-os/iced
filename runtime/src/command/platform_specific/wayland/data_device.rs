@@ -1,4 +1,4 @@
-use iced_core::window::Id;
+use iced_core::{window::Id, Vector};
 use iced_futures::MaybeSend;
 use sctk::reexports::client::protocol::wl_data_device_manager::DndAction;
 use std::{any::Any, fmt, marker::PhantomData};
@@ -52,7 +52,7 @@ pub enum ActionInner {
         /// The window id of the window that is the source of the drag.
         origin_id: Id,
         /// An optional window id for the cursor icon surface.
-        icon_id: Option<DndIcon>,
+        icon_id: Option<(DndIcon, Vector)>,
         /// The data to send.
         data: Box<dyn DataFromMimeType + Send + Sync>,
     },

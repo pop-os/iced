@@ -3,7 +3,7 @@
 use std::any::Any;
 
 use dnd::{DndDestinationRectangle, DndSurface};
-use iced_core::clipboard::DndSource;
+use iced_core::{clipboard::DndSource, Vector};
 use iced_futures::MaybeSend;
 use window_clipboard::mime::{AllowedMimeTypes, AsMimeTypes};
 

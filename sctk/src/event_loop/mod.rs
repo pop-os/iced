@@ -1163,12 +1163,15 @@ where
                                     None => continue,
                                 };
                                 let source = self.state.data_device_manager_state.create_drag_and_drop_source(qh, mime_types.iter().map(|s| s.as_str()).collect::<Vec<_>>(), actions);
-                                let icon_surface =  if let Some(icon_id) = icon_id{
+                                let icon_surface =  if let Some((icon_id, offset)) = icon_id{
                                     let icon_native_id = match &icon_id {
                                         DndIcon::Custom(icon_id) => *icon_id,
                                         DndIcon::Widget(icon_id, _) => *icon_id,
                                     };
                                     let wl_surface = self.state.compositor_state.create_surface(qh);
+                                    if offset != crate::core::Vector::ZERO {
+                                        wl_surface.offset(offset.x as i32, offset.y as i32);
+                                    }
                                     source.start_drag(device, &origin, Some(&wl_surface), serial);
                                     sticky_exit_callback(
                                         IcedSctkEvent::DndSurfaceCreated(

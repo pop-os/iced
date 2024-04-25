@@ -4,7 +4,7 @@ use sctk::reexports::client::protocol::wl_data_device_manager::DndAction;
 
 use crate::core::{
     event, layout, mouse, overlay, touch, Clipboard, Element, Event, Length,
-    Point, Rectangle, Shell, Size, Widget,
+    Point, Rectangle, Shell, Size, Vector, Widget,
 };
 
 use crate::core::widget::{
@@ -16,7 +16,7 @@ use crate::core::widget::{
 pub struct DndSource<'a, Message, Theme, Renderer> {
     content: Element<'a, Message, Theme, Renderer>,
 
-    on_drag: Option<Box<dyn Fn(Size) -> Message + 'a>>,
+    on_drag: Option<Box<dyn Fn(Size, Vector) -> Message + 'a>>,
 
     on_cancelled: Option<Message>,
 
@@ -40,7 +40,7 @@ impl<'a, Message, Widget, Renderer> DndSource<'a, Message, Widget, Renderer> {
     #[must_use]
     pub fn on_drag<F>(mut self, f: F) -> Self
     where
-        F: Fn(Size) -> Message + 'a,
+        F: Fn(Size, Vector) -> Message + 'a,
     {
         self.on_drag = Some(Box::new(f));
         self
@@ -343,7 +343,12 @@ where
             if let (Some(on_drag), Some(_)) =
                 (self.on_drag.as_ref(), state.left_pressed_position.take())
             {
-                shell.publish(on_drag(layout.bounds().size()));
+                let mut offset = cursor_position;
+                let offset = Vector::new(
+                    cursor_position.x - layout.bounds().x,
+                    cursor_position.y - layout.bounds().y,
+                );
+                shell.publish(on_drag(layout.bounds().size(), offset));
                 state.is_dragging = true;
                 return event::Status::Captured;
             };
@@ -362,7 +367,11 @@ where
             if distance > self.drag_threshold {
                 state.left_pressed_position = None;
                 state.is_dragging = true;
-                shell.publish(on_drag(layout.bounds().size()));
+                let offset = Vector::new(
+                    cursor_position.x - layout.bounds().x,
+                    cursor_position.y - layout.bounds().y,
+                );
+                shell.publish(on_drag(layout.bounds().size(), offset));
                 return event::Status::Captured;
             }
         }

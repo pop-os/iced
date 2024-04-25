@@ -15,6 +15,8 @@ use iced_runtime::{
 };
 use sctk::reexports::client::protocol::wl_data_device_manager::DndAction;
 
+use crate::core::Vector;
+
 /// start an internal drag and drop operation. Events will only be delivered to the same client.
 /// The client is responsible for data transfer.
 pub fn start_internal_drag<Message>(
@@ -38,7 +40,7 @@ pub fn start_drag<Message>(
     mime_types: Vec<String>,
     actions: DndAction,
     origin_id: window::Id,
-    icon_id: Option<DndIcon>,
+    icon_id: Option<(DndIcon, Vector)>,
     data: Box<dyn DataFromMimeType + Send + Sync>,
 ) -> Command<Message> {
     Command::single(command::Action::PlatformSpecific(
