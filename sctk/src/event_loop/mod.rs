@@ -203,6 +203,7 @@ where
                 lock_surfaces: Vec::new(),
                 dnd_source: None,
                 _kbd_focus: None,
+                touch_points: HashMap::new(),
                 sctk_events: Vec::new(),
                 frame_events: Vec::new(),
                 pending_user_events: Vec::new(),

@@ -49,7 +49,7 @@ use iced_runtime::{
             wayland::{data_device::DndIcon, popup},
         },
     },
-    core::{mouse::Interaction, Color, Point, Size},
+    core::{mouse::Interaction, touch, Color, Point, Size},
     multi_window::Program,
     system, user_interface,
     window::Id as SurfaceId,
@@ -487,6 +487,30 @@ where
                                 state.modifiers = mods;
                             }
                         }
+                    },
+                    SctkEvent::TouchEvent { variant, surface, .. } => {
+                        let mut offset = (0., 0.);
+                        let (state, _native_id) = match surface_ids
+                            .get(&surface.id())
+                            .and_then(|id| states.get_mut(&id.inner()).map(|state| (state, id)))
+                        {
+                            Some(s) => s,
+                            None => {
+                                if let Some((x_offset, y_offset, id)) = subsurface_ids.get(&surface.id()) {
+                                    offset = (f64::from(*x_offset), f64::from(*y_offset));
+                                    states.get_mut(&id.inner()).map(|state| (state, id)).unwrap()
+                                } else {
+                                    continue
+                                }
+                            },
+                        };
+                        let position = match variant {
+                            touch::Event::FingerPressed { position, .. } => position,
+                            touch::Event::FingerLifted { position, .. } => position,
+                            touch::Event::FingerMoved { position, .. } => position,
+                            touch::Event::FingerLost { position, .. } => position,
+                        };
+                        state.set_cursor_position(Some(LogicalPosition { x: position.x as f64 + offset.0, y: position.y as f64 + offset.1 }));
                     },
                     SctkEvent::WindowEvent { variant, id: wl_surface } => match variant {
                         crate::sctk_event::WindowEventVariant::Created(id, native_id) => {
@@ -2289,6 +2313,14 @@ where
             KeyboardEventVariant::Leave(id) => &id.id() == object_id,
             _ => has_kbd_focus,
         },
+        SctkEvent::TouchEvent { surface, .. } => {
+            let event_object_id = surface.id();
+            &event_object_id == object_id
+                || state
+                    .subsurfaces
+                    .iter()
+                    .any(|s| s.wl_surface.id() == event_object_id)
+        }
         SctkEvent::WindowEvent { id, .. } => &id.id() == object_id,
         SctkEvent::LayerSurfaceEvent { id, .. } => &id.id() == object_id,
         SctkEvent::PopupEvent { id, .. } => &id.id() == object_id,

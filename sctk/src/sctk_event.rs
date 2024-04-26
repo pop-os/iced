@@ -14,7 +14,7 @@ use iced_futures::core::event::{
 };
 use iced_runtime::{
     command::platform_specific::wayland::data_device::DndIcon,
-    core::{event::wayland, keyboard, mouse, window, Point},
+    core::{event::wayland, keyboard, mouse, touch, window, Point},
     keyboard::{key, Key, Location},
     window::Id as SurfaceId,
 };
@@ -25,7 +25,7 @@ use sctk::{
         protocol::{
             wl_data_device_manager::DndAction, wl_keyboard::WlKeyboard,
             wl_output::WlOutput, wl_pointer::WlPointer, wl_seat::WlSeat,
-            wl_surface::WlSurface,
+            wl_surface::WlSurface, wl_touch::WlTouch,
         },
         Proxy,
     },
@@ -145,6 +145,12 @@ pub enum SctkEvent {
         variant: KeyboardEventVariant,
         kbd_id: WlKeyboard,
         seat_id: WlSeat,
+    },
+    TouchEvent {
+        variant: touch::Event,
+        touch_id: WlTouch,
+        seat_id: WlSeat,
+        surface: WlSurface,
     },
     // TODO data device & touch
 
@@ -627,6 +633,14 @@ impl SctkEvent {
                     )]
                 }
             },
+            SctkEvent::TouchEvent {
+                variant,
+                touch_id: _,
+                seat_id: _,
+                surface: _,
+            } => {
+                vec![iced_runtime::core::Event::Touch(variant)]
+            }
             SctkEvent::WindowEvent {
                 variant,
                 id: surface,

@@ -34,7 +34,7 @@ where
             seat,
             kbd: None,
             ptr: None,
-            _touch: None,
+            touch: None,
             data_device,
             _modifiers: Modifiers::default(),
             kbd_focus: None,
@@ -59,7 +59,7 @@ where
                     seat: seat.clone(),
                     kbd: None,
                     ptr: None,
-                    _touch: None,
+                    touch: None,
                     data_device: self
                         .data_device_manager_state
                         .get_data_device(qh, &seat),
@@ -121,7 +121,16 @@ where
                 }
             }
             sctk::seat::Capability::Touch => {
-                // TODO touch
+                if let Some(touch) = self.seat_state.get_touch(qh, &seat).ok() {
+                    self.sctk_events.push(SctkEvent::SeatEvent {
+                        variant: SeatEventVariant::NewCapability(
+                            capability,
+                            touch.id(),
+                        ),
+                        id: seat.clone(),
+                    });
+                    my_seat.touch.replace(touch);
+                }
             }
             _ => unimplemented!(),
         }
@@ -165,8 +174,15 @@ where
                 }
             }
             sctk::seat::Capability::Touch => {
-                // TODO touch
-                // my_seat.touch = self.seat_state.get_touch(qh, &seat).ok();
+                if let Some(touch) = my_seat.touch.take() {
+                    self.sctk_events.push(SctkEvent::SeatEvent {
+                        variant: SeatEventVariant::RemoveCapability(
+                            capability,
+                            touch.id(),
+                        ),
+                        id: seat.clone(),
+                    });
+                }
             }
             _ => unimplemented!(),
         }

@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     fmt::{Debug, Formatter},
     num::NonZeroU32,
 };
@@ -26,6 +27,7 @@ use iced_runtime::{
             window::SctkWindowSettings,
         },
     },
+    core::{touch, Point},
     keyboard::Modifiers,
     window,
 };
@@ -92,7 +94,7 @@ pub(crate) struct SctkSeat {
     pub(crate) ptr: Option<ThemedPointer>,
     pub(crate) ptr_focus: Option<WlSurface>,
     pub(crate) last_ptr_press: Option<(u32, u32, u32)>, // (time, button, serial)
-    pub(crate) _touch: Option<WlTouch>,
+    pub(crate) touch: Option<WlTouch>,
     pub(crate) _modifiers: Modifiers,
     pub(crate) data_device: DataDevice,
     pub(crate) icon: Option<CursorIcon>,
@@ -286,6 +288,7 @@ pub struct SctkState<T> {
     pub(crate) lock_surfaces: Vec<SctkLockSurface>,
     pub(crate) dnd_source: Option<Dnd<T>>,
     pub(crate) _kbd_focus: Option<WlSurface>,
+    pub(crate) touch_points: HashMap<touch::Finger, (WlSurface, Point)>,
 
     /// Window updates, which are coming from SCTK or the compositor, which require
     /// calling back to the sctk's downstream. They are handled right in the event loop,
