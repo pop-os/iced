@@ -95,6 +95,7 @@ pub(crate) struct SctkSeat {
     pub(crate) ptr_focus: Option<WlSurface>,
     pub(crate) last_ptr_press: Option<(u32, u32, u32)>, // (time, button, serial)
     pub(crate) touch: Option<WlTouch>,
+    pub(crate) last_touch_down: Option<(u32, i32, u32)>, // (time, point, serial)
     pub(crate) _modifiers: Modifiers,
     pub(crate) data_device: DataDevice,
     pub(crate) icon: Option<CursorIcon>,

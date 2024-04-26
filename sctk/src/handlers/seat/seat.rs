@@ -41,6 +41,7 @@ where
             ptr_focus: None,
             last_ptr_press: None,
             last_kbd_press: None,
+            last_touch_down: None,
             icon: None,
         });
     }
@@ -68,6 +69,7 @@ where
                     ptr_focus: None,
                     last_ptr_press: None,
                     last_kbd_press: None,
+                    last_touch_down: None,
                     icon: None,
                 });
                 self.seats.last_mut().unwrap()

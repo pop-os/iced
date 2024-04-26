@@ -18,17 +18,21 @@ impl<T: Debug> TouchHandler for SctkState<T> {
         _: &Connection,
         _: &QueueHandle<Self>,
         touch: &WlTouch,
-        _serial: u32,
-        _time: u32,
+        serial: u32,
+        time: u32,
         surface: WlSurface,
         id: i32,
         position: (f64, f64),
     ) {
-        let Some(my_seat) =
-            self.seats.iter().find(|s| s.touch.as_ref() == Some(touch))
+        let Some(my_seat) = self
+            .seats
+            .iter_mut()
+            .find(|s| s.touch.as_ref() == Some(touch))
         else {
             return;
         };
+
+        my_seat.last_touch_down.replace((time, id, serial));
 
         let id = touch::Finger(id as u64);
         let position = Point::new(position.0 as f32, position.1 as f32);
