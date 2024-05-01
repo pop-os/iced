@@ -1,4 +1,5 @@
 mod data_device;
+mod input_method;
 mod layer;
 mod output;
 mod popup;
@@ -12,6 +13,7 @@ use sctk::reexports::client::protocol::{
 };
 
 pub use data_device::*;
+pub use input_method::*;
 pub use layer::*;
 pub use output::*;
 pub use popup::*;
@@ -42,6 +44,10 @@ pub enum Event {
     SessionLock(SessionLockEvent),
     /// Frame events
     Frame(Instant, WlSurface, Id),
+    /// Input Method
+    InputMethod(InputMethodEvent),
+    /// Input Method Keyboard Event
+    InputMethodKeyboard(InputMethodKeyboardEvent),
 }
 
 impl Event {

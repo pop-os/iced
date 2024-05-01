@@ -10,6 +10,9 @@ debug = ["iced_runtime/debug"]
 system = ["sysinfo"]
 application = []
 a11y = ["iced_accessibility", "iced_runtime/a11y"]
+input_method = ["calloop", "xkbcommon/wayland", "bytemuck", "pkg-config", 
+  "xkeysym/bytemuck", "wayland-protocols-misc/client", "log", "tempfile"]
+virtual_keyboard = ["wayland-protocols-misc/client"]
 clipboard = []
 
 [dependencies]
@@ -17,6 +20,7 @@ tracing = "0.1"
 thiserror = "1.0"
 sctk.workspace = true
 wayland-protocols.workspace = true
+wayland-protocols-misc.workspace = true
 window_clipboard.workspace = true
 # sctk = { package = "smithay-client-toolkit", path = "../../fork/client-toolkit/" }
 raw-window-handle = "0.6"
@@ -29,6 +33,13 @@ xkbcommon = { version = "0.7", features = ["wayland"] }
 itertools = "0.12"
 xkeysym = "0.2.0"
 lazy_static = "1.4.0"
+bytemuck = { version = "1.14.0", optional = true }
+calloop = { version = "0.12.3", optional = true }
+tempfile = { version = "3.8.1", optional = true }
+log = { version = "0.4", optional = true }
+
+[build-dependencies]
+pkg-config = { version = "0.3", optional = true }
 
 [dependencies.iced_runtime]
 path = "../runtime"
@@ -39,7 +50,6 @@ path = "../style"
 
 [dependencies.iced_graphics]
 path = "../graphics"
-
 
 [dependencies.iced_futures]
 path = "../futures"

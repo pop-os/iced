@@ -2,11 +2,15 @@
 pub mod activation;
 pub mod compositor;
 pub mod data_device;
+#[cfg(feature = "input_method")]
+pub mod input_method;
 pub mod output;
 pub mod seat;
 pub mod session_lock;
 pub mod shell;
 pub mod subcompositor;
+#[cfg(feature = "virtual_keyboard")]
+pub mod virtual_keyboard;
 pub mod wp_fractional_scaling;
 pub mod wp_viewporter;
 

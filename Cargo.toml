@@ -69,6 +69,10 @@ wayland = [
 ]
 # Enables clipboard for iced_sctk
 wayland-clipboard = ["iced_sctk?/clipboard"]
+# Enables the sctk with input method support.
+wayland_input_method = ["iced_sctk/input_method"]
+# Enables the sctk with virtual keyboard.
+wayland_virtual_keyboard = ["iced_sctk/virtual_keyboard"]
 
 [dependencies]
 iced_core.workspace = true
@@ -191,6 +195,7 @@ web-time = "0.2"
 # wgpu = "0.19"
 # Newer wgpu commit that fixes Vulkan backend on Nvidia
 wgpu = { git = "https://github.com/gfx-rs/wgpu", rev = "20fda69" }
+wayland-protocols-misc = { version = "0.2.0"}
 winapi = "0.3"
 window_clipboard = { git = "https://github.com/pop-os/window_clipboard.git", tag = "pop-dnd-4" }
 dnd = { git = "https://github.com/pop-os/window_clipboard.git", tag = "pop-dnd-4" }

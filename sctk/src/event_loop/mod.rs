@@ -6,6 +6,13 @@ pub mod state;
 
 #[cfg(feature = "a11y")]
 use crate::application::SurfaceIdWrapper;
+#[cfg(feature = "input_method")]
+use crate::{
+    handlers::input_method::InputMethodManager,
+    sctk_event::InputMethodPopupEventVariant,
+};
+#[cfg(feature = "virtual_keyboard")]
+use crate::handlers::virtual_keyboard::VirtualKeyboardManager;
 use crate::{
     application::Event,
     conversion,
@@ -166,6 +173,27 @@ where
                     (None, None)
                 }
             };
+        #[cfg(feature = "input_method")]
+        let input_method_manager = match InputMethodManager::new(&globals, &qh)
+        {
+            Ok(m) => Some(m),
+            Err(e) => {
+                error!("Failed to initialize input method manager: {}", e);
+                None
+            }
+        };
+        #[cfg(feature = "virtual_keyboard")]
+        let virtual_keyboard_manager =
+            match VirtualKeyboardManager::new(&globals, &qh) {
+                Ok(m) => Some(m),
+                Err(e) => {
+                    error!(
+                        "Failed to initialize virtual keyboard manager: {}",
+                        e
+                    );
+                    None
+                }
+            };
 
         Ok(Self {
             event_loop,
@@ -212,6 +240,12 @@ where
                 fractional_scaling_manager,
                 viewporter_state,
                 compositor_updates: Default::default(),
+                #[cfg(feature = "input_method")]
+                input_method_popup: None,
+                #[cfg(feature = "input_method")]
+                input_method_manager,
+                #[cfg(feature = "virtual_keyboard")]
+                virtual_keyboard_manager,
             },
             _features: Default::default(),
             event_loop_awakener: ping,
@@ -501,6 +535,12 @@ where
                     }
                     | SctkEvent::WindowEvent {
                         variant: WindowEventVariant::ScaleFactorChanged(..),
+                        ..
+                    } => true,
+                    #[cfg(feature = "input_method")]
+                    SctkEvent::InputMethodPopupEvent {
+                        variant:
+                            InputMethodPopupEventVariant::ScaleFactorChanged(..),
                         ..
                     } => true,
                     // ignore other events that shouldn't be in this buffer
@@ -1381,6 +1421,57 @@ where
                                     &mut callback,
                                 );
                             }
+                        }
+                    }
+                    #[cfg(feature = "virtual_keyboard")]
+                    Event::VirtualKeyboard(action) => {
+                        match action.inner {
+                            platform_specific::wayland::virtual_keyboard::ActionInner::KeyPressed(key_event) => self.state.press_key(key_event),
+                            platform_specific::wayland::virtual_keyboard::ActionInner::KeyReleased(key_event) => self.state.release_key(key_event),
+                            platform_specific::wayland::virtual_keyboard::ActionInner::Modifiers(raw_modifiers) => self.state.update_modifiers(raw_modifiers.into()),
+                        }
+                    },
+                    #[cfg(feature = "input_method")]
+                    Event::InputMethod(action) => {
+                        match action.inner {
+                            platform_specific::wayland::input_method::ActionInner::Commit => self.state.commit(),
+                            platform_specific::wayland::input_method::ActionInner::CommitString(string) => self.state.commit_string(string),
+                            platform_specific::wayland::input_method::ActionInner::SetPreeditString { string, cursor_begin, cursor_end } => 
+                                self.state.set_preedit_string(string, cursor_begin, cursor_end),
+                            platform_specific::wayland::input_method::ActionInner::DeleteSurroundingText { before_length, after_length } => 
+                                self.state.delete_surrounding_text(before_length, after_length),
+                        }
+                    },
+                    #[cfg(feature = "input_method")]
+                    Event::InputMethodPopup(action) => {
+                        match action {
+                            platform_specific::wayland::input_method_popup::Action::Popup { settings, _phantom } => {
+                                let (id, wl_surface) = self.state.get_input_method_popup(settings);
+                                let object_id = wl_surface.id();
+                                sticky_exit_callback(
+                                    IcedSctkEvent::SctkEvent(SctkEvent::InputMethodPopupEvent { 
+                                        variant: InputMethodPopupEventVariant::Created(object_id.clone(), id),
+                                        id: wl_surface.clone() 
+                                    }),
+                                    &self.state,
+                                    &mut control_flow,
+                                    &mut callback,
+                                );
+                            },
+                            platform_specific::wayland::input_method_popup::Action::ShowPopup => self.state.show_input_method_popup(),
+                            platform_specific::wayland::input_method_popup::Action::HidePopup => self.state.hide_input_method_popup(),
+                            platform_specific::wayland::input_method_popup::Action::Size { id:_, width, height } => {
+                                if let Some(input_method_popup) = &self.state.input_method_popup {
+                                    pending_redraws.push(input_method_popup.wl_surface.id());
+                                    sticky_exit_callback(IcedSctkEvent::SctkEvent(SctkEvent::InputMethodPopupEvent { 
+                                        variant: InputMethodPopupEventVariant::Size(width,height), id: input_method_popup.wl_surface.clone() 
+                                    }),
+                                        &self.state,
+                                        &mut control_flow,
+                                        &mut callback,
+                                    );
+                                }
+                            },
                         }
                     }
                 }

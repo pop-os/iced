@@ -1,0 +1,15 @@
+[package]
+name = "sctk_input_method"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+sctk = { package = "smithay-client-toolkit", git = "https://github.com/smithay/client-toolkit", rev = "dc8c4a0" }
+iced = { path = "../..", default-features = false,  features = ["wayland", "debug", "wayland_input_method", "wayland_virtual_keyboard"] }
+iced_core = { path = "../../core" }
+iced_style = { path = "../../style" }
+iced_runtime = { path = "../../runtime" }
+env_logger = "0.10"
+lazy_static = "1.4.0"

@@ -1,3 +1,5 @@
+#[cfg(feature = "input_method")]
+use crate::handlers::input_method::keyboard::RawModifiers;
 use crate::{
     application::SurfaceIdWrapper,
     conversion::{
@@ -7,7 +9,6 @@ use crate::{
     keymap::{self, keysym_to_key},
     subsurface_widget::SubsurfaceState,
 };
-
 use iced_futures::core::event::{
     wayland::{LayerEvent, PopupEvent, SessionLockEvent},
     PlatformSpecific,
@@ -15,7 +16,10 @@ use iced_futures::core::event::{
 use iced_runtime::{
     command::platform_specific::wayland::data_device::DndIcon,
     core::{event::wayland, keyboard, mouse, window, Point},
-    keyboard::{key, Key, Location},
+    keyboard::{
+        key::{self, Named},
+        Key, Location,
+    },
     window::Id as SurfaceId,
 };
 use sctk::{
@@ -42,6 +46,12 @@ use sctk::{
     },
 };
 use std::{collections::HashMap, time::Instant};
+#[cfg(feature = "input_method")]
+use wayland_backend::protocol::WEnum;
+#[cfg(feature = "input_method")]
+use wayland_protocols::wp::text_input::zv3::client::zwp_text_input_v3::{
+    ChangeCause, ContentHint, ContentPurpose,
+};
 use wayland_protocols::wp::viewporter::client::wp_viewport::WpViewport;
 use xkeysym::Keysym;
 
@@ -145,6 +155,19 @@ pub enum SctkEvent {
         variant: KeyboardEventVariant,
         kbd_id: WlKeyboard,
         seat_id: WlSeat,
+    },
+    #[cfg(feature = "input_method")]
+    InputMethodEvent {
+        variant: InputMethodEventVariant,
+    },
+    #[cfg(feature = "input_method")]
+    InputMethodKeyboardEvent {
+        variant: InputMethodKeyboardEventVariant,
+    },
+    #[cfg(feature = "input_method")]
+    InputMethodPopupEvent {
+        variant: InputMethodPopupEventVariant,
+        id: WlSurface,
     },
     // TODO data device & touch
 
@@ -289,6 +312,39 @@ pub enum KeyboardEventVariant {
     Repeat(KeyEvent),
     Release(KeyEvent),
     Modifiers(Modifiers),
+}
+
+#[cfg(feature = "input_method")]
+#[derive(Debug, Clone)]
+pub enum InputMethodEventVariant {
+    Activate,
+    Deactivate,
+    SurroundingText {
+        text: String,
+        cursor: u32,
+        anchor: u32,
+    },
+    TextChangeCause(WEnum<ChangeCause>),
+    ContentType(WEnum<ContentHint>, WEnum<ContentPurpose>),
+    Done,
+}
+
+#[cfg(feature = "input_method")]
+#[derive(Debug, Clone)]
+pub enum InputMethodKeyboardEventVariant {
+    Press(KeyEvent),
+    Repeat(KeyEvent),
+    Release(KeyEvent),
+    Modifiers(Modifiers, RawModifiers),
+}
+
+#[cfg(feature = "input_method")]
+#[derive(Debug, Clone)]
+pub enum InputMethodPopupEventVariant {
+    Created(ObjectId, SurfaceId),
+    /// Scale Factor
+    ScaleFactorChanged(f64, Option<WpViewport>),
+    Size(u32, u32),
 }
 
 #[derive(Debug, Clone)]
@@ -467,6 +523,44 @@ impl SctkEvent {
                     .into_iter()
                     .collect(), // TODO Ashley: conversion
             },
+            #[cfg(feature = "input_method")]
+            SctkEvent::InputMethodEvent { variant } => match variant {
+                InputMethodEventVariant::Activate => Default::default(),
+                InputMethodEventVariant::Deactivate => Default::default(),
+                InputMethodEventVariant::SurroundingText {
+                    text: _,
+                    cursor: _,
+                    anchor: _,
+                } => Default::default(),
+                InputMethodEventVariant::TextChangeCause(_) => {
+                    Default::default()
+                }
+                InputMethodEventVariant::ContentType(_, _) => {
+                    Default::default()
+                }
+                InputMethodEventVariant::Done => Default::default(),
+            },
+            #[cfg(feature = "input_method")]
+            SctkEvent::InputMethodKeyboardEvent { variant } => match variant {
+                InputMethodKeyboardEventVariant::Press(_) => Default::default(),
+                InputMethodKeyboardEventVariant::Repeat(_) => {
+                    Default::default()
+                }
+                InputMethodKeyboardEventVariant::Release(_) => {
+                    Default::default()
+                }
+                InputMethodKeyboardEventVariant::Modifiers(
+                    new_mods,
+                    _raw_modifiers,
+                ) => {
+                    *modifiers = new_mods;
+                    vec![iced_runtime::core::Event::Keyboard(
+                        keyboard::Event::ModifiersChanged(modifiers_to_native(
+                            new_mods,
+                        )),
+                    )]
+                }
+            },
             SctkEvent::KeyboardEvent {
                 variant,
                 kbd_id: _,
@@ -516,6 +610,8 @@ impl SctkEvent {
                                 ),
                             ))
                         }
+                        #[cfg(feature = "input_method")]
+                        SurfaceIdWrapper::InputMethodPopup(_) => None,
                     })
                     .into_iter()
                     .chain([iced_runtime::core::Event::PlatformSpecific(
@@ -569,6 +665,8 @@ impl SctkEvent {
                                 ),
                             ))
                         }
+                        #[cfg(feature = "input_method")]
+                        SurfaceIdWrapper::InputMethodPopup(_) => None,
                     })
                     .into_iter()
                     .chain([iced_runtime::core::Event::PlatformSpecific(
@@ -960,11 +1058,25 @@ impl SctkEvent {
                 .into_iter()
                 .collect()
             }
+            #[cfg(feature = "input_method")]
+            SctkEvent::InputMethodPopupEvent { id: _, variant } => {
+                match variant {
+                    InputMethodPopupEventVariant::Created(_, _) => {
+                        Default::default()
+                    }
+                    InputMethodPopupEventVariant::ScaleFactorChanged(_, _) => {
+                        Default::default()
+                    }
+                    InputMethodPopupEventVariant::Size(_, _) => {
+                        Default::default()
+                    }
+                }
+            }
         }
     }
 }
 
-fn keysym_to_vkey_location(keysym: Keysym) -> (Key, Location) {
+pub fn keysym_to_vkey_location(keysym: Keysym) -> (Key, Location) {
     let raw = keysym.raw();
     let mut key = keysym_to_key(raw);
     if matches!(key, key::Key::Unidentified) {
