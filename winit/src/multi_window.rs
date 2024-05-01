@@ -731,10 +731,18 @@ async fn run_instance<A, E, C>(
                             winit::event::WindowEvent::CloseRequested
                         ) && window.exit_on_close_request
                         {
-                            let _ = window_manager.remove(id);
+                            let w = window_manager.remove(id);
                             let _ = user_interfaces.remove(&id);
                             let _ = ui_caches.remove(&id);
-
+                            // XXX Empty rectangle list un-registers the window
+                            if let Some(w) = w {
+                                clipboard.register_dnd_destination(
+                                    DndSurface(Arc::new(Box::new(
+                                        w.raw.clone(),
+                                    ))),
+                                    Vec::new(),
+                                );
+                            }
                             events.push((
                                 None,
                                 core::Event::Window(id, window::Event::Closed),
@@ -1207,6 +1215,14 @@ async fn run_instance<A, E, C>(
                             let w = window_manager.remove(id);
                             let _ = user_interfaces.remove(&id);
                             let _ = ui_caches.remove(&id);
+                            if let Some(w) = w.as_ref() {
+                                clipboard.register_dnd_destination(
+                                    DndSurface(Arc::new(Box::new(
+                                        w.raw.clone(),
+                                    ))),
+                                    Vec::new(),
+                                );
+                            }
 
                             events.push((
                                 None,
@@ -1405,6 +1421,12 @@ fn run_command<A, C, E>(
                 window::Action::Close(id) => {
                     let w = window_manager.remove(id);
                     let _ = ui_caches.remove(&id);
+                    if let Some(w) = w.as_ref() {
+                        clipboard.register_dnd_destination(
+                            DndSurface(Arc::new(Box::new(w.raw.clone()))),
+                            Vec::new(),
+                        );
+                    }
 
                     if window_manager.is_empty()
                         && w.is_some_and(|w| w.exit_on_close_request)

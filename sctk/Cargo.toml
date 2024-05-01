@@ -22,7 +22,7 @@ window_clipboard.workspace = true
 raw-window-handle = "0.6"
 enum-repr = "0.2"
 futures = "0.3"
-wayland-backend = {version = "0.3.1", features = ["client_system"]}
+wayland-backend = { version = "0.3.1", features = ["client_system"] }
 float-cmp = "0.9"
 xkbcommon-dl = "0.4.1"
 xkbcommon = { version = "0.7", features = ["wayland"] }
