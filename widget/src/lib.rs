@@ -24,6 +24,7 @@ pub mod container;
 pub mod float;
 pub mod grid;
 pub mod keyed;
+pub mod list;
 pub mod overlay;
 pub mod pane_grid;
 pub mod pick_list;
@@ -67,6 +68,8 @@ pub use container::Container;
 pub use float::Float;
 #[doc(no_inline)]
 pub use grid::Grid;
+#[doc(no_inline)]
+pub use list::List;
 #[doc(no_inline)]
 pub use mouse_area::MouseArea;
 #[doc(no_inline)]
