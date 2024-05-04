@@ -8,6 +8,7 @@ use crate::core::widget::operation::{self, Operation};
 use crate::core::window;
 use crate::core::{Element, Length, Pixels, Widget};
 use crate::keyed;
+use crate::list::{self, List};
 use crate::overlay;
 use crate::pane_grid::{self, PaneGrid};
 use crate::pick_list::{self, PickList};
@@ -812,6 +813,18 @@ where
     Renderer: core::Renderer,
 {
     Scrollable::new(content)
+}
+
+/// Creates a new [`List`] with the provided [`Content`] and
+/// closure to view an item of the [`List`].
+///
+/// [`List`]: crate::List
+/// [`Content`]: crate::list::Content
+pub fn list<'a, T, Message, Theme, Renderer>(
+    content: &'a list::Content<T>,
+    view_item: impl Fn(usize, &'a T) -> Element<'a, Message, Theme, Renderer> + 'a,
+) -> List<'a, T, Message, Theme, Renderer> {
+    List::new(content, view_item)
 }
 
 /// Creates a new [`Button`] with the provided content.
