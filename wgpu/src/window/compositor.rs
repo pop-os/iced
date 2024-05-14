@@ -6,6 +6,9 @@ use crate::graphics::compositor;
 use crate::graphics::{Error, Viewport};
 use crate::{Backend, Primitive, Renderer, Settings};
 
+#[cfg(unix)]
+use super::wayland::get_wayland_device_ids;
+
 /// A window graphics backend for iced powered by `wgpu`.
 #[allow(missing_debug_implementations)]
 pub struct Compositor {
@@ -32,32 +35,74 @@ impl Compositor {
 
         log::info!("{settings:#?}");
 
+        let available_adapters =
+            instance.enumerate_adapters(settings.internal_backend);
+
         #[cfg(not(target_arch = "wasm32"))]
         if log::max_level() >= log::LevelFilter::Info {
-            let available_adapters: Vec<_> = instance
-                .enumerate_adapters(settings.internal_backend)
-                .iter()
-                .map(wgpu::Adapter::get_info)
-                .collect();
-            log::info!("Available adapters: {available_adapters:#?}");
+            log::info!(
+                "Available adapters: {:#?}",
+                available_adapters.iter().map(wgpu::Adapter::get_info)
+            );
         }
+
+        #[cfg(unix)]
+        let ids = compatible_window.as_ref().and_then(get_wayland_device_ids);
 
         #[allow(unsafe_code)]
         let compatible_surface = compatible_window
             .and_then(|window| instance.create_surface(window).ok());
 
-        let adapter = instance
-            .request_adapter(&wgpu::RequestAdapterOptions {
-                power_preference: wgpu::util::power_preference_from_env()
-                    .unwrap_or(if settings.antialiasing.is_none() {
-                        wgpu::PowerPreference::LowPower
+        let mut adapter = None;
+        #[cfg_attr(not(unix), allow(dead_code))]
+        if std::env::var_os("WGPU_ADAPTER_NAME").is_none() {
+            #[cfg(unix)]
+            if let Some((vendor_id, device_id)) = ids {
+                adapter = available_adapters
+                    .into_iter()
+                    .filter(|adapter| {
+                        let info = adapter.get_info();
+                        info.device == device_id as u32
+                            && info.vendor == vendor_id as u32
+                    })
+                    .find(|adapter| {
+                        if let Some(surface) = compatible_surface.as_ref() {
+                            adapter.is_surface_supported(surface)
+                        } else {
+                            true
+                        }
+                    });
+            }
+        } else if let Ok(name) = std::env::var("WGPU_ADAPTER_NAME") {
+            adapter = available_adapters
+                .into_iter()
+                .filter(|adapter| {
+                    let info = adapter.get_info();
+                    info.name == name
+                })
+                .find(|adapter| {
+                    if let Some(surface) = compatible_surface.as_ref() {
+                        adapter.is_surface_supported(surface)
                     } else {
-                        wgpu::PowerPreference::HighPerformance
-                    }),
-                compatible_surface: compatible_surface.as_ref(),
-                force_fallback_adapter: false,
-            })
-            .await?;
+                        true
+                    }
+                });
+        }
+
+        let adapter = adapter.or({
+            instance
+                .request_adapter(&wgpu::RequestAdapterOptions {
+                    power_preference: wgpu::util::power_preference_from_env()
+                        .unwrap_or(if settings.antialiasing.is_none() {
+                            wgpu::PowerPreference::LowPower
+                        } else {
+                            wgpu::PowerPreference::HighPerformance
+                        }),
+                    compatible_surface: compatible_surface.as_ref(),
+                    force_fallback_adapter: false,
+                })
+                .await
+        })?;
 
         log::info!("Selected: {:#?}", adapter.get_info());
 
