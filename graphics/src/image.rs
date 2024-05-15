@@ -9,7 +9,9 @@ pub use ::image as image_rs;
 pub fn load(handle: &Handle) -> image_rs::ImageResult<image_rs::DynamicImage> {
     match handle.data() {
         Data::Path(path) => {
-            let image = ::image::open(path)?;
+            let image = ::image::io::Reader::open(&path)?
+                .with_guessed_format()?
+                .decode()?;
 
             let operation = std::fs::File::open(path)
                 .ok()
