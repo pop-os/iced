@@ -456,6 +456,16 @@ async fn run_instance<A, E, C>(
         )
     };
 
+    if window.has_focus() {
+        let _ = user_interface.update(
+            &[Event::Window(window::Id::MAIN, window::Event::Focused)],
+            state.cursor(),
+            &mut renderer,
+            &mut clipboard,
+            &mut messages,
+        );
+    }
+
     debug.startup_finished();
 
     while let Some(event) = event_receiver.next().await {
