@@ -28,6 +28,23 @@ impl Compositor {
         settings: Settings,
         compatible_window: Option<W>,
     ) -> Option<Self> {
+        #[cfg(unix)]
+        let ids = compatible_window.as_ref().and_then(get_wayland_device_ids);
+
+        // HACK:
+        //  1. If we specifically didn't select an nvidia gpu
+        //  2. and nobody set an adapter name,
+        //  3. and the user didn't request the high power pref
+        // => don't load the nvidia icd, as it might power on the gpu in hybrid setups causing severe delays
+        #[cfg(unix)]
+        if !matches!(ids, Some((0x10de, _)))
+            && std::env::var_os("WGPU_ADAPTER_NAME").is_none()
+            && std::env::var("WGPU_POWER_PREF").as_deref() != Ok("high")
+        {
+            std::env::set_var("VK_LOADER_DRIVERS_DISABLE", "nvidia*");
+        }
+
+        // only load the instance after setting environment variables, this initializes the vulkan loader
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: settings.internal_backend,
             ..Default::default()
@@ -45,9 +62,6 @@ impl Compositor {
                 available_adapters.iter().map(wgpu::Adapter::get_info)
             );
         }
-
-        #[cfg(unix)]
-        let ids = compatible_window.as_ref().and_then(get_wayland_device_ids);
 
         #[allow(unsafe_code)]
         let compatible_surface = compatible_window
