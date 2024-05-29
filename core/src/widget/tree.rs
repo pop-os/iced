@@ -2,10 +2,16 @@
 use crate::id::{Id, Internal};
 use crate::Widget;
 use std::any::{self, Any};
-use std::borrow::{Borrow, BorrowMut};
+use std::borrow::{Borrow, BorrowMut, Cow};
 use std::collections::HashMap;
-use std::fmt;
 use std::hash::Hash;
+use std::iter::zip;
+use std::{fmt, mem};
+
+thread_local! {
+    /// A map of named widget states.
+pub static NAMED: std::cell::RefCell<HashMap<Cow<'static, str>, (State, Vec<(usize, Tree)>)>> = std::cell::RefCell::new(HashMap::new());
+}
 
 /// A persistent state widget tree.
 ///
@@ -53,6 +59,81 @@ impl Tree {
         }
     }
 
+    /// Takes all named widgets from the tree.
+    pub fn take_all_named(
+        &mut self,
+    ) -> HashMap<Cow<'static, str>, (State, Vec<(usize, Tree)>)> {
+        let mut named = HashMap::new();
+        struct Visit {
+            parent: Cow<'static, str>,
+            index: usize,
+            visited: bool,
+        }
+        // tree traversal to find all named widgets
+        // and keep their state and children
+        let mut stack = vec![(self, None)];
+        while let Some((tree, visit)) = stack.pop() {
+            if let Some(Id(Internal::Custom(_, n))) = tree.id.clone() {
+                let state = mem::replace(&mut tree.state, State::None);
+                let children_count = tree.children.len();
+                let children =
+                    tree.children.iter_mut().rev().enumerate().map(|(i, c)| {
+                        if matches!(c.id, Some(Id(Internal::Custom(_, _)))) {
+                            (c, None)
+                        } else {
+                            (
+                                c,
+                                Some(Visit {
+                                    index: i,
+                                    parent: n.clone(),
+                                    visited: false,
+                                }),
+                            )
+                        }
+                    });
+                _ = named.insert(
+                    n.clone(),
+                    (state, Vec::with_capacity(children_count)),
+                );
+                stack.extend(children);
+            } else if let Some(visit) = visit {
+                if visit.visited {
+                    named.get_mut(&visit.parent).unwrap().1.push((
+                        visit.index,
+                        mem::replace(
+                            tree,
+                            Tree {
+                                id: tree.id.clone(),
+                                tag: tree.tag,
+                                ..Tree::empty()
+                            },
+                        ),
+                    ));
+                } else {
+                    let ptr = tree as *mut Tree;
+
+                    stack.push((
+                        // TODO remove this unsafe block
+                        #[allow(unsafe_code)]
+                        // SAFETY: when the reference is finally accessed, all the children references will have been processed first.
+                        unsafe {
+                            ptr.as_mut().unwrap()
+                        },
+                        Some(Visit {
+                            visited: true,
+                            ..visit
+                        }),
+                    ));
+                    stack.extend(tree.children.iter_mut().map(|c| (c, None)));
+                }
+            } else {
+                stack.extend(tree.children.iter_mut().map(|s| (s, None)));
+            }
+        }
+
+        named
+    }
+
     /// Finds a widget state in the tree by its id.
     pub fn find<'a>(&'a self, id: &Id) -> Option<&'a Tree> {
         if self.id == Some(id.clone()) {
@@ -84,24 +165,50 @@ impl Tree {
     {
         let borrowed: &mut dyn Widget<Message, Theme, Renderer> =
             new.borrow_mut();
-        if self.tag == borrowed.tag() {
-            // TODO can we take here?
-            if let Some(id) = self.id.clone() {
-                if matches!(id, Id(Internal::Custom(_, _))) {
-                    borrowed.set_id(id);
-                } else if borrowed.id() == Some(id.clone()) {
-                    for (old_c, new_c) in
-                        self.children.iter_mut().zip(borrowed.children())
-                    {
-                        old_c.id = new_c.id;
-                    }
+        let mut needs_reset = false;
+        let tag_match = self.tag == borrowed.tag();
+        if let Some(Id(Internal::Custom(_, n))) = borrowed.id() {
+            if let Some((mut state, children)) =
+                NAMED.with_borrow_mut(|named| named.remove(&n))
+            {
+                std::mem::swap(&mut self.state, &mut state);
+                let mut widget_children = borrowed.children();
+                if !tag_match || self.children.len() != widget_children.len() {
+                    self.children = borrowed.children();
                 } else {
-                    borrowed.set_id(id);
+                    for (old_i, mut old) in children {
+                        let Some(new) = widget_children.get_mut(old_i) else {
+                            continue;
+                        };
+                        let Some(my_state) = self.children.get_mut(old_i)
+                        else {
+                            continue;
+                        };
+                        debug_assert!(old.tag == my_state.tag);
+                        debug_assert!(old.id == new.id);
+
+                        mem::swap(my_state, &mut old);
+                    }
                 }
+            } else {
+                needs_reset = true;
             }
-            borrowed.diff(self)
+        } else if tag_match {
+            if let Some(id) = self.id.clone() {
+                borrowed.set_id(id);
+            }
+            if self.children.len() != borrowed.children().len() {
+                self.children = borrowed.children();
+            }
         } else {
-            *self = Self::new(new);
+            needs_reset = true;
+        }
+        if needs_reset {
+            *self = Self::new(borrowed);
+            let borrowed = new.borrow_mut();
+            borrowed.diff(self);
+        } else {
+            borrowed.diff(self);
         }
     }
 
@@ -164,7 +271,11 @@ impl Tree {
         );
 
         let mut child_state_i = 0;
-        for (new, new_id) in new_children.iter_mut().zip(new_ids.iter()) {
+        let mut new_trees: Vec<(Tree, usize)> =
+            Vec::with_capacity(new_children.len());
+        for (i, (new, new_id)) in
+            new_children.iter_mut().zip(new_ids.iter()).enumerate()
+        {
             let child_state = if let Some(c) = new_id.as_ref().and_then(|id| {
                 if let Internal::Custom(_, ref name) = id.0 {
                     id_map.remove(name.as_ref())
@@ -173,7 +284,12 @@ impl Tree {
                 }
             }) {
                 c
-            } else if child_state_i < id_list.len() {
+            } else if child_state_i < id_list.len()
+                && !matches!(
+                    id_list[child_state_i].id,
+                    Some(Id(Internal::Custom(_, _)))
+                )
+            {
                 let c = &mut id_list[child_state_i];
                 if len_changed {
                     c.id.clone_from(new_id);
@@ -181,16 +297,17 @@ impl Tree {
                 child_state_i += 1;
                 c
             } else {
+                let mut my_new_state = new_state(new);
+                diff(&mut my_new_state, new);
+                new_trees.push((my_new_state, i));
                 continue;
             };
 
             diff(child_state, new);
         }
 
-        if self.children.len() < new_children.len() {
-            self.children.extend(
-                new_children[self.children.len()..].iter().map(new_state),
-            );
+        for (new_tree, i) in new_trees {
+            self.children.insert(i, new_tree);
         }
     }
 }
