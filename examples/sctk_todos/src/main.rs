@@ -28,6 +28,8 @@ pub fn main() -> iced::Result {
 
     let mut settings = SctkWindowSettings::default();
     settings.size_limits = Limits::NONE.min_height(300.0).min_width(600.0);
+    settings.title = Some("Iced Todos".to_string());
+
     env_logger::init_from_env(env);
     Todos::run(Settings {
         initial_surface: InitialSurface::XdgWindow(settings),
@@ -315,10 +317,7 @@ impl Application for Todos {
                     event::wayland::Event::Window(e, s, id),
                 )),
                 _,
-            ) => {
-                dbg!(&e);
-                None
-            }
+            ) => None,
             _ => None,
         })
     }

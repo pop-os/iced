@@ -100,8 +100,9 @@ where
         let mut root = root.into();
 
         let Cache { mut state } = cache;
-        NAMED.with_borrow_mut(|named| {
-            *named = state.take_all_named();
+        NAMED.with(|named| {
+            let mut guard = named.borrow_mut();
+            *guard = state.take_all_named();
         });
 
         state.diff(root.as_widget_mut());
@@ -112,8 +113,8 @@ where
             &layout::Limits::new(Size::ZERO, bounds),
         );
 
-        NAMED.with_borrow_mut(|named| {
-            named.clear();
+        NAMED.with(|named| {
+            named.borrow_mut().clear();
         });
 
         UserInterface {

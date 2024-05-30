@@ -4,6 +4,7 @@ use sctk::reexports::client::protocol::wl_surface::WlSurface;
 use sctk::reexports::client::Proxy;
 use std::sync::{Arc, Mutex};
 
+#[derive(Debug)]
 pub enum A11yWrapper {
     Enabled,
     Event(ActionRequestEvent),

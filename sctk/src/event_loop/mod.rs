@@ -268,6 +268,7 @@ where
                         .push(adapter::A11yWrapper::Enabled);
                     let mut node = NodeBuilder::new(Role::Window);
                     if let Some(name) = surface_title {
+                        dbg!(&name);
                         node.set_name(name);
                     }
                     let node = node.build(&mut NodeClassSet::lock_global());
@@ -549,6 +550,7 @@ where
             #[cfg(feature = "a11y")]
             if let Ok(mut events) = self.a11y_events.lock() {
                 for event in events.drain(..) {
+                    dbg!(&event);
                     match event {
                         adapter::A11yWrapper::Enabled => sticky_exit_callback(
                             IcedSctkEvent::A11yEnabled,
@@ -826,6 +828,8 @@ where
 
                             #[cfg(feature = "a11y")]
                             {
+                                dbg!(&app_id, &title);
+
                                 let adapter = self.init_a11y_adapter(&wl_surface, app_id, title, iced_accessibility::accesskit::Role::Window);
 
                                 sticky_exit_callback(
