@@ -169,7 +169,7 @@ impl Tree {
         let tag_match = self.tag == borrowed.tag();
         if let Some(Id(Internal::Custom(_, n))) = borrowed.id() {
             if let Some((mut state, children)) =
-                NAMED.with_borrow_mut(|named| named.remove(&n))
+                NAMED.with(|named| named.borrow_mut().remove(&n))
             {
                 std::mem::swap(&mut self.state, &mut state);
                 let mut widget_children = borrowed.children();
