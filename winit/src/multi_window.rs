@@ -1020,7 +1020,6 @@ async fn run_instance<A, E, C>(
                                         {
                                             ui
                                                 .operate(&ui_renderer, operation.as_mut());
-                
                                             match operation.finish() {
                                                 operation::Outcome::None => {
                                                 }
