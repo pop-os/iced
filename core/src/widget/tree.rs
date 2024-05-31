@@ -172,20 +172,35 @@ impl Tree {
                 NAMED.with(|named| named.borrow_mut().remove(&n))
             {
                 std::mem::swap(&mut self.state, &mut state);
-                let mut widget_children = borrowed.children();
+                let widget_children = borrowed.children();
                 if !tag_match || self.children.len() != widget_children.len() {
                     self.children = borrowed.children();
                 } else {
                     for (old_i, mut old) in children {
-                        let Some(new) = widget_children.get_mut(old_i) else {
-                            continue;
-                        };
                         let Some(my_state) = self.children.get_mut(old_i)
                         else {
                             continue;
                         };
-                        debug_assert!(old.tag == my_state.tag);
-                        debug_assert!(old.id == new.id);
+                        if my_state.tag != old.tag || {
+                            !match (&old.id, &my_state.id) {
+                                (
+                                    Some(Id(Internal::Custom(_, ref old_name))),
+                                    Some(Id(Internal::Custom(_, ref my_name))),
+                                ) => old_name == my_name,
+                                (
+                                    Some(Id(Internal::Set(a))),
+                                    Some(Id(Internal::Set(b))),
+                                ) => a.len() == b.len(),
+                                (
+                                    Some(Id(Internal::Unique(_))),
+                                    Some(Id(Internal::Unique(_))),
+                                ) => true,
+                                (None, None) => true,
+                                _ => false,
+                            }
+                        } {
+                            continue;
+                        }
 
                         mem::swap(my_state, &mut old);
                     }
