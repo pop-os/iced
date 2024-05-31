@@ -893,7 +893,7 @@ async fn run_instance<A, E, C>(
                     ));
 
                     let dnd_rectangles = user_interface
-                        .dnd_rectangles(prev_dnd_rectangles_count);
+                        .dnd_rectangles(prev_dnd_rectangles_count, &renderer);
                     let new_dnd_rectangles_count =
                         dnd_rectangles.as_ref().len();
 

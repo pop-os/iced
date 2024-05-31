@@ -174,6 +174,7 @@ where
         &self,
         _state: &Tree,
         _layout: Layout<'_>,
+        _renderer: &Renderer,
         _dnd_rectangles: &mut crate::clipboard::DndDestinationRectangles,
     ) {
     }

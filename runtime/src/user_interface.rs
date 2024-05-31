@@ -642,11 +642,13 @@ where
     pub fn dnd_rectangles(
         &self,
         prev_capacity: usize,
+        renderer: &Renderer,
     ) -> DndDestinationRectangles {
         let mut ret = DndDestinationRectangles::with_capacity(prev_capacity);
         self.root.as_widget().drag_destinations(
             &self.state,
             Layout::new(&self.base),
+            renderer,
             &mut ret,
         );
         ret

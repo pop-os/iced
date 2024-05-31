@@ -506,9 +506,11 @@ where
         &self,
         state: &Tree,
         layout: Layout<'_>,
+        renderer: &Renderer,
         dnd_rectangles: &mut crate::clipboard::DndDestinationRectangles,
     ) {
-        self.widget.drag_destinations(state, layout, dnd_rectangles);
+        self.widget
+            .drag_destinations(state, layout, renderer, dnd_rectangles);
     }
 }
 
@@ -667,11 +669,15 @@ where
         &self,
         state: &Tree,
         layout: Layout<'_>,
+        renderer: &Renderer,
         dnd_rectangles: &mut crate::clipboard::DndDestinationRectangles,
     ) {
-        self.element
-            .widget
-            .drag_destinations(state, layout, dnd_rectangles);
+        self.element.widget.drag_destinations(
+            state,
+            layout,
+            renderer,
+            dnd_rectangles,
+        );
     }
     // TODO maybe a11y_nodes
 }

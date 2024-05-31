@@ -1006,16 +1006,40 @@ async fn run_instance<A, E, C>(
                                         core::clipboard::DndSource::Widget(
                                             w,
                                         ) => {
-                                            // search windows for widget
-                                            user_interfaces.iter().find_map(
-                                                |(id, ui)| {
-                                                    if ui.
-                                                        find(&w).is_some()
-                                                    {
-                                                        Some(*id)
-                                                    } else {
-                                                        None
+                                            // search windows for widget with operation
+                                            user_interfaces.iter_mut().find_map(
+                                                |(ui_id, ui)| {
+                                                    let mut current_operation =
+                                            Some(Box::new(OperationWrapper::Id(Box::new(
+                                                operation::search_id::search_id(w.clone()),
+                                            ))));
+                                            let Some(ui_renderer) = window_manager.get_mut(ui_id.clone()).map(|w| &w.renderer) else {
+                                                return None;
+                                            };
+                                        while let Some(mut operation) = current_operation.take()
+                                        {
+                                            ui
+                                                .operate(&ui_renderer, operation.as_mut());
+                
+                                            match operation.finish() {
+                                                operation::Outcome::None => {
+                                                }
+                                                operation::Outcome::Some(message) => {
+                                                    match message {
+                                                        operation::OperationOutputWrapper::Message(_) => {
+                                                            unimplemented!();
+                                                        }
+                                                        operation::OperationOutputWrapper::Id(_) => {
+                                                            return Some(ui_id.clone());
+                                                        },
                                                     }
+                                                }
+                                                operation::Outcome::Chain(next) => {
+                                                    current_operation = Some(Box::new(OperationWrapper::Wrapper(next)));
+                                                }
+                                            }
+                                        }
+                                        None
                                                 },
                                             )
                                         },
@@ -1750,8 +1774,10 @@ where
                 id,
             );
 
-            let dnd_rectangles = interface
-                .dnd_rectangles(window.prev_dnd_destination_rectangles_count);
+            let dnd_rectangles = interface.dnd_rectangles(
+                window.prev_dnd_destination_rectangles_count,
+                &window.renderer,
+            );
             let new_dnd_rectangles_count = dnd_rectangles.as_ref().len();
             if new_dnd_rectangles_count > 0
                 || window.prev_dnd_destination_rectangles_count > 0

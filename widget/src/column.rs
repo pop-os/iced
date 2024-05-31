@@ -289,6 +289,7 @@ where
         &self,
         state: &Tree,
         layout: Layout<'_>,
+        renderer: &Renderer,
         dnd_rectangles: &mut iced_style::core::clipboard::DndDestinationRectangles,
     ) {
         for ((e, layout), state) in self
@@ -297,8 +298,12 @@ where
             .zip(layout.children())
             .zip(state.children.iter())
         {
-            e.as_widget()
-                .drag_destinations(state, layout, dnd_rectangles);
+            e.as_widget().drag_destinations(
+                state,
+                layout,
+                renderer,
+                dnd_rectangles,
+            );
         }
     }
 }

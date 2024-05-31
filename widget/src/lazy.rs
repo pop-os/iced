@@ -313,12 +313,14 @@ where
         &self,
         state: &Tree,
         layout: Layout<'_>,
+        renderer: &Renderer,
         dnd_rectangles: &mut core::clipboard::DndDestinationRectangles,
     ) {
         self.with_element(|element| {
             element.as_widget().drag_destinations(
                 &state.children[0],
                 layout,
+                renderer,
                 dnd_rectangles,
             );
         });

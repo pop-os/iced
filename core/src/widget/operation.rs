@@ -1,6 +1,7 @@
 //! Query or update internal widget state.
 pub mod focusable;
 pub mod scrollable;
+pub mod search_id;
 pub mod text_input;
 
 pub use focusable::Focusable;
@@ -129,6 +130,20 @@ impl<M: 'static> Operation<OperationOutputWrapper<M>> for OperationWrapper<M> {
             OperationWrapper::Wrapper(c) => c.as_ref().finish(),
         }
     }
+
+    fn custom(&mut self, _state: &mut dyn Any, _id: Option<&Id>) {
+        match self {
+            OperationWrapper::Message(operation) => {
+                operation.custom(_state, _id);
+            }
+            OperationWrapper::Id(operation) => {
+                operation.custom(_state, _id);
+            }
+            OperationWrapper::Wrapper(operation) => {
+                operation.custom(_state, _id);
+            }
+        }
+    }
 }
 
 #[allow(missing_debug_implementations)]
@@ -173,6 +188,10 @@ impl<'a, T, B> Operation<T> for MapOperation<'a, B> {
 
     fn text_input(&mut self, state: &mut dyn TextInput, id: Option<&Id>) {
         self.operation.text_input(state, id)
+    }
+
+    fn custom(&mut self, state: &mut dyn Any, id: Option<&Id>) {
+        self.operation.custom(state, id);
     }
 }
 

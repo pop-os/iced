@@ -5,7 +5,6 @@ use std::any::{self, Any};
 use std::borrow::{Borrow, BorrowMut, Cow};
 use std::collections::HashMap;
 use std::hash::Hash;
-use std::iter::zip;
 use std::{fmt, mem};
 
 thread_local! {
@@ -168,8 +167,37 @@ impl Tree {
         let mut needs_reset = false;
         let tag_match = self.tag == borrowed.tag();
         if let Some(Id(Internal::Custom(_, n))) = borrowed.id() {
-            if let Some((mut state, children)) =
-                NAMED.with(|named| named.borrow_mut().remove(&n))
+            if let Some((mut state, children)) = NAMED
+                .with(|named| named.borrow_mut().remove(&n))
+                .or_else(|| {
+                    //check self.id
+                    if let Some(Id(Internal::Custom(_, ref name))) = self.id {
+                        if name == &n {
+                            Some((
+                                mem::replace(&mut self.state, State::None),
+                                self.children
+                                    .iter_mut()
+                                    .map(|s| {
+                                        // take the data
+                                        mem::replace(
+                                            s,
+                                            Tree {
+                                                id: s.id.clone(),
+                                                tag: s.tag,
+                                                ..Tree::empty()
+                                            },
+                                        )
+                                    })
+                                    .enumerate()
+                                    .collect(),
+                            ))
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                })
             {
                 std::mem::swap(&mut self.state, &mut state);
                 let widget_children = borrowed.children();

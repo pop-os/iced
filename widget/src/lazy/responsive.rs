@@ -359,13 +359,24 @@ where
         &self,
         state: &Tree,
         layout: Layout<'_>,
+        renderer: &Renderer,
         dnd_rectangles: &mut core::clipboard::DndDestinationRectangles,
     ) {
-        self.content.borrow().element.as_widget().drag_destinations(
-            state,
+        let ret = self.content.borrow_mut().resolve(
+            &mut state.state.downcast_ref::<State>().tree.borrow_mut(),
+            renderer,
             layout,
-            dnd_rectangles,
+            &self.view,
+            |tree, r, layout, element| {
+                element.as_widget().drag_destinations(
+                    tree,
+                    layout,
+                    r,
+                    dnd_rectangles,
+                );
+            },
         );
+        ret
     }
 }
 
