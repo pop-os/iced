@@ -103,20 +103,24 @@ impl Compositor {
                 });
         }
 
-        let adapter = adapter.or({
-            instance
-                .request_adapter(&wgpu::RequestAdapterOptions {
-                    power_preference: wgpu::util::power_preference_from_env()
-                        .unwrap_or(if settings.antialiasing.is_none() {
-                            wgpu::PowerPreference::LowPower
-                        } else {
-                            wgpu::PowerPreference::HighPerformance
-                        }),
-                    compatible_surface: compatible_surface.as_ref(),
-                    force_fallback_adapter: false,
-                })
-                .await
-        })?;
+        let adapter =
+            match adapter {
+                Some(adapter) => adapter,
+                None => instance
+                    .request_adapter(&wgpu::RequestAdapterOptions {
+                        power_preference:
+                            wgpu::util::power_preference_from_env().unwrap_or(
+                                if settings.antialiasing.is_none() {
+                                    wgpu::PowerPreference::LowPower
+                                } else {
+                                    wgpu::PowerPreference::HighPerformance
+                                },
+                            ),
+                        compatible_surface: compatible_surface.as_ref(),
+                        force_fallback_adapter: false,
+                    })
+                    .await?,
+            };
 
         log::info!("Selected: {:#?}", adapter.get_info());
 
