@@ -498,9 +498,11 @@ where
             settings.positioner.anchor_rect.width,
             settings.positioner.anchor_rect.height,
         );
-        positioner.set_constraint_adjustment(
-            settings.positioner.constraint_adjustment,
-        );
+        if let Ok(constraint_adjustment) =
+            settings.positioner.constraint_adjustment.try_into()
+        {
+            positioner.set_constraint_adjustment(constraint_adjustment);
+        }
         positioner.set_gravity(settings.positioner.gravity);
         positioner.set_offset(
             settings.positioner.offset.0,

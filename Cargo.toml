@@ -171,7 +171,7 @@ qrcode = { version = "0.12", default-features = false }
 raw-window-handle = "0.6"
 resvg = "0.37"
 rustc-hash = "1.0"
-sctk = { package = "smithay-client-toolkit", git = "https://github.com/smithay/client-toolkit", rev = "3bed072" }
+sctk = { package = "smithay-client-toolkit", version = "0.19.1" }
 smol = "1.0"
 smol_str = "0.2"
 softbuffer = { git = "https://github.com/pop-os/softbuffer", tag = "cosmic-4.0" }
@@ -185,7 +185,7 @@ xxhash-rust = { version = "0.8", features = ["xxh3"] }
 unicode-segmentation = "1.0"
 wasm-bindgen-futures = "0.4"
 wasm-timer = "0.2"
-wayland-protocols = { version = "0.31.0", features = ["staging"] }
+wayland-protocols = { version = "0.32.1", features = ["staging"] }
 web-sys = "0.3"
 web-time = "0.2"
 # wgpu = "0.19"

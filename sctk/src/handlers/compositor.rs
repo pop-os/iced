@@ -2,7 +2,10 @@
 use sctk::{
     compositor::CompositorHandler,
     delegate_compositor,
-    reexports::client::{protocol::wl_surface, Connection, QueueHandle},
+    reexports::client::{
+        protocol::{wl_output, wl_surface},
+        Connection, QueueHandle,
+    },
 };
 use std::fmt::Debug;
 
@@ -35,10 +38,28 @@ impl<T: Debug> CompositorHandler for SctkState<T> {
         _conn: &Connection,
         _qh: &QueueHandle<Self>,
         _surface: &wl_surface::WlSurface,
-        _new_transform: sctk::reexports::client::protocol::wl_output::Transform,
+        _new_transform: wl_output::Transform,
     ) {
         // TODO
         // this is not required
+    }
+
+    fn surface_enter(
+        &mut self,
+        _: &Connection,
+        _: &QueueHandle<Self>,
+        _: &wl_surface::WlSurface,
+        _: &wl_output::WlOutput,
+    ) {
+    }
+
+    fn surface_leave(
+        &mut self,
+        _: &Connection,
+        _: &QueueHandle<Self>,
+        _: &wl_surface::WlSurface,
+        _: &wl_output::WlOutput,
+    ) {
     }
 }
 
