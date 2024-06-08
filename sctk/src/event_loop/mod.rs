@@ -325,6 +325,11 @@ where
             .registry_state
             .bind_one(&self.state.queue_handle, 2..=4, GlobalData)
             .ok();
+        let wp_alpha_modifier = self
+            .state
+            .registry_state
+            .bind_one(&self.state.queue_handle, 1..=1, ())
+            .ok();
         if let Ok(wl_subcompositor) = wl_subcompositor {
             if let Ok(wp_viewporter) = wp_viewporter {
                 callback(
@@ -334,6 +339,7 @@ where
                         wp_viewporter,
                         wl_shm,
                         wp_dmabuf,
+                        wp_alpha_modifier,
                         qh: self.state.queue_handle.clone(),
                         buffers: HashMap::new(),
                     }),
