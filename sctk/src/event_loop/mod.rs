@@ -342,6 +342,7 @@ where
                         wp_alpha_modifier,
                         qh: self.state.queue_handle.clone(),
                         buffers: HashMap::new(),
+                        unmapped_subsurfaces: Vec::new(),
                     }),
                     &self.state,
                     &mut control_flow,

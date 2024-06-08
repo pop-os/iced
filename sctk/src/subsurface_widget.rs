@@ -320,6 +320,7 @@ pub struct SubsurfaceState<T> {
     pub wp_alpha_modifier: Option<WpAlphaModifierV1>,
     pub qh: QueueHandle<SctkState<T>>,
     pub(crate) buffers: HashMap<WeakBufferSource, Vec<WlBuffer>>,
+    pub unmapped_subsurfaces: Vec<SubsurfaceInstance>,
 }
 
 impl<T: Debug + 'static> SubsurfaceState<T> {
@@ -370,6 +371,13 @@ impl<T: Debug + 'static> SubsurfaceState<T> {
         subsurfaces: &mut Vec<SubsurfaceInstance>,
         view_subsurfaces: &[SubsurfaceInfo],
     ) {
+        // Subsurfaces aren't destroyed immediately to sync removal with parent
+        // surface commit. Since `destroy` is immediate.
+        //
+        // They should be safe to destroy by the next time `update_subsurfaces`
+        // is run.
+        self.unmapped_subsurfaces.clear();
+
         // Remove cached `wl_buffers` for any `BufferSource`s that no longer exist.
         self.buffers.retain(|k, v| {
             let retain = k.0.strong_count() > 0;
@@ -380,9 +388,11 @@ impl<T: Debug + 'static> SubsurfaceState<T> {
         });
 
         // If view requested fewer subsurfaces than there currently are,
-        // destroy excess.
-        if view_subsurfaces.len() < subsurfaces.len() {
-            subsurfaces.truncate(view_subsurfaces.len());
+        // unmap excess.
+        while view_subsurfaces.len() < subsurfaces.len() {
+            let subsurface = subsurfaces.pop().unwrap();
+            subsurface.unmap();
+            self.unmapped_subsurfaces.push(subsurface);
         }
         // Create new subsurfaces if there aren't enough.
         while subsurfaces.len() < view_subsurfaces.len() {
@@ -535,6 +545,11 @@ impl SubsurfaceInstance {
 
         self.wl_buffer = Some(buffer);
         self.bounds = Some(info.bounds);
+    }
+
+    pub fn unmap(&self) {
+        self.wl_surface.attach(None, 0, 0);
+        self.wl_surface.commit();
     }
 }
 
