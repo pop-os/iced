@@ -55,6 +55,8 @@ impl Compositor {
         let available_adapters =
             instance.enumerate_adapters(settings.internal_backend);
 
+        std::env::remove_var("VK_LOADER_DRIVERS_DISABLE");
+
         #[cfg(not(target_arch = "wasm32"))]
         if log::max_level() >= log::LevelFilter::Info {
             log::info!(
