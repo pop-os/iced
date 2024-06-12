@@ -192,9 +192,9 @@ web-time = "0.2"
 # Newer wgpu commit that fixes Vulkan backend on Nvidia
 wgpu = { git = "https://github.com/gfx-rs/wgpu", rev = "20fda69" }
 winapi = "0.3"
-window_clipboard = { git = "https://github.com/pop-os/window_clipboard.git", tag = "pop-dnd-6" }
-dnd = { git = "https://github.com/pop-os/window_clipboard.git", tag = "pop-dnd-6" }
-mime = { git = "https://github.com/pop-os/window_clipboard.git", tag = "pop-dnd-6" }
+window_clipboard = { git = "https://github.com/pop-os/window_clipboard.git", tag = "pop-dnd-7" }
+dnd = { git = "https://github.com/pop-os/window_clipboard.git", tag = "pop-dnd-7" }
+mime = { git = "https://github.com/pop-os/window_clipboard.git", tag = "pop-dnd-7" }
 # window_clipboard = { path = "../window_clipboard" }
 # dnd = { path = "../window_clipboard/dnd" }
 # mime = { path = "../window_clipboard/mime" }
