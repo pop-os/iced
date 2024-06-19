@@ -37,6 +37,7 @@ impl<M: Send + 'static> Clipboard<M> {
             .map(|c| State::Connected(c.0, c.1))
             .unwrap_or(State::Unavailable);
 
+        #[cfg(target_os = "linux")]
         if let State::Connected(clipboard, _) = &state {
             clipboard.init_dnd(Box::new(proxy));
         }

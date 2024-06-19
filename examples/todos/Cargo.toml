@@ -30,6 +30,14 @@ wasm-timer.workspace = true
 
 [package.metadata.deb]
 assets = [
-    ["target/release-opt/todos", "usr/bin/iced-todos", "755"],
-    ["iced-todos.desktop", "usr/share/applications/", "644"],
+    [
+        "target/release-opt/todos",
+        "usr/bin/iced-todos",
+        "755",
+    ],
+    [
+        "iced-todos.desktop",
+        "usr/share/applications/",
+        "644",
+    ],
 ]
