@@ -3,10 +3,13 @@ use std::marker::PhantomData;
 
 use iced_core::layout::Limits;
 use iced_core::window::Mode;
+use iced_core::Size;
 use iced_futures::MaybeSend;
 use sctk::reexports::protocols::xdg::shell::client::xdg_toplevel::ResizeEdge;
 
 use iced_core::window::Id;
+
+use crate::window;
 
 /// window settings
 #[derive(Debug, Clone)]
@@ -306,6 +309,91 @@ impl<T> fmt::Debug for Action<T> {
                 "Action::Window::Mode {{ id: {:?}, app_id: {:?} }}",
                 id, app_id
             ),
+        }
+    }
+}
+
+/// error type for unsupported actions
+#[derive(Debug, Clone, thiserror::Error)]
+pub enum Error {
+    /// Not supported
+    #[error("Not supported")]
+    NotSupported,
+}
+
+impl<T> TryFrom<window::Action<T>> for Action<T> {
+    type Error = Error;
+
+    fn try_from(value: window::Action<T>) -> Result<Self, Self::Error> {
+        match value {
+            window::Action::Spawn(id, settings) => {
+                let min = settings.min_size.unwrap_or(Size::new(1., 1.));
+                let max = settings.max_size.unwrap_or(Size::INFINITY);
+                let builder = SctkWindowSettings {
+                    window_id: id,
+                    app_id: Some(settings.platform_specific.application_id),
+                    title: None,
+                    parent: None,
+                    autosize: false,
+                    size_limits: Limits::NONE
+                        .min_width(min.width)
+                        .min_height(min.height)
+                        .max_width(max.width)
+                        .max_height(max.height),
+                    size: (
+                        settings.size.width.round() as u32,
+                        settings.size.height.round() as u32,
+                    ),
+                    resizable: settings
+                        .resizable
+                        .then_some(settings.resize_border as f64),
+                    client_decorations: settings.decorations,
+                    transparent: settings.transparent,
+                    xdg_activation_token: None,
+                };
+                Ok(Action::Window {
+                    builder,
+                    _phantom: PhantomData,
+                })
+            }
+            window::Action::Close(id) => Ok(Action::Destroy(id)),
+            window::Action::Resize(id, size) => Ok(Action::Size {
+                id,
+                width: size.width.round() as u32,
+                height: size.height.round() as u32,
+            }),
+            window::Action::Drag(id) => Ok(Action::InteractiveMove { id }),
+            window::Action::FetchSize(_, _)
+            | window::Action::FetchMaximized(_, _)
+            | window::Action::Move(_, _)
+            | window::Action::FetchMode(_, _)
+            | window::Action::ToggleMaximize(_)
+            | window::Action::ToggleDecorations(_)
+            | window::Action::RequestUserAttention(_, _)
+            | window::Action::GainFocus(_)
+            | window::Action::ChangeLevel(_, _)
+            | window::Action::ShowWindowMenu(_)
+            | window::Action::FetchId(_, _)
+            | window::Action::ChangeIcon(_, _)
+            | window::Action::Screenshot(_, _)
+            | window::Action::FetchMinimized(_, _) => Err(Error::NotSupported),
+            window::Action::Maximize(id, maximized) => {
+                if maximized {
+                    Ok(Action::Maximize { id })
+                } else {
+                    Ok(Action::UnsetMaximize { id })
+                }
+            }
+            window::Action::Minimize(id, bool) => {
+                if bool {
+                    Ok(Action::Minimize { id })
+                } else {
+                    Err(Error::NotSupported)
+                }
+            }
+            window::Action::ChangeMode(id, mode) => {
+                Ok(Action::Mode(id, mode.into()))
+            }
         }
     }
 }

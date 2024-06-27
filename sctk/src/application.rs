@@ -46,7 +46,7 @@ use iced_runtime::{
         self,
         platform_specific::{
             self,
-            wayland::{data_device::DndIcon, popup},
+            wayland::{data_device::DndIcon, popup, window},
         },
     },
     core::{mouse::Interaction, touch, Color, Point, Size},
@@ -2073,9 +2073,12 @@ where
                     proxy.send_event(Event::Message(message));
                 },
             },
-            command::Action::Window(..) => {
-                unimplemented!("Use platform specific events instead")
+            command::Action::Window(action)  => {
+                if let Ok(a) = action.try_into() {
+                    return handle_actions(application, cache, state, renderer, command::Action::PlatformSpecific(platform_specific::Action::Wayland(command::platform_specific::wayland::Action::Window(a))), runtime, proxy, debug, _graphics_info, auto_size_surfaces, clipboard);
+                }
             }
+            command::Action::Window(action) => {}
             command::Action::System(action) => match action {
                 system::Action::QueryInformation(_tag) => {
                     #[cfg(feature = "system")]
@@ -2230,6 +2233,7 @@ where
         };
     None
 }
+
 pub fn build_user_interfaces<'a, A, C>(
     application: &'a A,
     renderer: &mut A::Renderer,
