@@ -347,7 +347,7 @@ impl<T> TryFrom<window::Action<T>> for Action<T> {
                     resizable: settings
                         .resizable
                         .then_some(settings.resize_border as f64),
-                    client_decorations: settings.decorations,
+                    client_decorations: !settings.decorations,
                     transparent: settings.transparent,
                     xdg_activation_token: None,
                 };
