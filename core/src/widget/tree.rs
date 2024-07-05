@@ -76,7 +76,7 @@ impl Tree {
                 let state = mem::replace(&mut tree.state, State::None);
                 let children_count = tree.children.len();
                 let children =
-                    tree.children.iter_mut().rev().enumerate().map(|(i, c)| {
+                    tree.children.iter_mut().enumerate().rev().map(|(i, c)| {
                         if matches!(c.id, Some(Id(Internal::Custom(_, _)))) {
                             (c, None)
                         } else {
@@ -350,7 +350,11 @@ impl Tree {
         }
 
         for (new_tree, i) in new_trees {
-            self.children.insert(i, new_tree);
+            if self.children.len() > i {
+                self.children[i] = new_tree;
+            } else {
+                self.children.push(new_tree);
+            }
         }
     }
 }
