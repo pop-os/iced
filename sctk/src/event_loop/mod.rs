@@ -9,7 +9,7 @@ use crate::application::SurfaceIdWrapper;
 use crate::{
     application::Event,
     conversion,
-    dpi::LogicalSize,
+    dpi::{LogicalPosition, LogicalSize, PhysicalPosition},
     handlers::{
         activation::IcedRequestData,
         wp_fractional_scaling::FractionalScalingManager,
@@ -292,6 +292,8 @@ where
         F: FnMut(IcedSctkEvent<T>, &SctkState<T>, &mut ControlFlow),
     {
         let mut control_flow = ControlFlow::Poll;
+        let mut cursor_position = PhysicalPosition::new(0, 0);
+        let mut scale_factor = 1.0;
 
         callback(
             IcedSctkEvent::NewEvents(StartCause::Init),
@@ -577,6 +579,30 @@ where
             // Handle pending sctk events.
             for event in sctk_event_sink_back_buffer.drain(..) {
                 match event {
+                    SctkEvent::PointerEvent { ref variant, .. } => {
+                        cursor_position = LogicalPosition::new(
+                            variant.position.0,
+                            variant.position.1,
+                        )
+                        .to_physical(scale_factor);
+                        sticky_exit_callback(
+                            IcedSctkEvent::SctkEvent(event),
+                            &self.state,
+                            &mut control_flow,
+                            &mut callback,
+                        )
+                    }
+
+                    SctkEvent::ScaleFactorChanged { ref factor, .. } => {
+                        scale_factor = *factor;
+                        sticky_exit_callback(
+                            IcedSctkEvent::SctkEvent(event),
+                            &self.state,
+                            &mut control_flow,
+                            &mut callback,
+                        )
+                    }
+
                     SctkEvent::PopupEvent {
                         variant: PopupEventVariant::Done,
                         toplevel_id,
@@ -937,7 +963,13 @@ where
                                 }
                             }
                         },
-                        platform_specific::wayland::window::Action::ShowWindowMenu { id: _, x: _, y: _ } => todo!(),
+                        platform_specific::wayland::window::Action::ShowWindowMenu { id } => {
+                            if let (Some(window), Some((seat, last_press))) = (self.state.windows.iter_mut().find(|w| w.id == id), self.state.seats.first().and_then(|seat| seat.last_ptr_press.map(|p| (&seat.seat, p.2)))) {
+                                let PhysicalPosition { x, y } = cursor_position;
+                                window.window.xdg_toplevel().show_window_menu(seat, last_press, x as i32, y as i32);
+                                to_commit.insert(id, window.window.wl_surface().clone());
+                            }
+                        },
                         platform_specific::wayland::window::Action::Destroy(id) => {
                             if let Some(i) = self.state.windows.iter().position(|l| l.id == id) {
                                 let window = self.state.windows.remove(i);

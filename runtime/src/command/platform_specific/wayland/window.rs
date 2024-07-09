@@ -159,10 +159,6 @@ pub enum Action<T> {
     ShowWindowMenu {
         /// id of the window
         id: Id,
-        /// x location of popup
-        x: i32,
-        /// y location of popup
-        y: i32,
     },
     /// Set the mode of the window
     Mode(Id, Mode),
@@ -201,9 +197,7 @@ impl<T> Action<T> {
             Action::Fullscreen { id } => Action::Fullscreen { id },
             Action::UnsetFullscreen { id } => Action::UnsetFullscreen { id },
             Action::InteractiveMove { id } => Action::InteractiveMove { id },
-            Action::ShowWindowMenu { id, x, y } => {
-                Action::ShowWindowMenu { id, x, y }
-            }
+            Action::ShowWindowMenu { id } => Action::ShowWindowMenu { id },
             Action::InteractiveResize { id, edge } => {
                 Action::InteractiveResize { id, edge }
             }
@@ -274,9 +268,9 @@ impl<T> fmt::Debug for Action<T> {
                 "Action::Window::InteractiveMove {{ id: {:?} }}",
                 id
             ),
-            Action::ShowWindowMenu { id, x, y } => write!(
+            Action::ShowWindowMenu { id } => write!(
                 f,
-                "Action::Window::ShowWindowMenu {{ id: {:?}, x: {x}, y: {y} }}",
+                "Action::Window::ShowWindowMenu {{ id: {:?} }}",
                 id
             ),
             Action::InteractiveResize { id, edge } => write!(
@@ -372,11 +366,13 @@ impl<T> TryFrom<window::Action<T>> for Action<T> {
             | window::Action::RequestUserAttention(_, _)
             | window::Action::GainFocus(_)
             | window::Action::ChangeLevel(_, _)
-            | window::Action::ShowWindowMenu(_)
             | window::Action::FetchId(_, _)
             | window::Action::ChangeIcon(_, _)
             | window::Action::Screenshot(_, _)
             | window::Action::FetchMinimized(_, _) => Err(Error::NotSupported),
+            window::Action::ShowWindowMenu(id) => {
+                Ok(Action::ShowWindowMenu { id })
+            }
             window::Action::Maximize(id, maximized) => {
                 if maximized {
                     Ok(Action::Maximize { id })
