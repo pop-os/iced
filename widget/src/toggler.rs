@@ -61,6 +61,7 @@ pub struct Toggler<
     text_line_height: text::LineHeight,
     text_alignment: alignment::Horizontal,
     text_shaping: text::Shaping,
+    text_wrap: text::Wrap,
     spacing: f32,
     font: Option<Renderer::Font>,
     style: Theme::Style,
@@ -110,6 +111,7 @@ where
             text_line_height: text::LineHeight::default(),
             text_alignment: alignment::Horizontal::Left,
             text_shaping: text::Shaping::Advanced,
+            text_wrap: text::Wrap::default(),
             spacing: 0.0,
             font: None,
             style: Default::default(),
@@ -152,6 +154,12 @@ where
     /// Sets the [`text::Shaping`] strategy of the [`Toggler`].
     pub fn text_shaping(mut self, shaping: text::Shaping) -> Self {
         self.text_shaping = shaping;
+        self
+    }
+
+    /// Sets the [`text::Wrap`] mode of the [`Toggler`].
+    pub fn text_wrap(mut self, wrap: text::Wrap) -> Self {
+        self.text_wrap = wrap;
         self
     }
 
@@ -263,6 +271,7 @@ where
                         self.text_alignment,
                         alignment::Vertical::Top,
                         self.text_shaping,
+                        self.text_wrap,
                     )
                 } else {
                     layout::Node::new(crate::core::Size::ZERO)

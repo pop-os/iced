@@ -40,6 +40,9 @@ pub struct Text<'a, Font> {
 
     /// The [`Shaping`] strategy of the [`Text`].
     pub shaping: Shaping,
+
+    /// The [`Wrap`] mode of the [`Text`].
+    pub wrap: Wrap,
 }
 
 /// The shaping strategy of some text.
@@ -64,6 +67,22 @@ pub enum Shaping {
     ///
     /// Advanced shaping is expensive! You should only enable it when necessary.
     Advanced,
+}
+
+/// The wrap mode of some text.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum Wrap {
+    /// No wraping
+    None,
+    /// Wraps at a glyph level
+    Glyph,
+    /// Wraps at a word level
+    Word,
+    /// Wraps at the word level, or fallback to glyph level if a word can't fit on a line by itself
+    ///
+    /// This is the default
+    #[default]
+    WordOrGlyph,
 }
 
 /// The height of a line of text in a paragraph.

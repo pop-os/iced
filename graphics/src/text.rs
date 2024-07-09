@@ -10,7 +10,7 @@ pub use paragraph::Paragraph;
 pub use cosmic_text;
 
 use crate::core::font::{self, Font};
-use crate::core::text::Shaping;
+use crate::core::text::{Shaping, Wrap};
 use crate::core::{Color, Point, Rectangle, Size};
 
 use once_cell::sync::OnceCell;
@@ -168,6 +168,16 @@ pub fn to_shaping(shaping: Shaping) -> cosmic_text::Shaping {
     match shaping {
         Shaping::Basic => cosmic_text::Shaping::Basic,
         Shaping::Advanced => cosmic_text::Shaping::Advanced,
+    }
+}
+
+/// Converts some [`Wrap`] mode to a [`cosmic_text::Wrap`] strategy.
+pub fn to_wrap(wrap: Wrap) -> cosmic_text::Wrap {
+    match wrap {
+        Wrap::None => cosmic_text::Wrap::None,
+        Wrap::Glyph => cosmic_text::Wrap::Glyph,
+        Wrap::Word => cosmic_text::Wrap::Word,
+        Wrap::WordOrGlyph => cosmic_text::Wrap::WordOrGlyph,
     }
 }
 

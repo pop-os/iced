@@ -11,7 +11,7 @@ use crate::{
 
 use std::borrow::Cow;
 
-pub use text::{LineHeight, Shaping};
+pub use text::{LineHeight, Shaping, Wrap};
 
 /// A paragraph of text.
 #[allow(missing_debug_implementations)]
@@ -30,6 +30,7 @@ where
     vertical_alignment: alignment::Vertical,
     font: Option<Renderer::Font>,
     shaping: Shaping,
+    wrap: Wrap,
     style: Theme::Style,
 }
 
@@ -51,6 +52,7 @@ where
             horizontal_alignment: alignment::Horizontal::Left,
             vertical_alignment: alignment::Vertical::Top,
             shaping: Shaping::Advanced,
+            wrap: Default::default(),
             style: Default::default(),
         }
     }
@@ -116,6 +118,12 @@ where
         self.shaping = shaping;
         self
     }
+
+    /// Sets the [`Wrap`] mode of the [`Text`].
+    pub fn wrap(mut self, wrap: Wrap) -> Self {
+        self.wrap = wrap;
+        self
+    }
 }
 
 /// The internal state of a [`Text`] widget.
@@ -162,6 +170,7 @@ where
             self.horizontal_alignment,
             self.vertical_alignment,
             self.shaping,
+            self.wrap,
         )
     }
 
@@ -246,6 +255,7 @@ pub fn layout<Renderer>(
     horizontal_alignment: alignment::Horizontal,
     vertical_alignment: alignment::Vertical,
     shaping: Shaping,
+    wrap: Wrap,
 ) -> layout::Node
 where
     Renderer: text::Renderer,
@@ -267,6 +277,7 @@ where
             horizontal_alignment,
             vertical_alignment,
             shaping,
+            wrap,
         });
 
         paragraph.min_bounds()
@@ -347,6 +358,7 @@ where
             font: self.font,
             style: self.style.clone(),
             shaping: self.shaping,
+            wrap: self.wrap,
         }
     }
 }
