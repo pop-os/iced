@@ -47,7 +47,11 @@ use sctk::{
     registry::RegistryState,
     seat::SeatState,
     session_lock::SessionLockState,
-    shell::{wlr_layer::LayerShell, xdg::XdgShell, WaylandSurface},
+    shell::{
+        wlr_layer::{LayerShell, LayerSurface},
+        xdg::XdgShell,
+        WaylandSurface,
+    },
     shm::Shm,
 };
 use sctk::{
@@ -292,8 +296,8 @@ where
         F: FnMut(IcedSctkEvent<T>, &SctkState<T>, &mut ControlFlow),
     {
         let mut control_flow = ControlFlow::Poll;
-        let mut cursor_position = PhysicalPosition::new(0, 0);
-        let mut scale_factor = 1.0;
+
+        let mut cursor_position = HashMap::<_, LogicalPosition<f64>>::new();
 
         callback(
             IcedSctkEvent::NewEvents(StartCause::Init),
@@ -580,27 +584,15 @@ where
             for event in sctk_event_sink_back_buffer.drain(..) {
                 match event {
                     SctkEvent::PointerEvent { ref variant, .. } => {
-                        cursor_position = LogicalPosition::new(
-                            variant.position.0,
-                            variant.position.1,
-                        )
-                        .to_physical(scale_factor);
-                        sticky_exit_callback(
-                            IcedSctkEvent::SctkEvent(event),
-                            &self.state,
-                            &mut control_flow,
-                            &mut callback,
-                        )
-                    }
+                        let surface_id = variant.surface.id();
 
-                    SctkEvent::ScaleFactorChanged { ref factor, .. } => {
-                        scale_factor = *factor;
-                        sticky_exit_callback(
-                            IcedSctkEvent::SctkEvent(event),
-                            &self.state,
-                            &mut control_flow,
-                            &mut callback,
-                        )
+                        cursor_position.insert(
+                            surface_id,
+                            LogicalPosition::new(
+                                variant.position.0,
+                                variant.position.1,
+                            ),
+                        );
                     }
 
                     SctkEvent::PopupEvent {
@@ -631,13 +623,18 @@ where
                                     &mut callback,
                                 );
                             }
-                            None => continue,
+                            None => (),
                         };
+
+                        continue;
                     }
+
                     SctkEvent::LayerSurfaceEvent {
                         variant: LayerSurfaceEventVariant::Done,
                         id,
                     } => {
+                        cursor_position.remove(&id.id());
+
                         if let Some(i) =
                             self.state.layer_surfaces.iter().position(|l| {
                                 l.surface.wl_surface().id() == id.id()
@@ -656,7 +653,10 @@ where
                                 &mut callback,
                             );
                         }
+
+                        continue;
                     }
+
                     SctkEvent::WindowEvent {
                         variant: WindowEventVariant::Close,
                         id,
@@ -680,14 +680,18 @@ where
                                 &mut callback,
                             );
                         }
+
+                        continue;
                     }
-                    _ => sticky_exit_callback(
-                        IcedSctkEvent::SctkEvent(event),
-                        &self.state,
-                        &mut control_flow,
-                        &mut callback,
-                    ),
+                    _ => (),
                 }
+
+                sticky_exit_callback(
+                    IcedSctkEvent::SctkEvent(event),
+                    &self.state,
+                    &mut control_flow,
+                    &mut callback,
+                )
             }
 
             // handle events indirectly via callback to the user.
@@ -965,7 +969,15 @@ where
                         },
                         platform_specific::wayland::window::Action::ShowWindowMenu { id } => {
                             if let (Some(window), Some((seat, last_press))) = (self.state.windows.iter_mut().find(|w| w.id == id), self.state.seats.first().and_then(|seat| seat.last_ptr_press.map(|p| (&seat.seat, p.2)))) {
-                                let PhysicalPosition { x, y } = cursor_position;
+                                let surface_id = window.window.wl_surface().id();
+
+                                let cursor_position = cursor_position.get(&surface_id)
+                                    .cloned()
+                                    .unwrap_or_default();
+
+                                // Cursor position does not need to be scaled here.
+                                let PhysicalPosition { x, y } = cursor_position.to_physical::<i32>(1.0);
+
                                 window.window.xdg_toplevel().show_window_menu(seat, last_press, x as i32, y as i32);
                                 to_commit.insert(id, window.window.wl_surface().clone());
                             }
