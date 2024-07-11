@@ -94,41 +94,24 @@ impl<T: Debug> PointerHandler for SctkState<T> {
                         return;
                     }
                     PointerEventKind::Motion { .. } => {
-                        if my_seat.icon != Some(icon) {
-                            let _ = my_seat
-                                .ptr
-                                .as_ref()
-                                .unwrap()
-                                .set_cursor(conn, icon);
-                            my_seat.icon = Some(icon);
+                        if my_seat.active_icon != Some(icon) {
+                            let _ = my_seat.set_cursor(conn, icon);
                         }
                         return;
                     }
-                    PointerEventKind::Enter { .. } => {
-                        my_seat.ptr_focus.replace(e.surface.clone());
-                        if my_seat.icon != Some(icon) {
-                            let _ = my_seat
-                                .ptr
-                                .as_ref()
-                                .unwrap()
-                                .set_cursor(conn, icon);
-                            my_seat.icon = Some(icon);
-                        }
-                    }
-                    PointerEventKind::Leave { .. } => {
-                        my_seat.ptr_focus.take();
-                        my_seat.icon = None;
-                    }
+                    PointerEventKind::Enter { .. } => {}
+                    PointerEventKind::Leave { .. } => {}
                     _ => {}
                 }
-                let _ = my_seat.ptr.as_ref().unwrap().set_cursor(conn, icon);
-            } else if my_seat.icon.is_some() {
-                let _ = my_seat
-                    .ptr
-                    .as_ref()
-                    .unwrap()
-                    .set_cursor(conn, CursorIcon::Default);
-                my_seat.icon = None;
+                if my_seat.active_icon != Some(icon) {
+                    my_seat.set_cursor(conn, icon);
+                }
+            } else if my_seat.active_icon != my_seat.icon {
+                // Restore cursor that was set by appliction, or default
+                my_seat.set_cursor(
+                    conn,
+                    my_seat.icon.unwrap_or(CursorIcon::Default),
+                );
             }
 
             if is_active {
@@ -144,7 +127,7 @@ impl<T: Debug> PointerHandler for SctkState<T> {
                 }
                 PointerEventKind::Leave { .. } => {
                     my_seat.ptr_focus.take();
-                    my_seat.icon = None;
+                    my_seat.active_icon = None;
                 }
                 PointerEventKind::Press {
                     time,

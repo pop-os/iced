@@ -98,7 +98,19 @@ pub(crate) struct SctkSeat {
     pub(crate) last_touch_down: Option<(u32, i32, u32)>, // (time, point, serial)
     pub(crate) _modifiers: Modifiers,
     pub(crate) data_device: DataDevice,
+    // Cursor icon currently set (by CSDs, or application)
+    pub(crate) active_icon: Option<CursorIcon>,
+    // Cursor icon set by application
     pub(crate) icon: Option<CursorIcon>,
+}
+
+impl SctkSeat {
+    pub(crate) fn set_cursor(&mut self, conn: &Connection, icon: CursorIcon) {
+        if let Some(ptr) = self.ptr.as_ref() {
+            ptr.set_cursor(conn, icon);
+            self.active_icon = Some(icon);
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
