@@ -70,6 +70,10 @@ impl ProvidesRegistryState for AppData {
 }
 
 pub fn get_wayland_device_ids<W: Window>(window: &W) -> Option<(u16, u16)> {
+    if !wayland_sys::client::is_lib_available() {
+        return None;
+    }
+
     let conn = match window.display_handle().map(|handle| handle.as_raw()) {
         #[allow(unsafe_code)]
         Ok(RawDisplayHandle::Wayland(WaylandDisplayHandle {
