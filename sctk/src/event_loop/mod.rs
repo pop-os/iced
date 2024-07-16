@@ -876,18 +876,12 @@ where
                         },
                         platform_specific::wayland::window::Action::Size { id, width, height } => {
                             if let Some(window) = self.state.windows.iter_mut().find(|w| w.id == id) {
-                                window.set_size(LogicalSize::new(NonZeroU32::new(width).unwrap_or(NonZeroU32::new(1).unwrap()), NonZeroU32::new(1).unwrap()));
+                                window.set_size(LogicalSize::new(NonZeroU32::new(width).unwrap_or(NonZeroU32::new(1).unwrap()), NonZeroU32::new(height).unwrap_or(NonZeroU32::new(1).unwrap())));
                                 // TODO Ashley maybe don't force window size?
                                 pending_redraws.push(window.window.wl_surface().id());
-
-                                if let Some(mut prev_configure) = window.last_configure.clone() {
-                                    let (width, height) = (
-                                        NonZeroU32::new(width).unwrap_or(NonZeroU32::new(1).unwrap()),
-                                        NonZeroU32::new(height).unwrap_or(NonZeroU32::new(1).unwrap()),
-                                    );
-                                    prev_configure.new_size = (Some(width), Some(height));
+                                if window.last_configure.is_some() {
                                     sticky_exit_callback(
-                                        IcedSctkEvent::SctkEvent(SctkEvent::WindowEvent { variant: WindowEventVariant::Configure(prev_configure, window.window.wl_surface().clone(), false), id: window.window.wl_surface().clone()}),
+                                        IcedSctkEvent::SctkEvent(SctkEvent::WindowEvent { variant: WindowEventVariant::Size(window.current_size, window.window.wl_surface().clone(), false), id: window.window.wl_surface().clone()}),
                                         &self.state,
                                         &mut control_flow,
                                         &mut callback,

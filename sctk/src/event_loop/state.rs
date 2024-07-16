@@ -118,8 +118,8 @@ pub struct SctkWindow<T> {
     pub(crate) id: window::Id,
     pub(crate) window: Window,
     pub(crate) scale_factor: Option<f64>,
-    pub(crate) requested_size: Option<(u32, u32)>,
-    pub(crate) current_size: Option<(NonZeroU32, NonZeroU32)>,
+    pub(crate) requested_size: Option<(NonZeroU32, NonZeroU32)>,
+    pub(crate) current_size: (NonZeroU32, NonZeroU32),
     pub(crate) last_configure: Option<WindowConfigure>,
     pub(crate) resizable: Option<f64>,
     /// Requests that SCTK window should perform.
@@ -131,18 +131,24 @@ pub struct SctkWindow<T> {
 
 impl<T> SctkWindow<T> {
     pub(crate) fn set_size(&mut self, logical_size: LogicalSize<NonZeroU32>) {
-        self.requested_size =
-            Some((logical_size.width.get(), logical_size.height.get()));
-        self.update_size(logical_size)
+        self.requested_size = Some((logical_size.width, logical_size.height));
+        self.update_size((Some(logical_size.width), Some(logical_size.height)))
     }
 
     pub(crate) fn update_size(
         &mut self,
-        LogicalSize { width, height }: LogicalSize<NonZeroU32>,
+        (width, height): (Option<NonZeroU32>, Option<NonZeroU32>),
     ) {
+        let (width, height) = (
+            width.unwrap_or_else(|| self.current_size.0),
+            height.unwrap_or_else(|| self.current_size.1),
+        );
+        if self.current_size == (width, height) {
+            return;
+        }
         self.window
             .set_window_geometry(0, 0, width.get(), height.get());
-        self.current_size = Some((width, height));
+        self.current_size = (width, height);
         // Update the target viewport, this is used if and only if fractional scaling is in use.
         if let Some(viewport) = self.wp_viewport.as_ref() {
             // Set inner size without the borders.
@@ -733,15 +739,16 @@ where
                 fsm.fractional_scaling(window.wl_surface(), &self.queue_handle)
             });
 
+        let w = NonZeroU32::new(size.0 as u32)
+            .unwrap_or_else(|| NonZeroU32::new(1).unwrap());
+        let h = NonZeroU32::new(size.1 as u32)
+            .unwrap_or_else(|| NonZeroU32::new(1).unwrap());
         self.windows.push(SctkWindow {
             id: window_id,
             window,
             scale_factor: None,
-            requested_size: Some(size),
-            current_size: Some((
-                NonZeroU32::new(1).unwrap(),
-                NonZeroU32::new(1).unwrap(),
-            )),
+            requested_size: Some((w, h)),
+            current_size: (w, h),
             last_configure: None,
             _pending_requests: Vec::new(),
             resizable,

@@ -37,7 +37,7 @@ impl<T: Debug> WindowHandler for SctkState<T> {
         _conn: &sctk::reexports::client::Connection,
         _qh: &sctk::reexports::client::QueueHandle<Self>,
         window: &sctk::shell::xdg::window::Window,
-        mut configure: sctk::shell::xdg::window::WindowConfigure,
+        configure: sctk::shell::xdg::window::WindowConfigure,
         _serial: u32,
     ) {
         let window = match self
@@ -68,28 +68,7 @@ impl<T: Debug> WindowHandler for SctkState<T> {
             });
         }
 
-        if configure.new_size.0.is_none() {
-            configure.new_size.0 = Some(
-                window
-                    .requested_size
-                    .and_then(|r| NonZeroU32::new(r.0))
-                    .unwrap_or_else(|| NonZeroU32::new(300).unwrap()),
-            );
-        }
-        if configure.new_size.1.is_none() {
-            configure.new_size.1 = Some(
-                window
-                    .requested_size
-                    .and_then(|r| NonZeroU32::new(r.1))
-                    .unwrap_or_else(|| NonZeroU32::new(500).unwrap()),
-            );
-        }
-        if let Some(new_size) = configure.new_size.0.zip(configure.new_size.1) {
-            window.update_size(LogicalSize {
-                width: new_size.0,
-                height: new_size.1,
-            });
-        }
+        window.update_size(configure.new_size);
 
         let wl_surface = window.window.wl_surface();
         let id = wl_surface.clone();
@@ -98,6 +77,7 @@ impl<T: Debug> WindowHandler for SctkState<T> {
 
         self.sctk_events.push(SctkEvent::WindowEvent {
             variant: WindowEventVariant::Configure(
+                window.current_size,
                 configure,
                 wl_surface.clone(),
                 first,

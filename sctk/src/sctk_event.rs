@@ -41,7 +41,7 @@ use sctk::{
         xdg::{popup::PopupConfigure, window::WindowConfigure},
     },
 };
-use std::{collections::HashMap, time::Instant};
+use std::{collections::HashMap, num::NonZeroU32, time::Instant};
 use wayland_protocols::wp::viewporter::client::wp_viewport::WpViewport;
 use xkeysym::Keysym;
 
@@ -310,8 +310,8 @@ pub enum WindowEventVariant {
         height: u32,
     },
     /// <https://wayland.app/protocols/xdg-shell#xdg_toplevel:event:configure>
-    Configure(WindowConfigure, WlSurface, bool),
-
+    Configure((NonZeroU32, NonZeroU32), WindowConfigure, WlSurface, bool),
+    Size((NonZeroU32, NonZeroU32), WlSurface, bool),
     /// window state changed
     StateChanged(sctk::reexports::csd_frame::WindowState),
     /// Scale Factor
@@ -674,27 +674,46 @@ impl SctkEvent {
                 WindowEventVariant::ConfigureBounds { .. } => {
                     Default::default()
                 }
-                WindowEventVariant::Configure(configure, surface, _) => {
-                    if let (Some(new_width), Some(new_height)) =
-                        configure.new_size
-                    {
-                        surface_ids
-                            .get(&surface.id())
-                            .map(|id| {
+                WindowEventVariant::Configure(
+                    (new_width, new_height),
+                    configure,
+                    surface,
+                    _,
+                ) => surface_ids
+                    .get(&surface.id())
+                    .map(|id| {
+                        if configure.is_resizing() {
+                            vec![iced_runtime::core::Event::Window(
+                                id.inner(),
+                                window::Event::Resized {
+                                    width: new_width.get(),
+                                    height: new_height.get(),
+                                },
+                            )]
+                        } else {
+                            vec![
                                 iced_runtime::core::Event::Window(
                                     id.inner(),
                                     window::Event::Resized {
                                         width: new_width.get(),
                                         height: new_height.get(),
                                     },
-                                )
-                            })
-                            .into_iter()
-                            .collect()
-                    } else {
-                        Default::default()
-                    }
-                }
+                                ),
+                                iced_runtime::core::Event::PlatformSpecific(
+                                    PlatformSpecific::Wayland(
+                                        wayland::Event::Window(
+                                            wayland::WindowEvent::Configure(
+                                                configure,
+                                            ),
+                                            surface,
+                                            id.inner(),
+                                        ),
+                                    ),
+                                ),
+                            ]
+                        }
+                    })
+                    .unwrap_or_default(),
                 WindowEventVariant::ScaleFactorChanged(..) => {
                     Default::default()
                 }
@@ -711,6 +730,7 @@ impl SctkEvent {
                     })
                     .into_iter()
                     .collect(),
+                WindowEventVariant::Size(_, _, _) => vec![],
             },
             SctkEvent::LayerSurfaceEvent {
                 variant,
