@@ -2,12 +2,19 @@
 pub mod compositor;
 #[cfg(all(unix, not(target_os = "macos")))]
 mod wayland;
+#[cfg(all(unix, not(target_os = "macos")))]
+mod x11;
 
 pub use compositor::Compositor;
 pub use wgpu::Surface;
 
 #[cfg(all(unix, not(target_os = "macos")))]
-fn ids_from_dev(dev: u64) -> Option((u16, u16)) {
+use rustix::fs::{major, minor};
+#[cfg(all(unix, not(target_os = "macos")))]
+use std::{fs::File, io::Read, path::PathBuf};
+
+#[cfg(all(unix, not(target_os = "macos")))]
+fn ids_from_dev(dev: u64) -> Option<(u16, u16)> {
     let path = PathBuf::from(format!(
         "/sys/dev/char/{}:{}/device",
         major(dev),

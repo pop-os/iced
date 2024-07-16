@@ -8,6 +8,8 @@ use crate::{Backend, Primitive, Renderer, Settings};
 
 #[cfg(all(unix, not(target_os = "macos")))]
 use super::wayland::get_wayland_device_ids;
+#[cfg(all(unix, not(target_os = "macos")))]
+use super::x11::get_x11_device_ids;
 
 /// A window graphics backend for iced powered by `wgpu`.
 #[allow(missing_debug_implementations)]
@@ -29,7 +31,10 @@ impl Compositor {
         compatible_window: Option<W>,
     ) -> Option<Self> {
         #[cfg(all(unix, not(target_os = "macos")))]
-        let ids = compatible_window.as_ref().and_then(get_wayland_device_ids);
+        let ids = compatible_window.as_ref().and_then(|window| {
+            get_wayland_device_ids(window)
+                .or_else(|| get_x11_device_ids(window))
+        });
 
         // HACK:
         //  1. If we specifically didn't select an nvidia gpu

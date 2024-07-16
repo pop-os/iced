@@ -1,12 +1,10 @@
 use crate::graphics::compositor::Window;
 use raw_window_handle::{RawDisplayHandle, WaylandDisplayHandle};
-use rustix::fs::{major, minor};
 use sctk::{
     dmabuf::{DmabufFeedback, DmabufHandler, DmabufState},
     registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
 };
-use std::{fs::File, io::Read, path::PathBuf};
 use wayland_client::{
     backend::Backend, globals::registry_queue_init, protocol::wl_buffer,
     Connection, QueueHandle,
