@@ -107,35 +107,7 @@ pub fn get_wayland_device_ids<W: Window>(window: &W) -> Option<(u16, u16)> {
             };
 
             let dev = feedback.main_device();
-            let path = PathBuf::from(format!(
-                "/sys/dev/char/{}:{}/device",
-                major(dev),
-                minor(dev)
-            ));
-            let vendor = {
-                let path = path.join("vendor");
-                let mut file = File::open(&path).ok()?;
-                let mut contents = String::new();
-                let _ = file.read_to_string(&mut contents).ok()?;
-                u16::from_str_radix(
-                    contents.trim().trim_start_matches("0x"),
-                    16,
-                )
-                .ok()?
-            };
-            let device = {
-                let path = path.join("device");
-                let mut file = File::open(&path).ok()?;
-                let mut contents = String::new();
-                let _ = file.read_to_string(&mut contents).ok()?;
-                u16::from_str_radix(
-                    contents.trim().trim_start_matches("0x"),
-                    16,
-                )
-                .ok()?
-            };
-
-            Some((vendor, device))
+            super::ids_from_dev(dev)
         }
         _ => None,
     }
