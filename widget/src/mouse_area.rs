@@ -1,5 +1,6 @@
 //! A container for capturing mouse events.
 
+use iced_renderer::core::mouse::Click;
 use iced_renderer::core::widget::OperationOutputWrapper;
 use iced_renderer::core::Point;
 
@@ -25,6 +26,7 @@ pub struct MouseArea<
     content: Element<'a, Message, Theme, Renderer>,
     on_drag: Option<Message>,
     on_press: Option<Message>,
+    on_double_press: Option<Message>,
     on_release: Option<Message>,
     on_right_press: Option<Message>,
     on_right_release: Option<Message>,
@@ -46,6 +48,12 @@ impl<'a, Message, Theme, Renderer> MouseArea<'a, Message, Theme, Renderer> {
     #[must_use]
     pub fn on_press(mut self, message: Message) -> Self {
         self.on_press = Some(message);
+        self
+    }
+    /// The message to emit on a left double button press.
+    #[must_use]
+    pub fn on_double_press(mut self, message: Message) -> Self {
+        self.on_double_press = Some(message);
         self
     }
 
@@ -102,12 +110,14 @@ struct State {
     // TODO: Support on_mouse_enter and on_mouse_exit
     drag_initiated: Option<Point>,
     is_out_of_bounds: bool,
+    last_click: Option<Click>,
 }
 impl Default for State {
     fn default() -> Self {
         Self {
             drag_initiated: Default::default(),
             is_out_of_bounds: true,
+            last_click: Default::default(),
         }
     }
 }
@@ -121,6 +131,7 @@ impl<'a, Message, Theme, Renderer> MouseArea<'a, Message, Theme, Renderer> {
             content: content.into(),
             on_drag: None,
             on_press: None,
+            on_double_press: None,
             on_release: None,
             on_right_press: None,
             on_right_release: None,
@@ -330,6 +341,22 @@ fn update<Message: Clone, Theme, Renderer>(
         return event::Status::Ignored;
     }
 
+    if let Some(message) = widget.on_double_press.as_ref() {
+        if let Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)) =
+            event
+        {
+            if let Some(cursor_position) = cursor.position() {
+                let click =
+                    mouse::Click::new(cursor_position, state.last_click);
+                state.last_click = Some(click);
+                if let mouse::click::Kind::Double = click.kind() {
+                    shell.publish(message.clone());
+                    return event::Status::Captured;
+                }
+            }
+        }
+    }
+
     if let Some(message) = widget.on_press.as_ref() {
         if let Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left))
         | Event::Touch(touch::Event::FingerPressed { .. }) = event
@@ -394,6 +421,7 @@ fn update<Message: Clone, Theme, Renderer>(
             return event::Status::Captured;
         }
     }
+
     if let Some(message) = widget
         .on_mouse_enter
         .as_ref()
