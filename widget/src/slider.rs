@@ -554,8 +554,8 @@ pub fn draw<T, Theme, Renderer>(
     let offset = if range_start >= range_end {
         0.0
     } else {
-        (bounds.width - handle_width) * (value - range_start)
-            / (range_end - range_start)
+        (bounds.width - handle_width + 2.0 * border_width) * (value - range_start)
+            / (range_end - range_start) - border_width
     };
 
     let rail_y = bounds.y + bounds.height / 2.0;
