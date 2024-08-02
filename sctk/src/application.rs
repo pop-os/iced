@@ -824,6 +824,15 @@ where
                             destroyed_surface_ids.insert(surface.id(), surface_id);
                         }
                     }
+                    SctkEvent::SessionLockSurfaceScaleFactorChanged { surface, scale_factor, viewport } => {
+                        if let Some(state) = surface_ids
+                            .get(&surface.id())
+                            .and_then(|id| states.get_mut(&id.inner()))
+                        {
+                            state.wp_viewport = viewport;
+                            state.set_scale_factor(scale_factor);
+                        }
+                    }
                     _ => {}
                 }
             }
@@ -2363,6 +2372,9 @@ where
             &surface.id() == object_id
         }
         SctkEvent::SessionLockSurfaceDone { surface } => {
+            &surface.id() == object_id
+        }
+        SctkEvent::SessionLockSurfaceScaleFactorChanged { surface, .. } => {
             &surface.id() == object_id
         }
         SctkEvent::SessionUnlocked => false,

@@ -215,6 +215,11 @@ pub enum SctkEvent {
     SessionLockSurfaceDone {
         surface: WlSurface,
     },
+    SessionLockSurfaceScaleFactorChanged {
+        surface: WlSurface,
+        scale_factor: f64,
+        viewport: Option<WpViewport>,
+    },
     SessionUnlocked,
 }
 
@@ -988,6 +993,7 @@ impl SctkEvent {
                 .into_iter()
                 .collect()
             }
+            SctkEvent::SessionLockSurfaceScaleFactorChanged { .. } => vec![],
         }
     }
 }
