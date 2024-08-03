@@ -422,8 +422,11 @@ where
             let start = (*range.start()).into();
             let end = (*range.end()).into();
 
-            let percent = f64::from(cursor_position.x - bounds.x)
-                / f64::from(bounds.width);
+            // TODO - Should depend on the styling
+            const HANDLE_RADIUS: f64 = 10.0;
+
+            let percent = (f64::from(cursor_position.x - bounds.x - HANDLE_RADIUS)
+                / f64::from(bounds.width - 2.0 * HANDLE_RADIUS)).clamp(0.0, 1.0);
 
             let steps = (percent * (end - start) / step).round();
             let value = steps * step + start;
@@ -531,7 +534,7 @@ pub fn draw<T, Theme, Renderer>(
                     .min(bounds.width);
                 let height = (f32::from(height))
                     .max(2.0 * border_width)
-                    .min(bounds.height);
+                    .min(bounds.height + 2.0 * border_width);
                 let mut border_radius: [f32; 4] = border_radius.into();
                 for r in &mut border_radius {
                     *r = (*r)
