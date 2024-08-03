@@ -425,8 +425,10 @@ where
             // TODO - Should depend on the styling
             const HANDLE_RADIUS: f64 = 10.0;
 
-            let percent = (f64::from(cursor_position.x - bounds.x - HANDLE_RADIUS)
-                / f64::from(bounds.width - 2.0 * HANDLE_RADIUS)).clamp(0.0, 1.0);
+            let percent = ((f64::from(cursor_position.x - bounds.x)
+                - HANDLE_RADIUS)
+                / (f64::from(bounds.width) - 2.0 * HANDLE_RADIUS))
+                .clamp(0.0, 1.0);
 
             let steps = (percent * (end - start) / step).round();
             let value = steps * step + start;
@@ -557,8 +559,10 @@ pub fn draw<T, Theme, Renderer>(
     let offset = if range_start >= range_end {
         0.0
     } else {
-        (bounds.width - handle_width + 2.0 * border_width) * (value - range_start)
-            / (range_end - range_start) - border_width
+        (bounds.width - handle_width + 2.0 * border_width)
+            * (value - range_start)
+            / (range_end - range_start)
+            - border_width
     };
 
     let rail_y = bounds.y + bounds.height / 2.0;
