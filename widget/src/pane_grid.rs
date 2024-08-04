@@ -466,6 +466,28 @@ where
 
         (!children.is_empty()).then(|| Group::with_children(children).overlay())
     }
+
+    fn drag_destinations(
+        &self,
+        state: &Tree,
+        layout: Layout<'_>,
+        renderer: &Renderer,
+        dnd_rectangles: &mut iced_style::core::clipboard::DndDestinationRectangles,
+    ) {
+        for (((_pane, content), child_layout), child_tree) in self
+            .contents
+            .iter()
+            .zip(layout.children())
+            .zip(state.children.iter())
+        {
+            content.drag_destinations(
+                child_tree,
+                child_layout,
+                renderer,
+                dnd_rectangles,
+            );
+        }
+    }
 }
 
 impl<'a, Message, Theme, Renderer> From<PaneGrid<'a, Message, Theme, Renderer>>

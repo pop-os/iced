@@ -358,6 +358,25 @@ where
             )
         }
     }
+
+    pub(crate) fn drag_destinations(
+        &self,
+        state: &Tree,
+        layout: Layout<'_>,
+        renderer: &Renderer,
+        dnd_rectangles: &mut iced_style::core::clipboard::DndDestinationRectangles,
+    ) {
+        if let Some((child_tree, child_layout)) =
+            state.children.iter().zip(layout.children()).next()
+        {
+            self.body.as_widget().drag_destinations(
+                child_tree,
+                child_layout,
+                renderer,
+                dnd_rectangles,
+            );
+        }
+    }
 }
 
 impl<'a, Message, Theme, Renderer> Draggable
