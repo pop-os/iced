@@ -187,7 +187,7 @@ impl Backend {
                 };
                 // fill border radius is the border radius minus the border width
                 for radius in &mut fill_border_radius {
-                    *radius = (*radius - border_width / 2.0)
+                    *radius = (*radius - border_width)
                         .min(path_bounds.width / 2.0)
                         .min(path_bounds.height / 2.0);
                 }
