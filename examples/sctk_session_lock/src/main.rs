@@ -1,8 +1,8 @@
 use iced::event::listen_raw;
 use iced::wayland::application::session_lock;
 use iced::{
+    application::InitialSurface,
     event::wayland::{Event as WaylandEvent, OutputEvent, SessionLockEvent},
-    wayland::InitialSurface,
     widget::text,
     window, Application, Command, Element, Subscription, Theme,
 };
@@ -28,6 +28,7 @@ pub enum Message {
 
 impl Application for Locker {
     type Executor = iced::executor::Default;
+    type Renderer = iced::Renderer;
     type Message = Message;
     type Flags = ();
     type Theme = Theme;
@@ -88,7 +89,7 @@ impl Application for Locker {
     }
 
     fn subscription(&self) -> Subscription<Self::Message> {
-        listen_raw(|evt, _| {
+        listen_raw(|evt, _, _| {
             if let iced::Event::PlatformSpecific(
                 iced::event::PlatformSpecific::Wayland(evt),
             ) = evt
