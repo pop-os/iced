@@ -5,7 +5,7 @@ use sctk::reexports::client::Proxy;
 use std::sync::{Arc, Mutex};
 
 pub enum A11yWrapper {
-    Enabled,
+    Enabled(bool),
     Event(ActionRequestEvent),
 }
 
