@@ -256,36 +256,66 @@ where
     ) -> adapter::IcedSctkAdapter {
         use iced_accessibility::{
             accesskit::{
-                NodeBuilder, NodeClassSet, NodeId, Role, Tree, TreeUpdate,
+                DeactivationHandler, NodeBuilder, NodeId, Role, Tree,
+                TreeUpdate,
             },
             accesskit_unix::Adapter,
             window_node_id,
         };
         let node_id = window_node_id();
         let event_list = self.a11y_events.clone();
+        use iced_accessibility::accesskit::ActivationHandler;
+        pub struct IcedSctkActivationHandler {
+            event_list: Arc<Mutex<Vec<adapter::A11yWrapper>>>,
+            initial_title: Option<String>,
+        }
+
+        impl ActivationHandler for IcedSctkActivationHandler {
+            fn request_initial_tree(
+                &mut self,
+            ) -> Option<iced_accessibility::accesskit::TreeUpdate> {
+                let mut event_list = self.event_list.lock().unwrap();
+                event_list.push(adapter::A11yWrapper::Enabled(true));
+                let mut node = NodeBuilder::new(Role::Window);
+                if let Some(name) = self.initial_title.as_deref() {
+                    node.set_name(name);
+                }
+                let node = node.build();
+                let root = NodeId(window_node_id());
+                Some(TreeUpdate {
+                    nodes: vec![(root, node)],
+                    tree: Some(Tree::new(root)),
+                    focus: root,
+                })
+            }
+        }
+
+        let activation_handler = IcedSctkActivationHandler {
+            event_list: self.a11y_events.clone(),
+            initial_title: surface_title,
+        };
+
+        pub struct IcedSctkDactivationHandler {
+            event_list: Arc<Mutex<Vec<adapter::A11yWrapper>>>,
+        };
+
+        impl DeactivationHandler for IcedSctkDactivationHandler {
+            fn deactivate_accessibility(&mut self) {
+                let mut event_list = self.event_list.lock().unwrap();
+                event_list.push(adapter::A11yWrapper::Enabled(false));
+            }
+        }
+        let deactivation_handler = IcedSctkDactivationHandler {
+            event_list: self.a11y_events.clone(),
+        };
         adapter::IcedSctkAdapter {
             adapter: Adapter::new(
-                move || {
-                    event_list
-                        .lock()
-                        .unwrap()
-                        .push(adapter::A11yWrapper::Enabled);
-                    let mut node = NodeBuilder::new(Role::Window);
-                    if let Some(name) = surface_title {
-                        node.set_name(name);
-                    }
-                    let node = node.build(&mut NodeClassSet::lock_global());
-                    let root = NodeId(node_id);
-                    TreeUpdate {
-                        nodes: vec![(root, node)],
-                        tree: Some(Tree::new(root)),
-                        focus: root,
-                    }
-                },
-                Box::new(adapter::IcedSctkActionHandler {
+                activation_handler,
+                adapter::IcedSctkActionHandler {
                     wl_surface: surface.clone(),
                     event_list: self.a11y_events.clone(),
-                }),
+                },
+                deactivation_handler,
             ),
             id: node_id,
         }
@@ -563,12 +593,14 @@ where
             if let Ok(mut events) = self.a11y_events.lock() {
                 for event in events.drain(..) {
                     match event {
-                        adapter::A11yWrapper::Enabled => sticky_exit_callback(
-                            IcedSctkEvent::A11yEnabled,
-                            &self.state,
-                            &mut control_flow,
-                            &mut callback,
-                        ),
+                        adapter::A11yWrapper::Enabled(e) => {
+                            sticky_exit_callback(
+                                IcedSctkEvent::A11yEnabled(e),
+                                &self.state,
+                                &mut control_flow,
+                                &mut callback,
+                            )
+                        }
                         adapter::A11yWrapper::Event(event) => {
                             sticky_exit_callback(
                                 IcedSctkEvent::A11yEvent(event),

@@ -1,5 +1,3 @@
-use accesskit::NodeClassSet;
-
 use crate::A11yId;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -38,9 +36,6 @@ impl A11yNode {
 
 impl From<A11yNode> for (accesskit::NodeId, accesskit::Node) {
     fn from(node: A11yNode) -> Self {
-        (
-            node.id.into(),
-            node.node.build(&mut NodeClassSet::lock_global()),
-        )
+        (node.id.into(), node.node.build())
     }
 }

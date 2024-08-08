@@ -69,7 +69,7 @@ pub enum IcedSctkEvent<T> {
 
     /// emitted after first accessibility tree is requested
     #[cfg(feature = "a11y")]
-    A11yEnabled,
+    A11yEnabled(bool),
 
     /// accessibility event
     #[cfg(feature = "a11y")]

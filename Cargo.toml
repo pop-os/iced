@@ -159,7 +159,9 @@ iced_runtime = { version = "0.13.0-dev", path = "runtime" }
 iced_tiny_skia = { version = "0.13.0-dev", path = "tiny_skia" }
 iced_wgpu = { version = "0.13.0-dev", path = "wgpu" }
 iced_widget = { version = "0.13.0-dev", path = "widget" }
-iced_winit = { version = "0.13.0-dev", path = "winit", features = ["application"] }
+iced_winit = { version = "0.13.0-dev", path = "winit", features = [
+    "application",
+] }
 iced_sctk = { version = "0.1", path = "sctk" }
 iced_accessibility = { version = "0.1", path = "accessibility" }
 
