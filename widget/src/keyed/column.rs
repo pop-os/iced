@@ -219,7 +219,7 @@ where
             |tree, child| child.as_widget_mut().diff(tree),
             |index| {
                 self.keys.get(index).or_else(|| self.keys.last()).copied()
-                    != Some(state.keys[index])
+                    != state.keys.get(index).copied()
             },
             |child| Tree::new(child.as_widget()),
         );
