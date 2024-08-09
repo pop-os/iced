@@ -479,7 +479,7 @@ where
         }
         node.add_action(Action::Default);
         if let Some(label) = self.label.as_ref() {
-            let mut label_node = NodeBuilder::new(Role::StaticText);
+            let mut label_node = NodeBuilder::new(Role::Label);
 
             label_node.set_name(label.clone());
             // TODO proper label bounds for the label

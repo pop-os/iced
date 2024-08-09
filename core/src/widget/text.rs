@@ -246,7 +246,7 @@ where
             (y + height) as f64,
         );
 
-        let mut node = NodeBuilder::new(Role::StaticText);
+        let mut node = NodeBuilder::new(Role::Paragraph);
 
         // TODO is the name likely different from the content?
         node.set_name(self.fragment.to_string().into_boxed_str());
