@@ -482,8 +482,7 @@ where
             node.set_hovered();
         }
         node.add_action(Action::Default);
-        let mut label_node = NodeBuilder::new(Role::StaticText);
-
+        let mut label_node = NodeBuilder::new(Role::Label);
         label_node.set_name(self.label.clone());
         // TODO proper label bounds
         label_node.set_bounds(bounds);
