@@ -144,7 +144,7 @@ where
     P::Theme: DefaultStyle,
 {
     pub raw: Arc<winit::window::Window>,
-    pub state: State<P>,
+    pub(crate) state: State<P>,
     pub viewport_version: u64,
     pub exit_on_close_request: bool,
     pub drag_resize_window_func: Option<

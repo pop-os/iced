@@ -3,6 +3,7 @@ use iced::widget::{
     text_input,
 };
 use iced::window;
+use iced::Length::Fill;
 use iced::{
     id::Id, Alignment, Center, Element, Length, Point, Settings, Subscription,
     Task, Theme, Vector,
@@ -28,7 +29,7 @@ struct Window {
     scale_input: String,
     current_scale: f64,
     theme: Theme,
-    input_id: Id,
+    input_id: text_input::Id,
 }
 
 #[derive(Debug, Clone)]
@@ -166,7 +167,7 @@ impl Window {
             scale_input: "1.0".to_string(),
             current_scale: 1.0,
             theme: Theme::ALL[count % Theme::ALL.len()].clone(),
-            input_id: Id::unique(),
+            input_id: text_input::Id::unique(),
         }
     }
 

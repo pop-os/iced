@@ -382,10 +382,10 @@ where
                         action,
                         iced_accessibility::accesskit::Action::Default
                     ))
-                .then(|| self.on_press.clone())
+                .then(|| self.on_press.as_ref())
                 {
                     state.is_pressed = false;
-                    shell.publish(on_press);
+                    shell.publish(on_press.get());
                 }
                 return event::Status::Captured;
             }
