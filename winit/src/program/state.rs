@@ -13,7 +13,7 @@ pub struct State<P: Program>
 where
     P::Theme: program::DefaultStyle,
 {
-    title: String,
+    pub(crate) title: String,
     scale_factor: f64,
     viewport: Viewport,
     viewport_version: u64,

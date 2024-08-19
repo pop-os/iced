@@ -88,6 +88,10 @@ where
         self.entries.iter_mut().map(|(k, v)| (*k, v))
     }
 
+    pub fn get(&self, id: Id) -> Option<&Window<P, C>> {
+        self.entries.get(&id)
+    }
+
     pub fn get_mut(&mut self, id: Id) -> Option<&mut Window<P, C>> {
         self.entries.get_mut(&id)
     }
@@ -136,7 +140,7 @@ where
     P::Theme: DefaultStyle,
 {
     pub raw: Arc<winit::window::Window>,
-    pub state: State<P>,
+    pub(crate) state: State<P>,
     pub viewport_version: u64,
     pub exit_on_close_request: bool,
     pub drag_resize_window_func: Option<
