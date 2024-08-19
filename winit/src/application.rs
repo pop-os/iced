@@ -625,10 +625,7 @@ async fn run_instance<A, E, C>(
     let mut viewport_version = state.viewport_version();
     let physical_size = state.physical_size();
 
-    let mut clipboard = Clipboard::connect(
-        &window,
-        crate::proxy::Proxy::new(proxy.raw.clone()).0,
-    );
+    let mut clipboard = Clipboard::connect(&window, proxy.clone());
     let mut cache = user_interface::Cache::default();
 
     #[cfg(feature = "a11y")]

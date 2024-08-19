@@ -297,7 +297,6 @@ where
             if self.boot.is_some() {
                 return;
             }
-
             self.process_event(
                 event_loop,
                 Event::EventLoopAwakened(winit::event::Event::NewEvents(cause)),
@@ -529,45 +528,97 @@ async fn run_instance<A, E, C>(
         main_window.raw.set_visible(true);
     }
 
-    let mut clipboard =
-        Clipboard::connect(&main_window.raw, Proxy::new(proxy.raw.clone()).0);
-
+    let mut clipboard = Clipboard::connect(&main_window.raw, proxy.clone());
     #[cfg(feature = "a11y")]
     let (window_a11y_id, adapter, mut a11y_enabled) = {
         let node_id = core::id::window_node_id();
-
         use iced_accessibility::accesskit::{
-            NodeBuilder, NodeId, Role, Tree, TreeUpdate,
+            ActivationHandler, NodeBuilder, NodeId, Role, Tree, TreeUpdate,
         };
         use iced_accessibility::accesskit_winit::Adapter;
 
         let title = main_window.raw.title().to_string();
-        let proxy_clone = proxy.clone();
+        pub struct WinitActivationHandler<M: 'static> {
+            pub proxy: Proxy<UserEventWrapper<M>>,
+            pub title: String,
+        }
+
+        impl<M: Send + 'static + std::fmt::Debug> ActivationHandler
+            for WinitActivationHandler<M>
+        {
+            fn request_initial_tree(
+                &mut self,
+            ) -> Option<iced_accessibility::accesskit::TreeUpdate> {
+                let node_id = core::id::window_node_id();
+
+                let _ = self.proxy.send(UserEventWrapper::A11yEnabled(true));
+                let mut node = NodeBuilder::new(Role::Window);
+                node.set_name(self.title.clone());
+                let node = node.build();
+                let root = NodeId(node_id);
+                Some(TreeUpdate {
+                    nodes: vec![(root, node)],
+                    tree: Some(Tree::new(root)),
+                    focus: root,
+                })
+            }
+        }
+
+        let activation_handler = WinitActivationHandler {
+            proxy: proxy.clone(),
+            title: title.clone(),
+        };
+
+        pub struct WinitActionHandler<M: 'static> {
+            pub proxy: Proxy<UserEventWrapper<M>>,
+        }
+
+        impl<M: Send + 'static + std::fmt::Debug>
+            iced_accessibility::accesskit::ActionHandler
+            for WinitActionHandler<M>
+        {
+            fn do_action(
+                &mut self,
+                request: iced_accessibility::accesskit::ActionRequest,
+            ) {
+                let _ = self.proxy.send(UserEventWrapper::A11y(request));
+            }
+        }
+
+        let action_handler = WinitActionHandler {
+            proxy: proxy.clone(),
+        };
+
+        pub struct WinitDeactivationHandler<M: 'static> {
+            pub proxy: Proxy<UserEventWrapper<M>>,
+        }
+
+        impl<M: Send + 'static + std::fmt::Debug>
+            iced_accessibility::accesskit::DeactivationHandler
+            for WinitDeactivationHandler<M>
+        {
+            fn deactivate_accessibility(&mut self) {
+                let _ = self.proxy.send(UserEventWrapper::A11yEnabled(false));
+            }
+        }
+
+        let deactivation_handler = WinitDeactivationHandler {
+            proxy: proxy.clone(),
+        };
         (
             node_id,
-            Adapter::new(
+            Adapter::with_direct_handlers(
                 &main_window.raw,
-                move || {
-                    let _ =
-                        proxy_clone.send_event(UserEventWrapper::A11yEnabled);
-                    let mut node = NodeBuilder::new(Role::Window);
-                    node.set_name(title.clone());
-                    let node = node.build(&mut iced_accessibility::accesskit::NodeClassSet::lock_global());
-                    let root = NodeId(node_id);
-                    TreeUpdate {
-                        nodes: vec![(root, node)],
-                        tree: Some(Tree::new(root)),
-                        focus: root,
-                    }
-                },
-                proxy.clone(),
+                activation_handler,
+                action_handler,
+                deactivation_handler,
             ),
             false,
         )
     };
     let mut events = {
         vec![(
-            window::Id::MAIN,
+            Some(window::Id::MAIN),
             core::Event::Window(window::Event::Opened {
                 position: main_window.position(),
                 size: main_window.size(),
@@ -598,7 +649,6 @@ async fn run_instance<A, E, C>(
     let mut user_events = 0;
 
     debug.startup_finished();
-
     let mut cur_dnd_surface: Option<window::Id> = None;
 
     'main: while let Some(event) = event_receiver.next().await {
@@ -633,7 +683,7 @@ async fn run_instance<A, E, C>(
                 let _ = ui_caches.insert(id, user_interface::Cache::default());
 
                 events.push((
-                    id,
+                    Some(id),
                     core::Event::Window(window::Event::Opened {
                         position: window.position(),
                         size: window.size(),
@@ -665,7 +715,6 @@ async fn run_instance<A, E, C>(
                             ),
                         );
                     }
-
                     event::Event::WindowEvent {
                         window_id: id,
                         event: event::WindowEvent::RedrawRequested,
@@ -729,8 +778,8 @@ async fn run_instance<A, E, C>(
                             status: core::event::Status::Ignored,
                         });
 
-                        let _ = control_sender.start_send(Control::ChangeFlow(
-                            match ui_state {
+                        if let Err(err) = control_sender.start_send(
+                            Control::ChangeFlow(match ui_state {
                                 user_interface::State::Updated {
                                     redraw_request: Some(redraw_request),
                                 } => match redraw_request {
@@ -744,11 +793,12 @@ async fn run_instance<A, E, C>(
                                     }
                                 },
                                 _ => ControlFlow::Wait,
-                            },
-                        ));
+                            }),
+                        ) {
+                            panic!("send error");
+                        }
 
                         let physical_size = window.state.physical_size();
-
                         if physical_size.width == 0 || physical_size.height == 0
                         {
                             continue;
@@ -831,7 +881,6 @@ async fn run_instance<A, E, C>(
                                 }
                                 _ => {
                                     debug.render_finished();
-
                                     log::error!(
                                         "Error {error:?} when \
                                         presenting surface."
@@ -884,7 +933,7 @@ async fn run_instance<A, E, C>(
                                 );
                             }
                             events.push((
-                                id,
+                                Some(id),
                                 core::Event::Window(window::Event::Closed),
                             ));
 
@@ -903,7 +952,7 @@ async fn run_instance<A, E, C>(
                                 window.state.scale_factor(),
                                 window.state.modifiers(),
                             ) {
-                                events.push((id, event));
+                                events.push((Some(id), event));
                             }
                         }
                     }
@@ -919,7 +968,7 @@ async fn run_instance<A, E, C>(
                             let mut window_events = vec![];
 
                             events.retain(|(window_id, event)| {
-                                if *window_id == id {
+                                if *window_id == Some(id) {
                                     window_events.push(event.clone());
                                     false
                                 } else {
@@ -968,7 +1017,7 @@ async fn run_instance<A, E, C>(
                         for (id, event) in events.drain(..) {
                             runtime.broadcast(
                                 subscription::Event::Interaction {
-                                    window: id,
+                                    window: id.unwrap_or(window::Id::MAIN), // TODO remove unwrap
                                     event,
                                     status: core::event::Status::Ignored,
                                 },
@@ -1095,7 +1144,9 @@ async fn run_instance<A, E, C>(
                                         redraw_request: Some(redraw_request),
                                     } => match redraw_request {
                                         window::RedrawRequest::NextFrame => {
-                                            ControlFlow::Poll
+                                            window.raw.request_redraw();
+
+                                            ControlFlow::Wait
                                         }
                                         window::RedrawRequest::At(at) => {
                                             ControlFlow::WaitUntil(at)
@@ -1142,20 +1193,17 @@ async fn run_instance<A, E, C>(
                             }
                             #[cfg(feature = "a11y")]
                             UserEventWrapper::A11y(request) => {
-                                match request.request.action {
+                                match request.action {
                                     iced_accessibility::accesskit::Action::Focus => {
                                         // TODO send a command for this
                                      }
                                      _ => {}
                                  }
-                                events.push((
-                                    None,
-                                    conversion::a11y(request.request),
-                                ));
+                                events.push((None, conversion::a11y(request)));
                             }
                             #[cfg(feature = "a11y")]
-                            UserEventWrapper::A11yEnabled => {
-                                a11y_enabled = true
+                            UserEventWrapper::A11yEnabled(enabled) => {
+                                a11y_enabled = enabled;
                             }
                             UserEventWrapper::StartDnd {
                                 internal,
@@ -1409,7 +1457,7 @@ async fn run_instance<A, E, C>(
                             }
 
                             events.push((
-                                id,
+                                Some(id),
                                 core::Event::Window(window::Event::Closed),
                             ));
 
@@ -1430,7 +1478,7 @@ async fn run_instance<A, E, C>(
                                 window.state.scale_factor(),
                                 window.state.modifiers(),
                             ) {
-                                events.push((id, event));
+                                events.push((Some(id), event));
                             }
                         }
                     }
