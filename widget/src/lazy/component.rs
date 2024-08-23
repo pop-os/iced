@@ -487,13 +487,6 @@ where
             overlay: Some(overlay),
         })))
     }
-    fn id(&self) -> Option<iced_runtime::core::id::Id> {
-        self.with_element(|element| element.as_widget().id())
-    }
-
-    fn set_id(&mut self, _id: iced_runtime::core::id::Id) {
-        self.with_element_mut(|element| element.as_widget_mut().set_id(_id));
-    }
 
     #[cfg(feature = "a11y")]
     fn a11y_nodes(
@@ -518,14 +511,19 @@ where
 
     fn drag_destinations(
         &self,
-        state: &Tree,
+        tree: &Tree,
         layout: Layout<'_>,
         renderer: &Renderer,
         dnd_rectangles: &mut core::clipboard::DndDestinationRectangles,
     ) {
+        let mut tree = tree
+            .state
+            .downcast_ref::<Rc<RefCell<Option<Tree>>>>()
+            .borrow_mut();
+        let mut tree = tree.as_ref().unwrap();
         self.with_element(|element| {
             element.as_widget().drag_destinations(
-                &state.children[0],
+                &tree.children[0],
                 layout,
                 renderer,
                 dnd_rectangles,
