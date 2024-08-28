@@ -339,7 +339,10 @@ where
         F: Future<Output = ()>,
         C: Compositor + 'static,
     {
-        fn resumed(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
+        fn resumed(
+            &mut self,
+            event_loop: &dyn winit::event_loop::ActiveEventLoop,
+        ) {
             let Some(BootConfig {
                 sender,
                 id,
@@ -448,7 +451,7 @@ where
 
         fn new_events(
             &mut self,
-            event_loop: &winit::event_loop::ActiveEventLoop,
+            event_loop: &dyn winit::event_loop::ActiveEventLoop,
             cause: winit::event::StartCause,
         ) {
             if self.boot.is_some() {
@@ -463,7 +466,7 @@ where
 
         fn window_event(
             &mut self,
-            event_loop: &winit::event_loop::ActiveEventLoop,
+            event_loop: &dyn winit::event_loop::ActiveEventLoop,
             window_id: winit::window::WindowId,
             event: winit::event::WindowEvent,
         ) {
@@ -496,7 +499,7 @@ where
 
         fn user_event(
             &mut self,
-            event_loop: &winit::event_loop::ActiveEventLoop,
+            event_loop: &dyn winit::event_loop::ActiveEventLoop,
             action: UserEventWrapper<Action<Message>>,
         ) {
             self.process_event(
@@ -507,7 +510,7 @@ where
 
         fn about_to_wait(
             &mut self,
-            event_loop: &winit::event_loop::ActiveEventLoop,
+            event_loop: &dyn winit::event_loop::ActiveEventLoop,
         ) {
             self.process_event(event_loop, winit::event::Event::AboutToWait);
         }
@@ -519,7 +522,7 @@ where
     {
         fn process_event(
             &mut self,
-            event_loop: &winit::event_loop::ActiveEventLoop,
+            event_loop: &dyn winit::event_loop::ActiveEventLoop,
             event: winit::event::Event<UserEventWrapper<Action<Message>>>,
         ) {
             // On Wasm, events may start being processed before the compositor
@@ -576,7 +579,7 @@ where
 }
 
 struct Boot<C> {
-    window: Arc<winit::window::Window>,
+    window: Arc<dyn winit::window::Window>,
     compositor: C,
     should_be_visible: bool,
     exit_on_close_request: bool,
@@ -1318,7 +1321,7 @@ pub fn update<A: Application + 'static, E: Executor + 'static>(
     >,
     debug: &mut Debug,
     messages: &mut Vec<A::Message>,
-    window: &winit::window::Window,
+    window: &dyn winit::window::Window,
 ) where
     A::Theme: DefaultStyle,
 {
@@ -1354,7 +1357,7 @@ pub fn run_action<A, C>(
     clipboard: &mut Clipboard<Action<A::Message>>,
     should_exit: &mut bool,
     debug: &mut Debug,
-    window: &winit::window::Window,
+    window: &dyn winit::window::Window,
 ) where
     A: Application,
     C: Compositor<Renderer = A::Renderer> + 'static,

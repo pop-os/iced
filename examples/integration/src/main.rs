@@ -35,7 +35,7 @@ pub fn main() -> Result<(), winit::error::EventLoopError> {
     enum Runner {
         Loading,
         Ready {
-            window: Arc<winit::window::Window>,
+            window: Arc<dyn winit::window::Window>,
             device: wgpu::Device,
             queue: wgpu::Queue,
             surface: wgpu::Surface<'static>,
@@ -54,7 +54,7 @@ pub fn main() -> Result<(), winit::error::EventLoopError> {
     }
 
     impl winit::application::ApplicationHandler for Runner {
-        fn resumed(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
+        fn resumed(&mut self, event_loop: &dyn winit::event_loop::ActiveEventLoop) {
             if let Self::Loading = self {
                 let window = Arc::new(
                     event_loop
@@ -186,7 +186,7 @@ pub fn main() -> Result<(), winit::error::EventLoopError> {
 
         fn window_event(
             &mut self,
-            event_loop: &winit::event_loop::ActiveEventLoop,
+            event_loop: &dyn winit::event_loop::ActiveEventLoop,
             _window_id: winit::window::WindowId,
             event: WindowEvent,
         ) {

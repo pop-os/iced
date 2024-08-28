@@ -2,6 +2,10 @@
 //!
 //! [`winit`]: https://github.com/rust-windowing/winit
 //! [`iced_runtime`]: https://github.com/iced-rs/iced/tree/0.13/runtime
+use std::hash::DefaultHasher;
+use std::hash::Hash;
+use std::hash::Hasher;
+
 use crate::core::keyboard;
 use crate::core::mouse;
 use crate::core::touch;
@@ -335,10 +339,12 @@ pub fn position(
         }
         window::Position::SpecificWith(to_position) => {
             if let Some(monitor) = monitor {
-                let start = monitor.position();
+                let start = monitor.position().unwrap_or_default();
 
-                let resolution: winit::dpi::LogicalSize<f32> =
-                    monitor.size().to_logical(monitor.scale_factor());
+                let resolution: winit::dpi::LogicalSize<f32> = monitor
+                    .current_video_mode()
+                    .map(|m| m.size().to_logical(monitor.scale_factor()))
+                    .unwrap_or_default();
 
                 let position = to_position(
                     size,
@@ -364,10 +370,12 @@ pub fn position(
         }
         window::Position::Centered => {
             if let Some(monitor) = monitor {
-                let start = monitor.position();
+                let start = monitor.position().unwrap_or_default();
 
-                let resolution: winit::dpi::LogicalSize<f64> =
-                    monitor.size().to_logical(monitor.scale_factor());
+                let resolution: winit::dpi::LogicalSize<f64> = monitor
+                    .current_video_mode()
+                    .map(|m| m.size().to_logical(monitor.scale_factor()))
+                    .unwrap_or_default();
 
                 let centered: winit::dpi::PhysicalPosition<i32> =
                     winit::dpi::LogicalPosition {
@@ -511,7 +519,11 @@ pub fn touch_event(
     touch: winit::event::Touch,
     scale_factor: f64,
 ) -> touch::Event {
-    let id = touch::Finger(touch.id);
+    // TODO we probably should get the actual internal id in some way instead
+    let mut s = DefaultHasher::new();
+    touch.finger_id.hash(&mut s);
+
+    let id = touch::Finger(s.finish());
     let position = {
         let location = touch.location.to_logical::<f64>(scale_factor);
 

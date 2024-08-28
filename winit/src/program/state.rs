@@ -47,7 +47,7 @@ where
     pub fn new(
         application: &P,
         window_id: window::Id,
-        window: &Window,
+        window: &dyn Window,
     ) -> Self {
         let title = application.title(window_id);
         let scale_factor = application.scale_factor(window_id);
@@ -143,7 +143,7 @@ where
     /// Processes the provided window event and updates the [`State`] accordingly.
     pub fn update(
         &mut self,
-        window: &Window,
+        window: &dyn Window,
         event: &WindowEvent,
         _debug: &mut crate::runtime::Debug,
     ) {
@@ -209,7 +209,7 @@ where
         &mut self,
         application: &P,
         window_id: window::Id,
-        window: &Window,
+        window: &dyn Window,
     ) {
         // Update window title
         let new_title = application.title(window_id);

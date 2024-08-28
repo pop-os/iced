@@ -35,13 +35,13 @@ where
     pub fn insert(
         &mut self,
         id: Id,
-        window: Arc<winit::window::Window>,
+        window: Arc<dyn winit::window::Window>,
         application: &P,
         compositor: &mut C,
         exit_on_close_request: bool,
         resize_border: u32,
     ) -> &mut Window<P, C> {
-        let state = State::new(application, id, &window);
+        let state = State::new(application, id, window.as_ref());
         let viewport_version = state.viewport_version();
         let physical_size = state.physical_size();
         let surface = compositor.create_surface(
@@ -54,7 +54,7 @@ where
         let _ = self.aliases.insert(window.id(), id);
 
         let drag_resize_window_func = super::drag_resize::event_func(
-            &window,
+            window.as_ref(),
             resize_border as f64 * window.scale_factor(),
         );
 
@@ -143,14 +143,14 @@ where
     C: Compositor<Renderer = P::Renderer>,
     P::Theme: DefaultStyle,
 {
-    pub raw: Arc<winit::window::Window>,
+    pub raw: Arc<dyn winit::window::Window>,
     pub(crate) state: State<P>,
     pub viewport_version: u64,
     pub exit_on_close_request: bool,
     pub drag_resize_window_func: Option<
         Box<
             dyn FnMut(
-                &winit::window::Window,
+                &dyn winit::window::Window,
                 &winit::event::WindowEvent,
             ) -> bool,
         >,

@@ -32,7 +32,7 @@ enum State {
         //
         // Note that the field ordering is load-bearing.
         #[allow(dead_code)]
-        window: Arc<Window>,
+        window: Arc<dyn Window>,
     },
     Unavailable,
 }
@@ -62,7 +62,7 @@ impl dnd::Sender<DndSurface> for ControlSender {
 
 impl Clipboard {
     /// Creates a new [`Clipboard`] for the given window.
-    pub fn connect(window: Arc<Window>, proxy: ControlSender) -> Clipboard {
+    pub fn connect(window: Arc<dyn Window>, proxy: ControlSender) -> Clipboard {
         #[allow(unsafe_code)]
         let state =
             unsafe { window_clipboard::Clipboard::connect(window.as_ref()) }

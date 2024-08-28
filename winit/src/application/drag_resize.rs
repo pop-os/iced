@@ -2,17 +2,22 @@ use winit::window::{CursorIcon, ResizeDirection};
 
 /// If supported by winit, returns a closure that implements cursor resize support.
 pub fn event_func(
-    window: &winit::window::Window,
+    window: &dyn winit::window::Window,
     border_size: f64,
 ) -> Option<
-    Box<dyn FnMut(&winit::window::Window, &winit::event::WindowEvent) -> bool>,
+    Box<
+        dyn FnMut(
+            &dyn winit::window::Window,
+            &winit::event::WindowEvent,
+        ) -> bool,
+    >,
 > {
     if window.drag_resize_window(ResizeDirection::East).is_ok() {
         // Keep track of cursor when it is within a resizeable border.
         let mut cursor_prev_resize_direction = None;
 
         Some(Box::new(
-            move |window: &winit::window::Window,
+            move |window: &dyn winit::window::Window,
                   window_event: &winit::event::WindowEvent|
                   -> bool {
                 // Keep track of border resize state and set cursor icon when in range
@@ -27,8 +32,9 @@ pub fn event_func(
                                 border_size,
                             );
                             if location != cursor_prev_resize_direction {
-                                window.set_cursor_icon(
-                                    resize_direction_cursor_icon(location),
+                                window.set_cursor(
+                                    resize_direction_cursor_icon(location)
+                                        .into(),
                                 );
                                 cursor_prev_resize_direction = location;
                                 return true;
