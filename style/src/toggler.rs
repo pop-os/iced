@@ -34,4 +34,9 @@ pub trait StyleSheet {
     ///
     /// [`Style`]: Self::Style
     fn hovered(&self, style: &Self::Style, is_active: bool) -> Appearance;
+
+    /// Returns the disabled [`Appearance`] of the toggler for the provided [`Style`].
+    ///
+    /// [`Style`]: Self::Style
+    fn disabled(&self, style: &Self::Style, is_active: bool) -> Appearance;
 }
