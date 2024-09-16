@@ -2,7 +2,7 @@
 
 use std::fmt::Debug;
 
-use iced_core::MaybeSend;
+use iced_futures::MaybeSend;
 
 /// activation Actions
 pub mod activation;
@@ -25,8 +25,6 @@ pub enum Action {
     Window(window::Action),
     /// popup
     Popup(popup::Action),
-    /// data device
-    DataDevice(data_device::Action),
     /// activation
     Activation(activation::Action),
     /// session lock
@@ -41,9 +39,6 @@ impl Debug for Action {
             }
             Self::Window(arg0) => f.debug_tuple("Window").field(arg0).finish(),
             Self::Popup(arg0) => f.debug_tuple("Popup").field(arg0).finish(),
-            Self::DataDevice(arg0) => {
-                f.debug_tuple("DataDevice").field(arg0).finish()
-            }
             Self::Activation(arg0) => {
                 f.debug_tuple("Activation").field(arg0).finish()
             }

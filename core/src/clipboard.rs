@@ -50,7 +50,7 @@ pub trait Clipboard {
 
     /// Registers Dnd destinations
     fn start_dnd(
-        &self,
+        &mut self,
         _internal: bool,
         _source_surface: Option<DndSource>,
         _icon_surface: Option<Box<dyn Any>>,

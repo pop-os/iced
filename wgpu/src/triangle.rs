@@ -760,11 +760,13 @@ mod solid {
                                     1 => Float32x4,
                                 ),
                             }],
+                            compilation_options: Default::default(),
                         },
                         fragment: Some(wgpu::FragmentState {
                             module: &shader,
                             entry_point: "solid_fs_main",
                             targets: &[Some(triangle::fragment_target(format))],
+                            compilation_options: Default::default(),
                         }),
                         primitive: triangle::primitive_state(),
                         depth_stencil: None,
@@ -937,11 +939,13 @@ mod gradient {
                                 6 => Float32x4
                             ),
                         }],
+                        compilation_options: Default::default(),
                     },
                     fragment: Some(wgpu::FragmentState {
                         module: &shader,
                         entry_point: "gradient_fs_main",
                         targets: &[Some(triangle::fragment_target(format))],
+                        compilation_options: Default::default(),
                     }),
                     primitive: triangle::primitive_state(),
                     depth_stencil: None,

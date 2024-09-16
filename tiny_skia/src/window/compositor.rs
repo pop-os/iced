@@ -184,9 +184,12 @@ pub fn present<T: AsRef<str>>(
     // TODO(POP): I tried to adapt this to what I saw in the diff, which was essentially making sure this is called
     // before the damage.is_empty() check
     surface.layer_stack.push_front(renderer.layers().to_vec());
-    if damage.is_empty() {
-        return Ok(());
-    }
+
+    // TODO better handling of no damage. As it is, the winit shell does not handle a skipped present well.
+    // if damage.is_empty() {
+    //     return Err(compositor::SurfaceError::NoDamage);
+    // }
+
     surface.background_color = background_color;
 
     let damage =

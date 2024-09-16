@@ -21,7 +21,7 @@ all-features = true
 maintenance = { status = "actively-developed" }
 
 [features]
-default = ["tiny-skia"]
+default = ["tiny-skia", "wayland"]
 # Enable the `wgpu` GPU-accelerated renderer backend
 wgpu = ["iced_renderer/wgpu", "iced_widget/wgpu"]
 # Enable the `tiny-skia` software renderer backend
@@ -41,7 +41,7 @@ markdown = ["iced_widget/markdown"]
 # Enables lazy widgets
 lazy = ["iced_widget/lazy"]
 # Enables a debug view in native platforms (press F12)
-debug = ["iced_winit?/debug", "iced_sctk?/debug"]
+debug = ["iced_winit?/debug"]
 # Enables `tokio` as the `executor::Default` on native platforms
 tokio = ["iced_futures/tokio", "iced_accessibility?/tokio"]
 # Enables `async-std` as the `executor::Default` on native platforms
@@ -70,19 +70,16 @@ a11y = [
     "iced_core/a11y",
     "iced_widget/a11y",
     "iced_winit?/a11y",
-    "iced_sctk?/a11y",
 ]
 # Enables the winit shell. Conflicts with `wayland` and `glutin`.
 winit = ["iced_winit", "iced_accessibility?/accesskit_winit"]
-# Enables the sctk shell. Conflicts with `winit` and `glutin`.
+# Enables the sctk shell. 
 wayland = [
-    "iced_sctk",
     "iced_widget/wayland",
     "iced_accessibility?/accesskit_unix",
     "iced_core/wayland",
+    "iced_winit/wayland",
 ]
-# Enables clipboard for iced_sctk
-wayland-clipboard = ["iced_sctk?/clipboard"]
 
 [dependencies]
 iced_core.workspace = true
@@ -92,8 +89,6 @@ iced_widget.workspace = true
 iced_winit.features = ["program"]
 iced_winit.workspace = true
 iced_winit.optional = true
-iced_sctk.workspace = true
-iced_sctk.optional = true
 iced_highlighter.workspace = true
 iced_highlighter.optional = true
 iced_accessibility.workspace = true
@@ -139,7 +134,6 @@ members = [
     "winit",
     "examples/*",
     "accessibility",
-    "sctk",
 ]
 exclude = ["examples/integration"]
 
@@ -173,13 +167,13 @@ bitflags = "2.5"
 bytemuck = { version = "1.0", features = ["derive"] }
 bytes = "1.6"
 
-glyphon = { git = "https://github.com/hecrj/glyphon.git", rev = "feef9f5630c2adb3528937e55f7bfad2da561a65" }
 cosmic-text = { git = "https://github.com/pop-os/cosmic-text.git" }
 # cosmic-text = "0.10"
 
 dark-light = "1.0"
 futures = "0.3"
 glam = "0.25"
+glyphon = { git = "https://github.com/pop-os/glyphon.git", branch = "iced-0.13" }
 # glyphon = { git = "https://github.com/hecrj/glyphon.git", rev = "f07e7bab705e69d39a5e6e52c73039a93c4552f8" }
 # glyphon = { git = "https://github.com/pop-os/glyphon.git", tag = "v0.5.0" }
 
@@ -217,7 +211,7 @@ unicode-segmentation = "1.0"
 url = "2.5"
 wasm-bindgen-futures = "0.4"
 wasm-timer = "0.2"
-wgpu = "0.19"
+wgpu = "0.20"
 wayland-protocols = { version = "0.32.1", features = ["staging"] }
 # web-time = "1.1"
 web-time = "0.2"
@@ -241,9 +235,9 @@ winit = { git = "https://github.com/rust-windowing/winit.git", rev = "241b7a80bb
 
 
 [workspace.lints.rust]
-rust_2018_idioms = { level = "forbid", priority = -1 }
-missing_debug_implementations = "deny"
-missing_docs = "deny"
+# rust_2018_idioms = { level = "forbid", priority = -1 }
+# missing_debug_implementations = "deny"
+# missing_docs = "deny"
 # unsafe_code = "deny"
 # TODO(POP): We have some unsafe code that needs to be fixed
 unused_results = "deny"

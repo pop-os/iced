@@ -1,4 +1,3 @@
-use dnd::{DndEvent, DndSurface};
 
 use crate::futures::futures::{
     channel::mpsc,
@@ -13,7 +12,7 @@ use std::pin::Pin;
 /// An event loop proxy with backpressure that implements `Sink`.
 #[derive(Debug)]
 pub struct Proxy<T: 'static> {
-    raw: winit::event_loop::EventLoopProxy,
+    pub(crate) raw: winit::event_loop::EventLoopProxy,
     sender: mpsc::Sender<Action<T>>,
     event_sender: mpsc::UnboundedSender<Event<T>>,
     notifier: mpsc::Sender<usize>,
@@ -51,8 +50,7 @@ impl<T: 'static> Proxy<T> {
                 if count < Self::MAX_SIZE {
                     select! {
                         message = receiver.select_next_some() => {
-                            let
-                            _ = event_sender_clone.unbounded_send(Event::UserEvent(message));
+                            let _ = event_sender_clone.unbounded_send(Event::UserEvent(message));
                             let _ = proxy.wake_up();
                             count += 1;
 

@@ -1,7 +1,7 @@
 use std::{fmt, marker::PhantomData};
 
 use iced_core::window::Id;
-use iced_core::MaybeSend;
+use iced_futures::MaybeSend;
 
 use sctk::reexports::client::protocol::wl_output::WlOutput;
 

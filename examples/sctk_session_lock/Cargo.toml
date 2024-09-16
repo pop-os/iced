@@ -7,9 +7,11 @@ edition = "2021"
 sctk = { package = "smithay-client-toolkit", git = "https://github.com/smithay/client-toolkit", rev = "828b1eb" }
 iced = { path = "../..", default-features = false, features = [
     "async-std",
+    "winit",
     "wayland",
     "debug",
-    "a11y",
+    "tiny-skia",
+    # "a11y",
 ] }
 iced_runtime = { path = "../../runtime" }
 env_logger = "0.10"

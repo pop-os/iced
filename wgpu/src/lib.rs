@@ -49,6 +49,7 @@ use buffer::Buffer;
 
 pub use iced_graphics as graphics;
 pub use iced_graphics::core;
+use iced_graphics::text::Raw;
 
 pub use wgpu;
 
@@ -466,6 +467,7 @@ impl core::text::Renderer for Renderer {
     type Font = Font;
     type Paragraph = Paragraph;
     type Editor = Editor;
+    type Raw = Raw;
 
     const ICON_FONT: Font = Font::with_name("Iced-Icons");
     const CHECKMARK_ICON: char = '\u{f00c}';
@@ -518,6 +520,10 @@ impl core::text::Renderer for Renderer {
         let (layer, transformation) = self.layers.current_mut();
         layer.draw_text(text, position, color, clip_bounds, transformation);
     }
+
+    fn fill_raw(&mut self, raw: Self::Raw) {
+        // TODO
+    }
 }
 
 #[cfg(feature = "image")]
@@ -550,15 +556,7 @@ impl core::svg::Renderer for Renderer {
         border_radius: [f32; 4],
     ) {
         let (layer, transformation) = self.layers.current_mut();
-        layer.draw_svg(
-            handle,
-            color_filter,
-            bounds,
-            transformation,
-            rotation,
-            opacity,
-            border_radius,
-        );
+        layer.draw_svg(handle, color_filter, bounds);
     }
 }
 

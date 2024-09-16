@@ -2,7 +2,7 @@ use std::fmt;
 use std::marker::PhantomData;
 
 use iced_core::layout::Limits;
-use iced_core::MaybeSend;
+use iced_futures::MaybeSend;
 use sctk::{
     reexports::client::protocol::wl_output::WlOutput,
     shell::wlr_layer::{Anchor, KeyboardInteractivity, Layer},
@@ -71,7 +71,7 @@ pub struct SctkLayerSurfaceSettings {
 impl Default for SctkLayerSurfaceSettings {
     fn default() -> Self {
         Self {
-            id: Id::MAIN,
+            id: Id::unique(),
             layer: Layer::Top,
             keyboard_interactivity: Default::default(),
             pointer_interactivity: true,

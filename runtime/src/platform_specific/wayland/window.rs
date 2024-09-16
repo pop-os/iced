@@ -3,8 +3,8 @@ use std::marker::PhantomData;
 
 use iced_core::layout::Limits;
 use iced_core::window::Mode;
-use iced_core::MaybeSend;
 use iced_core::Size;
+use iced_futures::MaybeSend;
 use sctk::reexports::protocols::xdg::shell::client::xdg_toplevel::ResizeEdge;
 
 pub use iced_core::window::Id;
@@ -47,7 +47,7 @@ pub struct SctkWindowSettings {
 impl Default for SctkWindowSettings {
     fn default() -> Self {
         Self {
-            window_id: Id::MAIN,
+            window_id: Id::unique(),
             app_id: Default::default(),
             title: Default::default(),
             parent: Default::default(),
@@ -107,40 +107,6 @@ pub enum Action {
         title: String,
     },
     /// Minimize the window.
-    Minimize {
-        /// id of the window
-        id: Id,
-    },
-    /// Toggle maximization of the window.
-    ToggleMaximized {
-        /// id of the window
-        id: Id,
-    },
-    /// Maximize the window.
-    Maximize {
-        /// id of the window
-        id: Id,
-    },
-    /// UnsetMaximize the window.
-    UnsetMaximize {
-        /// id of the window
-        id: Id,
-    },
-    /// Toggle fullscreen of the window.
-    ToggleFullscreen {
-        /// id of the window
-        id: Id,
-    },
-    /// Fullscreen the window.
-    Fullscreen {
-        /// id of the window
-        id: Id,
-    },
-    /// UnsetFullscreen the window.
-    UnsetFullscreen {
-        /// id of the window
-        id: Id,
-    },
     /// Start an interactive move of the window.
     InteractiveResize {
         /// id of the window
@@ -153,13 +119,7 @@ pub enum Action {
         /// id of the window
         id: Id,
     },
-    /// Show the window context menu
-    ShowWindowMenu {
-        /// id of the window
-        id: Id,
-    },
-    /// Set the mode of the window
-    Mode(Id, Mode),
+
     /// Set the app id of the window
     AppId {
         /// id of the window
@@ -168,45 +128,6 @@ pub enum Action {
         app_id: String,
     },
 }
-
-// impl<T> Action<T> {
-//     /// Maps the output of a window [`Action`] using the provided closure.
-//     pub fn map<A>(
-//         self,
-//         _: impl Fn(T) -> A + 'static + MaybeSend + Sync,
-//     ) -> Action<A>
-//     where
-//         T: 'static,
-//     {
-//         match self {
-//             Action::Window { builder, .. } => Action::Window {
-//                 builder,
-//                 _phantom: PhantomData,
-//             },
-//             Action::Size { id, width, height } => {
-//                 Action::Size { id, width, height }
-//             }
-//             Action::MinSize { id, size } => Action::MinSize { id, size },
-//             Action::MaxSize { id, size } => Action::MaxSize { id, size },
-//             Action::Title { id, title } => Action::Title { id, title },
-//             Action::Minimize { id } => Action::Minimize { id },
-//             Action::Maximize { id } => Action::Maximize { id },
-//             Action::UnsetMaximize { id } => Action::UnsetMaximize { id },
-//             Action::Fullscreen { id } => Action::Fullscreen { id },
-//             Action::UnsetFullscreen { id } => Action::UnsetFullscreen { id },
-//             Action::InteractiveMove { id } => Action::InteractiveMove { id },
-//             Action::ShowWindowMenu { id } => Action::ShowWindowMenu { id },
-//             Action::InteractiveResize { id, edge } => {
-//                 Action::InteractiveResize { id, edge }
-//             }
-//             Action::Destroy(id) => Action::Destroy(id),
-//             Action::Mode(id, m) => Action::Mode(id, m),
-//             Action::ToggleMaximized { id } => Action::ToggleMaximized { id },
-//             Action::ToggleFullscreen { id } => Action::ToggleFullscreen { id },
-//             Action::AppId { id, app_id } => Action::AppId { id, app_id },
-//         }
-//     }
-// }
 
 impl fmt::Debug for Action {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -236,39 +157,9 @@ impl fmt::Debug for Action {
                 "Action::Window::Title {{ id: {:?}, title: {:?} }}",
                 id, title
             ),
-            Action::Minimize { id } => write!(
-                f,
-                "Action::Window::Minimize {{ id: {:?} }}",
-                id
-            ),
-            Action::Maximize { id } => write!(
-                f,
-                "Action::Window::Maximize {{ id: {:?} }}",
-                id
-            ),
-            Action::UnsetMaximize { id } => write!(
-                f,
-                "Action::Window::UnsetMaximize {{ id: {:?} }}",
-                id
-            ),
-            Action::Fullscreen { id } => write!(
-                f,
-                "Action::Window::Fullscreen {{ id: {:?} }}",
-                id
-            ),
-            Action::UnsetFullscreen { id } => write!(
-                f,
-                "Action::Window::UnsetFullscreen {{ id: {:?} }}",
-                id
-            ),
             Action::InteractiveMove { id } => write!(
                 f,
                 "Action::Window::InteractiveMove {{ id: {:?} }}",
-                id
-            ),
-            Action::ShowWindowMenu { id } => write!(
-                f,
-                "Action::Window::ShowWindowMenu {{ id: {:?} }}",
                 id
             ),
             Action::InteractiveResize { id, edge } => write!(
@@ -279,21 +170,6 @@ impl fmt::Debug for Action {
             Action::Destroy(id) => write!(
                 f,
                 "Action::Window::Destroy {{ id: {:?} }}",
-                id
-            ),
-            Action::Mode(id, m) => write!(
-                f,
-                "Action::Window::Mode {{ id: {:?}, mode: {:?} }}",
-                id, m
-            ),
-            Action::ToggleMaximized { id } => write!(
-                f,
-                "Action::Window::Maximized {{ id: {:?} }}",
-                id
-            ),
-            Action::ToggleFullscreen { id } => write!(
-                f,
-                "Action::Window::ToggleFullscreen {{ id: {:?} }}",
                 id
             ),
             Action::AppId { id, app_id } => write!(
@@ -318,7 +194,7 @@ impl TryFrom<window::Action> for Action {
 
     fn try_from(value: window::Action) -> Result<Self, Self::Error> {
         match value {
-            window::Action::Open(id, settings) => {
+            window::Action::Open(id, settings, tx) => {
                 let min = settings.min_size.unwrap_or(Size::new(1., 1.));
                 let max = settings.max_size.unwrap_or(Size::INFINITY);
                 let builder = SctkWindowSettings {
@@ -354,41 +230,28 @@ impl TryFrom<window::Action> for Action {
                 height: size.height.round() as u32,
             }),
             window::Action::Drag(id) => Ok(Action::InteractiveMove { id }),
-            window::Action::FetchSize(_, _)
-            | window::Action::FetchMaximized(_, _)
+            window::Action::GetSize(_, _)
+            | window::Action::Maximize(_, _)
+            | window::Action::Minimize(_, _)
+            | window::Action::GetMaximized(_, _)
             | window::Action::Move(_, _)
-            | window::Action::FetchMode(_, _)
+            | window::Action::GetMode(_, _)
             | window::Action::ToggleMaximize(_)
             | window::Action::ToggleDecorations(_)
             | window::Action::RequestUserAttention(_, _)
             | window::Action::GainFocus(_)
             | window::Action::ChangeLevel(_, _)
-            | window::Action::FetchRawId(_, _)
+            | window::Action::GetRawId(_, _)
             | window::Action::ChangeIcon(_, _)
             | window::Action::Screenshot(_, _)
+            | window::Action::ChangeMode(_, _)
+            | window::Action::ShowSystemMenu(_)
             | window::Action::RunWithHandle(_, _) // TODO(POP): Is this supported? Not sure.
-            | window::Action::FetchPosition(_, _) // TODO(POP): Is this supported? Not sure.
-            | window::Action::FetchMinimized(_, _) => Err(Error::NotSupported),
-            window::Action::ShowSystemMenu(id) => {
-                Ok(Action::ShowWindowMenu { id })
-            }
-            window::Action::Maximize(id, maximized) => {
-                if maximized {
-                    Ok(Action::Maximize { id })
-                } else {
-                    Ok(Action::UnsetMaximize { id })
-                }
-            }
-            window::Action::Minimize(id, bool) => {
-                if bool {
-                    Ok(Action::Minimize { id })
-                } else {
-                    Err(Error::NotSupported)
-                }
-            }
-            window::Action::ChangeMode(id, mode) => {
-                Ok(Action::Mode(id, mode.into()))
-            }
+            | window::Action::GetPosition(_, _) // TODO(POP): Is this supported? Not sure.
+            | window::Action::GetMinimized(_, _) => Err(Error::NotSupported),
+            
+            window::Action::GetOldest(_) => todo!(),
+            window::Action::GetLatest(_) => todo!(),
         }
     }
 }

@@ -450,21 +450,19 @@
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
-#[cfg(all(feature = "wayland", feature = "winit"))]
-compile_error!("cannot use `wayland` feature with `winit");
+// #[cfg(all(feature = "wayland", feature = "winit"))]
+// compile_error!("cannot use `wayland` feature with `winit");
 
 pub use iced_futures::futures;
 pub use iced_futures::stream;
 use iced_widget::graphics;
 use iced_widget::renderer;
 
-#[cfg(feature = "wayland")]
-use iced_sctk as shell;
 #[cfg(feature = "winit")]
 use iced_winit as shell;
-#[cfg(any(feature = "winit", feature = "wayland"))]
+#[cfg(feature = "winit")]
 use shell::core;
-#[cfg(any(feature = "winit", feature = "wayland"))]
+#[cfg(feature = "winit")]
 use shell::runtime;
 
 #[cfg(feature = "highlighter")]
@@ -484,22 +482,29 @@ pub mod time;
 pub mod window;
 
 #[cfg(feature = "winit")]
+pub mod platform_specific {
+    pub use iced_winit::{
+        platform_specific as shell, runtime::platform_specific as runtime,
+    };
+}
+
+#[cfg(feature = "winit")]
 pub use application::Application;
 #[cfg(feature = "winit")]
 pub use program::Program;
 
-/// wayland application
-#[cfg(feature = "wayland")]
-pub mod wayland;
-#[cfg(feature = "wayland")]
-pub use wayland::application;
-#[cfg(feature = "wayland")]
-pub use wayland::application::Application;
-#[cfg(feature = "wayland")]
-pub use wayland::program;
-#[doc(inline)]
-#[cfg(feature = "wayland")]
-pub use wayland::program::Program;
+// wayland application
+// #[cfg(feature = "wayland")]
+// pub mod wayland;
+// #[cfg(feature = "wayland")]
+// pub use wayland::application;
+// #[cfg(feature = "wayland")]
+// pub use wayland::application::Application;
+// #[cfg(feature = "wayland")]
+// pub use wayland::program;
+// #[doc(inline)]
+// #[cfg(feature = "wayland")]
+// pub use wayland::program::Program;
 
 #[cfg(feature = "advanced")]
 pub mod advanced;
@@ -652,7 +657,7 @@ pub type Element<
 /// The result of running an iced program.
 pub type Result = std::result::Result<(), Error>;
 
-#[cfg(any(feature = "winit", feature = "wayland"))]
+#[cfg(any(feature = "winit"))]
 /// Runs a basic iced application with default [`Settings`] given its title,
 /// update, and view logic.
 ///

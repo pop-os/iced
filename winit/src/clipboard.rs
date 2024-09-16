@@ -4,9 +4,6 @@ use std::{any::Any, borrow::Cow};
 
 use crate::core::clipboard::DndSource;
 use crate::core::clipboard::Kind;
-use crate::futures::futures::Sink;
-use crate::runtime::Action;
-use crate::Proxy;
 use std::sync::Arc;
 use winit::window::{Window, WindowId};
 
@@ -23,6 +20,14 @@ pub struct Clipboard {
     state: State,
 }
 
+pub(crate) struct StartDnd {
+    pub(crate) internal: bool,
+    pub(crate) source_surface: Option<DndSource>,
+    pub(crate) icon_surface: Option<Box<dyn Any>>,
+    pub(crate) content: Box<dyn mime::AsMimeTypes + Send + 'static>,
+    pub(crate) actions: DndAction,
+}
+
 enum State {
     Connected {
         clipboard: window_clipboard::Clipboard,
@@ -33,6 +38,7 @@ enum State {
         // Note that the field ordering is load-bearing.
         #[allow(dead_code)]
         window: Arc<dyn Window>,
+        queued_events: Vec<StartDnd>,
     },
     Unavailable,
 }
@@ -71,6 +77,7 @@ impl Clipboard {
                     clipboard: c,
                     sender: proxy.clone(),
                     window,
+                    queued_events: Vec::new(),
                 })
                 .unwrap_or(State::Unavailable);
 
@@ -87,6 +94,21 @@ impl Clipboard {
     pub fn unconnected() -> Clipboard {
         Clipboard {
             state: State::Unavailable,
+        }
+    }
+
+    pub(crate) fn get_queued(&mut self) -> Vec<StartDnd> {
+        match &mut self.state {
+            State::Connected {
+                clipboard,
+                sender,
+                window,
+                queued_events,
+            } => std::mem::take(queued_events),
+            State::Unavailable => {
+                log::error!("Invalid request for queued dnd events");
+                Vec::<StartDnd>::new()
+            }
         }
     }
 
@@ -213,23 +235,27 @@ impl crate::core::Clipboard for Clipboard {
     }
 
     fn start_dnd(
-        &self,
+        &mut self,
         internal: bool,
         source_surface: Option<DndSource>,
         icon_surface: Option<Box<dyn Any>>,
         content: Box<dyn mime::AsMimeTypes + Send + 'static>,
         actions: DndAction,
     ) {
-        match &self.state {
-            State::Connected { sender, .. } => {
-                // TODO
-                // tx.raw.send_event(UserEventWrapper::StartDnd {
-                //     internal,
-                //     source_surface,
-                //     icon_surface,
-                //     content,
-                //     actions,
-                // });
+        match &mut self.state {
+            State::Connected {
+                queued_events,
+                sender,
+                ..
+            } => {
+                _ = sender.0.unbounded_send(crate::program::Control::StartDnd);
+                queued_events.push(StartDnd {
+                    internal,
+                    source_surface,
+                    icon_surface,
+                    content,
+                    actions,
+                });
             }
             State::Unavailable => {}
         }

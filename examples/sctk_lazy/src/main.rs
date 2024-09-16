@@ -1,31 +1,22 @@
 use iced::advanced::layout::Limits;
-use iced::theme;
-use iced::wayland::application::actions::layer_surface::SctkLayerSurfaceSettings;
-use iced::wayland::application::layer_surface::KeyboardInteractivity;
-use iced::wayland::application::InitialSurface;
+use iced::platform_specific::runtime::wayland::layer_surface::SctkLayerSurfaceSettings;
+use iced::platform_specific::shell::commands::layer_surface::{
+    get_layer_surface, KeyboardInteractivity,
+};
+
 use iced::widget::{
     button, column, horizontal_space, lazy, pick_list, row, scrollable, text,
     text_input,
 };
 use iced::window::Id;
-use iced::{Element, Length, Sandbox, Settings};
+use iced::Task;
+use iced::{Element, Length};
 
 use std::collections::HashSet;
 use std::hash::Hash;
 
 pub fn main() -> iced::Result {
-    let mut initial_surface = SctkLayerSurfaceSettings::default();
-    initial_surface.keyboard_interactivity = KeyboardInteractivity::OnDemand;
-    initial_surface.size_limits = Limits::NONE
-        .min_width(1.0)
-        .min_height(1.0)
-        .max_height(500.0)
-        .max_width(900.0);
-    let settings = Settings {
-        initial_surface: InitialSurface::LayerSurface(initial_surface),
-        ..Settings::default()
-    };
-    App::run(settings)
+    iced::daemon(App::title, App::update, App::view).run_with(App::new)
 }
 
 struct App {
@@ -137,14 +128,21 @@ enum Message {
     ItemColorChanged(Item, Color),
 }
 
-impl Sandbox for App {
-    type Message = Message;
-
-    fn new() -> Self {
-        Self::default()
+impl App {
+    fn new() -> (App, Task<Message>) {
+        let mut initial_surface = SctkLayerSurfaceSettings::default();
+        initial_surface.keyboard_interactivity =
+            KeyboardInteractivity::OnDemand;
+        initial_surface.size_limits = Limits::NONE
+            .min_width(1.0)
+            .min_height(1.0)
+            .max_height(500.0)
+            .max_width(900.0);
+        initial_surface.size = Some((Some(500), Some(500)));
+        (Self::default(), get_layer_surface(initial_surface))
     }
 
-    fn title(&self) -> String {
+    fn title(&self, _id: Id) -> String {
         String::from("Lazy - Iced")
     }
 
@@ -194,35 +192,21 @@ impl Sandbox for App {
                 }
             });
 
-            column(
-                items
-                    .into_iter()
-                    .map(|item| {
-                        let button = button("Delete")
-                            .on_press(Message::DeleteItem(item.clone()))
-                            .style(theme::Button::Destructive);
+            column(items.into_iter().map(|item| {
+                let button = button("Delete")
+                    .on_press(Message::DeleteItem(item.clone()));
 
-                        row![
-                            text(&item.name)
-                                .style(theme::Text::Color(item.color.into())),
-                            horizontal_space(Length::Fill),
-                            pick_list(
-                                Color::ALL,
-                                Some(item.color),
-                                move |color| {
-                                    Message::ItemColorChanged(
-                                        item.clone(),
-                                        color,
-                                    )
-                                }
-                            ),
-                            button
-                        ]
-                        .spacing(20)
-                        .into()
-                    })
-                    .collect(),
-            )
+                row![
+                    text(item.name.clone()),
+                    horizontal_space(),
+                    pick_list(Color::ALL, Some(item.color), move |color| {
+                        Message::ItemColorChanged(item.clone(), color)
+                    }),
+                    button
+                ]
+                .spacing(20)
+                .into()
+            }))
             .spacing(10)
         });
 
@@ -246,19 +230,8 @@ impl Sandbox for App {
         iced::Theme::default()
     }
 
-    fn style(&self) -> theme::Application {
-        theme::Application::default()
-    }
-
     fn scale_factor(&self) -> f64 {
         1.0
-    }
-
-    fn run(settings: Settings<()>) -> Result<(), iced::Error>
-    where
-        Self: 'static + Sized,
-    {
-        <Self as iced::Application>::run(settings)
     }
 }
 

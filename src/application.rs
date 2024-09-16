@@ -31,9 +31,9 @@
 //! }
 //! ```
 use crate::program::{self, Program};
-#[cfg(not(any(feature = "winit", feature = "wayland")))]
+#[cfg(not(feature = "winit"))]
 use crate::runtime::{Appearance, DefaultStyle};
-#[cfg(any(feature = "winit", feature = "wayland"))]
+#[cfg(feature = "winit")]
 pub use crate::shell::program::{Appearance, DefaultStyle};
 use crate::window;
 use crate::{Element, Font, Result, Settings, Size, Subscription, Task};

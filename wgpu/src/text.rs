@@ -588,8 +588,8 @@ fn prepare(
                         Rectangle::new(
                             raw.position,
                             Size::new(
-                                width.unwrap_or(layer_bounds.width),
-                                height.unwrap_or(layer_bounds.height),
+                                width_opt.unwrap_or(layer_bounds.width),
+                                height_opt.unwrap_or(layer_bounds.height),
                             ),
                         ),
                         alignment::Horizontal::Left,
@@ -639,7 +639,6 @@ fn prepare(
     renderer.prepare(
         device,
         queue,
-        encoder,
         font_system,
         atlas,
         viewport,

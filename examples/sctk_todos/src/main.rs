@@ -1,15 +1,15 @@
 use env_logger::Env;
 use iced::alignment::{self, Alignment};
 use iced::event::{self, listen_raw, Event};
+use iced::platform_specific::shell::commands::layer_surface::get_layer_surface;
 use iced::theme::{self, Theme};
-use iced::wayland::application::actions::window::SctkWindowSettings;
-use iced::wayland::application::InitialSurface;
 use iced::widget::{
     self, button, checkbox, column, container, row, scrollable, text,
     text_input, Text,
 };
-use iced::{window, Application, Element, Task};
-use iced::{Color, Font, Length, Settings, Subscription};
+use iced::window::Settings;
+use iced::{window, Application, Element, Program, Task};
+use iced::{Color, Font, Length, Subscription};
 use iced_core::id::Id;
 use iced_core::keyboard::key::Named;
 use iced_core::layout::Limits;
@@ -19,20 +19,18 @@ use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 
-static INPUT_ID: Lazy<Id> = Lazy::new(Id::unique);
+static INPUT_ID: Lazy<text_input::Id> = Lazy::new(|| text_input::Id::unique());
 
 pub fn main() -> iced::Result {
     let env = Env::default()
         .filter_or("MY_LOG_LEVEL", "info")
         .write_style_or("MY_LOG_STYLE", "always");
 
-    let mut settings = SctkWindowSettings::default();
-    settings.size_limits = Limits::NONE.min_height(300.0).min_width(600.0);
     env_logger::init_from_env(env);
-    Todos::run(Settings {
-        initial_surface: InitialSurface::XdgWindow(settings),
-        ..Settings::default()
-    })
+    iced::daemon(Todos::title, Todos::update, Todos::view)
+        .subscription(Todos::subscription)
+        .font(include_bytes!("../fonts/icons.ttf").as_slice())
+        .run_with(Todos::new)
 }
 
 #[derive(Debug)]
@@ -87,20 +85,19 @@ impl Debug for Message {
     }
 }
 
-impl Application for Todos {
-    type Message = Message;
-    type Theme = Theme;
-    type Executor = iced::executor::Default;
-    type Renderer = iced::Renderer;
-    type Flags = ();
-
-    fn new(_flags: ()) -> (Todos, Task<Message>) {
+impl Todos {
+    fn new() -> (Todos, Task<Message>) {
         (
             Todos::Loading,
-            Task::batch(vec![Task::perform(
-                SavedState::load(),
-                Message::Loaded,
-            )]),
+            Task::batch(vec![
+                Task::perform(SavedState::load(), Message::Loaded),
+                get_layer_surface(iced::platform_specific::runtime::wayland::layer_surface::SctkLayerSurfaceSettings {
+                    size: Some((Some(800), Some(600))),
+                    pointer_interactivity: true,
+                    keyboard_interactivity: sctk::shell::wlr_layer::KeyboardInteractivity::OnDemand,
+                    ..Default::default()
+                }),
+            ]),
         )
     }
 
@@ -172,8 +169,8 @@ impl Application for Todos {
                             if should_focus {
                                 let id = MyTask::text_input_id(i);
                                 Task::batch(vec![
-                                    text_input::focus(id.clone()),
-                                    text_input::select_all(id),
+                                    text_input::focus(INPUT_ID.clone()),
+                                    text_input::select_all(INPUT_ID.clone()),
                                 ])
                             } else {
                                 Task::none()
@@ -237,15 +234,10 @@ impl Application for Todos {
                 window_id_ctr,
                 ..
             }) => {
-                if iced::window::Id::MAIN != id {
-                    panic!("Wrong window id: {:?}", id)
-                }
-
                 let title = text("todos")
                     .width(Length::Fill)
                     .size(100)
-                    .color([0.5, 0.5, 0.5])
-                    .horizontal_alignment(alignment::Horizontal::Center);
+                    .color([0.5, 0.5, 0.5]);
 
                 let input = text_input("What needs to be done?", input_value)
                     .id(INPUT_ID.clone())
@@ -300,29 +292,32 @@ impl Application for Todos {
     }
 
     fn subscription(&self) -> Subscription<Message> {
-        listen_raw(|event, status, window| match (event, status, window) {
-            (
-                Event::Keyboard(keyboard::Event::KeyPressed {
-                    key: keyboard::Key::Named(Named::Tab),
-                    modifiers,
-                    ..
+        listen_raw(|event, status, window| {
+            // dbg!(&event);
+            match (event, status, window) {
+                (
+                    Event::Keyboard(keyboard::Event::KeyPressed {
+                        key: keyboard::Key::Named(Named::Tab),
+                        modifiers,
+                        ..
+                    }),
+                    event::Status::Ignored,
+                    _,
+                ) => Some(Message::TabPressed {
+                    shift: modifiers.shift(),
                 }),
-                event::Status::Ignored,
-                _,
-            ) => Some(Message::TabPressed {
-                shift: modifiers.shift(),
-            }),
-            (
-                Event::PlatformSpecific(event::PlatformSpecific::Wayland(
-                    event::wayland::Event::Window(e, s, id),
-                )),
-                _,
-                _,
-            ) => {
-                dbg!(&e);
-                None
+                (
+                    Event::PlatformSpecific(event::PlatformSpecific::Wayland(
+                        event::wayland::Event::Window(e, s, id),
+                    )),
+                    _,
+                    _,
+                ) => {
+                    dbg!(&e);
+                    None
+                }
+                _ => None,
             }
-            _ => None,
         })
     }
 }
@@ -358,8 +353,8 @@ pub enum TaskMessage {
 }
 
 impl MyTask {
-    fn text_input_id(i: usize) -> id::Id {
-        id::Id::new(format!("task-{}", i))
+    fn text_input_id(i: usize) -> text_input::Id {
+        text_input::Id::new(format!("task-{}", i))
     }
 
     fn new(description: String) -> Self {
@@ -405,7 +400,7 @@ impl MyTask {
                         .style(button::text),
                 ]
                 .spacing(20)
-                .align_items(Alignment::Center)
+                .align_y(Alignment::Center)
                 .into()
             }
             TaskState::Editing => {
@@ -425,7 +420,7 @@ impl MyTask {
                         .style(button::danger)
                 ]
                 .spacing(20)
-                .align_items(Alignment::Center)
+                .align_y(Alignment::Center)
                 .into()
             }
         }
@@ -464,7 +459,7 @@ fn view_controls(tasks: &[MyTask], current_filter: Filter) -> Element<Message> {
         .spacing(10)
     ]
     .spacing(20)
-    .align_items(Alignment::Center)
+    .align_y(Alignment::Center)
     .into()
 }
 
@@ -492,15 +487,11 @@ impl Filter {
 }
 
 fn loading_message<'a>() -> Element<'a, Message> {
-    container(
-        text("Loading...")
-            .horizontal_alignment(alignment::Horizontal::Center)
-            .size(50),
-    )
-    .width(Length::Fill)
-    .height(Length::Fill)
-    .center_y(Length::Fill)
-    .into()
+    container(text("Loading...").size(50))
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .center_y(Length::Fill)
+        .into()
 }
 
 fn empty_message(message: &str) -> Element<'_, Message> {
@@ -508,7 +499,6 @@ fn empty_message(message: &str) -> Element<'_, Message> {
         text(message)
             .width(Length::Fill)
             .size(25)
-            .horizontal_alignment(alignment::Horizontal::Center)
             .color([0.7, 0.7, 0.7]),
     )
     .width(Length::Fill)
@@ -524,7 +514,6 @@ fn icon(unicode: char) -> Text<'static> {
     text(unicode.to_string())
         .font(ICONS)
         .width(Length::Fixed(20.0))
-        .horizontal_alignment(alignment::Horizontal::Center)
         .size(20)
 }
 

@@ -1,5 +1,5 @@
 use iced_core::window::Id;
-use iced_core::MaybeSend;
+use iced_futures::MaybeSend;
 
 use std::fmt;
 

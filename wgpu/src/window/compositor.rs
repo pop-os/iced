@@ -87,8 +87,7 @@ impl Compositor {
 
         log::info!("{settings:#?}");
 
-        let available_adapters =
-            instance.enumerate_adapters(settings.internal_backend);
+        let available_adapters = instance.enumerate_adapters(settings.backends);
 
         std::env::remove_var("VK_LOADER_DRIVERS_DISABLE");
 

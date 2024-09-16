@@ -1,22 +1,21 @@
 use iced::event::listen_raw;
-use iced::wayland::application::session_lock;
+use iced::Task;
 use iced::{
-    application::InitialSurface,
     event::wayland::{Event as WaylandEvent, OutputEvent, SessionLockEvent},
+    platform_specific::shell::commands::session_lock,
     widget::text,
-    window, Application, Command, Element, Subscription, Theme,
+    window, Element, Subscription,
 };
-use iced_runtime::window::Id as SurfaceId;
 
-fn main() {
-    let mut settings = iced::Settings::default();
-    settings.initial_surface = InitialSurface::None;
-    Locker::run(settings).unwrap();
+fn main() -> iced::Result {
+    iced::daemon(Locker::title, Locker::update, Locker::view)
+        .subscription(Locker::subscription)
+        .run_with(Locker::new)
 }
 
 #[derive(Debug, Clone, Default)]
 struct Locker {
-    exit: bool,
+    _exit: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -26,14 +25,8 @@ pub enum Message {
     Ignore,
 }
 
-impl Application for Locker {
-    type Executor = iced::executor::Default;
-    type Renderer = iced::Renderer;
-    type Message = Message;
-    type Flags = ();
-    type Theme = Theme;
-
-    fn new(_flags: ()) -> (Locker, Command<Self::Message>) {
+impl Locker {
+    fn new() -> (Locker, Task<Message>) {
         (
             Locker {
                 ..Locker::default()
@@ -46,7 +39,7 @@ impl Application for Locker {
         String::from("Locker")
     }
 
-    fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
+    fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::WaylandEvent(evt) => match evt {
                 WaylandEvent::Output(evt, output) => match evt {
@@ -61,7 +54,7 @@ impl Application for Locker {
                 },
                 WaylandEvent::SessionLock(evt) => match evt {
                     SessionLockEvent::Locked => {
-                        return iced::Command::perform(
+                        return iced::Task::perform(
                             async_std::task::sleep(
                                 std::time::Duration::from_secs(5),
                             ),
@@ -81,14 +74,14 @@ impl Application for Locker {
             }
             Message::Ignore => {}
         }
-        Command::none()
+        Task::none()
     }
 
-    fn view(&self, id: window::Id) -> Element<Self::Message> {
+    fn view(&self, id: window::Id) -> Element<Message> {
         text(format!("Lock Surface {:?}", id)).into()
     }
 
-    fn subscription(&self) -> Subscription<Self::Message> {
+    fn subscription(&self) -> Subscription<Message> {
         listen_raw(|evt, _, _| {
             if let iced::Event::PlatformSpecific(
                 iced::event::PlatformSpecific::Wayland(evt),

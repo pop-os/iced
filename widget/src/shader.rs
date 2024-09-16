@@ -111,6 +111,10 @@ where
                 Some(Event::RedrawRequested(instant))
             }
             core::Event::Window(_) => None,
+            #[cfg(feature = "a11y")]
+            core::Event::A11y(_, _) => None,
+            core::Event::Dnd(_) => None,
+            core::Event::PlatformSpecific(_) => None,
         };
 
         if let Some(custom_shader_event) = custom_shader_event {

@@ -70,6 +70,7 @@ where
                 renderer,
                 mouse_interaction: mouse::Interaction::None,
                 prev_dnd_destination_rectangles_count: 0,
+                frame: false,
             },
         );
 
@@ -159,6 +160,8 @@ where
     pub mouse_interaction: mouse::Interaction,
     pub surface: C::Surface,
     pub renderer: P::Renderer,
+    // requested draw
+    pub frame: bool,
 }
 
 impl<P, C> Window<P, C>

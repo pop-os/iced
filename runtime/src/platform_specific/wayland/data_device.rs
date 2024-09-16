@@ -1,5 +1,5 @@
-use iced_core::MaybeSend;
 use iced_core::{window::Id, Vector};
+use iced_futures::MaybeSend;
 use sctk::reexports::client::protocol::wl_data_device_manager::DndAction;
 use std::{any::Any, fmt, marker::PhantomData};
 

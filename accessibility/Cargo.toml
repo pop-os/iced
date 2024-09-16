@@ -18,7 +18,7 @@ tokio = ["accesskit_unix?/tokio", "accesskit_winit?/tokio"]
 #     "rwh_06",
 # ] }
 accesskit = { path = "../../../../accesskit/common" }
-accesskit_unix = { path = "../../../../accesskit/platforms/unix", optional = true }
+accesskit_unix = { path = "../../../../accesskit/platforms/unix", optional = true, default-features = false }
 accesskit_windows = { path = "../../../../accesskit/platforms/windows", optional = true }
 accesskit_macos = { path = "../../../../accesskit/platforms/macos", optional = true }
 accesskit_winit = { path = "../../../../accesskit/platforms/winit", optional = true, default-features = false, features = [

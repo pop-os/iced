@@ -1,19 +1,24 @@
 // Shows a subsurface with a 1x1 px red buffer, stretch to window size
 
 use iced::{
-    event::wayland::Event as WaylandEvent, wayland::InitialSurface,
-    widget::text, window, Application, Command, Element, Length, Subscription,
-    Theme,
+    event::wayland::Event as WaylandEvent,
+    platform_specific::shell::subsurface_widget::{self, SubsurfaceBuffer},
+    widget::text,
+    window::{self, Id, Settings},
+    Element, Length, Subscription, Task,
 };
-use iced_sctk::subsurface_widget::SubsurfaceBuffer;
 use sctk::reexports::client::{Connection, Proxy};
 
 mod wayland;
 
-fn main() {
-    let mut settings = iced::Settings::default();
-    settings.initial_surface = InitialSurface::XdgWindow(Default::default());
-    SubsurfaceApp::run(settings).unwrap();
+fn main() -> iced::Result {
+    iced::daemon(
+        SubsurfaceApp::title,
+        SubsurfaceApp::update,
+        SubsurfaceApp::view,
+    )
+    .subscription(SubsurfaceApp::subscription)
+    .run_with(SubsurfaceApp::new)
 }
 
 #[derive(Debug, Clone, Default)]
@@ -27,20 +32,20 @@ pub enum Message {
     WaylandEvent(WaylandEvent),
     Wayland(wayland::Event),
     Pressed(&'static str),
+    Id(Id),
 }
 
-impl Application for SubsurfaceApp {
-    type Executor = iced::executor::Default;
-    type Message = Message;
-    type Flags = ();
-    type Theme = Theme;
-
-    fn new(_flags: ()) -> (SubsurfaceApp, Command<Self::Message>) {
+impl SubsurfaceApp {
+    fn new() -> (SubsurfaceApp, Task<Message>) {
         (
             SubsurfaceApp {
                 ..SubsurfaceApp::default()
             },
-            Command::none(),
+            iced::window::open(Settings {
+                ..Default::default()
+            })
+            .1
+            .map(Message::Id),
         )
     }
 
@@ -48,7 +53,7 @@ impl Application for SubsurfaceApp {
         String::from("SubsurfaceApp")
     }
 
-    fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
+    fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::WaylandEvent(evt) => match evt {
                 WaylandEvent::Output(_evt, output) => {
@@ -67,15 +72,16 @@ impl Application for SubsurfaceApp {
                 }
             },
             Message::Pressed(side) => println!("{side} surface pressed"),
+            Message::Id(_) => {}
         }
-        Command::none()
+        Task::none()
     }
 
-    fn view(&self, _id: window::Id) -> Element<Self::Message> {
+    fn view(&self, _id: window::Id) -> Element<Message> {
         if let Some(buffer) = &self.red_buffer {
             iced::widget::row![
                 iced::widget::button(
-                    iced_sctk::subsurface_widget::Subsurface::new(1, 1, buffer)
+                    subsurface_widget::Subsurface::new(1, 1, buffer)
                         .width(Length::Fill)
                         .height(Length::Fill)
                 )
@@ -83,7 +89,7 @@ impl Application for SubsurfaceApp {
                 .height(Length::Fill)
                 .on_press(Message::Pressed("left")),
                 iced::widget::button(
-                    iced_sctk::subsurface_widget::Subsurface::new(1, 1, buffer)
+                    subsurface_widget::Subsurface::new(1, 1, buffer)
                         .width(Length::Fill)
                         .height(Length::Fill)
                 )
@@ -97,8 +103,8 @@ impl Application for SubsurfaceApp {
         }
     }
 
-    fn subscription(&self) -> Subscription<Self::Message> {
-        let mut subscriptions = vec![iced::event::listen_with(|evt, _| {
+    fn subscription(&self) -> Subscription<Message> {
+        let mut subscriptions = vec![iced::event::listen_with(|evt, _, _| {
             if let iced::Event::PlatformSpecific(
                 iced::event::PlatformSpecific::Wayland(evt),
             ) = evt

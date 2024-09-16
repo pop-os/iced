@@ -1,6 +1,9 @@
 use futures_channel::mpsc;
-use iced::futures::{FutureExt, SinkExt};
-use iced_sctk::subsurface_widget::{Shmbuf, SubsurfaceBuffer};
+use iced::{
+    futures::{FutureExt, SinkExt},
+    platform_specific::shell::subsurface_widget::{Shmbuf, SubsurfaceBuffer},
+};
+use iced_runtime::futures::subscription;
 use rustix::{io::Errno, shm::ShmOFlags};
 use sctk::{
     reexports::{
@@ -48,7 +51,7 @@ impl ShmHandler for AppData {
 
 pub fn subscription(connection: &Connection) -> iced::Subscription<Event> {
     let connection = connection.clone();
-    iced::subscription::run_with_id(
+    subscription::Subscription::run_with_id(
         "wayland-sub",
         async { start(connection).await }.flatten_stream(),
     )
@@ -66,7 +69,7 @@ async fn start(conn: Connection) -> mpsc::Receiver<Event> {
     };
 
     let fd = create_memfile().unwrap();
-    rustix::io::write(&fd, &[0, 0, 255, 255]).unwrap();
+    rustix::io::write(&fd, &[0, 255, 0, 255]).unwrap();
 
     let shmbuf = Shmbuf {
         fd,

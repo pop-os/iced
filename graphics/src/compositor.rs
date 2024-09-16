@@ -145,6 +145,9 @@ pub enum SurfaceError {
     /// Present Error
     #[error("Present Error")]
     Present(String),
+    /// Present Error
+    #[error("No damage to present")]
+    NoDamage,
 }
 
 /// Contains information about the graphics (e.g. graphics adapter, graphics backend).
