@@ -10,7 +10,15 @@ iced.workspace = true
 iced_core.workspace = true
 # iced.features = ["async-std", "debug", "winit", "a11y", "tiny-skia"]
 # TODO(POP): Fix a11y not working with new winit
-iced.features = ["tokio", "debug", "winit", "tiny-skia", "wgpu"]
+iced.features = [
+    "tokio",
+    "debug",
+    "winit",
+    "tiny-skia",
+    "wgpu",
+    "svg",
+    "web-colors",
+]
 
 once_cell.workspace = true
 serde = { version = "1.0", features = ["derive"] }

@@ -153,6 +153,7 @@ impl Pipeline {
                             8 => Uint32,
                         ),
                     }],
+                    compilation_options: Default::default(),
                 },
                 fragment: Some(wgpu::FragmentState {
                     module: &shader,
@@ -173,6 +174,7 @@ impl Pipeline {
                         }),
                         write_mask: wgpu::ColorWrites::ALL,
                     })],
+                    compilation_options: Default::default(),
                 }),
                 primitive: wgpu::PrimitiveState {
                     topology: wgpu::PrimitiveTopology::TriangleList,
@@ -246,22 +248,22 @@ impl Pipeline {
                 Image::Raster { .. } => {}
 
                 #[cfg(feature = "svg")]
-                Image::Vector(svg, bounds) => {
+                Image::Vector { handle, bounds } => {
                     let size = [bounds.width, bounds.height];
 
                     if let Some(atlas_entry) = cache.upload_vector(
                         device,
                         encoder,
-                        &svg.handle,
-                        svg.color,
+                        &handle.handle,
+                        handle.color,
                         size,
                         scale,
                     ) {
                         add_instances(
                             [bounds.x, bounds.y],
                             size,
-                            f32::from(svg.rotation),
-                            svg.opacity,
+                            f32::from(handle.rotation),
+                            handle.opacity,
                             true,
                             atlas_entry,
                             nearest_instances,
