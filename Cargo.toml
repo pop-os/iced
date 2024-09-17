@@ -21,7 +21,7 @@ all-features = true
 maintenance = { status = "actively-developed" }
 
 [features]
-default = ["tiny-skia", "wayland"]
+default = ["tiny-skia"]
 # Enable the `wgpu` GPU-accelerated renderer backend
 wgpu = ["iced_renderer/wgpu", "iced_widget/wgpu"]
 # Enable the `tiny-skia` software renderer backend
@@ -254,6 +254,3 @@ useless_conversion = "deny"
 
 [workspace.lints.rustdoc]
 broken_intra_doc_links = "forbid"
-
-[patch.crates-io]
-winit = { git = "https://github.com/rust-windowing/winit.git", rev = "241b7a80bba96c91fa3901729cd5dec66abb9be4" }
