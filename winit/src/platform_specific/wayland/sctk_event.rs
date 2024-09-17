@@ -10,13 +10,16 @@ use crate::{
         },
         SurfaceIdWrapper,
     },
-    program::Program,
+    program::{Control, Program},
     Clipboard,
 };
 
-use iced_futures::core::event::{
-    wayland::{LayerEvent, PopupEvent, SessionLockEvent},
-    PlatformSpecific,
+use iced_futures::{
+    core::event::{
+        wayland::{LayerEvent, PopupEvent, SessionLockEvent},
+        PlatformSpecific,
+    },
+    futures::channel::mpsc,
 };
 use iced_graphics::Compositor;
 use iced_runtime::{
@@ -79,20 +82,6 @@ pub enum IcedSctkEvent {
 
     /// An event produced by sctk
     SctkEvent(SctkEvent),
-
-    #[cfg(feature = "a11y")]
-    A11ySurfaceCreated(
-        SurfaceIdWrapper,
-        crate::platform_specific::wayland::event_loop::adapter::IcedSctkAdapter,
-    ),
-
-    /// emitted after first accessibility tree is requested
-    #[cfg(feature = "a11y")]
-    A11yEnabled(bool),
-
-    /// accessibility event
-    #[cfg(feature = "a11y")]
-    A11yEvent(ActionRequestEvent),
 
     /// Emitted when all of the event loop's input events have been processed and redraw processing
     /// is about to begin.
@@ -300,7 +289,7 @@ pub enum PopupEventVariant {
 #[derive(Debug, Clone)]
 pub enum LayerSurfaceEventVariant {
     /// sent after creation of the layer surface
-    Created(WlSurface, SurfaceId, Arc<Mutex<Common>>, WlDisplay),
+    Created(WlSurface, SurfaceId, Arc<Mutex<Common>>, WlDisplay, String),
     /// <https://wayland.app/protocols/wlr-layer-shell-unstable-v1#zwlr_layer_surface_v1:event:closed>
     Done,
     /// <https://wayland.app/protocols/wlr-layer-shell-unstable-v1#zwlr_layer_surface_v1:event:configure>
@@ -379,11 +368,16 @@ impl SctkEvent {
         surface_ids: &mut HashMap<ObjectId, SurfaceIdWrapper>,
         subsurface_ids: &mut HashMap<ObjectId, (i32, i32, window::Id)>,
         sctk_tx: &channel::Sender<super::Action>,
+        control_sender: &mpsc::UnboundedSender<Control>,
         debug: &mut Debug,
         user_interfaces: &mut UserInterfaces<'a, P>,
         events: &mut Vec<(Option<window::Id>, iced_runtime::core::Event)>,
         clipboard: &mut Clipboard,
         subsurface_state: &mut Option<SubsurfaceState>,
+        #[cfg(feature = "a11y")] adapters: &mut HashMap<
+            window::Id,
+            (u64, iced_accessibility::accesskit_winit::Adapter),
+        >,
     ) where
         P: Program,
         C: Compositor<Renderer = P::Renderer>,
@@ -766,6 +760,7 @@ impl SctkEvent {
                     surface_id,
                     common,
                     display,
+                    title,
                 ) => {
                     let object_id = surface.id();
                     let wrapper =
@@ -778,6 +773,44 @@ impl SctkEvent {
                         surface,
                         display,
                     );
+
+                    #[cfg(feature = "a11y")]
+                    {
+                        use crate::a11y::*;
+                        use iced_accessibility::accesskit::{
+                            ActivationHandler, NodeBuilder, NodeId, Role, Tree,
+                            TreeUpdate,
+                        };
+                        use iced_accessibility::accesskit_winit::Adapter;
+
+                        let node_id = iced_runtime::core::id::window_node_id();
+
+                        let activation_handler = WinitActivationHandler {
+                            proxy: control_sender.clone(),
+                            title: String::new(),
+                        };
+
+                        let action_handler = WinitActionHandler {
+                            id: surface_id,
+                            proxy: control_sender.clone(),
+                        };
+
+                        let deactivation_handler = WinitDeactivationHandler {
+                            proxy: control_sender.clone(),
+                        };
+                        _ = adapters.insert(
+                            surface_id,
+                            (
+                                node_id,
+                                Adapter::with_direct_handlers(
+                                    sctk_winit.as_ref(),
+                                    activation_handler,
+                                    action_handler,
+                                    deactivation_handler,
+                                ),
+                            ),
+                        );
+                    }
 
                     let window = window_manager.insert(
                         surface_id, sctk_winit, program, compositor,
@@ -847,6 +880,45 @@ impl SctkEvent {
                             surface,
                             display,
                         );
+                        #[cfg(feature = "a11y")]
+                        {
+                            use crate::a11y::*;
+                            use iced_accessibility::accesskit::{
+                                ActivationHandler, NodeBuilder, NodeId, Role,
+                                Tree, TreeUpdate,
+                            };
+                            use iced_accessibility::accesskit_winit::Adapter;
+
+                            let node_id =
+                                iced_runtime::core::id::window_node_id();
+
+                            let activation_handler = WinitActivationHandler {
+                                proxy: control_sender.clone(),
+                                title: String::new(),
+                            };
+
+                            let action_handler = WinitActionHandler {
+                                id: surface_id,
+                                proxy: control_sender.clone(),
+                            };
+
+                            let deactivation_handler =
+                                WinitDeactivationHandler {
+                                    proxy: control_sender.clone(),
+                                };
+                            _ = adapters.insert(
+                                surface_id,
+                                (
+                                    node_id,
+                                    Adapter::with_direct_handlers(
+                                        sctk_winit.as_ref(),
+                                        activation_handler,
+                                        action_handler,
+                                        deactivation_handler,
+                                    ),
+                                ),
+                            );
+                        }
 
                         _ = window_manager.insert(
                             surface_id, sctk_winit, program, compositor,
@@ -910,11 +982,11 @@ impl SctkEvent {
             )),
             SctkEvent::SessionLockSurfaceCreated {
                 surface,
-                native_id,
+                native_id: surface_id,
                 common,
                 display,
             } => {
-                let wrapper = SurfaceIdWrapper::SessionLock(native_id.clone());
+                let wrapper = SurfaceIdWrapper::SessionLock(surface_id.clone());
                 _ = surface_ids.insert(surface.id().clone(), wrapper.clone());
                 let sctk_winit = SctkWinitWindow::new(
                     sctk_tx.clone(),
@@ -924,8 +996,47 @@ impl SctkEvent {
                     display,
                 );
 
+                #[cfg(feature = "a11y")]
+                {
+                    use crate::a11y::*;
+                    use iced_accessibility::accesskit::{
+                        ActivationHandler, NodeBuilder, NodeId, Role, Tree,
+                        TreeUpdate,
+                    };
+                    use iced_accessibility::accesskit_winit::Adapter;
+
+                    let node_id = iced_runtime::core::id::window_node_id();
+
+                    let activation_handler = WinitActivationHandler {
+                        proxy: control_sender.clone(),
+                        // TODO lock screen title
+                        title: String::new(),
+                    };
+
+                    let action_handler = WinitActionHandler {
+                        id: surface_id,
+                        proxy: control_sender.clone(),
+                    };
+
+                    let deactivation_handler = WinitDeactivationHandler {
+                        proxy: control_sender.clone(),
+                    };
+                    _ = adapters.insert(
+                        surface_id,
+                        (
+                            node_id,
+                            Adapter::with_direct_handlers(
+                                sctk_winit.as_ref(),
+                                activation_handler,
+                                action_handler,
+                                deactivation_handler,
+                            ),
+                        ),
+                    );
+                }
+
                 _ = window_manager.insert(
-                    native_id, sctk_winit, program, compositor,
+                    surface_id, sctk_winit, program, compositor,
                     false, // TODO do we want to get this value here?
                     0,
                 );

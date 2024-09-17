@@ -1,5 +1,3 @@
-#[cfg(feature = "a11y")]
-pub mod adapter;
 pub mod control_flow;
 pub mod proxy;
 pub mod state;
@@ -221,8 +219,6 @@ impl SctkEventLoop {
                     id_map: Default::default(),
                     to_commit: HashMap::new(),
                     ready: true,
-                    #[cfg(feature = "a11y")]
-                    a11y_events: Arc::new(Mutex::new(Vec::new())),
                 },
                 _features: Default::default(),
                 event_loop_awakener: ping,
@@ -294,22 +290,7 @@ impl SctkEventLoop {
                 if state.state.sctk_events.is_empty() {
                     continue;
                 }
-                #[cfg(feature = "a11y")]
-                for e in state.state.a11y_events.lock().unwrap().drain(..) {
-                    use adapter::A11yWrapper;
-                    match e {
-                        A11yWrapper::Enabled(enabled) => {
-                            _ = state.state.events_sender.unbounded_send(
-                                Control::AccessibilityEnabled(enabled),
-                            );
-                        }
-                        A11yWrapper::Event(e) => {
-                            // _ = state.state.events_sender.unbounded_send(
-                            //     Control::Accessibility(e.request),
-                            // )
-                        }
-                    }
-                }
+
                 for e in state.state.sctk_events.drain(..) {
                     if let SctkEvent::Winit(id, e) = e {
                         _ = state

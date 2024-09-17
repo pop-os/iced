@@ -103,6 +103,10 @@ impl WaylandSpecific {
         debug: &mut Debug,
         user_interfaces: &mut UserInterfaces<'a, P>,
         clipboard: &mut crate::Clipboard,
+        #[cfg(feature = "a11y")] adapters: &mut HashMap<
+            window::Id,
+            (u64, iced_accessibility::accesskit_winit::Adapter),
+        >,
     ) where
         P: Program,
         C: Compositor<Renderer = P::Renderer>,
@@ -126,6 +130,11 @@ impl WaylandSpecific {
                     log::error!("Missing calloop sender");
                     return Default::default();
                 };
+                let Some(event_sender) = winit_event_sender.as_ref() else {
+                    log::error!("Missing control sender");
+                    return Default::default();
+                };
+
                 sctk_event.process(
                     modifiers,
                     program,
@@ -134,11 +143,14 @@ impl WaylandSpecific {
                     surface_ids,
                     subsurface_ids,
                     sender,
+                    event_sender,
                     debug,
                     user_interfaces,
                     events,
                     clipboard,
                     subsurface_state,
+                    #[cfg(feature = "a11y")]
+                    adapters,
                 );
             }
         };

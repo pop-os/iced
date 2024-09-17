@@ -4,6 +4,7 @@
 use iced_graphics::Compositor;
 use iced_runtime::{core::window, platform_specific, Debug};
 use sctk::reexports::client::Connection;
+use std::collections::HashMap;
 use wayland::sctk_event::UserInterfaces;
 
 #[cfg(all(feature = "wayland", target_os = "linux"))]
@@ -146,6 +147,10 @@ pub(crate) fn handle_event<'a, P, C>(
     debug: &mut Debug,
     user_interfaces: &mut UserInterfaces<'a, P>,
     clipboard: &mut crate::Clipboard,
+    #[cfg(feature = "a11y")] adapters: &mut HashMap<
+        window::Id,
+        (u64, iced_accessibility::accesskit_winit::Adapter),
+    >,
 ) where
     P: Program,
     C: Compositor<Renderer = P::Renderer>,
@@ -162,6 +167,8 @@ pub(crate) fn handle_event<'a, P, C>(
                 debug,
                 user_interfaces,
                 clipboard,
+                #[cfg(feature = "a11y")]
+                adapters,
             );
         }
     }

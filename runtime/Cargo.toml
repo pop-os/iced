@@ -17,7 +17,7 @@ workspace = true
 debug = []
 multi-window = []
 a11y = ["iced_accessibility", "iced_core/a11y"]
-wayland = ["iced_accessibility?/accesskit_unix", "iced_core/wayland", "sctk"]
+wayland = ["iced_core/wayland", "sctk"]
 
 [dependencies]
 bytes.workspace = true

@@ -55,4 +55,9 @@ wayland-client = { version = "0.31.2" }
 wayland-sys = { version = "0.31.1", features = ["dlopen"] }
 as-raw-xcb-connection = "1.0.1"
 tiny-xlib = "0.2.3"
-x11rb = { version = "0.13.1", features = ["allow-unsafe-code", "dl-libxcb", "dri3", "randr"] }
+x11rb = { version = "0.13.1", features = [
+    "allow-unsafe-code",
+    "dl-libxcb",
+    "dri3",
+    "randr",
+] }

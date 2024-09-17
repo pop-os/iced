@@ -17,7 +17,7 @@ workspace = true
 auto-detect-theme = ["dep:dark-light"]
 advanced = []
 a11y = ["iced_accessibility"]
-wayland = ["iced_accessibility?/accesskit_unix", "sctk"]
+wayland = ["sctk"]
 
 [dependencies]
 bitflags.workspace = true

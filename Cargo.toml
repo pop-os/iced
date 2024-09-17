@@ -74,12 +74,7 @@ a11y = [
 # Enables the winit shell. Conflicts with `wayland` and `glutin`.
 winit = ["iced_winit", "iced_accessibility?/accesskit_winit"]
 # Enables the sctk shell. 
-wayland = [
-    "iced_widget/wayland",
-    "iced_accessibility?/accesskit_unix",
-    "iced_core/wayland",
-    "iced_winit/wayland",
-]
+wayland = ["iced_widget/wayland", "iced_core/wayland", "iced_winit/wayland"]
 
 [dependencies]
 iced_core.workspace = true

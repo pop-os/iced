@@ -85,8 +85,6 @@ use wayland_protocols::wp::{
     viewporter::client::wp_viewport::WpViewport,
 };
 
-#[cfg(feature= "a11y")]
-use crate::event_loop::adapter;
 
 #[derive(Debug)]
 pub(crate) struct SctkSeat {
@@ -342,9 +340,6 @@ pub struct SctkState {
     pub(crate) to_commit: HashMap<core::window::Id, WlSurface>,
 
     pub(crate) ready: bool,
-
-    #[cfg(feature = "a11y")]
-    pub(crate) a11y_events: Arc<Mutex<Vec<adapter::A11yWrapper>>>,
 }
 
 /// An error that occurred while running an application.
@@ -796,22 +791,16 @@ impl SctkState {
                         platform_specific::wayland::layer_surface::Action::LayerSurface {
                             builder,
                         } => {
+                            let title = builder.namespace.clone();
                             if let Ok((id, wl_surface, common)) = self.get_layer_surface(builder) {
                                 let object_id = wl_surface.id();
                                 // TODO Ashley: all surfaces should probably have an optional title for a11y if nothing else
                                 send_event(&self.events_sender,
                                     SctkEvent::LayerSurfaceEvent {
-                                        variant: LayerSurfaceEventVariant::Created(wl_surface.clone(), id, common, self.connection.display()),
+                                        variant: LayerSurfaceEventVariant::Created(wl_surface.clone(), id, common, self.connection.display(), title),
                                         id: wl_surface.clone(),
                                     }
                                 );
-                                #[cfg(feature = "a11y")]
-                                {
-                                    let adapter = self.init_a11y_adapter(&wl_surface, None, None, iced_accessibility::accesskit::Role::Window);
-
-                                    self.events_sender.unbounded_send(
-                                                Control::A11ySurfaceCreated(super::SurfaceIdWrapper::LayerSurface(id), adapter),);
-                                }
                             }
                         }
                         platform_specific::wayland::layer_surface::Action::Size {
@@ -980,18 +969,6 @@ impl SctkState {
                             SctkEvent::PopupEvent {
                                 variant: crate::platform_specific::wayland::sctk_event::PopupEventVariant::Created(wl_surface.clone(), id, common, self.connection.display()),
                                 toplevel_id, parent_id, id: wl_surface.clone() });
-
-                        #[cfg(feature = "a11y")]
-                        {
-                        let adapter = self.init_a11y_adapter(&wl_surface, None, None, iced_accessibility::accesskit::Role::Window);
-
-                        // sticky_exit_callback(
-                        //     IcedSctkEvent::A11ySurfaceCreated(SurfaceIdWrapper::LayerSurface(id), adapter),
-                        //     &self,
-                        //     &mut control_flow,
-                        //     &mut callback,
-                        // );
-                    }
                     }
                 },
                 // XXX popup destruction must be done carefully
@@ -1166,82 +1143,6 @@ impl SctkState {
             }
         };
         Ok(())
-    }
-
-    // TODO Ashley provide users a reasonable method of setting the role for the surface
-    #[cfg(feature = "a11y")]
-    pub fn init_a11y_adapter(
-        &mut self,
-        surface: &WlSurface,
-        app_id: Option<String>,
-        surface_title: Option<String>,
-        _role: iced_accessibility::accesskit::Role,
-    ) -> adapter::IcedSctkAdapter {
-        use iced_accessibility::{
-            accesskit::{
-                DeactivationHandler, NodeBuilder, NodeId, Role, Tree,
-                TreeUpdate,
-            },
-            accesskit_unix::Adapter,
-            window_node_id,
-        };
-        let node_id = window_node_id();
-        let event_list = self.a11y_events.clone();
-        use iced_accessibility::accesskit::ActivationHandler;
-        pub struct IcedSctkActivationHandler {
-            event_list: Arc<Mutex<Vec<adapter::A11yWrapper>>>,
-            initial_title: Option<String>,
-        }
-
-        impl ActivationHandler for IcedSctkActivationHandler {
-            fn request_initial_tree(
-                &mut self,
-            ) -> Option<iced_accessibility::accesskit::TreeUpdate> {
-                let mut event_list = self.event_list.lock().unwrap();
-                event_list.push(adapter::A11yWrapper::Enabled(true));
-                let mut node = NodeBuilder::new(Role::Window);
-                if let Some(name) = self.initial_title.as_deref() {
-                    node.set_name(name);
-                }
-                let node = node.build();
-                let root = NodeId(window_node_id());
-                Some(TreeUpdate {
-                    nodes: vec![(root, node)],
-                    tree: Some(Tree::new(root)),
-                    focus: root,
-                })
-            }
-        }
-
-        let activation_handler = IcedSctkActivationHandler {
-            event_list: self.a11y_events.clone(),
-            initial_title: surface_title,
-        };
-
-        pub struct IcedSctkDactivationHandler {
-            event_list: Arc<Mutex<Vec<adapter::A11yWrapper>>>,
-        };
-
-        impl DeactivationHandler for IcedSctkDactivationHandler {
-            fn deactivate_accessibility(&mut self) {
-                let mut event_list = self.event_list.lock().unwrap();
-                event_list.push(adapter::A11yWrapper::Enabled(false));
-            }
-        }
-        let deactivation_handler = IcedSctkDactivationHandler {
-            event_list: self.a11y_events.clone(),
-        };
-        adapter::IcedSctkAdapter {
-            adapter: Adapter::new(
-                activation_handler,
-                adapter::IcedSctkActionHandler {
-                    wl_surface: surface.clone(),
-                    event_list: self.a11y_events.clone(),
-                },
-                deactivation_handler,
-            ),
-            id: node_id,
-        }
     }
 }
 

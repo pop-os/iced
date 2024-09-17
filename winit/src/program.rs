@@ -600,12 +600,6 @@ where
                                     .start_send(Event::StartDnd)
                                     .expect("Send event");
                             }
-                            #[cfg(feature = "a11y")]
-                            Control::A11ySurfaceCreated(id, a) => {
-                                self.sender.start_send(
-                                    Event::A11ySurfaceCreated(id, a),
-                                );
-                            }
                         },
                         _ => {
                             break;
@@ -661,11 +655,6 @@ pub(crate) enum Event<Message: 'static> {
     NewEvents(winit::event::StartCause),
     PlatformSpecific(crate::platform_specific::Event),
     StartDnd,
-    #[cfg(feature = "a11y")]
-    A11ySurfaceCreated(
-        super::SurfaceIdWrapper,
-        crate::event_loop::adapter::IcedSctkAdapter,
-    ),
 }
 
 pub(crate) enum Control {
@@ -683,11 +672,6 @@ pub(crate) enum Control {
     Accessibility(window::Id, iced_accessibility::accesskit::ActionRequest),
     #[cfg(feature = "a11y")]
     AccessibilityEnabled(bool),
-    #[cfg(feature = "a11y")]
-    A11ySurfaceCreated(
-        super::SurfaceIdWrapper,
-        crate::event_loop::adapter::IcedSctkAdapter,
-    ),
     PlatformSpecific(crate::platform_specific::Event),
     AboutToWait,
     Winit(winit::window::WindowId, winit::event::WindowEvent),
@@ -777,11 +761,6 @@ async fn run_instance<'a, P, C>(
     } else {
         (Default::default(), false)
     };
-    #[cfg(feature = "a11y")]
-    let mut sctk_adapters: std::collections::HashMap<
-        core::window::Id,
-        crate::event_loop::adapter::IcedSctkAdapter,
-    > = std::collections::HashMap::new();
 
     let mut ui_caches = FxHashMap::default();
     let mut user_interfaces = ManuallyDrop::new(FxHashMap::default());
@@ -1008,6 +987,44 @@ async fn run_instance<'a, P, C>(
                     resize_border,
                 );
 
+                #[cfg(feature = "a11y")]
+                {
+                    use crate::a11y::*;
+                    use iced_accessibility::accesskit::{
+                        ActivationHandler, NodeBuilder, NodeId, Role, Tree,
+                        TreeUpdate,
+                    };
+                    use iced_accessibility::accesskit_winit::Adapter;
+
+                    let node_id = core::id::window_node_id();
+
+                    let activation_handler = WinitActivationHandler {
+                        proxy: control_sender.clone(),
+                        title: window.state.title.clone(),
+                    };
+
+                    let action_handler = WinitActionHandler {
+                        id,
+                        proxy: control_sender.clone(),
+                    };
+
+                    let deactivation_handler = WinitDeactivationHandler {
+                        proxy: control_sender.clone(),
+                    };
+                    _ = adapters.insert(
+                        id,
+                        (
+                            node_id,
+                            Adapter::with_direct_handlers(
+                                window.raw.as_ref(),
+                                activation_handler,
+                                action_handler,
+                                deactivation_handler,
+                            ),
+                        ),
+                    );
+                }
+
                 let logical_size = window.state.logical_size();
 
                 let _ = user_interfaces.insert(
@@ -1185,89 +1202,7 @@ async fn run_instance<'a, P, C>(
                                     },
                                     A11yId, A11yNode, A11yTree,
                                 };
-                                if let Some(Some(adapter)) = a11y_enabled
-                                    .then(|| sctk_adapters.get_mut(&id))
-                                {
-                                    // TODO send a11y tree
-                                    let child_tree =
-                                        ui.a11y_nodes(window.state.cursor());
-                                    let mut root =
-                                        NodeBuilder::new(Role::Window);
-                                    root.set_name(
-                                        window.state.title.to_string(),
-                                    );
-                                    let window_tree =
-                                        A11yTree::node_with_child_tree(
-                                            A11yNode::new(root, adapter.id),
-                                            child_tree,
-                                        );
-                                    let tree = Tree::new(NodeId(adapter.id));
-
-                                    let focus = Arc::new(Mutex::new(None));
-                                    let focus_clone = focus.clone();
-                                    let operation: Box<dyn Operation<()>> =
-                                    Box::new(operation::map(
-                                        Box::new(
-                                            operation::focusable::find_focused(
-                                            ),
-                                        ),
-                                        move |id| {
-                                            let mut guard = focus.lock().unwrap();
-                                            _ = guard.replace(id);
-                                        },
-                                    ));
-                                    let mut current_operation = Some(operation);
-
-                                    while let Some(mut operation) =
-                                        current_operation.take()
-                                    {
-                                        ui.operate(
-                                            &window.renderer,
-                                            operation.as_mut(),
-                                        );
-
-                                        match operation.finish() {
-                                            operation::Outcome::None => {}
-                                            operation::Outcome::Some(()) => {
-                                                break;
-                                            }
-                                            operation::Outcome::Chain(next) => {
-                                                current_operation = Some(next);
-                                            }
-                                        }
-                                    }
-                                    let mut guard = focus_clone.lock().unwrap();
-                                    let focus = guard
-                                        .take()
-                                        .map(|id| A11yId::Widget(id));
-                                    tracing::debug!(
-                                        "focus: {:?}\ntree root: {:?}\n children: {:?}",
-                                        &focus,
-                                        window_tree
-                                            .root()
-                                            .iter()
-                                            .map(|n| (n.node().role(), n.id()))
-                                            .collect::<Vec<_>>(),
-                                        window_tree
-                                            .children()
-                                            .iter()
-                                            .map(|n| (n.node().role(), n.id()))
-                                            .collect::<Vec<_>>()
-                                    );
-                                    let focus = focus
-                                        .filter(|f_id| {
-                                            window_tree.contains(f_id)
-                                        })
-                                        .map(|id| id.into())
-                                        .unwrap_or_else(|| tree.root);
-                                    adapter.adapter.update_if_active(|| {
-                                        TreeUpdate {
-                                            nodes: window_tree.into(),
-                                            tree: Some(tree),
-                                            focus,
-                                        }
-                                    });
-                                } else if let Some(Some((a11y_id, adapter))) =
+                                if let Some(Some((a11y_id, adapter))) =
                                     a11y_enabled.then(|| adapters.get_mut(&id))
                                 {
                                     // TODO cleanup duplication
@@ -1780,11 +1715,9 @@ async fn run_instance<'a, P, C>(
                     &mut debug,
                     &mut user_interfaces,
                     &mut clipboard,
+                    #[cfg(feature = "a11y")]
+                    &mut adapters,
                 );
-            }
-            #[cfg(feature = "a11y")]
-            Event::A11ySurfaceCreated(id, adapter) => {
-                _ = sctk_adapters.insert(id.inner(), adapter);
             }
             _ => {
                 // log ignored events?
