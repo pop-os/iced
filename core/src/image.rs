@@ -79,7 +79,7 @@ impl From<&Handle> for Image {
 }
 
 /// A handle of some image data.
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub enum Handle {
     /// A file handle. The image data will be read
     /// from the file path.
