@@ -248,7 +248,12 @@ impl TryFrom<window::Action> for Action {
             | window::Action::ShowSystemMenu(_)
             | window::Action::RunWithHandle(_, _) // TODO(POP): Is this supported? Not sure.
             | window::Action::GetPosition(_, _) // TODO(POP): Is this supported? Not sure.
-            | window::Action::GetMinimized(_, _) => Err(Error::NotSupported),
+            | window::Action::GetMinimized(_, _) 
+            | window::Action::GetOldest(_)
+            | window::Action::GetLatest(_)
+            | window::Action::GetScaleFactor(_,_) 
+            | window::Action::EnableMousePassthrough(_) 
+            | window::Action::DisableMousePassthrough(_) => Err(Error::NotSupported),
             
             window::Action::GetOldest(_) => todo!(),
             window::Action::GetLatest(_) => todo!(),

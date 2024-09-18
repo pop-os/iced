@@ -34,7 +34,6 @@ where
     shaping: Shaping,
     wrapping: Wrapping,
     class: Theme::Class<'a>,
-    wrap: Wrap,
 }
 
 impl<'a, Theme, Renderer> Text<'a, Theme, Renderer>
@@ -57,7 +56,6 @@ where
             shaping: Shaping::default(),
             wrapping: Wrapping::default(),
             class: Theme::default(),
-            wrap: Default::default(),
         }
     }
 
@@ -162,12 +160,6 @@ where
     #[must_use]
     pub fn class(mut self, class: impl Into<Theme::Class<'a>>) -> Self {
         self.class = class.into();
-        self
-    }
-
-    /// Sets the [`Wrap`] mode of the [`Text`].
-    pub fn wrap(mut self, wrap: Wrap) -> Self {
-        self.wrap = wrap;
         self
     }
 }

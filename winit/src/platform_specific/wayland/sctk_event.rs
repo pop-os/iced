@@ -69,7 +69,10 @@ use wayland_protocols::wp::viewporter::client::wp_viewport::WpViewport;
 use winit::{event::WindowEvent, window::WindowId};
 use xkeysym::Keysym;
 
-use super::{event_loop::state::Common, winit_window::SctkWinitWindow};
+use super::{
+    event_loop::state::Common, keymap::raw_keycode_to_physicalkey,
+    winit_window::SctkWinitWindow,
+};
 
 pub enum IcedSctkEvent {
     /// Emitted when new events arrive from the OS to be processed.
@@ -621,31 +624,45 @@ impl SctkEvent {
                 }
                 KeyboardEventVariant::Press(ke) => {
                     let (key, location) = keysym_to_vkey_location(ke.keysym);
+                    let physical_key = raw_keycode_to_physicalkey(ke.raw_code);
+                    let physical_key =
+                        crate::conversion::physical_key(physical_key);
 
                     events.push((
                         surface_ids.get(&surface.id()).map(|id| id.inner()),
                         iced_runtime::core::Event::Keyboard(
                             keyboard::Event::KeyPressed {
-                                key: key,
+                                key: key.clone(),
                                 location: location,
                                 text: ke.utf8.map(|s| s.into()),
                                 modifiers: modifiers_to_native(*modifiers),
+                                physical_key,
+                                modified_key: key, // TODO calculate without Ctrl?
                             },
                         ),
                     ))
                 }
                 KeyboardEventVariant::Repeat(KeyEvent {
-                    keysym, utf8, ..
+                    keysym,
+                    utf8,
+                    raw_code,
+                    ..
                 }) => {
                     let (key, location) = keysym_to_vkey_location(keysym);
+                    let physical_key = raw_keycode_to_physicalkey(raw_code);
+                    let physical_key =
+                        crate::conversion::physical_key(physical_key);
+
                     events.push((
                         surface_ids.get(&surface.id()).map(|id| id.inner()),
                         iced_runtime::core::Event::Keyboard(
                             keyboard::Event::KeyPressed {
-                                key: key,
+                                key: key.clone(),
                                 location: location,
                                 text: utf8.map(|s| s.into()),
                                 modifiers: modifiers_to_native(*modifiers),
+                                physical_key,
+                                modified_key: key, // TODO calculate without Ctrl?
                             },
                         ),
                     ))

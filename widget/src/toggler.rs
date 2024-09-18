@@ -81,13 +81,10 @@ where
     /// It expects:
     ///   * a boolean describing whether the [`Toggler`] is checked or not
     ///   * An optional label for the [`Toggler`]
-    ///   * a function that will be called when the [`Toggler`] is toggled. It
-    ///     will receive the new state of the [`Toggler`] and must produce a
-    ///     `Message`.
     pub fn new(is_toggled: bool) -> Self {
         Toggler {
             id: Id::unique(),
-            label_id: label.as_ref().map(|_| Id::unique()),
+            label_id: None,
             #[cfg(feature = "a11y")]
             name: None,
             #[cfg(feature = "a11y")]
@@ -113,6 +110,7 @@ where
     /// Sets the label of the [`Toggler`].
     pub fn label(mut self, label: impl text::IntoFragment<'a>) -> Self {
         self.label = Some(label.into_fragment());
+        self.label_id = Some(Id::unique());
         self
     }
 
@@ -246,7 +244,10 @@ where
 
     #[cfg(feature = "a11y")]
     /// Sets the label of the [`Button`] using another widget.
-    pub fn label(mut self, label: &dyn iced_accessibility::Labels) -> Self {
+    pub fn labeled_by_widget(
+        mut self,
+        label: &dyn iced_accessibility::Labels,
+    ) -> Self {
         self.labeled_by_widget =
             Some(label.label().into_iter().map(|l| l.into()).collect());
         self

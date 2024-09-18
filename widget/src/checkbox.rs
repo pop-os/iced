@@ -107,7 +107,7 @@ where
                 size: None,
                 line_height: text::LineHeight::default(),
                 shaping: text::Shaping::Advanced,
-                wrap: text::Wrap::default(),
+                wrap: text::Wrapping::default(),
             },
             class: Theme::default(),
         }
@@ -539,7 +539,7 @@ pub struct Icon<Font> {
     /// The shaping strategy of the icon.
     pub shaping: text::Shaping,
     /// The wrap mode of the icon.
-    pub wrap: text::Wrap,
+    pub wrap: text::Wrapping,
 }
 
 /// The possible status of a [`Checkbox`].

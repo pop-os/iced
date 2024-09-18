@@ -7,7 +7,7 @@ publish = false
 
 [dependencies]
 iced.workspace = true
-iced.features = ["highlighter", "tokio", "debug", "winit"]
+iced.features = ["highlighter", "tokio", "debug", "winit", "tiny-skia"]
 
 tokio.workspace = true
 tokio.features = ["fs"]

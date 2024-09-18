@@ -1,7 +1,6 @@
 //! A container for capturing mouse events.
 
 use iced_renderer::core::mouse::Click;
-use iced_renderer::core::Point;
 
 use crate::core::event::{self, Event};
 use crate::core::layout;
@@ -363,12 +362,15 @@ fn update<Message: Clone, Theme, Renderer>(
     shell: &mut Shell<'_, Message>,
 ) -> event::Status {
     let state: &mut State = tree.state.downcast_mut();
+    let cursor_position = cursor.position();
+
     if let Event::Mouse(mouse::Event::CursorMoved { .. })
     | Event::Touch(touch::Event::FingerMoved { .. }) = event
     {
         let was_hovered = state.is_hovered;
+        let bounds = layout.bounds();
 
-        state.is_hovered = cursor.is_over(layout.bounds());
+        state.is_hovered = cursor.is_over(bounds);
         state.cursor_position = cursor_position;
         state.bounds = bounds;
 
@@ -418,8 +420,11 @@ fn update<Message: Clone, Theme, Renderer>(
             event
         {
             if let Some(cursor_position) = cursor.position() {
-                let click =
-                    mouse::Click::new(cursor_position, state.last_click);
+                let click = mouse::Click::new(
+                    cursor_position,
+                    mouse::Button::Left,
+                    state.last_click,
+                );
                 state.last_click = Some(click);
                 if let mouse::click::Kind::Double = click.kind() {
                     shell.publish(message.clone());

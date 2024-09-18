@@ -80,7 +80,7 @@ impl core::text::Paragraph for Paragraph {
             Some(text.bounds.height),
         );
 
-        buffer.set_wrap(font_system.raw(), text::to_wrap(text.wrap));
+        buffer.set_wrap(font_system.raw(), text::to_wrap(text.wrapping));
 
         buffer.set_text(
             font_system.raw(),
@@ -173,7 +173,6 @@ impl core::text::Paragraph for Paragraph {
             bounds: text.bounds,
             min_bounds,
             version: font_system.version(),
-            wrap: text.wrap,
         }))
     }
 

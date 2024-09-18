@@ -50,7 +50,7 @@ pub struct PickList<
     text_size: Option<Pixels>,
     text_line_height: text::LineHeight,
     text_shaping: text::Shaping,
-    text_wrap: text::Wrap,
+    text_wrap: text::Wrapping,
     font: Option<Renderer::Font>,
     handle: Handle<Renderer::Font>,
     class: <Theme as Catalog>::Class<'a>,
@@ -86,7 +86,7 @@ where
             text_size: None,
             text_line_height: text::LineHeight::default(),
             text_shaping: text::Shaping::Advanced,
-            text_wrap: text::Wrap::default(),
+            text_wrap: text::Wrapping::default(),
             font: None,
             handle: Handle::default(),
             class: <Theme as Catalog>::default(),
@@ -134,7 +134,7 @@ where
     }
 
     /// Sets the [`text::Wrap`] mode of the [`PickList`].
-    pub fn text_wrap(mut self, wrap: text::Wrap) -> Self {
+    pub fn text_wrap(mut self, wrap: text::Wrapping) -> Self {
         self.text_wrap = wrap;
         self
     }
@@ -481,7 +481,7 @@ where
                 *size,
                 text::LineHeight::default(),
                 text::Shaping::Basic,
-                text::Wrap::default(),
+                text::Wrapping::default(),
             )),
             Handle::Static(Icon {
                 font,
@@ -712,7 +712,7 @@ pub struct Icon<Font> {
     /// The shaping strategy of the icon.
     pub shaping: text::Shaping,
     /// The wrap mode of the icon.
-    pub wrap: text::Wrap,
+    pub wrap: text::Wrapping,
 }
 
 /// The possible status of a [`PickList`].

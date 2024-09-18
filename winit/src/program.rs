@@ -763,7 +763,18 @@ async fn run_instance<'a, P, C>(
     };
 
     let mut ui_caches = FxHashMap::default();
-    let mut user_interfaces = ManuallyDrop::new(FxHashMap::default());
+    let mut user_interfaces: ManuallyDrop<
+        HashMap<
+            window::Id,
+            UserInterface<
+                '_,
+                <P as Program>::Message,
+                <P as Program>::Theme,
+                <P as Program>::Renderer,
+            >,
+            rustc_hash::FxBuildHasher,
+        >,
+    > = ManuallyDrop::new(FxHashMap::default());
     let mut clipboard = Clipboard::unconnected();
 
     let mut cur_dnd_surface: Option<window::Id> = None;
@@ -1058,7 +1069,7 @@ async fn run_instance<'a, P, C>(
                 if clipboard.window_id().is_none() {
                     clipboard = Clipboard::connect(
                         window.raw.clone(),
-                        control_sender.clone(),
+                        crate::clipboard::ControlSender(control_sender.clone()),
                     );
                 }
 
@@ -1436,6 +1447,7 @@ async fn run_instance<'a, P, C>(
                                 &mut window_manager,
                                 &mut ui_caches,
                                 &mut is_window_opening,
+                                &mut platform_specific_handler,
                             );
                         } else {
                             window.state.update(
@@ -1860,7 +1872,12 @@ fn run_action<P, C>(
                             .first()
                             .map(|window| window.raw.clone())
                             .map(|w| {
-                                Clipboard::connect(w, control_sender.clone())
+                                Clipboard::connect(
+                                    w,
+                                    crate::clipboard::ControlSender(
+                                        control_sender.clone(),
+                                    ),
+                                )
                             })
                             .unwrap_or_else(Clipboard::unconnected);
                     }

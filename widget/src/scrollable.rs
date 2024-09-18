@@ -501,7 +501,7 @@ where
 
         operation.scrollable(
             state,
-            self.id.as_ref().map(|id| &id.0),
+            Some(&self.id),
             bounds,
             content_bounds,
             translation,
@@ -1359,9 +1359,7 @@ pub fn scroll_to<T>(id: Id, offset: AbsoluteOffset) -> Task<T> {
 /// Produces a [`Task`] that scrolls the [`Scrollable`] with the given [`Id`]
 /// by the provided [`AbsoluteOffset`].
 pub fn scroll_by<T>(id: Id, offset: AbsoluteOffset) -> Task<T> {
-    task::effect(Action::widget(operation::scrollable::scroll_by(
-        id.0, offset,
-    )))
+    task::effect(Action::widget(operation::scrollable::scroll_by(id, offset)))
 }
 
 fn notify_scroll<Message>(
