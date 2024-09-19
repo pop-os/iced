@@ -350,6 +350,7 @@ fn update<Message: Clone, Theme, Renderer>(
                     mouse::Click::new(cursor_position, state.last_click);
                 state.last_click = Some(click);
                 if let mouse::click::Kind::Double = click.kind() {
+                    state.drag_initiated = None;
                     shell.publish(message.clone());
                     return event::Status::Captured;
                 }
@@ -357,24 +358,24 @@ fn update<Message: Clone, Theme, Renderer>(
         }
     }
 
-    if let Some(message) = widget.on_press.as_ref() {
-        if let Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left))
-        | Event::Touch(touch::Event::FingerPressed { .. }) = event
-        {
-            state.drag_initiated = cursor.position();
-            shell.publish(message.clone());
+    if let Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left))
+    | Event::Touch(touch::Event::FingerPressed { .. }) = event
+    {
+        state.drag_initiated = cursor.position();
 
+        if let Some(message) = widget.on_press.as_ref() {
+            shell.publish(message.clone());
             return event::Status::Captured;
         }
     }
 
-    if let Some(message) = widget.on_release.as_ref() {
-        if let Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left))
-        | Event::Touch(touch::Event::FingerLifted { .. }) = event
-        {
-            state.drag_initiated = None;
-            shell.publish(message.clone());
+    if let Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left))
+    | Event::Touch(touch::Event::FingerLifted { .. }) = event
+    {
+        state.drag_initiated = None;
 
+        if let Some(message) = widget.on_release.as_ref() {
+            shell.publish(message.clone());
             return event::Status::Captured;
         }
     }
@@ -438,13 +439,7 @@ fn update<Message: Clone, Theme, Renderer>(
         }
     }
 
-    if state.drag_initiated.is_none() && widget.on_drag.is_some() {
-        if let Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left))
-        | Event::Touch(touch::Event::FingerPressed { .. }) = event
-        {
-            state.drag_initiated = cursor.position();
-        }
-    } else if let Some((message, drag_source)) =
+    if let Some((message, drag_source)) =
         widget.on_drag.as_ref().zip(state.drag_initiated)
     {
         if let Some(position) = cursor.position() {
