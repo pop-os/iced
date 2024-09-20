@@ -216,13 +216,10 @@ web-time = "0.2"
 
 winapi = "0.3"
 # window_clipboard = "0.4.1"
-window_clipboard = { path = "../../../window_clipboard" }
-dnd = { path = "../../../window_clipboard/dnd" }
-mime = { path = "../../../window_clipboard/mime" }
 
-# window_clipboard = { git = "https://github.com/pop-os/window_clipboard.git", tag = "pop-dnd-8" }
-# dnd = { git = "https://github.com/pop-os/window_clipboard.git", tag = "pop-dnd-8" }
-# mime = { git = "https://github.com/pop-os/window_clipboard.git", tag = "pop-dnd-8" }
+window_clipboard = { git = "https://github.com/pop-os/window_clipboard.git", tag = "pop-0.13" }
+dnd = { git = "https://github.com/pop-os/window_clipboard.git", tag = "pop-0.13" }
+mime = { git = "https://github.com/pop-os/window_clipboard.git", tag = "pop-0.13" }
 # winit = { git = "https://github.com/pop-os/winit.git", branch = "winit-0.29" }
 # winit = { path = "../../winit" }
 # winit = { git = "https://github.com/iced-rs/winit.git", rev = "254d6b3420ce4e674f516f7a2bd440665e05484d" }
@@ -254,7 +251,3 @@ useless_conversion = "deny"
 
 [workspace.lints.rustdoc]
 broken_intra_doc_links = "forbid"
-
-# FIXME update winit deps where necessary to use this
-[patch.crates-io]
-winit = { git = "https://github.com/rust-windowing/winit.git", rev = "241b7a80bba96c91fa3901729cd5dec66abb9be4" }
