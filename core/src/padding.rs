@@ -175,6 +175,17 @@ impl From<[u16; 2]> for Padding {
     }
 }
 
+impl From<[u16; 4]> for Padding {
+    fn from(p: [u16; 4]) -> Self {
+        Padding {
+            top: f32::from(p[0]),
+            right: f32::from(p[1]),
+            bottom: f32::from(p[2]),
+            left: f32::from(p[3]),
+        }
+    }
+}
+
 impl From<f32> for Padding {
     fn from(p: f32) -> Self {
         Padding {
@@ -193,6 +204,18 @@ impl From<[f32; 2]> for Padding {
             right: p[1],
             bottom: p[0],
             left: p[1],
+        }
+    }
+}
+
+impl From<[f32; 4]> for Padding {
+    /// [top, rght, bottom, left]
+    fn from(p: [f32; 4]) -> Self {
+        Padding {
+            top: p[0],
+            right: p[1],
+            bottom: p[2],
+            left: p[3],
         }
     }
 }
