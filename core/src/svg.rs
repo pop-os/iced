@@ -63,6 +63,12 @@ impl Svg<Handle> {
         self.opacity = opacity.into();
         self
     }
+
+    /// Sets the border radius of the [`Svg`]
+    pub fn border_radius(mut self, border_radius: impl Into<[f32; 4]>) -> Self {
+        self.border_radius = border_radius.into();
+        self
+    }
 }
 
 impl From<&Handle> for Svg {
