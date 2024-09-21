@@ -1070,6 +1070,13 @@ impl SctkEvent {
                     );
                 }
 
+                if clipboard.window_id().is_none() {
+                    *clipboard = Clipboard::connect(
+                        sctk_winit.clone(),
+                        crate::clipboard::ControlSender(control_sender.clone()),
+                    );
+                }
+
                 _ = window_manager.insert(
                     surface_id, sctk_winit, program, compositor,
                     false, // TODO do we want to get this value here?
