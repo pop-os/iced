@@ -1,7 +1,9 @@
 use env_logger::Env;
 use iced::alignment::{self, Alignment};
 use iced::event::{self, listen_raw, Event};
-use iced::platform_specific::shell::commands::layer_surface::get_layer_surface;
+use iced::platform_specific::shell::commands::layer_surface::{
+    get_layer_surface, Anchor,
+};
 use iced::theme::{self, Theme};
 use iced::widget::{
     self, button, checkbox, column, container, row, scrollable, text,
@@ -92,9 +94,10 @@ impl Todos {
             Task::batch(vec![
                 Task::perform(SavedState::load(), Message::Loaded),
                 get_layer_surface(iced::platform_specific::runtime::wayland::layer_surface::SctkLayerSurfaceSettings {
-                    size: Some((Some(800), Some(600))),
+                    size: Some((None, Some(500))),
                     pointer_interactivity: true,
                     keyboard_interactivity: sctk::shell::wlr_layer::KeyboardInteractivity::OnDemand,
+                    anchor: Anchor::LEFT.union(Anchor::RIGHT),
                     ..Default::default()
                 }),
             ]),

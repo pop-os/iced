@@ -63,7 +63,9 @@ impl LayerShellHandler for SctkState {
         layer.update_viewport(configure.new_size.0, configure.new_size.1);
         let first = layer.last_configure.is_none();
         _ = layer.last_configure.replace(configure.clone());
-
+        let mut common = layer.common.lock().unwrap();
+        common.size =
+            LogicalSize::new(configure.new_size.0, configure.new_size.1);
         self.sctk_events.push(SctkEvent::LayerSurfaceEvent {
             variant: LayerSurfaceEventVariant::Configure(
                 configure,
