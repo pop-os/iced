@@ -207,10 +207,7 @@ impl DndTest {
                     state,
                 )
             })
-            .drag_content(move || {
-                dbg!("hi");
-                MyDndString(s2.clone())
-            })
+            .drag_content(move || { MyDndString(s2.clone()) })
         ]
         .width(Length::Fill)
         .into()

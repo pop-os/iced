@@ -837,6 +837,15 @@ impl SctkEvent {
                     _ = surface_ids.insert(object_id, wrapper.clone());
                     let logical_size = window.size();
 
+                    if clipboard.window_id().is_none() {
+                        *clipboard = Clipboard::connect(
+                            window.raw.clone(),
+                            crate::clipboard::ControlSender(
+                                control_sender.clone(),
+                            ),
+                        );
+                    }
+
                     let _ = user_interfaces.insert(
                         surface_id,
                         crate::program::build_user_interface(
@@ -933,6 +942,15 @@ impl SctkEvent {
                                         action_handler,
                                         deactivation_handler,
                                     ),
+                                ),
+                            );
+                        }
+
+                        if clipboard.window_id().is_none() {
+                            *clipboard = Clipboard::connect(
+                                sctk_winit.clone(),
+                                crate::clipboard::ControlSender(
+                                    control_sender.clone(),
                                 ),
                             );
                         }
