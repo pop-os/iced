@@ -674,7 +674,7 @@ impl SctkEvent {
                         iced_runtime::core::Event::Keyboard(
                             keyboard::Event::KeyReleased {
                                 key: k,
-                                location: location,
+                                location,
                                 modifiers: modifiers_to_native(*modifiers),
                             },
                         ),
@@ -955,10 +955,26 @@ impl SctkEvent {
                             );
                         }
 
-                        _ = window_manager.insert(
+                        let window = window_manager.insert(
                             surface_id, sctk_winit, program, compositor,
                             false, // TODO do we want to get this value here?
                             0,
+                        );
+                        let logical_size = window.size();
+
+                        let _ = user_interfaces.insert(
+                            surface_id,
+                            crate::program::build_user_interface(
+                                program,
+                                user_interface::Cache::default(),
+                                &mut window.renderer,
+                                logical_size,
+                                debug,
+                                surface_id,
+                                window.raw.clone(),
+                                window.prev_dnd_destination_rectangles_count,
+                                clipboard,
+                            ),
                         );
                     }
                     PopupEventVariant::Configure(_, _, _) => {} // TODO
@@ -1021,8 +1037,9 @@ impl SctkEvent {
                 common,
                 display,
             } => {
+                let object_id = surface.id().clone();
                 let wrapper = SurfaceIdWrapper::SessionLock(surface_id.clone());
-                _ = surface_ids.insert(surface.id().clone(), wrapper.clone());
+                _ = surface_ids.insert(object_id.clone(), wrapper.clone());
                 let sctk_winit = SctkWinitWindow::new(
                     sctk_tx.clone(),
                     common,
@@ -1077,10 +1094,27 @@ impl SctkEvent {
                     );
                 }
 
-                _ = window_manager.insert(
+                let window = window_manager.insert(
                     surface_id, sctk_winit, program, compositor,
                     false, // TODO do we want to get this value here?
                     0,
+                );
+                _ = surface_ids.insert(object_id, wrapper.clone());
+                let logical_size = window.size();
+
+                let _ = user_interfaces.insert(
+                    surface_id,
+                    crate::program::build_user_interface(
+                        program,
+                        user_interface::Cache::default(),
+                        &mut window.renderer,
+                        logical_size,
+                        debug,
+                        surface_id,
+                        window.raw.clone(),
+                        window.prev_dnd_destination_rectangles_count,
+                        clipboard,
+                    ),
                 );
             }
             SctkEvent::SessionLockSurfaceConfigure { .. } => {}

@@ -793,7 +793,6 @@ impl SctkState {
                         } => {
                             let title = builder.namespace.clone();
                             if let Ok((id, wl_surface, common)) = self.get_layer_surface(builder) {
-                                let object_id = wl_surface.id();
                                 // TODO Ashley: all surfaces should probably have an optional title for a11y if nothing else
                                 send_event(&self.events_sender,
                                     SctkEvent::LayerSurfaceEvent {
@@ -810,7 +809,6 @@ impl SctkState {
                         } => {
                             if let Some(layer_surface) = self.layer_surfaces.iter_mut().find(|l| l.id == id) {
                                 layer_surface.set_size(width, height);
-                                // pending_redraws.push(layer_surface.surface.wl_surface().id());
                                     let wl_surface = layer_surface.surface.wl_surface();
 
                                 if let Some(mut prev_configure) = layer_surface.last_configure.clone() {
