@@ -32,7 +32,9 @@ pub struct Container<
     padding: Padding,
     width: Length,
     height: Length,
+    min_width: f32,
     max_width: f32,
+    min_height: f32,
     max_height: f32,
     horizontal_alignment: alignment::Horizontal,
     vertical_alignment: alignment::Vertical,
@@ -57,7 +59,9 @@ where
             padding: Padding::ZERO,
             width: size.width.fluid(),
             height: size.height.fluid(),
+            min_width: 0.0,
             max_width: f32::INFINITY,
+            min_height: 0.0,
             max_height: f32::INFINITY,
             horizontal_alignment: alignment::Horizontal::Left,
             vertical_alignment: alignment::Vertical::Top,
@@ -84,9 +88,21 @@ where
         self
     }
 
+    /// Sets the minimum width of the [`Container`].
+    pub fn min_width(mut self, min_width: impl Into<Pixels>) -> Self {
+        self.min_width = min_width.into().0;
+        self
+    }
+
     /// Sets the maximum width of the [`Container`].
     pub fn max_width(mut self, max_width: impl Into<Pixels>) -> Self {
         self.max_width = max_width.into().0;
+        self
+    }
+
+    /// Sets the minimum height of the [`Container`].
+    pub fn min_height(mut self, min_height: impl Into<Pixels>) -> Self {
+        self.min_height = min_height.into().0;
         self
     }
 
@@ -166,7 +182,9 @@ where
             limits,
             self.width,
             self.height,
+            self.min_width,
             self.max_width,
+            self.min_height,
             self.max_height,
             self.padding,
             self.horizontal_alignment,
@@ -347,7 +365,9 @@ pub fn layout(
     limits: &layout::Limits,
     width: Length,
     height: Length,
+    min_width: f32,
     max_width: f32,
+    min_height: f32,
     max_height: f32,
     padding: Padding,
     horizontal_alignment: alignment::Horizontal,
@@ -355,7 +375,11 @@ pub fn layout(
     layout_content: impl FnOnce(&layout::Limits) -> layout::Node,
 ) -> layout::Node {
     layout::positioned(
-        &limits.max_width(max_width).max_height(max_height),
+        &limits
+            .min_width(min_width)
+            .max_width(max_width)
+            .min_height(min_height)
+            .max_height(max_height),
         width,
         height,
         padding,
