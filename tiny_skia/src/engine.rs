@@ -619,7 +619,7 @@ impl Engine {
                 self.vector_pipeline.draw(
                     &handle.handle,
                     handle.color,
-                    physical_bounds,
+                    *bounds,
                     handle.opacity,
                     _pixels,
                     transform,
