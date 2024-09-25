@@ -233,7 +233,7 @@ where
         _state: &Tree,
         renderer: &mut Renderer,
         theme: &Theme,
-        style: &renderer::Style,
+        renderer_style: &renderer::Style,
         layout: Layout<'_>,
         cursor: mouse::Cursor,
         _viewport: &Rectangle,
@@ -272,7 +272,10 @@ where
             Status::Idle
         };
 
-        let style = theme.style(&self.class, status);
+        let mut style = theme.style(&self.class, status);
+        if self.symbolic && style.color.is_none() {
+            style.color = Some(renderer_style.icon_color);
+        }
 
         let render = |renderer: &mut Renderer| {
             renderer.draw_svg(
