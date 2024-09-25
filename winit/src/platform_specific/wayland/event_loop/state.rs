@@ -14,14 +14,15 @@ use crate::{
     program::Control,
 };
 use iced_futures::futures::channel::mpsc;
+use raw_window_handle::HasWindowHandle;
 use std::{
     collections::{HashMap, HashSet},
     convert::Infallible,
     fmt::Debug,
-    num::NonZeroU32, sync::{Mutex, Arc},
+    num::NonZeroU32, sync::{Arc, Mutex}, time::Duration,
 };
 use wayland_backend::client::ObjectId;
-use winit::dpi::{LogicalPosition, LogicalSize};
+use winit::{dpi::{LogicalPosition, LogicalSize}, platform::wayland::WindowExtWayland};
 
 use iced_runtime::{
     core::{self, touch, Point},
@@ -41,7 +42,7 @@ use sctk::{
     error::GlobalError,
     output::OutputState,
     reexports::{
-        calloop::LoopHandle,
+        calloop::{timer::TimeoutAction, LoopHandle},
         client::{
             delegate_noop,
             protocol::{
@@ -74,16 +75,16 @@ use sctk::{
         xdg::{
             popup::{Popup, PopupConfigure},
             window::{Window, WindowConfigure},
-            XdgPositioner, XdgShell, XdgSurface,
+            XdgPositioner, XdgShell,
         },
         WaylandSurface,
     },
     shm::{multi::MultiPool, Shm},
 };
-use wayland_protocols::wp::{
+use wayland_protocols::{wp::{
     fractional_scale::v1::client::wp_fractional_scale_v1::WpFractionalScaleV1,
     viewporter::client::wp_viewport::WpViewport,
-};
+}, xdg::shell::client::xdg_surface::XdgSurface};
 
 
 #[derive(Debug)]
@@ -109,50 +110,6 @@ impl SctkSeat {
         if let Some(ptr) = self.ptr.as_ref() {
             ptr.set_cursor(conn, icon);
             self.active_icon = Some(icon);
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct SctkWindow {
-    pub(crate) id: core::window::Id,
-    pub(crate) window: Window,
-    pub(crate) scale_factor: Option<f64>,
-    pub(crate) requested_size: Option<(NonZeroU32, NonZeroU32)>,
-    pub(crate) current_size: (NonZeroU32, NonZeroU32),
-    pub(crate) last_configure: Option<WindowConfigure>,
-    pub(crate) resizable: Option<f64>,
-    /// Requests that SCTK window should perform.
-    pub(crate) _pending_requests:
-        Vec<platform_specific::wayland::window::Action>,
-    pub(crate) wp_fractional_scale: Option<WpFractionalScaleV1>,
-    pub(crate) wp_viewport: Option<WpViewport>,
-}
-
-impl SctkWindow {
-    pub(crate) fn set_size(&mut self, logical_size: LogicalSize<NonZeroU32>) {
-        self.requested_size = Some((logical_size.width, logical_size.height));
-        self.update_size((Some(logical_size.width), Some(logical_size.height)))
-    }
-
-    pub(crate) fn update_size(
-        &mut self,
-        (width, height): (Option<NonZeroU32>, Option<NonZeroU32>),
-    ) {
-        let (width, height) = (
-            width.unwrap_or_else(|| self.current_size.0),
-            height.unwrap_or_else(|| self.current_size.1),
-        );
-        if self.current_size == (width, height) {
-            return;
-        }
-        self.window
-            .set_window_geometry(0, 0, width.get(), height.get());
-        self.current_size = (width, height);
-        // Update the target viewport, this is used if and only if fractional scaling is in use.
-        if let Some(viewport) = self.wp_viewport.as_ref() {
-            // Set inner size without the borders.
-            viewport.set_destination(width.get() as _, height.get() as _);
         }
     }
 }
@@ -194,19 +151,38 @@ impl SctkLayerSurface {
 }
 
 #[derive(Debug, Clone)]
-pub enum SctkSurface {
+pub enum PopupParent {
     LayerSurface(WlSurface),
     Window(WlSurface),
     Popup(WlSurface),
 }
 
-impl SctkSurface {
+impl PopupParent {
     pub fn wl_surface(&self) -> &WlSurface {
         match self {
-            SctkSurface::LayerSurface(s)
-            | SctkSurface::Window(s)
-            | SctkSurface::Popup(s) => s,
+            PopupParent::LayerSurface(s)
+            | PopupParent::Window(s)
+            | PopupParent::Popup(s) => s,
         }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum CommonSurface {
+    Popup(Popup),
+    Layer(LayerSurface),
+    Lock(SessionLockSurface)
+}
+
+impl CommonSurface {
+    pub fn wl_surface(&self) -> &WlSurface {
+        let wl_surface =
+        match self {
+            CommonSurface::Popup(popup) => popup.wl_surface(),
+            CommonSurface::Layer(layer_surface) => layer_surface.wl_surface(),
+            CommonSurface::Lock(session_lock_surface) => session_lock_surface.wl_surface(),
+        };
+        wl_surface
     }
 }
 
@@ -216,7 +192,7 @@ pub struct Common {
     pub(crate) has_focus: bool,
     pub(crate) ime_pos: LogicalPosition<u32>,
     pub(crate) ime_size: LogicalSize<u32>,
-    pub(crate) size: LogicalSize<u32>
+    pub(crate) size: LogicalSize<u32>,
 }
 
 impl Default for Common {
@@ -273,14 +249,46 @@ pub struct SctkLockSurface {
 #[derive(Debug)]
 pub struct SctkPopupData {
     pub(crate) id: core::window::Id,
-    pub(crate) parent: SctkSurface,
+    pub(crate) parent: PopupParent,
     pub(crate) toplevel: WlSurface,
     pub(crate) positioner: XdgPositioner,
+}
+
+pub struct SctkWindow {
+    pub(crate) window: Arc<dyn winit::window::Window>,
+    pub(crate) id: core::window::Id
+}
+
+impl SctkWindow {
+    pub fn wl_surface(&self, conn: &Connection) -> WlSurface {
+        let window_handle = self.window.window_handle().unwrap();
+        let ptr = {
+            let raw_window_handle::RawWindowHandle::Wayland(h) = window_handle.as_raw() else {
+                panic!("Invalid window handle");
+            };
+            h.surface
+
+        };
+        let id = unsafe { ObjectId::from_ptr(WlSurface::interface(), ptr.as_ptr().cast()) }.unwrap();
+        WlSurface::from_id(conn, id).unwrap()
+    }
+
+    pub fn xdg_surface(&self, conn: &Connection) -> XdgSurface {
+        let window_handle = self.window.xdg_surface_handle().unwrap();
+        let ptr = {
+            let h = window_handle.xdg_surface_handle().expect("Invalid window handle");
+            h.as_raw()
+
+        };
+        let id = unsafe { ObjectId::from_ptr(XdgSurface::interface(), ptr.as_ptr().cast()) }.unwrap();
+        XdgSurface::from_id(conn, id).unwrap()
+    }
 }
 
 /// Wrapper to carry sctk state.
 pub struct SctkState {
     pub(crate) connection: Connection,
+    pub(crate) exit: bool,
 
     /// the cursor wl_surface
     pub(crate) _cursor_surface: Option<wl_surface::WlSurface>,
@@ -338,8 +346,9 @@ pub struct SctkState {
     pub(crate) token_ctr: u32,
     pub(crate) id_map: HashMap<ObjectId, core::window::Id>,
     pub(crate) to_commit: HashMap<core::window::Id, WlSurface>,
-
+    pub(crate) destroyed: HashSet<core::window::Id>,
     pub(crate) ready: bool,
+    pub(crate) pending_popup: Option<(SctkPopupSettings, usize)>,
 }
 
 /// An error that occurred while running an application.
@@ -386,20 +395,6 @@ impl SctkState {
         legacy: bool,
     ) {
         let mut id = None;
-        if let Some(window) = self
-            .windows
-            .iter_mut()
-            .find(|w| w.window.wl_surface() == surface)
-        {
-            id = Some(window.id);
-            if legacy && window.wp_fractional_scale.is_some() {
-                return;
-            }
-            window.scale_factor = Some(scale_factor);
-            if legacy {
-                let _ = window.window.set_buffer_scale(scale_factor as u32);
-            }
-        }
 
         if let Some(popup) = self
             .popups
@@ -465,22 +460,22 @@ impl SctkState {
         &mut self,
         settings: SctkPopupSettings,
     ) -> Result<
-        (core::window::Id, WlSurface, WlSurface, WlSurface, Arc<Mutex<Common>>),
+        (core::window::Id, WlSurface, WlSurface, CommonSurface, Arc<Mutex<Common>>),
         PopupCreationError,
     > {
         let (parent, toplevel) = if let Some(parent) =
             self.layer_surfaces.iter().find(|l| l.id == settings.parent)
         {
             (
-                SctkSurface::LayerSurface(parent.surface.wl_surface().clone()),
+                PopupParent::LayerSurface(parent.surface.wl_surface().clone()),
                 parent.surface.wl_surface().clone(),
             )
         } else if let Some(parent) =
             self.windows.iter().find(|w| w.id == settings.parent)
         {
             (
-                SctkSurface::Window(parent.window.wl_surface().clone()),
-                parent.window.wl_surface().clone(),
+                PopupParent::Window(parent.wl_surface(&self.connection)),
+                parent.wl_surface(&self.connection),
             )
         } else if let Some(i) = self
             .popups
@@ -489,15 +484,18 @@ impl SctkState {
         {
             let parent = &self.popups[i];
             (
-                SctkSurface::Popup(parent.popup.wl_surface().clone()),
+                PopupParent::Popup(parent.popup.wl_surface().clone()),
                 parent.data.toplevel.clone(),
             )
         } else {
+            dbg!(settings.parent);
+            dbg!(self.windows.get(0).map(|w| w.id));
             return Err(PopupCreationError::ParentMissing);
         };
 
         let size = if settings.positioner.size.is_none() {
-            return Err(PopupCreationError::SizeMissing);
+            log::info!("No configured popup size");
+            (1, 1)
         } else {
             settings.positioner.size.unwrap()
         };
@@ -533,7 +531,7 @@ impl SctkState {
         _ = self.id_map.insert(wl_surface.id(), settings.id.clone());
 
         let (toplevel, popup) = match &parent {
-            SctkSurface::LayerSurface(parent) => {
+            PopupParent::LayerSurface(parent) => {
                 let Some(parent_layer_surface) = self
                     .layer_surfaces
                     .iter()
@@ -552,18 +550,18 @@ impl SctkState {
                 parent_layer_surface.surface.get_popup(popup.xdg_popup());
                 (parent_layer_surface.surface.wl_surface(), popup)
             }
-            SctkSurface::Window(parent) => {
+            PopupParent::Window(parent) => {
                 let Some(parent_window) = self
                     .windows
                     .iter()
-                    .find(|w| w.window.wl_surface() == parent)
+                    .find(|w| &w.wl_surface(&self.connection) == parent)
                 else {
                     return Err(PopupCreationError::ParentMissing);
                 };
                 (
-                    parent_window.window.wl_surface(),
+                    &parent_window.wl_surface(&self.connection),
                     Popup::from_surface(
-                        Some(parent_window.window.xdg_surface()),
+                        Some(&parent_window.xdg_surface(&self.connection)),
                         &positioner,
                         &self.queue_handle,
                         wl_surface.clone(),
@@ -572,7 +570,7 @@ impl SctkState {
                     .map_err(PopupCreationError::PopupCreationFailed)?,
                 )
             }
-            SctkSurface::Popup(parent) => {
+            PopupParent::Popup(parent) => {
                 let Some(parent_xdg) = self.popups.iter().find_map(|p| {
                     (p.popup.wl_surface() == parent)
                         .then(|| p.popup.xdg_surface())
@@ -639,7 +637,7 @@ impl SctkState {
             settings.id,
             parent.wl_surface().clone(),
             toplevel.clone(),
-            popup.wl_surface().clone(),
+            CommonSurface::Popup(popup.clone()),
             common
         ))
     }
@@ -659,7 +657,7 @@ impl SctkState {
             exclusive_zone,
             ..
         }: SctkLayerSurfaceSettings,
-    ) -> Result<(core::window::Id, WlSurface, Arc<Mutex<Common>>), LayerSurfaceCreationError> {
+    ) -> Result<(core::window::Id, CommonSurface, Arc<Mutex<Common>>), LayerSurfaceCreationError> {
         let wl_output = match output {
             IcedOutput::All => None, // TODO
             IcedOutput::Active => None,
@@ -725,7 +723,7 @@ impl SctkState {
         let common = Arc::new(Mutex::new(Common::from(LogicalSize::new(size.0.unwrap_or(1), size.1.unwrap_or(1)))));
         self.layer_surfaces.push(SctkLayerSurface {
             id,
-            surface: layer_surface,
+            surface: layer_surface.clone(),
             requested_size: size,
             current_size: None,
             layer,
@@ -740,13 +738,13 @@ impl SctkState {
             wp_fractional_scale,
             common: common.clone()
         });
-        Ok((id, wl_surface, common))
+        Ok((id, CommonSurface::Layer(layer_surface), common))
     }
     pub fn get_lock_surface(
         &mut self,
         id: core::window::Id,
         output: &WlOutput,
-    ) -> Option<(WlSurface, Arc<Mutex<Common>>)> {
+    ) -> Option<(CommonSurface, Arc<Mutex<Common>>)> {
         if let Some(lock) = self.session_lock.as_ref() {
             let wl_surface =
                 self.compositor_state.create_surface(&self.queue_handle);
@@ -770,13 +768,13 @@ impl SctkState {
             )));
             self.lock_surfaces.push(SctkLockSurface {
                 id,
-                session_lock_surface,
+                session_lock_surface: session_lock_surface.clone(),
                 last_configure: None,
                 wp_fractional_scale,
                 wp_viewport,
                 common: common.clone()
             });
-            Some((wl_surface, common))
+            Some((CommonSurface::Lock(session_lock_surface), common))
         } else {
             None
         }
@@ -792,11 +790,12 @@ impl SctkState {
                             builder,
                         } => {
                             let title = builder.namespace.clone();
-                            if let Ok((id, wl_surface, common)) = self.get_layer_surface(builder) {
+                            if let Ok((id, surface, common)) = self.get_layer_surface(builder) {
                                 // TODO Ashley: all surfaces should probably have an optional title for a11y if nothing else
+                                let wl_surface = surface.wl_surface().clone();
                                 send_event(&self.events_sender,
                                     SctkEvent::LayerSurfaceEvent {
-                                        variant: LayerSurfaceEventVariant::Created(wl_surface.clone(), id, common, self.connection.display(), title),
+                                        variant: LayerSurfaceEventVariant::Created(surface, id, common, self.connection.display(), title),
                                         id: wl_surface.clone(),
                                     }
                                 );
@@ -822,6 +821,9 @@ impl SctkState {
                         platform_specific::wayland::layer_surface::Action::Destroy(id) => {
                             if let Some(i) = self.layer_surfaces.iter().position(|l| l.id == id) {
                                 let l = self.layer_surfaces.remove(i);
+                                if let Some(destroyed) = self.id_map.remove(&l.surface.wl_surface().id()) {
+                                    _ = self.destroyed.insert(destroyed);
+                                }
                                 send_event(&self.events_sender, SctkEvent::LayerSurfaceEvent {
                                             variant: LayerSurfaceEventVariant::Done,
                                             id: l.surface.wl_surface().clone(),
@@ -875,98 +877,73 @@ impl SctkState {
                             }
                         },
                 },
-            Action::Window(action) => match action {
-                platform_specific::wayland::window::Action::Window { builder } => {
-                    panic!("TODO remove this action");
-                },
-                platform_specific::wayland::window::Action::Size { id, width, height } => {
-                    if let Some(window) = self.windows.iter_mut().find(|w| w.id == id) {
-                        window.set_size(LogicalSize::new(NonZeroU32::new(width).unwrap_or(NonZeroU32::new(1).unwrap()), NonZeroU32::new(height).unwrap_or(NonZeroU32::new(1).unwrap())));
-                        // TODO Ashley maybe don't force window size?
-                        // pending_redraws.push(window.window.wl_surface().id());
-                        if window.last_configure.is_some() {
-                            _ = send_event(&self.events_sender,
-                                SctkEvent::WindowEvent { variant: WindowEventVariant::Size(window.current_size, window.window.wl_surface().clone(), false), id: window.window.wl_surface().clone()}
-                            );
-                        }
-                    }
-                },
-                platform_specific::wayland::window::Action::MinSize { id, size } => {
-                    if let Some(window) = self.windows.iter_mut().find(|w| w.id == id) {
-                        window.window.set_min_size(size);
-                        _ = self.to_commit.insert(id, window.window.wl_surface().clone());
-                    }
-                },
-                platform_specific::wayland::window::Action::MaxSize { id, size } => {
-                    if let Some(window) = self.windows.iter_mut().find(|w| w.id == id) {
-                        window.window.set_max_size(size);
-                        _ = self.to_commit.insert(id, window.window.wl_surface().clone());
-                    }
-                },
-                platform_specific::wayland::window::Action::Title { id, title } => {
-                    if let Some(window) = self.windows.iter_mut().find(|w| w.id == id) {
-                        window.window.set_title(title);
-                        _ = self.to_commit.insert(id, window.window.wl_surface().clone());
-                    }
-                },
-                platform_specific::wayland::window::Action::InteractiveMove { id } => {
-                    if let (Some(window), Some((seat, last_press))) = (self.windows.iter_mut().find(|w| w.id == id), self.seats.first().and_then(|seat| seat.last_ptr_press.map(|p| (&seat.seat, p.2)))) {
-                        window.window.xdg_toplevel()._move(seat, last_press);
-                        _ = self.to_commit.insert(id, window.window.wl_surface().clone());
-                    }
-                },
-                platform_specific::wayland::window::Action::InteractiveResize { id, edge } => {
-                    if let (Some(window), Some((seat, last_press))) = (self.windows.iter_mut().find(|w| w.id == id), self.seats.first().and_then(|seat| seat.last_ptr_press.map(|p| (&seat.seat, p.2)))) {
-                        window.window.xdg_toplevel().resize(seat, last_press, edge);
-                        _ = self.to_commit.insert(id, window.window.wl_surface().clone());
-                    }
-                },
-                // platform_specific::wayland::window::Action::ShowWindowMenu { id } => {
-                //     if let (Some(window), Some((seat, last_press))) = (self.windows.iter_mut().find(|w| w.id == id), self.seats.first().and_then(|seat| seat.last_ptr_press.map(|p| (&seat.seat, p.2)))) {
-                //         let surface_id = window.window.wl_surface().id();
-
-                //         let cursor_position = cursor_position.get(&surface_id)
-                //             .cloned()
-                //             .unwrap_or_default();
-
-                //         // Cursor position does not need to be scaled here.
-                //         let PhysicalPosition { x, y } = cursor_position.to_physical::<i32>(1.0);
-
-                //         window.window.xdg_toplevel().show_window_menu(seat, last_press, x as i32, y as i32);
-                //         _ = self.to_commit.insert(id, window.window.wl_surface().clone());
-                //     }
-                // },
-                platform_specific::wayland::window::Action::Destroy(id) => {
-                    if let Some(i) = self.windows.iter().position(|l| l.id == id) {
-                        let window = self.windows.remove(i);
-                        window.window.xdg_toplevel().destroy();
-                        // TODO should we remove this??
-                        // sticky_exit_callback(
-                        //     IcedSctkEvent::SctkEvent(SctkEvent::WindowEvent {
-                        //         variant: WindowEventVariant::Close,
-                        //         id: window.window.wl_surface().clone(),
-                        //     }),
-                        //     &self,
-                        //     &mut control_flow,
-                        //     &mut callback,
-                        // );
-                    }
-                }, 
-                platform_specific::wayland::window::Action::AppId { id, app_id } => {
-                    if let Some(window) = self.windows.iter_mut().find(|w| w.id == id) {
-                        window.window.set_app_id(app_id);
-                        _ = self.to_commit.insert(id, window.window.wl_surface().clone());
-                    }
-                },
+            Action::Window(_) => {
+                log::warn!("Sctk window actions are ignored.");
             },
             Action::Popup(action) => match action {
                 platform_specific::wayland::popup::Action::Popup { popup, .. } => {
-                    if let Ok((id, parent_id, toplevel_id, wl_surface, common)) = self.get_popup(popup) {
-                        let object_id = wl_surface.id();
-                        send_event(&self.events_sender, 
-                            SctkEvent::PopupEvent {
-                                variant: crate::platform_specific::wayland::sctk_event::PopupEventVariant::Created(wl_surface.clone(), id, common, self.connection.display()),
-                                toplevel_id, parent_id, id: wl_surface.clone() });
+                    let parent_mismatch = self.popups.last().is_some_and(|p| {
+                        self.id_map.get(&p.popup.wl_surface().id()).map_or(true, |p| *p != popup.parent)
+                    });
+                    if !self.destroyed.is_empty() || parent_mismatch {
+                        if parent_mismatch {
+                            for i in 0..self.popups.len() {
+                                let id = self.id_map.get(&self.popups[i].popup.wl_surface().id());
+                                if let Some(id) = id {
+                                    if  *id != popup.parent {
+                                        _ = self.handle_action(Action::Popup(platform_specific::wayland::popup::Action::Destroy{id: *id}));
+                                    }
+                                }
+                            }
+                        }
+                        if self.pending_popup.replace((popup, 0)).is_none() {
+                            let timer = sctk::reexports::calloop::timer::Timer::from_duration(Duration::from_millis(30));
+                            _ = self.loop_handle.insert_source(timer, move |_, _, state| {
+                                let Some((popup, attempt)) = state.pending_popup.take() else {
+                                    return TimeoutAction::Drop;
+                                };
+                                if !state.destroyed.is_empty() ||  state.popups.last().is_some_and(|p| {
+                                    state.id_map.get(&p.popup.wl_surface().id()).map_or(true, |p| *p != popup.parent)
+                                })  {
+                                    if attempt < 5 {
+                                        state.pending_popup = Some((popup, attempt+1));
+                                        TimeoutAction::ToDuration(Duration::from_millis(30))
+                                    }
+                                    else {
+                                        TimeoutAction::Drop
+                                    }
+                                } else {
+                                    match state.get_popup(popup) { 
+                                        Ok((id, parent_id, toplevel_id, surface, common)) => {
+                                            let wl_surface = surface.wl_surface().clone();
+                                            send_event(&state.events_sender, 
+                                                SctkEvent::PopupEvent {
+                                                    variant: crate::platform_specific::wayland::sctk_event::PopupEventVariant::Created(surface, id, common, state.connection.display()),
+                                                    toplevel_id, parent_id, id: wl_surface });
+                                        } 
+                                        Err(err) => {
+                                            log::error!("Failed to create popup. {err:?}");
+                                        }
+                                    };
+                                    TimeoutAction::Drop
+                                }
+                            });
+                        }
+                        // log::error!("Invalid popup Id {:?}", popup.id);
+                    } else {
+                        self.pending_popup = None;
+                        match self.get_popup(popup) { 
+                            Ok((id, parent_id, toplevel_id, surface, common)) => {
+                                let wl_surface = surface.wl_surface().clone();
+                                send_event(&self.events_sender, 
+                                    SctkEvent::PopupEvent {
+                                        variant: crate::platform_specific::wayland::sctk_event::PopupEventVariant::Created(surface, id, common, self.connection.display()),
+                                        toplevel_id, parent_id, id: wl_surface });
+                            } 
+                            Err(err) => {
+                                log::error!("Failed to create popup. {err:?}");
+                            }
+                        }
                     }
                 },
                 // XXX popup destruction must be done carefully
@@ -978,15 +955,18 @@ impl SctkState {
                         .position(|s| s.data.id == id)
                     {
                         Some(p) => self.popups.remove(p),
-                        None => panic!("TODO return error..."),
+                        None => {
+                            log::warn!("No popup to destroy");
+                            return Ok(());
+                        },
                     };
                     let mut to_destroy = vec![sctk_popup];
                     while let Some(popup_to_destroy) = to_destroy.last() {
                         match popup_to_destroy.data.parent.clone() {
-                            SctkSurface::LayerSurface(_) | SctkSurface::Window(_) => {
+                            PopupParent::LayerSurface(_) | PopupParent::Window(_) => {
                                 break;
                             }
-                            SctkSurface::Popup(popup_to_destroy_first) => {
+                            PopupParent::Popup(popup_to_destroy_first) => {
                                 let popup_to_destroy_first = self
                                     .popups
                                     .iter()
@@ -998,16 +978,11 @@ impl SctkState {
                         }
                     }
                     for popup in to_destroy.into_iter().rev() {
-                        // sticky_exit_callback(IcedSctkEvent::SctkEvent(SctkEvent::PopupEvent {
-                        //     variant: PopupEventVariant::Done,
-                        //     toplevel_id: popup.data.toplevel.clone(),
-                        //     parent_id: popup.data.parent.wl_surface().clone(),
-                        //     id: popup.popup.wl_surface().clone(),
-                        // }),
-                        //     &self,
-                        //     &mut control_flow,
-                        //     &mut callback,
-                        // );
+                        if let Some(id) = self.id_map.remove(&popup.popup.wl_surface().id()) {
+                            _ = self.destroyed.insert(id);
+                        }
+                        _ = send_event(&self.events_sender,
+                            SctkEvent::PopupEvent { variant: crate::sctk_event::PopupEventVariant::Done, toplevel_id: popup.data.parent.wl_surface().clone(), parent_id: popup.data.parent.wl_surface().clone(), id: popup.popup.wl_surface().clone() });
                     }
                 },
                 platform_specific::wayland::popup::Action::Size { id, width, height } => {
@@ -1020,30 +995,19 @@ impl SctkState {
                         // update positioner
                         self.token_ctr += 1;
                         sctk_popup.set_size(width, height, self.token_ctr);
-
-                        // self.pending_redraws.push(sctk_popup.popup.wl_surface().id());
-
-                        // sticky_exit_callback(IcedSctkEvent::SctkEvent(SctkEvent::PopupEvent {
-                        //     variant: PopupEventVariant::Size(width, height),
-                        //     toplevel_id: sctk_popup.data.toplevel.clone(),
-                        //     parent_id: sctk_popup.data.parent.wl_surface().clone(),
-                        //     id: sctk_popup.popup.wl_surface().clone(),
-                        // }),
-                        //     &self,
-                        //     &mut control_flow,
-                        //     &mut callback,
-                        // );
+                        let surface = sctk_popup.popup.wl_surface().clone();
+                        _ = self.requested_frame.remove(&surface.id());
+                        _ = send_event(&self.events_sender,
+                            SctkEvent::PopupEvent { variant: crate::sctk_event::PopupEventVariant::Size(width, height), toplevel_id: sctk_popup.data.parent.wl_surface().clone(), parent_id: sctk_popup.data.parent.wl_surface().clone(), id: surface });
                     }
                 },
-                // TODO probably remove this?
-                platform_specific::wayland::popup::Action::Grab { .. } => {},
             },
             Action::Activation(activation_event) => match activation_event {
                 platform_specific::wayland::activation::Action::RequestToken { app_id, window, channel } => {
                     if let Some(activation_state) = self.activation_state.as_ref() {
                         let (seat_and_serial, surface) = if let Some(id) = window {
                             let surface = self.windows.iter().find(|w| w.id == id)
-                                .map(|w| w.window.wl_surface().clone())
+                                .map(|w| w.wl_surface(&self.connection).clone())
                                 .or_else(|| self.layer_surfaces.iter().find(|l| l.id == id)
                                     .map(|l| l.surface.wl_surface().clone())
                                 );
@@ -1084,8 +1048,8 @@ impl SctkState {
                 },
                 platform_specific::wayland::activation::Action::Activate { window, token } => {
                     if let Some(activation_state) = self.activation_state.as_ref() {
-                        if let Some(surface) = self.windows.iter().find(|w| w.id == window).map(|w| w.window.wl_surface()) {
-                            activation_state.activate::<SctkState>(surface, token)
+                        if let Some(surface) = self.windows.iter().find(|w| w.id == window).map(|w| w.wl_surface(&self.connection)) {
+                            activation_state.activate::<SctkState>(&surface, token)
                         }
                     }
                 },
@@ -1128,6 +1092,10 @@ impl SctkState {
                         })
                     {
                         let surface = self.lock_surfaces.remove(i);
+                        if let Some(id) = self.id_map.remove(&surface.session_lock_surface.wl_surface().id()) {
+                            _ = self.destroyed.insert(id);
+                        }
+
                         // sticky_exit_callback(
                         //     IcedSctkEvent::SctkEvent(SctkEvent::SessionLockSurfaceDone {
                         //         surface: surface.session_lock_surface.wl_surface().clone()

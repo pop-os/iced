@@ -1,17 +1,24 @@
-use crate::platform_specific::{wayland::Action};
+use crate::platform_specific::wayland::Action;
+use raw_window_handle::HandleError;
 use sctk::reexports::{
-        calloop::channel,
-        client::{
-            protocol::{wl_display::WlDisplay, wl_surface::WlSurface},
-            Proxy,
-        },
-    };
+    calloop::channel,
+    client::{
+        protocol::{wl_display::WlDisplay, wl_surface::WlSurface},
+        Proxy,
+    },
+};
 use std::sync::{Arc, Mutex};
-use winit::{dpi::LogicalSize, window::WindowButtons};
+use winit::{
+    dpi::LogicalSize,
+    error::{NotSupportedError, RequestError},
+    window::WindowButtons,
+};
 
 use crate::platform_specific::SurfaceIdWrapper;
 
-use super::event_loop::state::{Common, SctkLayerSurface, SctkLockSurface, SctkPopup};
+use super::event_loop::state::{
+    Common, CommonSurface, SctkLayerSurface, SctkLockSurface, SctkPopup,
+};
 
 #[derive(Debug)]
 pub(crate) enum Surface {
@@ -25,9 +32,15 @@ impl Surface {}
 pub struct SctkWinitWindow {
     tx: channel::Sender<Action>,
     id: SurfaceIdWrapper,
-    surface: WlSurface,
+    surface: CommonSurface,
     common: Arc<Mutex<Common>>,
     display: WlDisplay,
+}
+
+impl Drop for SctkWinitWindow {
+    fn drop(&mut self) {
+        self.tx.send(Action::Dropped(self.id));
+    }
 }
 
 impl SctkWinitWindow {
@@ -35,7 +48,7 @@ impl SctkWinitWindow {
         tx: channel::Sender<Action>,
         common: Arc<Mutex<Common>>,
         id: SurfaceIdWrapper,
-        surface: WlSurface,
+        surface: CommonSurface,
         display: WlDisplay,
     ) -> Arc<dyn winit::window::Window> {
         Arc::new(Self {
@@ -50,7 +63,9 @@ impl SctkWinitWindow {
 
 impl winit::window::Window for SctkWinitWindow {
     fn id(&self) -> winit::window::WindowId {
-        winit::window::WindowId::from(self.surface.id().as_ptr() as u64)
+        winit::window::WindowId::from(
+            self.surface.wl_surface().id().as_ptr() as u64
+        )
     }
 
     fn scale_factor(&self) -> f64 {
@@ -59,11 +74,15 @@ impl winit::window::Window for SctkWinitWindow {
     }
 
     fn request_redraw(&self) {
-        _ = self.tx.send(Action::RequestRedraw(self.surface.id()));
+        _ = self
+            .tx
+            .send(Action::RequestRedraw(self.surface.wl_surface().id()));
     }
 
     fn pre_present_notify(&self) {
-        _ = self.tx.send(Action::PrePresentNotify(self.surface.id()));
+        _ = self
+            .tx
+            .send(Action::PrePresentNotify(self.surface.wl_surface().id()));
     }
 
     fn set_cursor(&self, cursor: winit::window::Cursor) {
@@ -77,33 +96,17 @@ impl winit::window::Window for SctkWinitWindow {
         }
     }
 
-    fn set_cursor_position(
-        &self,
-        position: winit::dpi::Position,
-    ) -> Result<(), winit::error::ExternalError> {
-        // TODO
-        Ok(())
-    }
-
-    fn set_cursor_grab(
-        &self,
-        mode: winit::window::CursorGrabMode,
-    ) -> Result<(), winit::error::ExternalError> {
-        // TODO
-        Ok(())
-    }
-
     fn set_cursor_visible(&self, visible: bool) {
         // TODO
     }
 
-    fn inner_size(&self) -> winit::dpi::PhysicalSize<u32> {
+    fn surface_size(&self) -> winit::dpi::PhysicalSize<u32> {
         let guard = self.common.lock().unwrap();
         let size = guard.size;
         size.to_physical(guard.fractional_scale.unwrap_or(1.))
     }
 
-    fn request_inner_size(
+    fn request_surface_size(
         &self,
         size: winit::dpi::Size,
     ) -> Option<winit::dpi::PhysicalSize<u32>> {
@@ -131,24 +134,6 @@ impl winit::window::Window for SctkWinitWindow {
         // TODO refer to winit for implementation
     }
 
-    fn inner_position(
-        &self,
-    ) -> Result<
-        winit::dpi::PhysicalPosition<i32>,
-        winit::error::NotSupportedError,
-    > {
-        Err(winit::error::NotSupportedError::default())
-    }
-
-    fn outer_position(
-        &self,
-    ) -> Result<
-        winit::dpi::PhysicalPosition<i32>,
-        winit::error::NotSupportedError,
-    > {
-        Ok(Default::default())
-    }
-
     fn set_outer_position(&self, position: winit::dpi::Position) {}
 
     fn outer_size(&self) -> winit::dpi::PhysicalSize<u32> {
@@ -156,19 +141,18 @@ impl winit::window::Window for SctkWinitWindow {
         Default::default()
     }
 
-    fn set_min_inner_size(&self, min_size: Option<winit::dpi::Size>) {
+    fn set_min_surface_size(&self, min_size: Option<winit::dpi::Size>) {
         // XXX not applicable to wrapped surfaces
     }
 
-    fn set_max_inner_size(&self, max_size: Option<winit::dpi::Size>) {
+    fn set_max_surface_size(&self, max_size: Option<winit::dpi::Size>) {
         // XXX not applicable to wrapped surfaces
     }
 
-    fn resize_increments(&self) -> Option<winit::dpi::PhysicalSize<u32>> {
-        None
-    }
-
-    fn set_resize_increments(&self, increments: Option<winit::dpi::Size>) {
+    fn set_surface_resize_increments(
+        &self,
+        increments: Option<winit::dpi::Size>,
+    ) {
         log::warn!(
             "`set_surface_resize_increments` is not implemented for Wayland"
         )
@@ -190,13 +174,6 @@ impl winit::window::Window for SctkWinitWindow {
 
     fn rwh_06_window_handle(&self) -> &dyn raw_window_handle::HasWindowHandle {
         self
-    }
-
-    fn set_cursor_hittest(
-        &self,
-        hittest: bool,
-    ) -> Result<(), winit::error::ExternalError> {
-        todo!()
     }
 
     fn current_monitor(&self) -> Option<winit::monitor::MonitorHandle> {
@@ -313,25 +290,68 @@ impl winit::window::Window for SctkWinitWindow {
         String::new()
     }
 
-    fn drag_window(&self) -> Result<(), winit::error::ExternalError> {
-        // XXX can't drag the wrapped surfaces
-        Ok(())
-    }
-
-    fn drag_resize_window(
-        &self,
-        direction: winit::window::ResizeDirection,
-    ) -> Result<(), winit::error::ExternalError> {
-        // XXX can't drag resize the wrapped surfaces
-        Ok(())
-    }
-
-    fn show_window_menu(&self, position: winit::dpi::Position) {
+    fn show_window_menu(&self, _position: winit::dpi::Position) {
         // XXX can't show window menu on wrapped surfaces
     }
 
     fn primary_monitor(&self) -> Option<winit::monitor::MonitorHandle> {
         None
+    }
+
+    fn surface_resize_increments(
+        &self,
+    ) -> Option<winit::dpi::PhysicalSize<u32>> {
+        None
+    }
+
+    fn drag_window(&self) -> Result<(), winit::error::RequestError> {
+        Ok(())
+    }
+
+    fn drag_resize_window(
+        &self,
+        _direction: winit::window::ResizeDirection,
+    ) -> Result<(), winit::error::RequestError> {
+        Ok(())
+    }
+
+    fn set_cursor_hittest(
+        &self,
+        _hittest: bool,
+    ) -> Result<(), winit::error::RequestError> {
+        todo!()
+    }
+
+    fn inner_position(
+        &self,
+    ) -> Result<winit::dpi::PhysicalPosition<i32>, winit::error::RequestError>
+    {
+        Err(RequestError::NotSupported(NotSupportedError::new(
+            "Not supported on wayland.",
+        )))
+    }
+
+    fn outer_position(
+        &self,
+    ) -> Result<winit::dpi::PhysicalPosition<i32>, winit::error::RequestError>
+    {
+        Err(RequestError::NotSupported(NotSupportedError::new(
+            "Not supported on wayland.",
+        )))
+    }
+
+    fn set_cursor_position(
+        &self,
+        position: winit::dpi::Position,
+    ) -> Result<(), winit::error::RequestError> {
+        todo!()
+    }
+
+    fn set_cursor_grab(
+        &self,
+        mode: winit::window::CursorGrabMode,
+    ) -> Result<(), winit::error::RequestError> {
+        todo!()
     }
 }
 
@@ -341,9 +361,11 @@ impl raw_window_handle::HasWindowHandle for SctkWinitWindow {
     ) -> Result<raw_window_handle::WindowHandle, raw_window_handle::HandleError>
     {
         let raw = raw_window_handle::WaylandWindowHandle::new({
-            let ptr = self.surface.id().as_ptr();
-            std::ptr::NonNull::new(ptr as *mut _)
-                .expect("wl_surface will never be null")
+            let ptr = self.surface.wl_surface().id().as_ptr();
+            let Some(ptr) = std::ptr::NonNull::new(ptr as *mut _) else {
+                return Err(HandleError::Unavailable);
+            };
+            ptr
         });
 
         unsafe { Ok(raw_window_handle::WindowHandle::borrow_raw(raw.into())) }

@@ -4,7 +4,6 @@
 use iced_graphics::Compositor;
 use iced_runtime::{core::window, platform_specific, Debug};
 use sctk::reexports::client::Connection;
-use std::collections::HashMap;
 use wayland::sctk_event::UserInterfaces;
 
 #[cfg(all(feature = "wayland", target_os = "linux"))]
@@ -101,7 +100,7 @@ impl PlatformSpecific {
             };
 
             let Ok(raw) = window.rwh_06_window_handle().window_handle() else {
-                log::error!("Invalid window handle");
+                log::error!("Invalid window handle {id:?}");
                 return;
             };
             let wl_surface = match raw.as_raw() {
@@ -147,7 +146,7 @@ pub(crate) fn handle_event<'a, P, C>(
     debug: &mut Debug,
     user_interfaces: &mut UserInterfaces<'a, P>,
     clipboard: &mut crate::Clipboard,
-    #[cfg(feature = "a11y")] adapters: &mut HashMap<
+    #[cfg(feature = "a11y")] adapters: &mut std::collections::HashMap<
         window::Id,
         (u64, iced_accessibility::accesskit_winit::Adapter),
     >,

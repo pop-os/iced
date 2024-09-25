@@ -109,11 +109,6 @@ pub enum Action {
         /// id of the popup
         id: Id,
     },
-    /// request that the popup make an explicit grab
-    Grab {
-        /// id of the popup
-        id: Id,
-    },
     /// set the size of the popup
     Size {
         /// id of the popup
@@ -124,29 +119,6 @@ pub enum Action {
         height: u32,
     },
 }
-
-// impl<T> Action<T> {
-//     /// Maps the output of a window [`Action`] using the provided closure.
-//     pub fn map<A>(
-//         self,
-//         _: impl Fn(T) -> A + 'static + MaybeSend + Sync,
-//     ) -> Action<A>
-//     where
-//         T: 'static,
-//     {
-//         match self {
-//             Action::Popup { popup, .. } => Action::Popup {
-//                 popup,
-//                 _phantom: PhantomData,
-//             },
-//             Action::Destroy { id } => Action::Destroy { id },
-//             Action::Grab { id } => Action::Grab { id },
-//             Action::Size { id, width, height } => {
-//                 Action::Size { id, width, height }
-//             }
-//         }
-//     }
-// }
 
 impl fmt::Debug for Action {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -165,11 +137,6 @@ impl fmt::Debug for Action {
                 f,
                 "Action::PopupAction::Size {{ id: {:?}, width: {:?}, height: {:?} }}",
                 id, width, height
-            ),
-            Action::Grab { id } => write!(
-                f,
-                "Action::PopupAction::Grab {{ id: {:?} }}",
-                id
             ),
         }
     }

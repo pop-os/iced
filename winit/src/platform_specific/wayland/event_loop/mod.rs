@@ -38,6 +38,7 @@ use sctk::{
     shell::{wlr_layer::LayerShell, xdg::XdgShell, WaylandSurface},
     shm::Shm,
 };
+use state::SctkWindow;
 #[cfg(feature = "a11y")]
 use std::sync::{Arc, Mutex};
 use std::{
@@ -116,6 +117,16 @@ impl SctkEventLoop {
                                 log::warn!("{err:?}");
                             }
                         }
+                        crate::platform_specific::Action::TrackWindow(
+                            window,
+                            id,
+                        ) => {
+                            state.windows.push(SctkWindow { window, id });
+                        }
+                        crate::Action::RemoveWindow(id) => {
+                            // TODO clean up popups matching the window.
+                            state.windows.retain(|window| id != window.id);
+                        }
                         crate::platform_specific::Action::SetCursor(icon) => {
                             if let Some(seat) = state.seats.get_mut(0) {
                                 seat.icon = Some(icon);
@@ -133,9 +144,13 @@ impl SctkEventLoop {
                         crate::platform_specific::Action::Ready => {
                             state.ready = true;
                         }
+                        crate::Action::Dropped(id) => {
+                            _ = state.destroyed.remove(&id.inner());
+                        }
                     },
                     calloop::channel::Event::Closed => {
-                        log::error!("Calloop channel closed!");
+                        log::info!("Calloop channel closed.");
+                        state.exit = true;
                     }
                 })
                 .unwrap();
@@ -182,6 +197,7 @@ impl SctkEventLoop {
                 wayland_dispatcher,
                 state: SctkState {
                     connection,
+                    exit: false,
                     registry_state,
                     seat_state: SeatState::new(&globals, &qh),
                     output_state: OutputState::new(&globals, &qh),
@@ -219,6 +235,8 @@ impl SctkEventLoop {
                     id_map: Default::default(),
                     to_commit: HashMap::new(),
                     ready: true,
+                    destroyed: HashSet::new(),
+                    pending_popup: Default::default(),
                 },
                 _features: Default::default(),
                 event_loop_awakener: ping,
@@ -277,15 +295,33 @@ impl SctkEventLoop {
 
             log::info!("SCTK setup complete.");
             loop {
-                _ = state
+                if state.state.exit {
+                    return Ok(());
+                }
+                match state
                     .state
                     .events_sender
-                    .unbounded_send(Control::AboutToWait);
+                    .unbounded_send(Control::AboutToWait)
+                {
+                    Ok(_) => {}
+                    Err(err) => {
+                        log::error!(
+                            "SCTK failed to send Control::AboutToWait. {err:?}"
+                        );
+                        if state.state.events_sender.is_closed() {
+                            return Ok(());
+                        }
+                    }
+                }
                 if !state.state.ready {
                     continue;
                 }
 
-                state.event_loop.dispatch(None, &mut state.state);
+                if let Err(err) =
+                    state.event_loop.dispatch(None, &mut state.state)
+                {
+                    log::error!("SCTK dispatch error: {err}");
+                }
 
                 if state.state.sctk_events.is_empty() {
                     continue;
@@ -322,22 +358,22 @@ impl SctkEventLoop {
                             .map(|s| s.session_lock_surface.wl_surface()),
                     )
                 {
-                    if state.state.requested_frame.contains(&s.id()) {
+                    let id = s.id();
+                    if state.state.requested_frame.contains(&id)
+                        || !state.state.id_map.contains_key(&id)
+                    {
                         continue;
                     }
 
                     _ = state.state.events_sender.unbounded_send(
                         Control::Winit(
-                            winit::window::WindowId::from(
-                                s.id().as_ptr() as u64
-                            ),
+                            winit::window::WindowId::from(id.as_ptr() as u64),
                             winit::event::WindowEvent::RedrawRequested,
                         ),
                     );
                 }
                 proxy.wake_up();
             }
-            Ok(())
         });
 
         if res.is_finished() {
@@ -347,12 +383,4 @@ impl SctkEventLoop {
             Ok(action_tx)
         }
     }
-}
-
-fn raw_os_err(err: calloop::Error) -> i32 {
-    match err {
-        calloop::Error::IoError(err) => err.raw_os_error(),
-        _ => None,
-    }
-    .unwrap_or(1)
 }

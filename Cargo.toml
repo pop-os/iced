@@ -220,10 +220,11 @@ winapi = "0.3"
 window_clipboard = { git = "https://github.com/pop-os/window_clipboard.git", tag = "pop-0.13" }
 dnd = { git = "https://github.com/pop-os/window_clipboard.git", tag = "pop-0.13" }
 mime = { git = "https://github.com/pop-os/window_clipboard.git", tag = "pop-0.13" }
-# winit = { git = "https://github.com/pop-os/winit.git", branch = "winit-0.29" }
+winit = { git = "https://github.com/pop-os/winit.git", tag = "iced-xdg-surface-0.13" }
 # winit = { path = "../../winit" }
 # winit = { git = "https://github.com/iced-rs/winit.git", rev = "254d6b3420ce4e674f516f7a2bd440665e05484d" }
-winit = { git = "https://github.com/rust-windowing/winit.git", rev = "241b7a80bba96c91fa3901729cd5dec66abb9be4" }
+# winit = { git = "https://github.com/rust-windowing/winit.git", rev = "241b7a80bba96c91fa3901729cd5dec66abb9be4" }
+# winit = { path = "../../../winit" }
 
 
 [workspace.lints.rust]
@@ -251,3 +252,7 @@ useless_conversion = "deny"
 
 [workspace.lints.rustdoc]
 broken_intra_doc_links = "forbid"
+
+# [patch."https://github.com/rust-windowing/winit.git"]
+# winit = { git = "https://github.com/rust-windowing/winit.git", rev = "241b7a80bba96c91fa3901729cd5dec66abb9be4" }
+# winit = { path = "../../../winit" }

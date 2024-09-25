@@ -25,7 +25,7 @@ pub fn window_attributes(
 
     attributes = attributes
         .with_title(title)
-        .with_inner_size(winit::dpi::LogicalSize {
+        .with_surface_size(winit::dpi::LogicalSize {
             width: settings.size.width,
             height: settings.size.height,
         })
@@ -49,17 +49,19 @@ pub fn window_attributes(
     }
 
     if let Some(min_size) = settings.min_size {
-        attributes = attributes.with_min_inner_size(winit::dpi::LogicalSize {
-            width: min_size.width,
-            height: min_size.height,
-        });
+        attributes =
+            attributes.with_min_surface_size(winit::dpi::LogicalSize {
+                width: min_size.width,
+                height: min_size.height,
+            });
     }
 
     if let Some(max_size) = settings.max_size {
-        attributes = attributes.with_max_inner_size(winit::dpi::LogicalSize {
-            width: max_size.width,
-            height: max_size.height,
-        });
+        attributes =
+            attributes.with_max_surface_size(winit::dpi::LogicalSize {
+                width: max_size.width,
+                height: max_size.height,
+            });
     }
 
     #[cfg(any(
@@ -143,7 +145,7 @@ pub fn window_event(
     use winit::event::WindowEvent;
 
     match event {
-        WindowEvent::Resized(new_size) => {
+        WindowEvent::SurfaceResized(new_size) => {
             let logical_size = new_size.to_logical(scale_factor);
 
             Some(Event::Window(window::Event::Resized(Size {

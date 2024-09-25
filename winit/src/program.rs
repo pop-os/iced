@@ -185,6 +185,11 @@ where
     debug.startup_started();
 
     let event_loop = EventLoop::new().expect("Create event loop");
+    #[cfg(feature = "wayland")]
+    let is_wayland =
+        winit::platform::wayland::EventLoopExtWayland::is_wayland(&event_loop);
+    #[cfg(not(feature = "wayland"))]
+    let is_wayland = false;
 
     let (event_sender, event_receiver) = mpsc::unbounded();
     let (proxy, worker): (Proxy<<P as Program>::Message>, _) =
@@ -256,6 +261,7 @@ where
         fonts: Vec<Cow<'static, [u8]>>,
         graphics_settings: graphics::Settings,
         control_sender: mpsc::UnboundedSender<Control>,
+        is_wayland: bool,
     }
 
     let runner = Runner {
@@ -267,6 +273,7 @@ where
             fonts: settings.fonts,
             graphics_settings,
             control_sender,
+            is_wayland,
         }),
         sender: event_sender,
         receiver: control_receiver,
@@ -355,6 +362,7 @@ where
                 fonts,
                 graphics_settings,
                 control_sender,
+                is_wayland,
             }) = self.boot.take()
             else {
                 return;
@@ -388,7 +396,10 @@ where
                 }
 
                 sender
-                    .send(Boot { compositor })
+                    .send(Boot {
+                        compositor,
+                        is_wayland,
+                    })
                     .ok()
                     .expect("Send boot event");
 
@@ -633,6 +644,7 @@ where
 
 struct Boot<C> {
     compositor: C,
+    is_wayland: bool,
 }
 
 pub(crate) enum Event<Message: 'static> {
@@ -696,12 +708,15 @@ async fn run_instance<'a, P, C>(
     use winit::event;
     use winit::event_loop::ControlFlow;
 
-    let Boot { mut compositor } = boot.await.expect("Receive boot");
+    let Boot {
+        mut compositor,
+        is_wayland,
+    } = boot.await.expect("Receive boot");
 
     let mut platform_specific_handler =
         crate::platform_specific::PlatformSpecific::default();
     #[cfg(all(feature = "wayland", target_os = "linux"))]
-    {
+    if is_wayland {
         platform_specific_handler = platform_specific_handler.with_wayland(
             control_sender.clone(),
             proxy.raw.clone(),
@@ -997,7 +1012,13 @@ async fn run_instance<'a, P, C>(
                     exit_on_close_request,
                     resize_border,
                 );
-
+                #[cfg(feature = "wayland")]
+                platform_specific_handler.send_wayland(
+                    platform_specific::Action::TrackWindow(
+                        window.raw.clone(),
+                        id,
+                    ),
+                );
                 #[cfg(feature = "a11y")]
                 {
                     use crate::a11y::*;
@@ -1865,6 +1886,9 @@ fn run_action<P, C>(
             window::Action::Close(id) => {
                 let _ = ui_caches.remove(&id);
                 let _ = interfaces.remove(&id);
+                #[cfg(feature = "wayland")]
+                platform_specific
+                    .send_wayland(platform_specific::Action::RemoveWindow(id));
 
                 if let Some(window) = window_manager.remove(id) {
                     if clipboard.window_id() == Some(window.raw.id()) {
@@ -1907,7 +1931,7 @@ fn run_action<P, C>(
             }
             window::Action::Resize(id, size) => {
                 if let Some(window) = window_manager.get_mut(id) {
-                    let _ = window.raw.request_inner_size(
+                    let _ = window.raw.request_surface_size(
                         winit::dpi::LogicalSize {
                             width: size.width,
                             height: size.height,
@@ -1920,7 +1944,7 @@ fn run_action<P, C>(
                 if let Some(window) = window_manager.get_mut(id) {
                     let size = window
                         .raw
-                        .inner_size()
+                        .surface_size()
                         .to_logical(window.raw.scale_factor());
 
                     let _ = channel.send(Size::new(size.width, size.height));

@@ -53,10 +53,14 @@ use sctk::{
         pointer::{PointerEvent, PointerEventKind},
         Capability,
     },
-    session_lock::SessionLockSurfaceConfigure,
+    session_lock::{SessionLockSurface, SessionLockSurfaceConfigure},
     shell::{
-        wlr_layer::LayerSurfaceConfigure,
-        xdg::{popup::PopupConfigure, window::WindowConfigure},
+        wlr_layer::{LayerSurface, LayerSurfaceConfigure},
+        xdg::{
+            popup::{Popup, PopupConfigure},
+            window::WindowConfigure,
+        },
+        WaylandSurface,
     },
 };
 use std::{
@@ -70,7 +74,8 @@ use winit::{event::WindowEvent, window::WindowId};
 use xkeysym::Keysym;
 
 use super::{
-    event_loop::state::Common, keymap::raw_keycode_to_physicalkey,
+    event_loop::state::{Common, CommonSurface},
+    keymap::raw_keycode_to_physicalkey,
     winit_window::SctkWinitWindow,
 };
 
@@ -208,7 +213,7 @@ pub enum SctkEvent {
     SessionLocked,
     SessionLockFinished,
     SessionLockSurfaceCreated {
-        surface: WlSurface,
+        surface: CommonSurface,
         native_id: SurfaceId,
         common: Arc<Mutex<Common>>,
         display: WlDisplay,
@@ -276,7 +281,7 @@ pub enum WindowEventVariant {
 #[derive(Debug, Clone)]
 pub enum PopupEventVariant {
     /// Popup Created
-    Created(WlSurface, SurfaceId, Arc<Mutex<Common>>, WlDisplay),
+    Created(CommonSurface, SurfaceId, Arc<Mutex<Common>>, WlDisplay),
     /// <https://wayland.app/protocols/xdg-shell#xdg_popup:event:popup_done>
     Done,
     /// <https://wayland.app/protocols/xdg-shell#xdg_popup:event:configure>
@@ -292,7 +297,13 @@ pub enum PopupEventVariant {
 #[derive(Debug, Clone)]
 pub enum LayerSurfaceEventVariant {
     /// sent after creation of the layer surface
-    Created(WlSurface, SurfaceId, Arc<Mutex<Common>>, WlDisplay, String),
+    Created(
+        CommonSurface,
+        SurfaceId,
+        Arc<Mutex<Common>>,
+        WlDisplay,
+        String,
+    ),
     /// <https://wayland.app/protocols/wlr-layer-shell-unstable-v1#zwlr_layer_surface_v1:event:closed>
     Done,
     /// <https://wayland.app/protocols/wlr-layer-shell-unstable-v1#zwlr_layer_surface_v1:event:configure>
@@ -777,12 +788,13 @@ impl SctkEvent {
                     surface_id,
                     common,
                     display,
-                    title,
+                    ..,
                 ) => {
-                    let object_id = surface.id();
+                    let wl_surface = surface.wl_surface();
+                    let object_id = wl_surface.id();
                     let wrapper =
                         SurfaceIdWrapper::LayerSurface(surface_id.clone());
-                    _ = surface_ids.insert(surface.id(), wrapper.clone());
+                    _ = surface_ids.insert(object_id.clone(), wrapper.clone());
                     let sctk_winit = SctkWinitWindow::new(
                         sctk_tx.clone(),
                         common,
@@ -897,8 +909,10 @@ impl SctkEvent {
                         common,
                         display,
                     ) => {
+                        let wl_surface = surface.wl_surface();
                         let wrapper = SurfaceIdWrapper::Popup(surface_id);
-                        _ = surface_ids.insert(surface.id(), wrapper.clone());
+                        _ = surface_ids
+                            .insert(wl_surface.id(), wrapper.clone());
                         let sctk_winit = SctkWinitWindow::new(
                             sctk_tx.clone(),
                             common,
@@ -1037,7 +1051,8 @@ impl SctkEvent {
                 common,
                 display,
             } => {
-                let object_id = surface.id().clone();
+                let wl_surface = surface.wl_surface();
+                let object_id = wl_surface.id().clone();
                 let wrapper = SurfaceIdWrapper::SessionLock(surface_id.clone());
                 _ = surface_ids.insert(object_id.clone(), wrapper.clone());
                 let sctk_winit = SctkWinitWindow::new(

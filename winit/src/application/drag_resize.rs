@@ -27,7 +27,7 @@ pub fn event_func(
                     } => {
                         if !window.is_decorated() {
                             let location = cursor_resize_direction(
-                                window.inner_size(),
+                                window.surface_size(),
                                 *position,
                                 border_size,
                             );

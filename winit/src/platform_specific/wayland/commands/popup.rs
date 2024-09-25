@@ -32,15 +32,6 @@ pub fn set_size<Message>(
     ))
 }
 
-// https://wayland.app/protocols/xdg-shell#xdg_popup:request:grab
-pub fn grab_popup<Message>(id: SurfaceId) -> Task<Message> {
-    task::effect(Action::PlatformSpecific(
-        platform_specific::Action::Wayland(wayland::Action::Popup(
-            wayland::popup::Action::Grab { id },
-        )),
-    ))
-}
-
 /// <https://wayland.app/protocols/xdg-shell#xdg_popup:request:destroy>
 pub fn destroy_popup<Message>(id: SurfaceId) -> Task<Message> {
     task::effect(Action::PlatformSpecific(

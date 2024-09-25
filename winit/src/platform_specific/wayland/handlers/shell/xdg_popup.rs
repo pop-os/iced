@@ -1,8 +1,11 @@
 use crate::platform_specific::wayland::{
-    event_loop::state::{self, SctkState, SctkSurface},
+    event_loop::state::{self, PopupParent, SctkState},
     sctk_event::{PopupEventVariant, SctkEvent},
 };
-use sctk::{delegate_xdg_popup, shell::xdg::popup::PopupHandler};
+use sctk::{
+    delegate_xdg_popup, reexports::client::Proxy,
+    shell::xdg::popup::PopupHandler,
+};
 
 impl PopupHandler for SctkState {
     fn configure(
@@ -30,9 +33,9 @@ impl PopupHandler for SctkState {
             id: popup.wl_surface().clone(),
             toplevel_id: sctk_popup.data.toplevel.clone(),
             parent_id: match &sctk_popup.data.parent {
-                SctkSurface::LayerSurface(s) => s.clone(),
-                SctkSurface::Window(s) => s.clone(),
-                SctkSurface::Popup(s) => s.clone(),
+                PopupParent::LayerSurface(s) => s.clone(),
+                PopupParent::Window(s) => s.clone(),
+                PopupParent::Popup(s) => s.clone(),
             },
         });
     }
@@ -52,11 +55,11 @@ impl PopupHandler for SctkState {
         let mut to_destroy = vec![sctk_popup];
         while let Some(popup_to_destroy) = to_destroy.last() {
             match popup_to_destroy.data.parent.clone() {
-                state::SctkSurface::LayerSurface(_)
-                | state::SctkSurface::Window(_) => {
+                state::PopupParent::LayerSurface(_)
+                | state::PopupParent::Window(_) => {
                     break;
                 }
-                state::SctkSurface::Popup(popup_to_destroy_first) => {
+                state::PopupParent::Popup(popup_to_destroy_first) => {
                     let popup_to_destroy_first = self
                         .popups
                         .iter()
@@ -71,13 +74,17 @@ impl PopupHandler for SctkState {
             }
         }
         for popup in to_destroy.into_iter().rev() {
+            if let Some(id) = self.id_map.remove(&popup.popup.wl_surface().id())
+            {
+                _ = self.destroyed.insert(id);
+            }
+
             self.sctk_events.push(SctkEvent::PopupEvent {
                 variant: PopupEventVariant::Done,
                 toplevel_id: popup.data.toplevel.clone(),
                 parent_id: popup.data.parent.wl_surface().clone(),
                 id: popup.popup.wl_surface().clone(),
             });
-            self.popups.push(popup);
         }
     }
 }

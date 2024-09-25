@@ -146,41 +146,6 @@ pub enum Action {
     },
 }
 
-// impl Action {
-//     /// Maps the output of a window [`Action`] using the provided closure.
-//     pub fn map<A>(
-//         self,
-//         _: impl Fn(T) -> A + 'static + MaybeSend + Sync,
-//     ) -> Action<A>
-//     where
-//         T: 'static,
-//     {
-//         match self {
-//             Action::LayerSurface { builder, .. } => Action::LayerSurface {
-//                 builder,
-//                 _phantom: PhantomData,
-//             },
-//             Action::Size { id, width, height } => {
-//                 Action::Size { id, width, height }
-//             }
-//             Action::Destroy(id) => Action::Destroy(id),
-//             Action::Anchor { id, anchor } => Action::Anchor { id, anchor },
-//             Action::ExclusiveZone { id, exclusive_zone } => {
-//                 Action::ExclusiveZone { id, exclusive_zone }
-//             }
-//             Action::Margin { id, margin } => Action::Margin { id, margin },
-//             Action::KeyboardInteractivity {
-//                 id,
-//                 keyboard_interactivity,
-//             } => Action::KeyboardInteractivity {
-//                 id,
-//                 keyboard_interactivity,
-//             },
-//             Action::Layer { id, layer } => Action::Layer { id, layer },
-//         }
-//     }
-// }
-
 impl fmt::Debug for Action {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

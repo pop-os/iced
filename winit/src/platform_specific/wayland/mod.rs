@@ -19,19 +19,53 @@ use sctk::reexports::client::protocol::wl_surface::WlSurface;
 use sctk::seat::keyboard::Modifiers;
 use sctk_event::SctkEvent;
 use sctk_event::UserInterfaces;
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 use subsurface_widget::{SubsurfaceInstance, SubsurfaceState};
 use wayland_backend::client::ObjectId;
 use winit::event_loop::OwnedDisplayHandle;
 use winit::window::CursorIcon;
 
-#[derive(Debug)]
 pub(crate) enum Action {
     Action(iced_runtime::platform_specific::wayland::Action),
     SetCursor(CursorIcon),
     RequestRedraw(ObjectId),
     PrePresentNotify(ObjectId),
+    TrackWindow(Arc<dyn winit::window::Window>, window::Id),
+    RemoveWindow(window::Id),
+    Dropped(SurfaceIdWrapper),
     Ready,
+}
+
+impl std::fmt::Debug for Action {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Action(arg0) => f.debug_tuple("Action").field(arg0).finish(),
+            Self::SetCursor(arg0) => {
+                f.debug_tuple("SetCursor").field(arg0).finish()
+            }
+            Self::RequestRedraw(arg0) => {
+                f.debug_tuple("RequestRedraw").field(arg0).finish()
+            }
+            Self::PrePresentNotify(arg0) => {
+                f.debug_tuple("PrePresentNotify").field(arg0).finish()
+            }
+            Self::TrackWindow(arg0, arg1) => {
+                f.debug_tuple("TrackWindow").field(arg1).finish()
+            }
+            Self::RemoveWindow(arg0) => {
+                f.debug_tuple("RemoveWindow").field(arg0).finish()
+            }
+            Self::Ready => write!(f, "Ready"),
+            Action::Action(action) => todo!(),
+            Action::SetCursor(cursor_icon) => todo!(),
+            Action::RequestRedraw(object_id) => todo!(),
+            Action::PrePresentNotify(object_id) => todo!(),
+            Action::TrackWindow(arc, id) => todo!(),
+            Action::RemoveWindow(id) => todo!(),
+            Action::Dropped(surface_id_wrapper) => todo!(),
+            Action::Ready => todo!(),
+        }
+    }
 }
 
 #[derive(Debug, Default)]

@@ -97,7 +97,7 @@ impl Todos {
                     size: Some((None, Some(500))),
                     pointer_interactivity: true,
                     keyboard_interactivity: sctk::shell::wlr_layer::KeyboardInteractivity::OnDemand,
-                    anchor: Anchor::LEFT.union(Anchor::RIGHT),
+                    anchor: Anchor::LEFT.union(Anchor::RIGHT).union(Anchor::TOP),
                     ..Default::default()
                 }),
             ]),

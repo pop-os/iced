@@ -182,7 +182,7 @@ where
     }
 
     pub fn size(&self) -> Size {
-        let size = self.raw.inner_size().to_logical(self.raw.scale_factor());
+        let size = self.raw.surface_size().to_logical(self.raw.scale_factor());
 
         Size::new(size.width, size.height)
     }

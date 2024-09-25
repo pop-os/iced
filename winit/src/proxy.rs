@@ -1,4 +1,3 @@
-
 use crate::futures::futures::{
     channel::mpsc,
     select,
@@ -151,19 +150,3 @@ impl<T: 'static> Sink<Action<T>> for Proxy<T> {
         Poll::Ready(Ok(()))
     }
 }
-
-// impl<M> dnd::Sender<DndSurface> for Proxy<UserEventWrapper<M>> {
-//     fn send(
-//         &self,
-//         event: DndEvent<DndSurface>,
-//     ) -> Result<(), std::sync::mpsc::SendError<DndEvent<DndSurface>>> {
-//         self.raw
-//             .send_event(UserEventWrapper::Dnd(event))
-//             .map_err(|_err| {
-//                 std::sync::mpsc::SendError(DndEvent::Offer(
-//                     None,
-//                     dnd::OfferEvent::Leave,
-//                 ))
-//             })
-//     }
-// }

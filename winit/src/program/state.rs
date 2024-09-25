@@ -56,7 +56,7 @@ where
         let appearance = application.style(&theme);
 
         let viewport = {
-            let physical_size = window.inner_size();
+            let physical_size = window.surface_size();
 
             Viewport::with_physical_size(
                 Size::new(physical_size.width, physical_size.height),
@@ -166,7 +166,7 @@ where
         _debug: &mut crate::runtime::Debug,
     ) {
         match event {
-            WindowEvent::Resized(new_size) => {
+            WindowEvent::SurfaceResized(new_size) => {
                 let size = Size::new(new_size.width, new_size.height);
 
                 self.viewport = Viewport::with_physical_size(
@@ -232,7 +232,7 @@ where
 
         // Update scale factor and size
         let new_scale_factor = application.scale_factor(window_id);
-        let new_size = window.inner_size();
+        let new_size = window.surface_size();
         let current_size = self.viewport.physical_size();
 
         if self.scale_factor != new_scale_factor
