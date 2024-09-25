@@ -57,8 +57,6 @@ pub enum Shaping {
     /// You should use this strategy when you have complete control of the text
     /// and the font you are displaying in your application.
     ///
-    /// This is the default.
-    #[default]
     Basic,
     /// Advanced text shaping and font fallback.
     ///
@@ -67,6 +65,8 @@ pub enum Shaping {
     /// may be needed to display all of the glyphs.
     ///
     /// Advanced shaping is expensive! You should only enable it when necessary.
+    /// This is the default.
+    #[default]
     Advanced,
 }
 

@@ -408,7 +408,7 @@ impl Renderer {
                         font: Font::MONOSPACE,
                         horizontal_alignment: alignment::Horizontal::Left,
                         vertical_alignment: alignment::Vertical::Top,
-                        shaping: core::text::Shaping::Basic,
+                        shaping: core::text::Shaping::Advanced,
                         wrapping: core::text::Wrapping::Word,
                     };
 
