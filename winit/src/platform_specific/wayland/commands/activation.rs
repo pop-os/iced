@@ -5,10 +5,9 @@ use iced_runtime::{
     task, Action, Task,
 };
 
-pub fn request_token<Message>(
+pub fn request_token(
     app_id: Option<String>,
     window: Option<SurfaceId>,
-    to_message: impl FnOnce(Option<String>) -> Message + Send + Sync + 'static,
 ) -> Task<Option<String>> {
     task::oneshot(|channel| {
         Action::PlatformSpecific(platform_specific::Action::Wayland(

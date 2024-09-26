@@ -1,25 +1,23 @@
 use crate::{
-    platform_specific::{
+    handlers::activation::IcedRequestData, platform_specific::{
         wayland::{
             handlers::{
                 wp_fractional_scaling::FractionalScalingManager,
                 wp_viewporter::ViewporterState,
             },
             sctk_event::{
-                LayerSurfaceEventVariant, SctkEvent, WindowEventVariant
+                LayerSurfaceEventVariant, SctkEvent,
             },
         },
         Event,
-    },
-    program::Control,
+    }, program::Control
 };
-use iced_futures::futures::channel::mpsc;
+use iced_futures::futures::channel::{mpsc, oneshot};
 use raw_window_handle::HasWindowHandle;
 use std::{
     collections::{HashMap, HashSet},
     convert::Infallible,
-    fmt::Debug,
-    num::NonZeroU32, sync::{Arc, Mutex}, time::Duration,
+    fmt::Debug, sync::{Arc, Mutex}, time::Duration,
 };
 use wayland_backend::client::ObjectId;
 use winit::{dpi::{LogicalPosition, LogicalSize}, platform::wayland::WindowExtWayland};
@@ -37,7 +35,7 @@ use iced_runtime::{
     },
 };
 use sctk::{
-    activation::ActivationState,
+    activation::{ActivationState, RequestData},
     compositor::CompositorState,
     error::GlobalError,
     output::OutputState,
@@ -74,7 +72,6 @@ use sctk::{
         },
         xdg::{
             popup::{Popup, PopupConfigure},
-            window::{Window, WindowConfigure},
             XdgPositioner, XdgShell,
         },
         WaylandSurface,
@@ -108,7 +105,7 @@ pub(crate) struct SctkSeat {
 impl SctkSeat {
     pub(crate) fn set_cursor(&mut self, conn: &Connection, icon: CursorIcon) {
         if let Some(ptr) = self.ptr.as_ref() {
-            ptr.set_cursor(conn, icon);
+            _ = ptr.set_cursor(conn, icon);
             self.active_icon = Some(icon);
         }
     }
@@ -288,7 +285,6 @@ impl SctkWindow {
 /// Wrapper to carry sctk state.
 pub struct SctkState {
     pub(crate) connection: Connection,
-    pub(crate) exit: bool,
 
     /// the cursor wl_surface
     pub(crate) _cursor_surface: Option<wl_surface::WlSurface>,
@@ -349,6 +345,9 @@ pub struct SctkState {
     pub(crate) destroyed: HashSet<core::window::Id>,
     pub(crate) ready: bool,
     pub(crate) pending_popup: Option<(SctkPopupSettings, usize)>,
+
+    pub(crate) activation_token_ctr: u32,
+    pub(crate) token_senders: HashMap<u32, oneshot::Sender<Option<String>>>,
 }
 
 /// An error that occurred while running an application.
@@ -488,8 +487,6 @@ impl SctkState {
                 parent.data.toplevel.clone(),
             )
         } else {
-            dbg!(settings.parent);
-            dbg!(self.windows.get(0).map(|w| w.id));
             return Err(PopupCreationError::ParentMissing);
         };
 
@@ -1026,24 +1023,22 @@ impl SctkState {
                             (None, None)
                         };
 
-                        // TODO cleanup
-                        // activation_state.request_token_with_data(&self.queue_handle, IcedRequestData::new(
-                        //     RequestData {
-                        //         app_id,
-                        //         seat_and_serial,
-                        //         surface,
-                        //     },
-                        //     message,
-                        // ));
+
+                        activation_state.request_token_with_data(&self.queue_handle,
+                            IcedRequestData::new(RequestData {
+                                    app_id,
+                                    seat_and_serial,
+                                    surface,
+                                },
+                            self.activation_token_ctr
+                            )
+                        );
+                        _ = self.token_senders.insert(self.activation_token_ctr, channel);
+                        self.activation_token_ctr = self.activation_token_ctr.wrapping_add(1);
                     } else {
                         // if we don't have the global, we don't want to stall the app
-                        // TODO cleanup
-                        // sticky_exit_callback(
-                        //     IcedSctkEvent::UserEvent(message(None)),
-                        //     &self,
-                        //     &mut control_flow,
-                        //     &mut callback,
-                        // )
+                        _ = channel.send(None);
+                        
                     }
                 },
                 platform_specific::wayland::activation::Action::Activate { window, token } => {

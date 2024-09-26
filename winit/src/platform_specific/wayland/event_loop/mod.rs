@@ -150,7 +150,6 @@ impl SctkEventLoop {
                     },
                     calloop::channel::Event::Closed => {
                         log::info!("Calloop channel closed.");
-                        state.exit = true;
                     }
                 })
                 .unwrap();
@@ -197,7 +196,6 @@ impl SctkEventLoop {
                 wayland_dispatcher,
                 state: SctkState {
                     connection,
-                    exit: false,
                     registry_state,
                     seat_state: SeatState::new(&globals, &qh),
                     output_state: OutputState::new(&globals, &qh),
@@ -237,6 +235,8 @@ impl SctkEventLoop {
                     ready: true,
                     destroyed: HashSet::new(),
                     pending_popup: Default::default(),
+                    activation_token_ctr: 0,
+                    token_senders: HashMap::new(),
                 },
                 _features: Default::default(),
                 event_loop_awakener: ping,
@@ -295,9 +295,6 @@ impl SctkEventLoop {
 
             log::info!("SCTK setup complete.");
             loop {
-                if state.state.exit {
-                    return Ok(());
-                }
                 match state
                     .state
                     .events_sender

@@ -53,14 +53,10 @@ use sctk::{
         pointer::{PointerEvent, PointerEventKind},
         Capability,
     },
-    session_lock::{SessionLockSurface, SessionLockSurfaceConfigure},
+    session_lock::SessionLockSurfaceConfigure,
     shell::{
-        wlr_layer::{LayerSurface, LayerSurfaceConfigure},
-        xdg::{
-            popup::{Popup, PopupConfigure},
-            window::WindowConfigure,
-        },
-        WaylandSurface,
+        wlr_layer::LayerSurfaceConfigure,
+        xdg::{popup::PopupConfigure, window::WindowConfigure},
     },
 };
 use std::{
@@ -767,8 +763,14 @@ impl SctkEvent {
             } => match variant {
                 LayerSurfaceEventVariant::Done => {
                     if let Some(id) = surface_ids.remove(&surface.id()) {
-                        _ = window_manager.remove(id.inner());
-
+                        if let Some(w) = window_manager.remove(id.inner()) {
+                            if clipboard
+                                .window_id()
+                                .is_some_and(|id| w.raw.id() == id)
+                            {
+                                *clipboard = Clipboard::unconnected();
+                            }
+                        }
                         events.push((
                             Some(id.inner()),
                             iced_runtime::core::Event::PlatformSpecific(

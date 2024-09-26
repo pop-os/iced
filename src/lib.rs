@@ -455,22 +455,16 @@
 
 pub use iced_futures::futures;
 pub use iced_futures::stream;
+pub use iced_widget::core;
 use iced_widget::graphics;
 use iced_widget::renderer;
+pub use iced_widget::runtime;
 
 #[cfg(feature = "winit")]
 use iced_winit as shell;
-#[cfg(feature = "winit")]
-use shell::core;
-#[cfg(feature = "winit")]
-use shell::runtime;
 
 #[cfg(feature = "highlighter")]
 pub use iced_highlighter as highlighter;
-#[cfg(not(any(feature = "winit", feature = "wayland")))]
-pub use iced_widget::core;
-#[cfg(not(any(feature = "winit", feature = "wayland")))]
-pub use iced_widget::runtime;
 
 mod error;
 mod program;

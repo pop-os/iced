@@ -1,51 +1,47 @@
-
+use iced_futures::futures::channel::oneshot::Sender;
 use sctk::{
-    activation::{ActivationHandler, RequestData},
+    activation::{ActivationHandler, RequestData, RequestDataExt},
     delegate_activation,
+    reexports::client::protocol::{wl_seat::WlSeat, wl_surface::WlSurface},
 };
 
 use crate::platform_specific::wayland::event_loop::state::SctkState;
 
-// pub struct IcedRequestData {
-//     data: RequestData,
-// }
+pub struct IcedRequestData {
+    id: u32,
+    data: RequestData,
+}
 
-// impl<T> IcedRequestData<T> {
-//     pub fn new(
-//         data: RequestData,
-//         message: Box<dyn FnOnce(Option<String>) -> T + Send + Sync + 'static>,
-//     ) -> IcedRequestData<T> {
-//         IcedRequestData { data }
-//     }
-// }
-
-// impl<T> RequestDataExt for IcedRequestData<T> {
-//     fn app_id(&self) -> Option<&str> {
-//         self.data.app_id()
-//     }
-
-//     fn seat_and_serial(&self) -> Option<(&WlSeat, u32)> {
-//         self.data.seat_and_serial()
-//     }
-
-//     fn surface(&self) -> Option<&WlSurface> {
-//         self.data.surface()
-//     }
-// }
-
-impl ActivationHandler for SctkState {
-    type RequestData = RequestData;
-
-    fn new_token(&mut self, token: String, data: &Self::RequestData) {
-        // TODO cleanup
-        // self.pending_events.push(
-        //         Event::SctkEvent(
-        //             crate::platform_specific::wayland::sctk_event::IcedSctkEvent::SctkEvent(Some(
-        //                 token,
-        //             )),
-        //         ),
-        //     );
+impl IcedRequestData {
+    pub fn new(data: RequestData, id: u32) -> IcedRequestData {
+        IcedRequestData { data, id }
     }
 }
 
-delegate_activation!(SctkState, RequestData);
+impl RequestDataExt for IcedRequestData {
+    fn app_id(&self) -> Option<&str> {
+        self.data.app_id()
+    }
+
+    fn seat_and_serial(&self) -> Option<(&WlSeat, u32)> {
+        self.data.seat_and_serial()
+    }
+
+    fn surface(&self) -> Option<&WlSurface> {
+        self.data.surface()
+    }
+}
+
+impl ActivationHandler for SctkState {
+    type RequestData = IcedRequestData;
+
+    fn new_token(&mut self, token: String, data: &Self::RequestData) {
+        if let Some(tx) = self.token_senders.remove(&data.id) {
+            _ = tx.send(Some(token));
+        } else {
+            log::error!("Missing activation request Id.");
+        }
+    }
+}
+
+delegate_activation!(SctkState, IcedRequestData);

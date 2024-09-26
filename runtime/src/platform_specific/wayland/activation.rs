@@ -1,5 +1,4 @@
 use iced_core::window::Id;
-use iced_futures::MaybeSend;
 
 use std::fmt;
 
@@ -24,32 +23,6 @@ pub enum Action {
         token: String,
     },
 }
-
-// impl<T> Action<T> {
-//     /// Maps the output of a window [`Action`] using the provided closure.
-//     pub fn map<A>(
-//         self,
-//         mapper: impl Fn(T) -> A + 'static + MaybeSend + Sync,
-//     ) -> Action<A>
-//     where
-//         T: 'static,
-//     {
-//         match self {
-//             Action::RequestToken {
-//                 app_id,
-//                 window,
-//                 message,
-//             } => Action::RequestToken {
-//                 app_id,
-//                 window,
-//                 message: Box::new(move |token| mapper(message(token))),
-//             },
-//             Action::Activate { window, token } => {
-//                 Action::Activate { window, token }
-//             }
-//         }
-//     }
-// }
 
 impl fmt::Debug for Action {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
