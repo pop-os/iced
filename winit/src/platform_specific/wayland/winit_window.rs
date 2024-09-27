@@ -18,7 +18,7 @@ use crate::platform_specific::SurfaceIdWrapper;
 
 use super::event_loop::state::{
     Common, CommonSurface, SctkLayerSurface, SctkLockSurface, SctkPopup,
-    SctkState,
+    SctkState, TOKEN_CTR,
 };
 
 #[derive(Debug)]
@@ -117,23 +117,37 @@ impl winit::window::Window for SctkWinitWindow {
         &self,
         size: winit::dpi::Size,
     ) -> Option<winit::dpi::PhysicalSize<u32>> {
-        let guard = self.common.lock().unwrap();
+        let mut guard = self.common.lock().unwrap();
 
         let size: LogicalSize<u32> =
             size.to_logical(guard.fractional_scale.unwrap_or(1.));
-        let action = match &self.id {
-            SurfaceIdWrapper::LayerSurface(id) => {
-                iced_runtime::platform_specific::wayland::Action::LayerSurface(iced_runtime::platform_specific::wayland::layer_surface::Action::Size { id: id.clone(), width: Some(size.width as u32), height: Some(size.height as u32) })
-            }
-            SurfaceIdWrapper::Window(_) => unimplemented!(),
-            SurfaceIdWrapper::Popup(id) => {
-                {
-                    iced_runtime::platform_specific::wayland::Action::Popup(iced_runtime::platform_specific::wayland::popup::Action::Size { id: id.clone(), width: size.width as u32, height: size.height as u32 })
+        match &self.surface {
+            CommonSurface::Popup(popup, positioner) => {
+                if size.width == 0 || size.height == 0 {
+                    return None;
                 }
-            },
-            SurfaceIdWrapper::SessionLock(_) => return None,
-        };
-        _ = self.tx.send(Action::Action(action));
+                guard.size = size;
+                popup.reposition(
+                    &positioner.as_ref(),
+                    TOKEN_CTR
+                        .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+                );
+            }
+            CommonSurface::Layer(layer_surface) => {
+                guard.requested_size = (
+                    (size.width > 0).then_some(size.width),
+                    (size.height > 0).then_some(size.height),
+                );
+                if size.width > 0 {
+                    guard.size.width = size.width;
+                }
+                if size.height > 0 {
+                    guard.size.height = size.height;
+                }
+                layer_surface.set_size(size.width, size.height);
+            }
+            CommonSurface::Lock(_) => {}
+        }
         None
     }
 

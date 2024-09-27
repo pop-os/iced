@@ -68,6 +68,9 @@ pub trait Clipboard {
     fn peek_dnd(&self, _mime: String) -> Option<(Vec<u8>, String)> {
         None
     }
+
+    /// Request window size
+    fn request_logical_window_size(&self, width: f32, height: f32) {}
 }
 
 /// The kind of [`Clipboard`].

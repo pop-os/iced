@@ -1,10 +1,12 @@
 //! Access the clipboard.
 
+use std::sync::Mutex;
 use std::{any::Any, borrow::Cow};
 
 use crate::core::clipboard::DndSource;
 use crate::core::clipboard::Kind;
 use std::sync::Arc;
+use winit::dpi::LogicalSize;
 use winit::window::{Window, WindowId};
 
 use dnd::{DndAction, DndDestinationRectangle, DndSurface, Icon};
@@ -18,6 +20,7 @@ use window_clipboard::{
 #[allow(missing_debug_implementations)]
 pub struct Clipboard {
     state: State,
+    pub(crate) requested_logical_size: Arc<Mutex<Option<LogicalSize<f32>>>>,
 }
 
 pub(crate) struct StartDnd {
@@ -68,7 +71,10 @@ impl dnd::Sender<DndSurface> for ControlSender {
 
 impl Clipboard {
     /// Creates a new [`Clipboard`] for the given window.
-    pub fn connect(window: Arc<dyn Window>, proxy: ControlSender) -> Clipboard {
+    pub(crate) fn connect(
+        window: Arc<dyn Window>,
+        proxy: ControlSender,
+    ) -> Clipboard {
         #[allow(unsafe_code)]
         let state =
             unsafe { window_clipboard::Clipboard::connect(window.as_ref()) }
@@ -86,7 +92,10 @@ impl Clipboard {
             clipboard.init_dnd(Box::new(proxy));
         }
 
-        Clipboard { state }
+        Clipboard {
+            state,
+            requested_logical_size: Arc::new(Mutex::new(None)),
+        }
     }
 
     /// Creates a new [`Clipboard`] that isn't associated with a window.
@@ -94,17 +103,15 @@ impl Clipboard {
     pub fn unconnected() -> Clipboard {
         Clipboard {
             state: State::Unavailable,
+            requested_logical_size: Arc::new(Mutex::new(None)),
         }
     }
 
     pub(crate) fn get_queued(&mut self) -> Vec<StartDnd> {
         match &mut self.state {
-            State::Connected {
-                clipboard,
-                sender,
-                window,
-                queued_events,
-            } => std::mem::take(queued_events),
+            State::Connected { queued_events, .. } => {
+                std::mem::take(queued_events)
+            }
             State::Unavailable => {
                 log::error!("Invalid request for queued dnd events");
                 Vec::<StartDnd>::new()
@@ -298,5 +305,10 @@ impl crate::core::Clipboard for Clipboard {
             }
             State::Unavailable => {}
         }
+    }
+
+    fn request_logical_window_size(&self, width: f32, height: f32) {
+        let mut logical_size = self.requested_logical_size.lock().unwrap();
+        *logical_size = Some(LogicalSize::new(width, height));
     }
 }

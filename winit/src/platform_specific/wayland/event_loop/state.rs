@@ -17,7 +17,7 @@ use raw_window_handle::HasWindowHandle;
 use std::{
     collections::{HashMap, HashSet},
     convert::Infallible,
-    fmt::Debug, sync::{Arc, Mutex}, time::Duration,
+    fmt::Debug, sync::{atomic::AtomicU32, Arc, Mutex}, time::Duration,
 };
 use wayland_backend::client::ObjectId;
 use winit::{dpi::{LogicalPosition, LogicalSize}, platform::wayland::WindowExtWayland};
@@ -83,6 +83,7 @@ use wayland_protocols::{wp::{
     viewporter::client::wp_viewport::WpViewport,
 }, xdg::shell::client::xdg_surface::XdgSurface};
 
+pub static TOKEN_CTR: AtomicU32 = AtomicU32::new(0);
 
 #[derive(Debug)]
 pub(crate) struct SctkSeat {
@@ -115,7 +116,6 @@ impl SctkSeat {
 pub struct SctkLayerSurface {
     pub(crate) id: core::window::Id,
     pub(crate) surface: LayerSurface,
-    pub(crate) requested_size: (Option<u32>, Option<u32>),
     pub(crate) current_size: Option<LogicalSize<u32>>,
     pub(crate) layer: Layer,
     pub(crate) anchor: Anchor,
@@ -132,7 +132,8 @@ pub struct SctkLayerSurface {
 
 impl SctkLayerSurface {
     pub(crate) fn set_size(&mut self, w: Option<u32>, h: Option<u32>) {
-        self.requested_size = (w, h);
+        let mut common = self.common.lock().unwrap();
+        common.requested_size = (w, h);
 
         let (w, h) = (w.unwrap_or_default(), h.unwrap_or_default());
         self.surface.set_size(w, h);
@@ -166,7 +167,7 @@ impl PopupParent {
 
 #[derive(Debug, Clone)]
 pub enum CommonSurface {
-    Popup(Popup),
+    Popup(Popup, Arc<XdgPositioner>),
     Layer(LayerSurface),
     Lock(SessionLockSurface)
 }
@@ -175,7 +176,7 @@ impl CommonSurface {
     pub fn wl_surface(&self) -> &WlSurface {
         let wl_surface =
         match self {
-            CommonSurface::Popup(popup) => popup.wl_surface(),
+            CommonSurface::Popup(popup, _) => popup.wl_surface(),
             CommonSurface::Layer(layer_surface) => layer_surface.wl_surface(),
             CommonSurface::Lock(session_lock_surface) => session_lock_surface.wl_surface(),
         };
@@ -190,11 +191,12 @@ pub struct Common {
     pub(crate) ime_pos: LogicalPosition<u32>,
     pub(crate) ime_size: LogicalSize<u32>,
     pub(crate) size: LogicalSize<u32>,
+    pub(crate) requested_size: (Option<u32>, Option<u32>),
 }
 
 impl Default for Common {
     fn default() -> Self {
-        Self { fractional_scale: Default::default(), has_focus: Default::default(), ime_pos: Default::default(), ime_size: Default::default(), size: LogicalSize::new(1, 1) }
+        Self { fractional_scale: Default::default(), has_focus: Default::default(), ime_pos: Default::default(), ime_size: Default::default(), size: LogicalSize::new(1, 1), requested_size: (None, None)}
     }
 }
 
@@ -248,7 +250,7 @@ pub struct SctkPopupData {
     pub(crate) id: core::window::Id,
     pub(crate) parent: PopupParent,
     pub(crate) toplevel: WlSurface,
-    pub(crate) positioner: XdgPositioner,
+    pub(crate) positioner: Arc<XdgPositioner>,
 }
 
 pub struct SctkWindow {
@@ -339,7 +341,6 @@ pub struct SctkState {
     pub(crate) activation_state: Option<ActivationState>,
     pub(crate) session_lock_state: SessionLockState,
     pub(crate) session_lock: Option<SessionLock>,
-    pub(crate) token_ctr: u32,
     pub(crate) id_map: HashMap<ObjectId, core::window::Id>,
     pub(crate) to_commit: HashMap<core::window::Id, WlSurface>,
     pub(crate) destroyed: HashSet<core::window::Id>,
@@ -615,13 +616,15 @@ impl SctkState {
             });
             let common = Arc::new(Mutex::new(LogicalSize::new(size.0, size.1).into()));
 
+        let positioner = Arc::new(positioner);
+
         self.popups.push(SctkPopup {
             popup: popup.clone(),
             data: SctkPopupData {
                 id: settings.id,
                 parent: parent.clone(),
                 toplevel: toplevel.clone(),
-                positioner,
+                positioner: positioner.clone(),
             },
             last_configure: None,
             _pending_requests: Default::default(),
@@ -634,7 +637,7 @@ impl SctkState {
             settings.id,
             parent.wl_surface().clone(),
             toplevel.clone(),
-            CommonSurface::Popup(popup.clone()),
+            CommonSurface::Popup(popup.clone(), positioner.clone()),
             common
         ))
     }
@@ -717,11 +720,12 @@ impl SctkState {
                     &self.queue_handle,
                 )
             });
-        let common = Arc::new(Mutex::new(Common::from(LogicalSize::new(size.0.unwrap_or(1), size.1.unwrap_or(1)))));
+        let mut common = Common::from(LogicalSize::new(size.0.unwrap_or(1), size.1.unwrap_or(1)));
+        common.requested_size = size;
+        let common = Arc::new(Mutex::new(common));
         self.layer_surfaces.push(SctkLayerSurface {
             id,
             surface: layer_surface.clone(),
-            requested_size: size,
             current_size: None,
             layer,
             // builder needs to be refactored such that these fields are accessible
@@ -995,8 +999,7 @@ impl SctkState {
                     {
                         // update geometry
                         // update positioner
-                        self.token_ctr += 1;
-                        sctk_popup.set_size(width, height, self.token_ctr);
+                        sctk_popup.set_size(width, height, TOKEN_CTR.fetch_add(1, std::sync::atomic::Ordering::Relaxed));
                         let surface = sctk_popup.popup.wl_surface().clone();
                         _ = send_event(&self.events_sender,
                             SctkEvent::PopupEvent { variant: crate::sctk_event::PopupEventVariant::Size(width, height), toplevel_id: sctk_popup.data.parent.wl_surface().clone(), parent_id: sctk_popup.data.parent.wl_surface().clone(), id: surface });

@@ -232,13 +232,19 @@ where
 
         // Update scale factor and size
         let new_scale_factor = application.scale_factor(window_id);
-        let new_size = window.surface_size();
+        let mut new_size = window.surface_size();
         let current_size = self.viewport.physical_size();
-
         if self.scale_factor != new_scale_factor
             || (current_size.width, current_size.height)
                 != (new_size.width, new_size.height)
+                && !(new_size.width == 0 && new_size.height == 0)
         {
+            if new_size.width == 0 {
+                new_size.width = current_size.width;
+            }
+            if new_size.height == 0 {
+                new_size.height = current_size.height;
+            }
             self.viewport = Viewport::with_physical_size(
                 Size::new(new_size.width, new_size.height),
                 window.scale_factor() * new_scale_factor,

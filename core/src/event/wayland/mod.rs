@@ -42,6 +42,8 @@ pub enum Event {
     SessionLock(SessionLockEvent),
     /// Frame events
     Frame(Instant, WlSurface, Id),
+    /// Request Resize
+    RequestResize,
 }
 
 impl Event {

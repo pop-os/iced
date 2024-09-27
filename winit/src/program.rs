@@ -1507,6 +1507,13 @@ async fn run_instance<'a, P, C>(
 
                     if window_events.is_empty() && messages.is_empty() {
                         continue;
+                    } else {
+                        #[cfg(feature = "wayland")]
+                        window_events.push(core::Event::PlatformSpecific(
+                            core::event::PlatformSpecific::Wayland(
+                                core::event::wayland::Event::RequestResize,
+                            ),
+                        ));
                     }
 
                     let (ui_state, statuses) = user_interfaces
@@ -1519,6 +1526,29 @@ async fn run_instance<'a, P, C>(
                             &mut clipboard,
                             &mut messages,
                         );
+
+                    if let Some(requested_size) =
+                        clipboard.requested_logical_size.lock().unwrap().take()
+                    {
+                        let requested_physical_size = requested_size
+                            .to_physical(window.state.scale_factor());
+                        let physical_size = window.state.physical_size();
+                        if requested_physical_size.width != physical_size.width
+                            || requested_physical_size.height
+                                != physical_size.height
+                        {
+                            _ = window.raw.request_surface_size(
+                                winit::dpi::Size::Physical(
+                                    requested_physical_size,
+                                ),
+                            );
+                            window.state.synchronize(
+                                &program,
+                                id,
+                                window.raw.as_ref(),
+                            );
+                        }
+                    }
 
                     if matches!(window.frame, Frame::Ready) {
                         _ = control_sender.unbounded_send(Control::Winit(

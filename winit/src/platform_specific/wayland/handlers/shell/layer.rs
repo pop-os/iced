@@ -49,12 +49,15 @@ impl LayerShellHandler for SctkState {
                 Some(l) => l,
                 None => return,
             };
-        configure.new_size.0 = if let Some(w) = layer.requested_size.0 {
+        let common = layer.common.lock().unwrap();
+        let requested_size = common.requested_size;
+        drop(common);
+        configure.new_size.0 = if let Some(w) = requested_size.0 {
             w
         } else {
             configure.new_size.0.max(1)
         };
-        configure.new_size.1 = if let Some(h) = layer.requested_size.1 {
+        configure.new_size.1 = if let Some(h) = requested_size.1 {
             h
         } else {
             configure.new_size.1.max(1)

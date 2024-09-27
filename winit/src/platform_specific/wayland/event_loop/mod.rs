@@ -225,7 +225,6 @@ impl SctkEventLoop {
                     touch_points: HashMap::new(),
                     sctk_events: Vec::new(),
                     frame_status: HashMap::new(),
-                    token_ctr: 0,
                     fractional_scaling_manager,
                     viewporter_state,
                     compositor_updates: Default::default(),
