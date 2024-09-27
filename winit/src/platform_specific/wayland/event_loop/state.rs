@@ -316,7 +316,7 @@ pub struct SctkState {
     /// A sink for window and device events that is being filled during dispatching
     /// event loop and forwarded downstream afterwards.
     pub(crate) sctk_events: Vec<SctkEvent>,
-    pub(crate) requested_frame: HashSet<ObjectId>,
+    pub(crate) frame_status: HashMap<ObjectId, bool>,
 
     /// Send events to winit
     pub(crate) events_sender: mpsc::UnboundedSender<Control>,
@@ -790,9 +790,10 @@ impl SctkState {
                             if let Ok((id, surface, common)) = self.get_layer_surface(builder) {
                                 // TODO Ashley: all surfaces should probably have an optional title for a11y if nothing else
                                 let wl_surface = surface.wl_surface().clone();
+                                _ = self.frame_status.insert(wl_surface.id(), true);
                                 send_event(&self.events_sender,
                                     SctkEvent::LayerSurfaceEvent {
-                                        variant: LayerSurfaceEventVariant::Created(surface, id, common, self.connection.display(), title),
+                                        variant: LayerSurfaceEventVariant::Created(self.queue_handle.clone(), surface, id, common, self.connection.display(), title),
                                         id: wl_surface.clone(),
                                     }
                                 );
@@ -806,7 +807,7 @@ impl SctkState {
                             if let Some(layer_surface) = self.layer_surfaces.iter_mut().find(|l| l.id == id) {
                                 layer_surface.set_size(width, height);
                                     let wl_surface = layer_surface.surface.wl_surface();
-
+                                _ = self.frame_status.insert(layer_surface.surface.wl_surface().id(), true);
                                 if let Some(mut prev_configure) = layer_surface.last_configure.clone() {
                                     prev_configure.new_size = (width.unwrap_or(prev_configure.new_size.0), width.unwrap_or(prev_configure.new_size.1));
                                     _ = send_event(&self.events_sender,
@@ -895,6 +896,7 @@ impl SctkState {
                         }
                         if self.pending_popup.replace((popup, 0)).is_none() {
                             let timer = sctk::reexports::calloop::timer::Timer::from_duration(Duration::from_millis(30));
+                            let queue_handle = self.queue_handle.clone();
                             _ = self.loop_handle.insert_source(timer, move |_, _, state| {
                                 let Some((popup, attempt)) = state.pending_popup.take() else {
                                     return TimeoutAction::Drop;
@@ -913,9 +915,10 @@ impl SctkState {
                                     match state.get_popup(popup) { 
                                         Ok((id, parent_id, toplevel_id, surface, common)) => {
                                             let wl_surface = surface.wl_surface().clone();
+                                            _ = state.frame_status.insert(wl_surface.id(), true);
                                             send_event(&state.events_sender, 
                                                 SctkEvent::PopupEvent {
-                                                    variant: crate::platform_specific::wayland::sctk_event::PopupEventVariant::Created(surface, id, common, state.connection.display()),
+                                                    variant: crate::platform_specific::wayland::sctk_event::PopupEventVariant::Created(queue_handle.clone(), surface, id, common, state.connection.display()),
                                                     toplevel_id, parent_id, id: wl_surface });
                                         } 
                                         Err(err) => {
@@ -932,9 +935,11 @@ impl SctkState {
                         match self.get_popup(popup) { 
                             Ok((id, parent_id, toplevel_id, surface, common)) => {
                                 let wl_surface = surface.wl_surface().clone();
+                               
+                                _ = self.frame_status.insert(wl_surface.id(), true);
                                 send_event(&self.events_sender, 
                                     SctkEvent::PopupEvent {
-                                        variant: crate::platform_specific::wayland::sctk_event::PopupEventVariant::Created(surface, id, common, self.connection.display()),
+                                        variant: crate::platform_specific::wayland::sctk_event::PopupEventVariant::Created(self.queue_handle.clone(), surface, id, common, self.connection.display()),
                                         toplevel_id, parent_id, id: wl_surface });
                             } 
                             Err(err) => {
@@ -993,7 +998,6 @@ impl SctkState {
                         self.token_ctr += 1;
                         sctk_popup.set_size(width, height, self.token_ctr);
                         let surface = sctk_popup.popup.wl_surface().clone();
-                        _ = self.requested_frame.remove(&surface.id());
                         _ = send_event(&self.events_sender,
                             SctkEvent::PopupEvent { variant: crate::sctk_event::PopupEventVariant::Size(width, height), toplevel_id: sctk_popup.data.parent.wl_surface().clone(), parent_id: sctk_popup.data.parent.wl_surface().clone(), id: surface });
                     }
@@ -1054,6 +1058,7 @@ impl SctkState {
                     if self.session_lock.is_none() {
                         // TODO send message on error? When protocol doesn't exist.
                         self.session_lock = self.session_lock_state.lock(&self.queue_handle).ok();
+                        send_event(&self.events_sender, SctkEvent::SessionLocked);
                     }
                 }
                 platform_specific::wayland::session_lock::Action::Unlock => {
@@ -1062,22 +1067,15 @@ impl SctkState {
                     }
                     // Make sure server processes unlock before client exits
                     let _ = self.connection.roundtrip();
-                    // sticky_exit_callback(
-                    //     IcedSctkEvent::SctkEvent(SctkEvent::SessionUnlocked),
-                    //     &self,
-                    //     &mut control_flow,
-                    //     &mut callback,
-                    // );
+
+                    send_event(&self.events_sender, SctkEvent::SessionUnlocked);
                 }
                 platform_specific::wayland::session_lock::Action::LockSurface { id, output } => {
                     // TODO how to handle this when there's no lock?
-                    if let Some(surface) = self.get_lock_surface(id, &output) {
-                        // sticky_exit_callback(
-                        //     IcedSctkEvent::SctkEvent(SctkEvent::SessionLockSurfaceCreated {surface, native_id: id}),
-                        //     &self,
-                        //     &mut control_flow,
-                        //     &mut callback,
-                        // );
+                    if let Some((surface, common)) = self.get_lock_surface(id, &output) {
+                        let wl_surface = surface.wl_surface();
+                        _ = self.frame_status.insert(wl_surface.id(), true);
+                        send_event(&self.events_sender, SctkEvent::SessionLockSurfaceCreated { queue_handle: self.queue_handle.clone(), surface, native_id: id, common, display: self.connection.display() });
                     }
                 }
                 platform_specific::wayland::session_lock::Action::DestroyLockSurface { id } => {
@@ -1091,14 +1089,7 @@ impl SctkState {
                             _ = self.destroyed.insert(id);
                         }
 
-                        // sticky_exit_callback(
-                        //     IcedSctkEvent::SctkEvent(SctkEvent::SessionLockSurfaceDone {
-                        //         surface: surface.session_lock_surface.wl_surface().clone()
-                        //     }),
-                        //     &self,
-                        //     &mut control_flow,
-                        //     &mut callback,
-                        // );
+                        send_event(&self.events_sender, SctkEvent::SessionLockSurfaceDone { surface: surface.session_lock_surface.wl_surface().clone() });
                     }
                 }
             }

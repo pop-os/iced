@@ -64,8 +64,6 @@ pub struct SctkEventLoop {
     pub(crate) wayland_dispatcher:
         calloop::Dispatcher<'static, WaylandSource<SctkState>, SctkState>,
     pub(crate) _features: Features,
-    /// A proxy to wake up event loop.
-    pub event_loop_awakener: calloop::ping::Ping,
     pub(crate) state: SctkState,
 }
 
@@ -107,10 +105,9 @@ impl SctkEventLoop {
             let qh = event_queue.handle();
             let registry_state = RegistryState::new(&globals);
 
-            let (ping, ping_source) = calloop::ping::make_ping().unwrap();
-
             _ = loop_handle
-                .insert_source(action_rx, |event, _, state| match event {
+                .insert_source(action_rx, |event, _, state| {
+                    match event {
                     calloop::channel::Event::Msg(e) => match e {
                         crate::platform_specific::Action::Action(a) => {
                             if let Err(err) = state.handle_action(a) {
@@ -134,12 +131,14 @@ impl SctkEventLoop {
                             }
                         }
                         crate::platform_specific::Action::RequestRedraw(id) => {
-                            _ = state.requested_frame.remove(&id);
+                            if !state.frame_status.contains_key(&id) {
+                                _ = state.frame_status.insert(id, false);
+                            }
                         }
                         crate::platform_specific::Action::PrePresentNotify(
-                            id,
+                            _,
                         ) => {
-                            _ = state.requested_frame.insert(id);
+                            // TODO
                         }
                         crate::platform_specific::Action::Ready => {
                             state.ready = true;
@@ -151,6 +150,7 @@ impl SctkEventLoop {
                     calloop::channel::Event::Closed => {
                         log::info!("Calloop channel closed.");
                     }
+                }
                 })
                 .unwrap();
             let wayland_source =
@@ -224,7 +224,7 @@ impl SctkEventLoop {
                     _kbd_focus: None,
                     touch_points: HashMap::new(),
                     sctk_events: Vec::new(),
-                    requested_frame: HashSet::new(),
+                    frame_status: HashMap::new(),
                     token_ctr: 0,
                     fractional_scaling_manager,
                     viewporter_state,
@@ -239,7 +239,6 @@ impl SctkEventLoop {
                     token_senders: HashMap::new(),
                 },
                 _features: Default::default(),
-                event_loop_awakener: ping,
             };
             let wl_compositor = state
                 .state
@@ -319,10 +318,8 @@ impl SctkEventLoop {
                 {
                     log::error!("SCTK dispatch error: {err}");
                 }
-
-                if state.state.sctk_events.is_empty() {
-                    continue;
-                }
+                let had_events = !state.state.sctk_events.is_empty();
+                let mut wake_up = had_events;
 
                 for e in state.state.sctk_events.drain(..) {
                     if let SctkEvent::Winit(id, e) = e {
@@ -356,12 +353,19 @@ impl SctkEventLoop {
                     )
                 {
                     let id = s.id();
-                    if state.state.requested_frame.contains(&id)
+                    if state
+                        .state
+                        .frame_status
+                        .get(&id)
+                        .map(|v| !*v)
+                        .unwrap_or(true)
                         || !state.state.id_map.contains_key(&id)
                     {
                         continue;
                     }
+                    wake_up = true;
 
+                    _ = state.state.frame_status.remove(&id);
                     _ = state.state.events_sender.unbounded_send(
                         Control::Winit(
                             winit::window::WindowId::from(id.as_ptr() as u64),
@@ -369,7 +373,10 @@ impl SctkEventLoop {
                         ),
                     );
                 }
-                proxy.wake_up();
+
+                if wake_up {
+                    proxy.wake_up();
+                }
             }
         });
 

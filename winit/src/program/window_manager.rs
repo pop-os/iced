@@ -70,7 +70,7 @@ where
                 renderer,
                 mouse_interaction: mouse::Interaction::None,
                 prev_dnd_destination_rectangles_count: 0,
-                frame: false,
+                frame: Frame::Ready,
             },
         );
 
@@ -137,6 +137,12 @@ where
     }
 }
 
+pub(crate) enum Frame {
+    None,
+    Waiting,
+    Ready,
+}
+
 #[allow(missing_debug_implementations)]
 pub struct Window<P, C>
 where
@@ -161,7 +167,7 @@ where
     pub surface: C::Surface,
     pub renderer: P::Renderer,
     // requested draw
-    pub frame: bool,
+    pub(crate) frame: Frame,
 }
 
 impl<P, C> Window<P, C>
@@ -185,5 +191,12 @@ where
         let size = self.raw.surface_size().to_logical(self.raw.scale_factor());
 
         Size::new(size.width, size.height)
+    }
+
+    pub fn request_redraw(&mut self) {
+        if matches!(self.frame, Frame::None) {
+            self.frame = Frame::Waiting;
+            self.raw.request_redraw();
+        }
     }
 }

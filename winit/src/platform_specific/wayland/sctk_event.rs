@@ -44,7 +44,7 @@ use sctk::{
                 wl_output::WlOutput, wl_pointer::WlPointer, wl_seat::WlSeat,
                 wl_surface::WlSurface, wl_touch::WlTouch,
             },
-            Proxy,
+            Proxy, QueueHandle,
         },
         csd_frame::WindowManagerCapabilities,
     },
@@ -66,11 +66,11 @@ use std::{
     time::Instant,
 };
 use wayland_protocols::wp::viewporter::client::wp_viewport::WpViewport;
-use winit::{event::WindowEvent, window::WindowId};
+use winit::{dpi::PhysicalSize, event::WindowEvent, window::WindowId};
 use xkeysym::Keysym;
 
 use super::{
-    event_loop::state::{Common, CommonSurface},
+    event_loop::state::{Common, CommonSurface, SctkState},
     keymap::raw_keycode_to_physicalkey,
     winit_window::SctkWinitWindow,
 };
@@ -209,6 +209,7 @@ pub enum SctkEvent {
     SessionLocked,
     SessionLockFinished,
     SessionLockSurfaceCreated {
+        queue_handle: QueueHandle<SctkState>,
         surface: CommonSurface,
         native_id: SurfaceId,
         common: Arc<Mutex<Common>>,
@@ -277,7 +278,13 @@ pub enum WindowEventVariant {
 #[derive(Debug, Clone)]
 pub enum PopupEventVariant {
     /// Popup Created
-    Created(CommonSurface, SurfaceId, Arc<Mutex<Common>>, WlDisplay),
+    Created(
+        QueueHandle<SctkState>,
+        CommonSurface,
+        SurfaceId,
+        Arc<Mutex<Common>>,
+        WlDisplay,
+    ),
     /// <https://wayland.app/protocols/xdg-shell#xdg_popup:event:popup_done>
     Done,
     /// <https://wayland.app/protocols/xdg-shell#xdg_popup:event:configure>
@@ -294,6 +301,7 @@ pub enum PopupEventVariant {
 pub enum LayerSurfaceEventVariant {
     /// sent after creation of the layer surface
     Created(
+        QueueHandle<SctkState>,
         CommonSurface,
         SurfaceId,
         Arc<Mutex<Common>>,
@@ -786,6 +794,7 @@ impl SctkEvent {
                     }
                 }
                 LayerSurfaceEventVariant::Created(
+                    queue_handle,
                     surface,
                     surface_id,
                     common,
@@ -803,6 +812,7 @@ impl SctkEvent {
                         wrapper,
                         surface,
                         display,
+                        queue_handle,
                     );
 
                     #[cfg(feature = "a11y")]
@@ -876,7 +886,29 @@ impl SctkEvent {
                     );
                 }
                 LayerSurfaceEventVariant::ScaleFactorChanged(..) => {}
-                _ => {}
+                LayerSurfaceEventVariant::Configure(
+                    configure,
+                    surface,
+                    first,
+                ) => {
+                    if let Some(w) = surface_ids
+                        .get(&surface.id())
+                        .and_then(|id| window_manager.get_mut(id.inner()))
+                    {
+                        let scale = w.state.scale_factor();
+                        let p_w = (configure.new_size.0.max(1) as f64 * scale)
+                            .ceil() as u32;
+                        let p_h = (configure.new_size.1.max(1) as f64 * scale)
+                            .ceil() as u32;
+                        w.state.update(
+                            w.raw.as_ref(),
+                            &WindowEvent::SurfaceResized(PhysicalSize::new(
+                                p_w, p_h,
+                            )),
+                            debug,
+                        );
+                    }
+                }
             },
             SctkEvent::PopupEvent {
                 variant,
@@ -906,6 +938,7 @@ impl SctkEvent {
                         }
                     }
                     PopupEventVariant::Created(
+                        queue_handle,
                         surface,
                         surface_id,
                         common,
@@ -921,6 +954,7 @@ impl SctkEvent {
                             wrapper,
                             surface,
                             display,
+                            queue_handle,
                         );
                         #[cfg(feature = "a11y")]
                         {
@@ -1048,6 +1082,7 @@ impl SctkEvent {
                 ),
             )),
             SctkEvent::SessionLockSurfaceCreated {
+                queue_handle,
                 surface,
                 native_id: surface_id,
                 common,
@@ -1063,6 +1098,7 @@ impl SctkEvent {
                     wrapper,
                     surface,
                     display,
+                    queue_handle,
                 );
 
                 #[cfg(feature = "a11y")]

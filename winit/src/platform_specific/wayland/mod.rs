@@ -49,21 +49,14 @@ impl std::fmt::Debug for Action {
             Self::PrePresentNotify(arg0) => {
                 f.debug_tuple("PrePresentNotify").field(arg0).finish()
             }
-            Self::TrackWindow(arg0, arg1) => {
+            Self::TrackWindow(_arg0, arg1) => {
                 f.debug_tuple("TrackWindow").field(arg1).finish()
             }
             Self::RemoveWindow(arg0) => {
                 f.debug_tuple("RemoveWindow").field(arg0).finish()
             }
             Self::Ready => write!(f, "Ready"),
-            Action::Action(action) => todo!(),
-            Action::SetCursor(cursor_icon) => todo!(),
-            Action::RequestRedraw(object_id) => todo!(),
-            Action::PrePresentNotify(object_id) => todo!(),
-            Action::TrackWindow(arc, id) => todo!(),
-            Action::RemoveWindow(id) => todo!(),
-            Action::Dropped(surface_id_wrapper) => todo!(),
-            Action::Ready => todo!(),
+            Self::Dropped(_surface_id_wrapper) => write!(f, "Dropped"),
         }
     }
 }

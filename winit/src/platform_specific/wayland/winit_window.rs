@@ -4,7 +4,7 @@ use sctk::reexports::{
     calloop::channel,
     client::{
         protocol::{wl_display::WlDisplay, wl_surface::WlSurface},
-        Proxy,
+        Proxy, QueueHandle,
     },
 };
 use std::sync::{Arc, Mutex};
@@ -18,6 +18,7 @@ use crate::platform_specific::SurfaceIdWrapper;
 
 use super::event_loop::state::{
     Common, CommonSurface, SctkLayerSurface, SctkLockSurface, SctkPopup,
+    SctkState,
 };
 
 #[derive(Debug)]
@@ -35,11 +36,13 @@ pub struct SctkWinitWindow {
     surface: CommonSurface,
     common: Arc<Mutex<Common>>,
     display: WlDisplay,
+    pub(crate) queue_handle: QueueHandle<SctkState>,
+    wait_redraw: bool,
 }
 
 impl Drop for SctkWinitWindow {
     fn drop(&mut self) {
-        self.tx.send(Action::Dropped(self.id));
+        self.tx.send(Action::Dropped(self.id)).unwrap();
     }
 }
 
@@ -50,6 +53,7 @@ impl SctkWinitWindow {
         id: SurfaceIdWrapper,
         surface: CommonSurface,
         display: WlDisplay,
+        queue_handle: QueueHandle<SctkState>,
     ) -> Arc<dyn winit::window::Window> {
         Arc::new(Self {
             tx,
@@ -57,6 +61,8 @@ impl SctkWinitWindow {
             id,
             surface,
             display,
+            queue_handle,
+            wait_redraw: false,
         })
     }
 }
@@ -74,9 +80,10 @@ impl winit::window::Window for SctkWinitWindow {
     }
 
     fn request_redraw(&self) {
-        _ = self
-            .tx
-            .send(Action::RequestRedraw(self.surface.wl_surface().id()));
+        let surface = self.surface.wl_surface();
+        _ = self.tx.send(Action::RequestRedraw(surface.id()));
+        _ = surface.frame(&self.queue_handle, surface.clone());
+        surface.commit();
     }
 
     fn pre_present_notify(&self) {

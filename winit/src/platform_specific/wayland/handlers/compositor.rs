@@ -28,7 +28,7 @@ impl CompositorHandler for SctkState {
         surface: &wl_surface::WlSurface,
         _time: u32,
     ) {
-        _ = self.requested_frame.remove(&surface.id());
+        _ = self.frame_status.insert(surface.id(), true);
     }
 
     fn transform_changed(

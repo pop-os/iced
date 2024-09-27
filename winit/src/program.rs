@@ -4,18 +4,12 @@ mod drag_resize;
 mod state;
 mod window_manager;
 
-use iced_graphics::compositor::SurfaceError;
-use raw_window_handle::DisplayHandle;
-use raw_window_handle::HasDisplayHandle;
 pub use runtime::{default, Appearance, DefaultStyle};
-use window_manager::Window;
+use window_manager::Frame;
 use winit::event_loop::OwnedDisplayHandle;
-use xkeysym::key::cr;
 
 use crate::conversion;
 use crate::core;
-use crate::core::clipboard::DndSource;
-use crate::core::clipboard::Kind;
 use crate::core::mouse;
 use crate::core::renderer;
 use crate::core::time::Instant;
@@ -1119,8 +1113,12 @@ async fn run_instance<'a, P, C>(
                 event::StartCause::Init
                 | event::StartCause::ResumeTimeReached { .. },
             ) => {
+                if window_manager.ids().next().is_none() {
+                    _ = control_sender
+                        .start_send(Control::ChangeFlow(ControlFlow::Wait));
+                }
                 for (_id, window) in window_manager.iter_mut() {
-                    window.raw.request_redraw();
+                    window.request_redraw();
                 }
             }
             Event::Winit(window_id, event) => {
@@ -1131,7 +1129,7 @@ async fn run_instance<'a, P, C>(
                         else {
                             continue;
                         };
-                        window.frame = true;
+                        window.frame = Frame::Ready;
 
                         // TODO: Avoid redrawing all the time by forcing widgets to
                         // request redraws on state changes
@@ -1194,7 +1192,7 @@ async fn run_instance<'a, P, C>(
                                     redraw_request: Some(redraw_request),
                                 } => match redraw_request {
                                     window::RedrawRequest::NextFrame => {
-                                        window.raw.request_redraw();
+                                        window.request_redraw();
 
                                         ControlFlow::Wait
                                     }
@@ -1363,9 +1361,7 @@ async fn run_instance<'a, P, C>(
                                 window.state.viewport_version();
                         }
 
-                        if !window.frame {
-                            window.raw.pre_present_notify();
-                        }
+                        window.raw.pre_present_notify();
 
                         debug.render_started();
                         match compositor.present(
@@ -1376,7 +1372,7 @@ async fn run_instance<'a, P, C>(
                             &debug.overlay(),
                         ) {
                             Ok(()) => {
-                                window.frame = false;
+                                window.frame = Frame::None;
                                 debug.render_finished();
                             }
                             Err(error) => {
@@ -1410,7 +1406,7 @@ async fn run_instance<'a, P, C>(
                                         for (_id, window) in
                                             window_manager.iter_mut()
                                         {
-                                            window.raw.request_redraw();
+                                            window.request_redraw();
                                         }
                                     }
                                 }
@@ -1486,7 +1482,6 @@ async fn run_instance<'a, P, C>(
                             }
                         }
                     }
-
                     _ => {}
                 }
             }
@@ -1525,13 +1520,13 @@ async fn run_instance<'a, P, C>(
                             &mut messages,
                         );
 
-                    if window.frame {
+                    if matches!(window.frame, Frame::Ready) {
                         _ = control_sender.unbounded_send(Control::Winit(
                             window.raw.id(),
                             event::WindowEvent::RedrawRequested,
                         ));
                     } else {
-                        window.raw.request_redraw();
+                        window.request_redraw();
                     }
 
                     if !uis_stale {
@@ -1583,7 +1578,7 @@ async fn run_instance<'a, P, C>(
                             window.raw.as_ref(),
                         );
 
-                        window.raw.request_redraw();
+                        window.request_redraw();
                     }
 
                     user_interfaces = ManuallyDrop::new(build_user_interfaces(
@@ -1654,7 +1649,7 @@ async fn run_instance<'a, P, C>(
 
                     // TODO once widgets can request to be redrawn, we can avoid always requesting a
                     // redraw
-                    window.raw.request_redraw();
+                    window.request_redraw();
                     runtime.broadcast(subscription::Event::Interaction {
                         window: id,
                         event: redraw_event,
@@ -1667,7 +1662,7 @@ async fn run_instance<'a, P, C>(
                                 redraw_request: Some(redraw_request),
                             } => match redraw_request {
                                 window::RedrawRequest::NextFrame => {
-                                    window.raw.request_redraw();
+                                    window.request_redraw();
 
                                     ControlFlow::Wait
                                 }
