@@ -1186,8 +1186,8 @@ async fn run_instance<'a, P, C>(
                             status: core::event::Status::Ignored,
                         });
 
-                        if let Err(err) = control_sender.start_send(
-                            Control::ChangeFlow(match ui_state {
+                        if control_sender
+                            .start_send(Control::ChangeFlow(match ui_state {
                                 user_interface::State::Updated {
                                     redraw_request: Some(redraw_request),
                                 } => match redraw_request {
@@ -1201,8 +1201,9 @@ async fn run_instance<'a, P, C>(
                                     }
                                 },
                                 _ => ControlFlow::Wait,
-                            }),
-                        ) {
+                            }))
+                            .is_err()
+                        {
                             panic!("send error");
                         }
 
@@ -1211,12 +1212,10 @@ async fn run_instance<'a, P, C>(
                         {
                             continue;
                         }
-
                         if window.viewport_version
                             != window.state.viewport_version()
                         {
                             let logical_size = window.state.logical_size();
-
                             debug.layout_started();
                             let mut ui = user_interfaces
                                 .remove(&id)
@@ -1350,7 +1349,6 @@ async fn run_instance<'a, P, C>(
                                 window.mouse_interaction =
                                     new_mouse_interaction;
                             }
-
                             compositor.configure_surface(
                                 &mut window.surface,
                                 physical_size.width,
@@ -1472,7 +1470,6 @@ async fn run_instance<'a, P, C>(
                                 &window_event,
                                 &mut debug,
                             );
-
                             if let Some(event) = conversion::window_event(
                                 window_event,
                                 window.state.scale_factor(),
@@ -1492,7 +1489,6 @@ async fn run_instance<'a, P, C>(
 
                 debug.event_processing_started();
                 let mut uis_stale = false;
-
                 for (id, window) in window_manager.iter_mut() {
                     let mut window_events = vec![];
 
@@ -1515,7 +1511,6 @@ async fn run_instance<'a, P, C>(
                             ),
                         ));
                     }
-
                     let (ui_state, statuses) = user_interfaces
                         .get_mut(&id)
                         .expect("Get user interface")
@@ -1526,6 +1521,15 @@ async fn run_instance<'a, P, C>(
                             &mut clipboard,
                             &mut messages,
                         );
+
+                    if matches!(window.frame, Frame::Ready) {
+                        _ = control_sender.unbounded_send(Control::Winit(
+                            window.raw.id(),
+                            event::WindowEvent::RedrawRequested,
+                        ));
+                    } else {
+                        window.request_redraw();
+                    }
 
                     if let Some(requested_size) =
                         clipboard.requested_logical_size.lock().unwrap().take()
@@ -1548,15 +1552,6 @@ async fn run_instance<'a, P, C>(
                                 window.raw.as_ref(),
                             );
                         }
-                    }
-
-                    if matches!(window.frame, Frame::Ready) {
-                        _ = control_sender.unbounded_send(Control::Winit(
-                            window.raw.id(),
-                            event::WindowEvent::RedrawRequested,
-                        ));
-                    } else {
-                        window.request_redraw();
                     }
 
                     if !uis_stale {

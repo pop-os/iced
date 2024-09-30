@@ -126,7 +126,6 @@ pub struct SctkLayerSurface {
     pub(crate) _pending_requests:
         Vec<platform_specific::wayland::layer_surface::Action>,
     pub(crate) wp_fractional_scale: Option<WpFractionalScaleV1>,
-    pub(crate) wp_viewport: Option<WpViewport>,
     pub(crate) common: Arc<Mutex<Common>>,
 }
 
@@ -140,8 +139,9 @@ impl SctkLayerSurface {
     }
 
     pub(crate) fn update_viewport(&mut self, w: u32, h: u32) {
+        let mut common = self.common.lock().unwrap();
         self.current_size = Some(LogicalSize::new(w, h));
-        if let Some(viewport) = self.wp_viewport.as_ref() {
+        if let Some(viewport) = common.wp_viewport.as_ref() {
             // Set inner size without the borders.
             viewport.set_destination(w as i32, h as i32);
         }
@@ -192,11 +192,12 @@ pub struct Common {
     pub(crate) ime_size: LogicalSize<u32>,
     pub(crate) size: LogicalSize<u32>,
     pub(crate) requested_size: (Option<u32>, Option<u32>),
+    pub(crate) wp_viewport: Option<WpViewport>,
 }
 
 impl Default for Common {
     fn default() -> Self {
-        Self { fractional_scale: Default::default(), has_focus: Default::default(), ime_pos: Default::default(), ime_size: Default::default(), size: LogicalSize::new(1, 1), requested_size: (None, None)}
+        Self { fractional_scale: Default::default(), has_focus: Default::default(), ime_pos: Default::default(), ime_size: Default::default(), size: LogicalSize::new(1, 1), requested_size: (None, None), wp_viewport: None}
     }
 }
 
@@ -722,6 +723,7 @@ impl SctkState {
             });
         let mut common = Common::from(LogicalSize::new(size.0.unwrap_or(1), size.1.unwrap_or(1)));
         common.requested_size = size;
+        common.wp_viewport = wp_viewport;
         let common = Arc::new(Mutex::new(common));
         self.layer_surfaces.push(SctkLayerSurface {
             id,
@@ -735,7 +737,6 @@ impl SctkState {
             exclusive_zone,
             last_configure: None,
             _pending_requests: Vec::new(),
-            wp_viewport,
             wp_fractional_scale,
             common: common.clone()
         });

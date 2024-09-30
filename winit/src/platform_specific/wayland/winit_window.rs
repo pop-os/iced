@@ -140,11 +140,20 @@ impl winit::window::Window for SctkWinitWindow {
                 );
                 if size.width > 0 {
                     guard.size.width = size.width;
+                    guard.requested_size.0 = Some(size.width);
                 }
                 if size.height > 0 {
                     guard.size.height = size.height;
+                    guard.requested_size.1 = Some(size.height);
                 }
                 layer_surface.set_size(size.width, size.height);
+                if let Some(viewport) = guard.wp_viewport.as_ref() {
+                    // Set inner size without the borders.
+                    viewport.set_destination(
+                        guard.size.width as i32,
+                        guard.size.height as i32,
+                    );
+                }
             }
             CommonSurface::Lock(_) => {}
         }
