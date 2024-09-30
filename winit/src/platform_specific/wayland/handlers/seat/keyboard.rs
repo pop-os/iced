@@ -47,6 +47,9 @@ impl KeyboardHandler for SctkState {
         if is_active {
             let id =
                 winit::window::WindowId::from(surface.id().as_ptr() as u64);
+            if self.windows.iter().any(|w| w.window.id() == id) {
+                return;
+            }
             self.sctk_events.push(SctkEvent::Winit(
                 id,
                 winit::event::WindowEvent::Focused(true),
@@ -100,6 +103,9 @@ impl KeyboardHandler for SctkState {
                 let s = &self.seats[0];
                 let id =
                     winit::window::WindowId::from(surface.id().as_ptr() as u64);
+                if self.windows.iter().any(|w| w.window.id() == id) {
+                    return;
+                }
                 self.sctk_events.push(SctkEvent::Winit(
                     id,
                     winit::event::WindowEvent::Focused(true),

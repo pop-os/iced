@@ -3,13 +3,10 @@ use crate::platform_specific::wayland::{
 };
 use sctk::{
     delegate_pointer,
-    reexports::{
-        client::Proxy, protocols::xdg::shell::client::xdg_toplevel::ResizeEdge,
-    },
+    reexports::client::Proxy,
     seat::pointer::{
-        CursorIcon, PointerEvent, PointerEventKind, PointerHandler, BTN_LEFT,
+        CursorIcon, PointerEvent, PointerEventKind, PointerHandler,
     },
-    shell::WaylandSurface,
 };
 use winit::{
     dpi::PhysicalPosition,
@@ -50,6 +47,9 @@ impl PointerHandler for SctkState {
                 let id = winit::window::WindowId::from(
                     e.surface.id().as_ptr() as u64
                 );
+                if self.windows.iter().any(|w| w.window.id() == id) {
+                    continue;
+                }
                 if let PointerEventKind::Motion { time } = &e.kind {
                     self.sctk_events.push(SctkEvent::PointerEvent {
                         variant: PointerEvent {
