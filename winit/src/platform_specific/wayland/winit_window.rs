@@ -127,11 +127,31 @@ impl winit::window::Window for SctkWinitWindow {
                     return None;
                 }
                 guard.size = size;
-                popup.reposition(
-                    &positioner.as_ref(),
-                    TOKEN_CTR
-                        .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+                guard.requested_size.0 = Some(guard.size.width);
+                guard.requested_size.1 = Some(guard.size.height);
+                positioner.set_size(
+                    guard.size.width as i32,
+                    guard.size.height as i32,
                 );
+                popup.xdg_surface().set_window_geometry(
+                    0,
+                    0,
+                    guard.size.width as i32,
+                    guard.size.height as i32,
+                );
+                if let Some(viewport) = guard.wp_viewport.as_ref() {
+                    // Set inner size without the borders.
+                    viewport.set_destination(
+                        guard.size.width as i32,
+                        guard.size.height as i32,
+                    );
+                }
+                // popup.reposition(
+                //     &positioner.as_ref(),
+                //     TOKEN_CTR
+                //         .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+                // );
+                popup.wl_surface().commit();
             }
             CommonSurface::Layer(layer_surface) => {
                 guard.requested_size = (
@@ -140,11 +160,9 @@ impl winit::window::Window for SctkWinitWindow {
                 );
                 if size.width > 0 {
                     guard.size.width = size.width;
-                    guard.requested_size.0 = Some(size.width);
                 }
                 if size.height > 0 {
                     guard.size.height = size.height;
-                    guard.requested_size.1 = Some(size.height);
                 }
                 layer_surface.set_size(size.width, size.height);
                 if let Some(viewport) = guard.wp_viewport.as_ref() {

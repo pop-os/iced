@@ -57,9 +57,7 @@ use sctk::{
     },
     registry::RegistryState,
     seat::{
-        keyboard::KeyEvent,
-        pointer::{CursorIcon, ThemedPointer},
-        SeatState,
+        keyboard::KeyEvent, pointer::{CursorIcon, PointerData, ThemedPointer}, touch::TouchData, SeatState
     },
     session_lock::{
         SessionLock, SessionLockState, SessionLockSurface,
@@ -139,7 +137,7 @@ impl SctkLayerSurface {
     }
 
     pub(crate) fn update_viewport(&mut self, w: u32, h: u32) {
-        let mut common = self.common.lock().unwrap();
+        let common = self.common.lock().unwrap();
         self.current_size = Some(LogicalSize::new(w, h));
         if let Some(viewport) = common.wp_viewport.as_ref() {
             // Set inner size without the borders.
@@ -221,7 +219,6 @@ pub struct SctkPopup {
     pub(crate) data: SctkPopupData,
     pub(crate) common: Arc<Mutex<Common>>,
     pub(crate) wp_fractional_scale: Option<WpFractionalScaleV1>,
-    pub(crate) wp_viewport: Option<WpViewport>,
 }
 
 impl SctkPopup {
@@ -592,17 +589,21 @@ impl SctkState {
         };
         if grab {
             if let Some(s) = self.seats.first() {
-                popup.xdg_popup().grab(
-                    &s.seat,
-                    s.last_ptr_press.map(|p| p.2).unwrap_or_else(|| {
-                        s.last_kbd_press
-                            .as_ref()
-                            .map(|p| p.1)
-                            .unwrap_or_default()
-                    }),
-                )
+                let ptr_data = s.ptr.as_ref().and_then(|p| p.pointer().data::<PointerData>()).and_then(|data| data.latest_button_serial());
+                if let Some(serial) = ptr_data.or_else(|| s.touch.as_ref().and_then(|t| t.data::<TouchData>()).and_then(|t| t.latest_down_serial())).or_else(|| s.last_kbd_press
+                    .as_ref()
+                    .map(|p| p.1)) {
+                    popup.xdg_popup().grab(
+                        &s.seat,
+                        serial
+                    );
+                }
+            } else {
+                log::error!("Can't take grab on popup. Missing serial.");
             }
         }
+        popup.xdg_surface().set_window_geometry(0, 0, size.0 as i32, size.1 as i32);
+        _ = wl_surface.frame(&self.queue_handle, wl_surface.clone());
         wl_surface.commit();
 
         let wp_viewport = self.viewporter_state.as_ref().map(|state| {
@@ -615,8 +616,9 @@ impl SctkState {
             self.fractional_scaling_manager.as_ref().map(|fsm| {
                 fsm.fractional_scaling(popup.wl_surface(), &self.queue_handle)
             });
-            let common = Arc::new(Mutex::new(LogicalSize::new(size.0, size.1).into()));
-
+        let mut common: Common = LogicalSize::new(size.0, size.1).into();
+        common.wp_viewport = wp_viewport;
+        let common = Arc::new(Mutex::new(common));
         let positioner = Arc::new(positioner);
 
         self.popups.push(SctkPopup {
@@ -629,7 +631,6 @@ impl SctkState {
             },
             last_configure: None,
             _pending_requests: Default::default(),
-            wp_viewport,
             wp_fractional_scale,
             common: common.clone()
         });
