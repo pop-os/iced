@@ -1,5 +1,8 @@
-use crate::platform_specific::wayland::{
-    event_loop::state::SctkState, sctk_event::SctkEvent,
+use crate::{
+    event_loop::state::FrameStatus,
+    platform_specific::wayland::{
+        event_loop::state::SctkState, sctk_event::SctkEvent,
+    },
 };
 use sctk::{
     delegate_pointer,
@@ -35,6 +38,13 @@ impl PointerHandler for SctkState {
 
         // track events, but only forward for the active seat
         for e in events {
+            let entry = self
+                .frame_status
+                .entry(e.surface.id())
+                .or_insert(FrameStatus::RequestedRedraw);
+            if matches!(entry, FrameStatus::Received) {
+                *entry = FrameStatus::Ready;
+            }
             if my_seat.active_icon != my_seat.icon {
                 // Restore cursor that was set by appliction, or default
                 my_seat.set_cursor(

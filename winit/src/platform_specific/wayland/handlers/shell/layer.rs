@@ -42,6 +42,7 @@ impl LayerShellHandler for SctkState {
         mut configure: sctk::shell::wlr_layer::LayerSurfaceConfigure,
         _serial: u32,
     ) {
+        self.request_redraw(layer.wl_surface());
         let layer =
             match self.layer_surfaces.iter_mut().find(|s| {
                 s.surface.wl_surface().id() == layer.wl_surface().id()

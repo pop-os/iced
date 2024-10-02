@@ -38,7 +38,7 @@ use sctk::{
     shell::{wlr_layer::LayerShell, xdg::XdgShell, WaylandSurface},
     shm::Shm,
 };
-use state::SctkWindow;
+use state::{FrameStatus, SctkWindow};
 #[cfg(feature = "a11y")]
 use std::sync::{Arc, Mutex};
 use std::{
@@ -47,7 +47,6 @@ use std::{
 };
 use tracing::error;
 use wayland_backend::client::Backend;
-use wayland_protocols::wp::viewporter::client::wp_viewporter;
 use winit::event_loop::OwnedDisplayHandle;
 
 use self::state::SctkState;
@@ -58,11 +57,7 @@ pub struct Features {
 }
 
 pub struct SctkEventLoop {
-    // TODO after merged
-    // pub data_device_manager_state: DataDeviceManagerState,
     pub(crate) event_loop: EventLoop<'static, SctkState>,
-    pub(crate) wayland_dispatcher:
-        calloop::Dispatcher<'static, WaylandSource<SctkState>, SctkState>,
     pub(crate) _features: Features,
     pub(crate) state: SctkState,
 }
@@ -131,8 +126,9 @@ impl SctkEventLoop {
                             }
                         }
                         crate::platform_specific::Action::RequestRedraw(id) => {
-                            if !state.frame_status.contains_key(&id) {
-                                _ = state.frame_status.insert(id, false);
+                            let e = state.frame_status.entry(id).or_insert(FrameStatus::RequestedRedraw);
+                            if matches!(e, FrameStatus::Received) {
+                                *e = FrameStatus::Ready;
                             }
                         }
                         crate::platform_specific::Action::PrePresentNotify(
@@ -193,7 +189,6 @@ impl SctkEventLoop {
 
             let mut state = Self {
                 event_loop,
-                wayland_dispatcher,
                 state: SctkState {
                     connection,
                     registry_state,
@@ -229,6 +224,7 @@ impl SctkEventLoop {
                     viewporter_state,
                     compositor_updates: Default::default(),
                     events_sender: winit_event_sender,
+                    proxy,
                     id_map: Default::default(),
                     to_commit: HashMap::new(),
                     ready: true,
@@ -275,6 +271,7 @@ impl SctkEventLoop {
             {
                 state::send_event(
                     &state.state.events_sender,
+                    &state.state.proxy,
                     SctkEvent::Subcompositor(SubsurfaceState {
                         wl_compositor,
                         wl_subcompositor,
@@ -320,21 +317,6 @@ impl SctkEventLoop {
                 let had_events = !state.state.sctk_events.is_empty();
                 let mut wake_up = had_events;
 
-                for e in state.state.sctk_events.drain(..) {
-                    if let SctkEvent::Winit(id, e) = e {
-                        _ = state
-                            .state
-                            .events_sender
-                            .unbounded_send(Control::Winit(id, e));
-                    } else {
-                        _ = state.state.events_sender.unbounded_send(
-                            Control::PlatformSpecific(
-                                crate::platform_specific::Event::Wayland(e),
-                            ),
-                        );
-                    }
-                }
-
                 for s in state
                     .state
                     .layer_surfaces
@@ -356,7 +338,7 @@ impl SctkEventLoop {
                         .state
                         .frame_status
                         .get(&id)
-                        .map(|v| !*v)
+                        .map(|v| !matches!(v, state::FrameStatus::Ready))
                         .unwrap_or(true)
                         || !state.state.id_map.contains_key(&id)
                     {
@@ -364,6 +346,7 @@ impl SctkEventLoop {
                     }
                     wake_up = true;
 
+                    _ = s.frame(&state.state.queue_handle, s.clone());
                     _ = state.state.frame_status.remove(&id);
                     _ = state.state.events_sender.unbounded_send(
                         Control::Winit(
@@ -373,8 +356,23 @@ impl SctkEventLoop {
                     );
                 }
 
+                for e in state.state.sctk_events.drain(..) {
+                    if let SctkEvent::Winit(id, e) = e {
+                        _ = state
+                            .state
+                            .events_sender
+                            .unbounded_send(Control::Winit(id, e));
+                    } else {
+                        _ = state.state.events_sender.unbounded_send(
+                            Control::PlatformSpecific(
+                                crate::platform_specific::Event::Wayland(e),
+                            ),
+                        );
+                    }
+                }
+
                 if wake_up {
-                    proxy.wake_up();
+                    state.state.proxy.wake_up();
                 }
             }
         });

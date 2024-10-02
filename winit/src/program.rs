@@ -1129,7 +1129,6 @@ async fn run_instance<'a, P, C>(
                         else {
                             continue;
                         };
-                        window.frame = Frame::Ready;
 
                         // TODO: Avoid redrawing all the time by forcing widgets to
                         // request redraws on state changes
@@ -1370,7 +1369,6 @@ async fn run_instance<'a, P, C>(
                             &debug.overlay(),
                         ) {
                             Ok(()) => {
-                                window.frame = Frame::None;
                                 debug.render_finished();
                             }
                             Err(error) => {
@@ -1483,13 +1481,21 @@ async fn run_instance<'a, P, C>(
                 }
             }
             Event::AboutToWait => {
-                if events.is_empty() && messages.is_empty() {
+                let skip = events.is_empty() && messages.is_empty();
+
+                if skip
+                    && window_manager.iter_mut().all(|(_, w)| !w.resize_enabled)
+                {
                     continue;
                 }
 
                 debug.event_processing_started();
                 let mut uis_stale = false;
+                let mut resized = false;
                 for (id, window) in window_manager.iter_mut() {
+                    if skip && !window.resize_enabled {
+                        continue;
+                    }
                     let mut window_events = vec![];
 
                     events.retain(|(window_id, event)| {
@@ -1500,17 +1506,14 @@ async fn run_instance<'a, P, C>(
                             true
                         }
                     });
+                    let no_window_events = window_events.is_empty();
 
-                    if window_events.is_empty() && messages.is_empty() {
-                        continue;
-                    } else {
-                        #[cfg(feature = "wayland")]
-                        window_events.push(core::Event::PlatformSpecific(
-                            core::event::PlatformSpecific::Wayland(
-                                core::event::wayland::Event::RequestResize,
-                            ),
-                        ));
-                    }
+                    #[cfg(feature = "wayland")]
+                    window_events.push(core::Event::PlatformSpecific(
+                        core::event::PlatformSpecific::Wayland(
+                            core::event::wayland::Event::RequestResize,
+                        ),
+                    ));
                     let (ui_state, statuses) = user_interfaces
                         .get_mut(&id)
                         .expect("Get user interface")
@@ -1522,14 +1525,8 @@ async fn run_instance<'a, P, C>(
                             &mut messages,
                         );
 
-                    if matches!(window.frame, Frame::Ready) {
-                        _ = control_sender.unbounded_send(Control::Winit(
-                            window.raw.id(),
-                            event::WindowEvent::RedrawRequested,
-                        ));
-                    } else {
-                        window.request_redraw();
-                    }
+                    let mut needs_redraw =
+                        !no_window_events || !messages.is_empty();
 
                     if let Some(requested_size) =
                         clipboard.requested_logical_size.lock().unwrap().take()
@@ -1541,6 +1538,9 @@ async fn run_instance<'a, P, C>(
                             || requested_physical_size.height
                                 != physical_size.height
                         {
+                            window.resize_enabled = true;
+                            resized = true;
+                            needs_redraw = true;
                             _ = window.raw.request_surface_size(
                                 winit::dpi::Size::Physical(
                                     requested_physical_size,
@@ -1552,6 +1552,11 @@ async fn run_instance<'a, P, C>(
                                 window.raw.as_ref(),
                             );
                         }
+                    }
+                    if needs_redraw {
+                        window.request_redraw();
+                    } else {
+                        continue;
                     }
 
                     if !uis_stale {
@@ -1568,6 +1573,10 @@ async fn run_instance<'a, P, C>(
                             status,
                         });
                     }
+                }
+
+                if !resized && skip {
+                    continue;
                 }
 
                 for (id, event) in events.drain(..) {

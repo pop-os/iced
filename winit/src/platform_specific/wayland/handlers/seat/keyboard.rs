@@ -19,7 +19,8 @@ impl KeyboardHandler for SctkState {
         _raw: &[u32],
         _keysyms: &[Keysym],
     ) {
-        let (i, mut is_active, seat) = {
+        self.request_redraw(surface);
+        let (i, mut is_active, _seat) = {
             let (i, is_active, my_seat) =
                 match self.seats.iter_mut().enumerate().find_map(|(i, s)| {
                     if s.kbd.as_ref() == Some(keyboard) {
@@ -70,6 +71,7 @@ impl KeyboardHandler for SctkState {
         surface: &sctk::reexports::client::protocol::wl_surface::WlSurface,
         _serial: u32,
     ) {
+        self.request_redraw(surface);
         let (is_active, seat, kbd) = {
             let (is_active, my_seat) =
                 match self.seats.iter_mut().enumerate().find_map(|(i, s)| {
@@ -167,6 +169,7 @@ impl KeyboardHandler for SctkState {
             //     ))
             // }
             if let Some(surface) = my_seat.kbd_focus.clone() {
+                self.request_redraw(&surface);
                 self.sctk_events.push(SctkEvent::KeyboardEvent {
                     variant: KeyboardEventVariant::Press(event),
                     kbd_id,
@@ -201,6 +204,7 @@ impl KeyboardHandler for SctkState {
 
         if is_active {
             if let Some(surface) = my_seat.kbd_focus.clone() {
+                self.request_redraw(&surface);
                 self.sctk_events.push(SctkEvent::KeyboardEvent {
                     variant: KeyboardEventVariant::Release(event),
                     kbd_id,
@@ -236,6 +240,7 @@ impl KeyboardHandler for SctkState {
 
         if is_active {
             if let Some(surface) = my_seat.kbd_focus.clone() {
+                self.request_redraw(&surface);
                 self.sctk_events.push(SctkEvent::KeyboardEvent {
                     variant: KeyboardEventVariant::Modifiers(modifiers),
                     kbd_id,

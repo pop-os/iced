@@ -1,14 +1,17 @@
 // TODO handle multiple seats?
 
-use crate::platform_specific::wayland::{
-    event_loop::state::SctkState, sctk_event::SctkEvent,
+use crate::{
+    event_loop::state::FrameStatus,
+    platform_specific::wayland::{
+        event_loop::state::SctkState, sctk_event::SctkEvent,
+    },
 };
 use iced_runtime::core::{touch, Point};
 use sctk::{
     delegate_touch,
     reexports::client::{
         protocol::{wl_surface::WlSurface, wl_touch::WlTouch},
-        Connection, QueueHandle,
+        Connection, Proxy, QueueHandle,
     },
     seat::touch::TouchHandler,
 };
@@ -25,6 +28,7 @@ impl TouchHandler for SctkState {
         id: i32,
         position: (f64, f64),
     ) {
+        self.request_redraw(&surface);
         let Some(my_seat) = self
             .seats
             .iter_mut()
@@ -89,6 +93,13 @@ impl TouchHandler for SctkState {
         let id = touch::Finger(id as u64);
         let position = Point::new(position.0 as f32, position.1 as f32);
         if let Some((surface, position_ref)) = self.touch_points.get_mut(&id) {
+            let entry = self
+                .frame_status
+                .entry(surface.id())
+                .or_insert(FrameStatus::RequestedRedraw);
+            if matches!(entry, FrameStatus::Received) {
+                *entry = FrameStatus::Ready;
+            }
             *position_ref = position;
             self.sctk_events.push(SctkEvent::TouchEvent {
                 variant: touch::Event::FingerMoved { id, position },

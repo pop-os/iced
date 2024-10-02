@@ -8,7 +8,10 @@ use sctk::{
     },
 };
 
-use crate::platform_specific::wayland::event_loop::state::SctkState;
+use crate::{
+    event_loop::state::receive_frame,
+    platform_specific::wayland::event_loop::state::SctkState,
+};
 
 impl CompositorHandler for SctkState {
     fn scale_factor_changed(
@@ -28,7 +31,7 @@ impl CompositorHandler for SctkState {
         surface: &wl_surface::WlSurface,
         _time: u32,
     ) {
-        _ = self.frame_status.insert(surface.id(), true);
+        _ = receive_frame(&mut self.frame_status, surface);
     }
 
     fn transform_changed(

@@ -15,6 +15,7 @@ impl PopupHandler for SctkState {
         popup: &sctk::shell::xdg::popup::Popup,
         configure: sctk::shell::xdg::popup::PopupConfigure,
     ) {
+        self.request_redraw(popup.wl_surface());
         let sctk_popup = match self.popups.iter_mut().find(|s| {
             s.popup.wl_surface().clone() == popup.wl_surface().clone()
         }) {

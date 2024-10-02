@@ -82,11 +82,11 @@ impl winit::window::Window for SctkWinitWindow {
     fn request_redraw(&self) {
         let surface = self.surface.wl_surface();
         _ = self.tx.send(Action::RequestRedraw(surface.id()));
-        _ = surface.frame(&self.queue_handle, surface.clone());
-        surface.commit();
     }
 
     fn pre_present_notify(&self) {
+        let surface = self.surface.wl_surface();
+        _ = surface.frame(&self.queue_handle, surface.clone());
         _ = self
             .tx
             .send(Action::PrePresentNotify(self.surface.wl_surface().id()));
@@ -118,7 +118,7 @@ impl winit::window::Window for SctkWinitWindow {
         size: winit::dpi::Size,
     ) -> Option<winit::dpi::PhysicalSize<u32>> {
         let mut guard = self.common.lock().unwrap();
-
+        self.request_redraw();
         let size: LogicalSize<u32> =
             size.to_logical(guard.fractional_scale.unwrap_or(1.));
         match &self.surface {
@@ -146,12 +146,6 @@ impl winit::window::Window for SctkWinitWindow {
                         guard.size.height as i32,
                     );
                 }
-                // popup.reposition(
-                //     &positioner.as_ref(),
-                //     TOKEN_CTR
-                //         .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
-                // );
-                popup.wl_surface().commit();
             }
             CommonSurface::Layer(layer_surface) => {
                 guard.requested_size = (

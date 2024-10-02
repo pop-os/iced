@@ -70,7 +70,7 @@ where
                 renderer,
                 mouse_interaction: mouse::Interaction::None,
                 prev_dnd_destination_rectangles_count: 0,
-                frame: Frame::Ready,
+                resize_enabled: false,
             },
         );
 
@@ -166,8 +166,7 @@ where
     pub mouse_interaction: mouse::Interaction,
     pub surface: C::Surface,
     pub renderer: P::Renderer,
-    // requested draw
-    pub(crate) frame: Frame,
+    pub resize_enabled: bool,
 }
 
 impl<P, C> Window<P, C>
@@ -194,9 +193,6 @@ where
     }
 
     pub fn request_redraw(&mut self) {
-        if matches!(self.frame, Frame::None) {
-            self.frame = Frame::Waiting;
-            self.raw.request_redraw();
-        }
+        self.raw.request_redraw();
     }
 }
