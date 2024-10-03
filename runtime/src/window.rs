@@ -169,9 +169,11 @@ pub enum Action {
 ///
 /// In any case, this [`Subscription`] is useful to smoothly draw application-driven
 /// animations without missing any frames.
-pub fn frames() -> Subscription<Instant> {
-    event::listen_raw(|event, _status, _window| match event {
-        crate::core::Event::Window(Event::RedrawRequested(at)) => Some(at),
+pub fn frames() -> Subscription<(Id, Instant)> {
+    event::listen_raw(|event, _status, window| match event {
+        crate::core::Event::Window(Event::RedrawRequested(at)) => {
+            Some((window, at))
+        }
         _ => None,
     })
 }
