@@ -62,8 +62,8 @@ pub use settings::Settings;
 pub use geometry::Geometry;
 
 use crate::core::{
-    Background, Color, Font, Pixels, Point, Rectangle, Size, Transformation,
-    Vector,
+    image::FilterMethod, Background, Color, Font, Pixels, Point, Radians,
+    Rectangle, Size, Transformation, Vector,
 };
 use crate::graphics::text::{Editor, Paragraph};
 use crate::graphics::Viewport;
@@ -534,9 +534,28 @@ impl core::image::Renderer for Renderer {
         self.image_cache.borrow_mut().measure_image(handle)
     }
 
-    fn draw_image(&mut self, image: core::Image, bounds: Rectangle) {
+    fn draw_image(
+        &mut self,
+        handle: Self::Handle,
+        filter_method: FilterMethod,
+        bounds: Rectangle,
+        rotation: Radians,
+        opacity: f32,
+        border_radius: [f32; 4],
+    ) {
         let (layer, transformation) = self.layers.current_mut();
-        layer.draw_raster(image, bounds, transformation);
+        layer.draw_raster(
+            crate::core::Image {
+                handle,
+                filter_method,
+                rotation,
+                opacity,
+                snap: true,
+                border_radius,
+            },
+            bounds,
+            transformation,
+        );
     }
 }
 

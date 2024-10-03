@@ -393,18 +393,16 @@ impl core::image::Renderer for Renderer {
         border_radius: [f32; 4],
     ) {
         let (layer, transformation) = self.layers.current_mut();
-        layer.draw_image(
-            iced_graphics::Image::Raster {
-                handle: crate::core::Image {
-                    handle,
-                    filter_method,
-                    rotation,
-                    opacity,
-                    snap: true,
-                    border_radius,
-                },
-                bounds,
+        layer.draw_raster(
+            crate::core::Image {
+                handle,
+                filter_method,
+                rotation,
+                opacity,
+                snap: true,
+                border_radius,
             },
+            bounds,
             transformation,
         );
     }

@@ -421,7 +421,10 @@ impl geometry::frame::Backend for Frame {
 
         image.rotation += external_rotation;
 
-        self.images.push(Image::Raster(image, bounds));
+        self.images.push(Image::Raster {
+            handle: image,
+            bounds,
+        });
     }
 
     fn draw_svg(&mut self, bounds: Rectangle, svg: impl Into<Svg>) {
@@ -432,7 +435,10 @@ impl geometry::frame::Backend for Frame {
 
         svg.rotation += external_rotation;
 
-        self.images.push(Image::Vector(svg, bounds));
+        self.images.push(Image::Vector {
+            handle: svg,
+            bounds,
+        });
     }
 }
 
