@@ -375,10 +375,10 @@ pub fn mode(mode: Option<winit::window::Fullscreen>) -> window::Mode {
 /// [`winit`]: https://github.com/rust-windowing/winit
 pub fn mouse_interaction(
     interaction: mouse::Interaction,
-) -> winit::window::CursorIcon {
+) -> Option<winit::window::CursorIcon> {
     use mouse::Interaction;
 
-    match interaction {
+    Some(match interaction {
         Interaction::Idle => winit::window::CursorIcon::Default,
         Interaction::Pointer => winit::window::CursorIcon::Pointer,
         Interaction::Working => winit::window::CursorIcon::Progress,
@@ -391,7 +391,8 @@ pub fn mouse_interaction(
         }
         Interaction::ResizingVertically => winit::window::CursorIcon::NsResize,
         Interaction::NotAllowed => winit::window::CursorIcon::NotAllowed,
-    }
+        Interaction::Hide => return None,
+    })
 }
 
 /// Converts a `MouseButton` from [`winit`] to an [`iced`] mouse button.

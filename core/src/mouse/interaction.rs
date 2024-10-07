@@ -13,4 +13,5 @@ pub enum Interaction {
     ResizingHorizontally,
     ResizingVertically,
     NotAllowed,
+    Hide,
 }

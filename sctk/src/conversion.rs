@@ -80,8 +80,8 @@ pub fn modifiers_to_native(mods: Modifiers) -> keyboard::Modifiers {
 //     key_conversion.get(&keysym).cloned()
 // }
 
-pub(crate) fn cursor_icon(cursor: Interaction) -> CursorIcon {
-    match cursor {
+pub(crate) fn cursor_icon(cursor: Interaction) -> Option<CursorIcon> {
+    Some(match cursor {
         Interaction::Idle => CursorIcon::Default,
         Interaction::Pointer => CursorIcon::Pointer,
         Interaction::Grab => CursorIcon::Grab,
@@ -92,5 +92,6 @@ pub(crate) fn cursor_icon(cursor: Interaction) -> CursorIcon {
         Interaction::ResizingHorizontally => CursorIcon::EwResize,
         Interaction::ResizingVertically => CursorIcon::NsResize,
         Interaction::NotAllowed => CursorIcon::NotAllowed,
-    }
+        Interaction::Hide => return None,
+    })
 }

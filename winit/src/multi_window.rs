@@ -575,11 +575,21 @@ async fn run_instance<A, E, C>(
                         debug.draw_finished();
 
                         if new_mouse_interaction != window.mouse_interaction {
-                            window.raw.set_cursor_icon(
+                            if let Some(interation) =
                                 conversion::mouse_interaction(
                                     new_mouse_interaction,
-                                ),
-                            );
+                                )
+                            {
+                                if matches!(
+                                    window.mouse_interaction,
+                                    mouse::Interaction::Hide
+                                ) {
+                                    window.raw.set_cursor_visible(true);
+                                }
+                                window.raw.set_cursor_icon(interation);
+                            } else {
+                                window.raw.set_cursor_visible(false);
+                            }
 
                             window.mouse_interaction = new_mouse_interaction;
                         }
@@ -650,11 +660,21 @@ async fn run_instance<A, E, C>(
 
                             if new_mouse_interaction != window.mouse_interaction
                             {
-                                window.raw.set_cursor_icon(
+                                if let Some(interation) =
                                     conversion::mouse_interaction(
                                         new_mouse_interaction,
-                                    ),
-                                );
+                                    )
+                                {
+                                    if matches!(
+                                        window.mouse_interaction,
+                                        mouse::Interaction::Hide
+                                    ) {
+                                        window.raw.set_cursor_visible(true);
+                                    }
+                                    window.raw.set_cursor_icon(interation);
+                                } else {
+                                    window.raw.set_cursor_visible(false);
+                                }
 
                                 window.mouse_interaction =
                                     new_mouse_interaction;
@@ -916,11 +936,21 @@ async fn run_instance<A, E, C>(
 
                             if new_mouse_interaction != window.mouse_interaction
                             {
-                                window.raw.set_cursor_icon(
+                                if let Some(interation) =
                                     conversion::mouse_interaction(
                                         new_mouse_interaction,
-                                    ),
-                                );
+                                    )
+                                {
+                                    if matches!(
+                                        window.mouse_interaction,
+                                        mouse::Interaction::Hide
+                                    ) {
+                                        window.raw.set_cursor_visible(true);
+                                    }
+                                    window.raw.set_cursor_icon(interation);
+                                } else {
+                                    window.raw.set_cursor_visible(false);
+                                }
 
                                 window.mouse_interaction =
                                     new_mouse_interaction;
