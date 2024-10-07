@@ -14,10 +14,14 @@ use crate::{
     Clipboard,
 };
 
+use dnd::DndSurface;
 use iced_futures::{
-    core::event::{
-        wayland::{LayerEvent, PopupEvent, SessionLockEvent},
-        PlatformSpecific,
+    core::{
+        event::{
+            wayland::{LayerEvent, PopupEvent, SessionLockEvent},
+            PlatformSpecific,
+        },
+        Clipboard as _,
     },
     futures::channel::mpsc,
 };
@@ -776,6 +780,12 @@ impl SctkEvent {
                                 .window_id()
                                 .is_some_and(|id| w.raw.id() == id)
                             {
+                                clipboard.register_dnd_destination(
+                                    DndSurface(Arc::new(Box::new(
+                                        w.raw.clone(),
+                                    ))),
+                                    Vec::new(),
+                                );
                                 *clipboard = Clipboard::unconnected();
                             }
                         }
@@ -919,7 +929,24 @@ impl SctkEvent {
                     PopupEventVariant::Done => {
                         if let Some(e) =
                             surface_ids.remove(&surface.id()).map(|id| {
-                                _ = window_manager.remove(id.inner());
+                                if let Some(w) =
+                                    window_manager.remove(id.inner())
+                                {
+                                    clipboard.register_dnd_destination(
+                                        DndSurface(Arc::new(Box::new(
+                                            w.raw.clone(),
+                                        ))),
+                                        Vec::new(),
+                                    );
+                                    if clipboard
+                                        .window_id()
+                                        .is_some_and(|id| w.raw.id() == id)
+                                    {
+                                        *clipboard = Clipboard::unconnected();
+                                    }
+                                }
+                                _ = user_interfaces.remove(&id.inner());
+
                                 (
                                     Some(id.inner()),
                                     iced_runtime::core::Event::PlatformSpecific(
