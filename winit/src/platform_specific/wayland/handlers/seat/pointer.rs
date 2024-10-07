@@ -38,13 +38,6 @@ impl PointerHandler for SctkState {
 
         // track events, but only forward for the active seat
         for e in events {
-            let entry = self
-                .frame_status
-                .entry(e.surface.id())
-                .or_insert(FrameStatus::RequestedRedraw);
-            if matches!(entry, FrameStatus::Received) {
-                *entry = FrameStatus::Ready;
-            }
             if my_seat.active_icon != my_seat.icon {
                 // Restore cursor that was set by appliction, or default
                 my_seat.set_cursor(
@@ -59,6 +52,13 @@ impl PointerHandler for SctkState {
                 );
                 if self.windows.iter().any(|w| w.window.id() == id) {
                     continue;
+                }
+                let entry = self
+                    .frame_status
+                    .entry(e.surface.id())
+                    .or_insert(FrameStatus::RequestedRedraw);
+                if matches!(entry, FrameStatus::Received) {
+                    *entry = FrameStatus::Ready;
                 }
                 if let PointerEventKind::Motion { time } = &e.kind {
                     self.sctk_events.push(SctkEvent::PointerEvent {
