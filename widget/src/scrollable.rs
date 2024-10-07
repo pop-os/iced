@@ -2,7 +2,6 @@
 use crate::container;
 use crate::core::border::{self, Border};
 use crate::core::clipboard::DndDestinationRectangles;
-use dnd::DndEvent;
 use iced_runtime::core::widget::Id;
 #[cfg(feature = "a11y")]
 use std::borrow::Cow;
@@ -774,35 +773,35 @@ where
                     return event::Status::Ignored;
                 }
 
-                let delta = match delta {
+                let Vector { x, y } = match delta {
                     mouse::ScrollDelta::Lines { x, y } => {
-                        let is_shift_pressed = state.keyboard_modifiers.shift();
-
-                        // macOS automatically inverts the axes when Shift is pressed
-                        let (x, y) =
-                            if cfg!(target_os = "macos") && is_shift_pressed {
-                                (y, x)
-                            } else {
-                                (x, y)
-                            };
-
-                        let is_vertical = match self.direction {
-                            Direction::Vertical(_) => true,
-                            Direction::Horizontal(_) => false,
-                            Direction::Both { .. } => !is_shift_pressed,
-                        };
-
-                        let movement = if is_vertical {
-                            Vector::new(x, y)
-                        } else {
-                            Vector::new(y, x)
-                        };
-
                         // TODO: Configurable speed/friction (?)
-                        -movement * 60.0
+                        Vector::new(x, y) * 60.
                     }
                     mouse::ScrollDelta::Pixels { x, y } => Vector::new(x, y),
                 };
+
+                let is_shift_pressed = state.keyboard_modifiers.shift();
+
+                // macOS automatically inverts the axes when Shift is pressed
+                let (x, y) = if cfg!(target_os = "macos") && is_shift_pressed {
+                    (y, x)
+                } else {
+                    (x, y)
+                };
+
+                let is_vertical = match self.direction {
+                    Direction::Vertical(_) => true,
+                    Direction::Horizontal(_) => false,
+                    Direction::Both { .. } => !is_shift_pressed,
+                };
+
+                let movement = if is_vertical {
+                    Vector::new(x, y)
+                } else {
+                    Vector::new(y, x)
+                };
+                let delta = movement * -1.;
 
                 state.scroll(
                     self.direction.align(delta),
