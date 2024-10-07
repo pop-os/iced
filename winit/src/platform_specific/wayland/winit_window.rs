@@ -139,6 +139,11 @@ impl winit::window::Window for SctkWinitWindow {
                     guard.size.width as i32,
                     guard.size.height as i32,
                 );
+                popup.xdg_popup().reposition(
+                    positioner,
+                    TOKEN_CTR
+                        .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+                );
                 if let Some(viewport) = guard.wp_viewport.as_ref() {
                     // Set inner size without the borders.
                     viewport.set_destination(

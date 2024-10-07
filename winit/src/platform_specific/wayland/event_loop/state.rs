@@ -1014,7 +1014,7 @@ impl SctkState {
                             _ = self.destroyed.insert(id);
                         }
                         _ = send_event(&self.events_sender, &self.proxy,
-                            SctkEvent::PopupEvent { variant: crate::sctk_event::PopupEventVariant::Done, toplevel_id: popup.data.parent.wl_surface().clone(), parent_id: popup.data.parent.wl_surface().clone(), id: popup.popup.wl_surface().clone() });
+                            SctkEvent::PopupEvent { variant: crate::sctk_event::PopupEventVariant::Done, toplevel_id: popup.data.toplevel.clone(), parent_id: popup.data.parent.wl_surface().clone(), id: popup.popup.wl_surface().clone() });
                     }
                 },
                 platform_specific::wayland::popup::Action::Size { id, width, height } => {
