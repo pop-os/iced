@@ -1482,7 +1482,6 @@ async fn run_instance<'a, P, C>(
             }
             Event::AboutToWait => {
                 let skip = events.is_empty() && messages.is_empty();
-
                 if skip
                     && window_manager.iter_mut().all(|(_, w)| !w.resize_enabled)
                 {
@@ -1538,14 +1537,17 @@ async fn run_instance<'a, P, C>(
                             || requested_physical_size.height
                                 != physical_size.height
                         {
+                            // FIXME what to do when we are stuck in a configure event/resize request loop
+                            // We don't have control over how winit handles this.
                             window.resize_enabled = true;
                             resized = true;
                             needs_redraw = true;
-                            _ = window.raw.request_surface_size(
-                                winit::dpi::Size::Physical(
-                                    requested_physical_size,
-                                ),
+                            let s = winit::dpi::Size::Physical(
+                                requested_physical_size,
                             );
+                            _ = window.raw.request_surface_size(s);
+                            window.raw.set_min_surface_size(Some(s));
+                            window.raw.set_max_surface_size(Some(s));
                             window.state.synchronize(
                                 &program,
                                 id,
@@ -1920,6 +1922,10 @@ fn run_action<P, C>(
                     .send_wayland(platform_specific::Action::RemoveWindow(id));
 
                 if let Some(window) = window_manager.remove(id) {
+                    clipboard.register_dnd_destination(
+                        DndSurface(Arc::new(Box::new(window.raw.clone()))),
+                        Vec::new(),
+                    );
                     if clipboard.window_id() == Some(window.raw.id()) {
                         *clipboard = window_manager
                             .first()
