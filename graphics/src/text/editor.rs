@@ -172,7 +172,9 @@ impl editor::Editor for Editor {
 
                     let layout = line
                         .layout_opt()
-                        .expect("Line layout should be cached");
+                        .as_ref()
+                        .expect("Line layout should be cached")
+                        .clone();
 
                     let mut lines = layout.iter().enumerate();
 
@@ -605,6 +607,7 @@ impl editor::Editor for Editor {
                 .find_map(|(i, line)| {
                     let layout = line
                         .layout_opt()
+                        .as_ref()
                         .expect("Line layout should be cached");
 
                     let mut layout_height = 0.0;
@@ -750,6 +753,7 @@ fn highlight_line(
 ) -> impl Iterator<Item = (f32, f32)> + '_ {
     let layout = line
         .layout_opt()
+        .as_ref()
         .expect("Line layout should be cached");
 
     layout.iter().map(move |visual_line| {
@@ -805,6 +809,7 @@ fn visual_lines_offset(line: usize, buffer: &cosmic_text::Buffer) -> f32 {
         .map(|line| {
             let layout = line
                 .layout_opt()
+                .as_ref()
                 .expect("Line layout should be cached");
             for layout_line in layout.iter() {
                 height_before_start +=

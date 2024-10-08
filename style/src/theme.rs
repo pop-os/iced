@@ -745,6 +745,37 @@ impl toggler::StyleSheet for Theme {
         }
     }
 
+    fn disabled(
+        &self,
+        style: &Self::Style,
+        is_active: bool,
+    ) -> toggler::Appearance {
+        match style {
+            Toggler::Default => {
+                let palette = self.extended_palette();
+
+                toggler::Appearance {
+                    background: if is_active {
+                        palette.primary.strong.color
+                    } else {
+                        palette.background.strong.color
+                    },
+                    background_border: None,
+                    foreground: if is_active {
+                        palette.primary.strong.text
+                    } else {
+                        palette.background.base.color
+                    },
+                    foreground_border: None,
+                    border_radius: Radius::from(8.0),
+                    handle_radius: Radius::from(8.0),
+                    handle_margin: 2.0,
+                }
+            }
+            Toggler::Custom(custom) => custom.active(self, is_active),
+        }
+    }
+
     fn hovered(
         &self,
         style: &Self::Style,

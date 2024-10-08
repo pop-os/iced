@@ -53,7 +53,7 @@ pub struct Toggler<
     #[cfg(feature = "a11y")]
     labeled_by_widget: Option<Vec<iced_accessibility::accesskit::NodeId>>,
     is_toggled: bool,
-    on_toggle: Box<dyn Fn(bool) -> Message + 'a>,
+    on_toggle: Option<Box<dyn Fn(bool) -> Message + 'a>>,
     label: Option<String>,
     width: Length,
     size: f32,
@@ -86,7 +86,7 @@ where
     pub fn new<F>(
         label: impl Into<Option<String>>,
         is_toggled: bool,
-        f: F,
+        f: Option<F>,
     ) -> Self
     where
         F: 'a + Fn(bool) -> Message,
@@ -103,7 +103,11 @@ where
             #[cfg(feature = "a11y")]
             labeled_by_widget: None,
             is_toggled,
-            on_toggle: Box::new(f),
+            on_toggle: if f.is_some() {
+                Some(Box::new(f.unwrap()))
+            } else {
+                None
+            },
             label,
             width: Length::Fill,
             size: Self::DEFAULT_SIZE,
@@ -296,8 +300,10 @@ where
             | Event::Touch(touch::Event::FingerPressed { .. }) => {
                 let mouse_over = cursor.is_over(layout.bounds());
 
-                if mouse_over {
-                    shell.publish((self.on_toggle)(!self.is_toggled));
+                if self.on_toggle.is_some() && mouse_over {
+                    shell.publish((self.on_toggle.as_ref().unwrap())(
+                        !self.is_toggled,
+                    ));
 
                     event::Status::Captured
                 } else {
@@ -352,7 +358,9 @@ where
         let bounds = toggler_layout.bounds();
         let is_mouse_over = cursor.is_over(layout.bounds());
 
-        let style = if is_mouse_over {
+        let style = if self.on_toggle.is_none() {
+            theme.disabled(&self.style, self.is_toggled)
+        } else if is_mouse_over {
             theme.hovered(&self.style, self.is_toggled)
         } else {
             theme.active(&self.style, self.is_toggled)
