@@ -7,9 +7,9 @@ use crate::graphics::{self, Viewport};
 use crate::settings::{self, Settings};
 use crate::{Engine, Renderer};
 
-#[cfg(all(unix, not(target_os = "macos")))]
+#[cfg(all(unix, not(target_os = "macos"), not(target_os = "redox")))]
 use super::wayland::get_wayland_device_ids;
-#[cfg(all(unix, not(target_os = "macos")))]
+#[cfg(all(unix, not(target_os = "macos"), not(target_os = "redox")))]
 use super::x11::get_x11_device_ids;
 use std::future::Future;
 
@@ -60,7 +60,7 @@ impl Compositor {
         settings: Settings,
         compatible_window: Option<W>,
     ) -> Result<Self, Error> {
-        #[cfg(all(unix, not(target_os = "macos")))]
+        #[cfg(all(unix, not(target_os = "macos"), not(target_os = "redox")))]
         let ids = compatible_window.as_ref().and_then(|window| {
             get_wayland_device_ids(window)
                 .or_else(|| get_x11_device_ids(window))
@@ -71,7 +71,7 @@ impl Compositor {
         //  2. and nobody set an adapter name,
         //  3. and the user didn't request the high power pref
         // => don't load the nvidia icd, as it might power on the gpu in hybrid setups causing severe delays
-        #[cfg(all(unix, not(target_os = "macos")))]
+        #[cfg(all(unix, not(target_os = "macos"), not(target_os = "redox")))]
         if !matches!(ids, Some((0x10de, _)))
             && std::env::var_os("WGPU_ADAPTER_NAME").is_none()
             && std::env::var("WGPU_POWER_PREF").as_deref() != Ok("high")
@@ -120,68 +120,52 @@ impl Compositor {
             compatible_surface: compatible_surface.as_ref(),
             force_fallback_adapter: false,
         };
+        let mut adapter = None;
+        #[cfg_attr(not(unix), allow(dead_code))]
+        if std::env::var_os("WGPU_ADAPTER_NAME").is_none() {
+            #[cfg(all(
+                unix,
+                not(target_os = "macos"),
+                not(target_os = "redox")
+            ))]
+            if let Some((vendor_id, device_id)) = ids {
+                adapter = available_adapters
+                    .into_iter()
+                    .filter(|adapter| {
+                        let info = adapter.get_info();
+                        info.device == device_id as u32
+                            && info.vendor == vendor_id as u32
+                    })
+                    .find(|adapter| {
+                        if let Some(surface) = compatible_surface.as_ref() {
+                            adapter.is_surface_supported(surface)
+                        } else {
+                            true
+                        }
+                    });
+            }
+        } else if let Ok(name) = std::env::var("WGPU_ADAPTER_NAME") {
+            adapter = available_adapters
+                .into_iter()
+                .filter(|adapter| {
+                    let info = adapter.get_info();
+                    info.name == name
+                })
+                .find(|adapter| {
+                    if let Some(surface) = compatible_surface.as_ref() {
+                        adapter.is_surface_supported(surface)
+                    } else {
+                        true
+                    }
+                });
+        }
 
-        let adapter = instance
-            .request_adapter(&adapter_options)
-            .await
-            .ok_or(Error::NoAdapterFound(format!("{:?}", adapter_options)))?;
-        // start pop
-        // let mut adapter = None;
-        // #[cfg_attr(not(unix), allow(dead_code))]
-        // if std::env::var_os("WGPU_ADAPTER_NAME").is_none() {
-        //     #[cfg(all(unix, not(target_os = "macos")))]
-        //     if let Some((vendor_id, device_id)) = ids {
-        //         adapter = available_adapters
-        //             .into_iter()
-        //             .filter(|adapter| {
-        //                 let info = adapter.get_info();
-        //                 info.device == device_id as u32
-        //                     && info.vendor == vendor_id as u32
-        //             })
-        //             .find(|adapter| {
-        //                 if let Some(surface) = compatible_surface.as_ref() {
-        //                     adapter.is_surface_supported(surface)
-        //                 } else {
-        //                     true
-        //                 }
-        //             });
-        //     }
-        // } else if let Ok(name) = std::env::var("WGPU_ADAPTER_NAME") {
-        //     adapter = available_adapters
-        //         .into_iter()
-        //         .filter(|adapter| {
-        //             let info = adapter.get_info();
-        //             info.name == name
-        //         })
-        //         .find(|adapter| {
-        //             if let Some(surface) = compatible_surface.as_ref() {
-        //                 adapter.is_surface_supported(surface)
-        //             } else {
-        //                 true
-        //             }
-        //         });
-        // }
-
-        // let adapter =
-        //     match adapter {
-        //         Some(adapter) => adapter,
-        //         None => instance
-        //             .request_adapter(&wgpu::RequestAdapterOptions {
-        //                 power_preference:
-        //                     wgpu::util::power_preference_from_env().unwrap_or(
-        //                         if settings.antialiasing.is_none() {
-        //                             wgpu::PowerPreference::LowPower
-        //                         } else {
-        //                             wgpu::PowerPreference::HighPerformance
-        //                         },
-        //                     ),
-        //                 compatible_surface: compatible_surface.as_ref(),
-        //                 force_fallback_adapter: false,
-        //             })
-        //             .await?,
-        //     };
-        // end pop
-        // TODO(POP): Merge conflict ensued with above stuff, is your code still needed?
+        let adapter = match adapter {
+            Some(adapter) => adapter,
+            None => instance.request_adapter(&adapter_options).await.ok_or(
+                Error::NoAdapterFound(format!("{:?}", adapter_options)),
+            )?,
+        };
         log::info!("Selected: {:#?}", adapter.get_info());
 
         let (format, alpha_mode) = compatible_surface

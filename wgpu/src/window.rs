@@ -1,19 +1,19 @@
 //! Display rendering results on windows.
 pub mod compositor;
-#[cfg(all(unix, not(target_os = "macos")))]
+#[cfg(all(unix, not(target_os = "macos"), not(target_os = "redox")))]
 mod wayland;
-#[cfg(all(unix, not(target_os = "macos")))]
+#[cfg(all(unix, not(target_os = "macos"), not(target_os = "redox")))]
 mod x11;
 
 pub use compositor::Compositor;
 pub use wgpu::Surface;
 
-#[cfg(all(unix, not(target_os = "macos")))]
+#[cfg(all(unix, not(target_os = "macos"), not(target_os = "redox")))]
 use rustix::fs::{major, minor};
-#[cfg(all(unix, not(target_os = "macos")))]
+#[cfg(all(unix, not(target_os = "macos"), not(target_os = "redox")))]
 use std::{fs::File, io::Read, path::PathBuf};
 
-#[cfg(all(unix, not(target_os = "macos")))]
+#[cfg(all(unix, not(target_os = "macos"), not(target_os = "redox")))]
 fn ids_from_dev(dev: u64) -> Option<(u16, u16)> {
     let path = PathBuf::from(format!(
         "/sys/dev/char/{}:{}/device",
