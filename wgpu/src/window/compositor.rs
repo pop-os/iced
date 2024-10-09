@@ -6,9 +6,9 @@ use crate::graphics::compositor;
 use crate::graphics::{Error, Viewport};
 use crate::{Backend, Primitive, Renderer, Settings};
 
-#[cfg(all(unix, not(target_os = "macos")))]
+#[cfg(all(unix, not(target_os = "macos"), not(target_os = "redox")))]
 use super::wayland::get_wayland_device_ids;
-#[cfg(all(unix, not(target_os = "macos")))]
+#[cfg(all(unix, not(target_os = "macos"), not(target_os = "redox")))]
 use super::x11::get_x11_device_ids;
 
 /// A window graphics backend for iced powered by `wgpu`.
@@ -30,7 +30,7 @@ impl Compositor {
         settings: Settings,
         compatible_window: Option<W>,
     ) -> Option<Self> {
-        #[cfg(all(unix, not(target_os = "macos")))]
+        #[cfg(all(unix, not(target_os = "macos"), not(target_os = "redox")))]
         let ids = compatible_window.as_ref().and_then(|window| {
             get_wayland_device_ids(window)
                 .or_else(|| get_x11_device_ids(window))
@@ -41,7 +41,7 @@ impl Compositor {
         //  2. and nobody set an adapter name,
         //  3. and the user didn't request the high power pref
         // => don't load the nvidia icd, as it might power on the gpu in hybrid setups causing severe delays
-        #[cfg(all(unix, not(target_os = "macos")))]
+        #[cfg(all(unix, not(target_os = "macos"), not(target_os = "redox")))]
         if !matches!(ids, Some((0x10de, _)))
             && std::env::var_os("WGPU_ADAPTER_NAME").is_none()
             && std::env::var("WGPU_POWER_PREF").as_deref() != Ok("high")
@@ -77,7 +77,11 @@ impl Compositor {
         let mut adapter = None;
         #[cfg_attr(not(unix), allow(dead_code))]
         if std::env::var_os("WGPU_ADAPTER_NAME").is_none() {
-            #[cfg(all(unix, not(target_os = "macos")))]
+            #[cfg(all(
+                unix,
+                not(target_os = "macos"),
+                not(target_os = "redox")
+            ))]
             if let Some((vendor_id, device_id)) = ids {
                 adapter = available_adapters
                     .into_iter()
