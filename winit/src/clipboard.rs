@@ -47,25 +47,29 @@ enum State {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct ControlSender(
-    pub(crate)  iced_futures::futures::channel::mpsc::UnboundedSender<
+pub(crate) struct ControlSender {
+    pub(crate) sender: iced_futures::futures::channel::mpsc::UnboundedSender<
         crate::program::Control,
     >,
-);
+    pub(crate) proxy: winit::event_loop::EventLoopProxy,
+}
 
 impl dnd::Sender<DndSurface> for ControlSender {
     fn send(
         &self,
         event: dnd::DndEvent<DndSurface>,
     ) -> Result<(), std::sync::mpsc::SendError<dnd::DndEvent<DndSurface>>> {
-        self.0
+        let res = self
+            .sender
             .unbounded_send(crate::program::Control::Dnd(event))
             .map_err(|_err| {
                 std::sync::mpsc::SendError(dnd::DndEvent::Offer(
                     None,
                     dnd::OfferEvent::Leave,
                 ))
-            })
+            });
+        self.proxy.wake_up();
+        res
     }
 }
 
@@ -73,7 +77,7 @@ impl Clipboard {
     /// Creates a new [`Clipboard`] for the given window.
     pub(crate) fn connect(
         window: Arc<dyn Window>,
-        proxy: ControlSender,
+        sender: ControlSender,
     ) -> Clipboard {
         #[allow(unsafe_code)]
         let state =
@@ -81,7 +85,7 @@ impl Clipboard {
                 .ok()
                 .map(|c| State::Connected {
                     clipboard: c,
-                    sender: proxy.clone(),
+                    sender: sender.clone(),
                     window,
                     queued_events: Vec::new(),
                 })
@@ -89,12 +93,24 @@ impl Clipboard {
 
         #[cfg(target_os = "linux")]
         if let State::Connected { clipboard, .. } = &state {
-            clipboard.init_dnd(Box::new(proxy));
+            clipboard.init_dnd(Box::new(sender));
         }
 
         Clipboard {
             state,
             requested_logical_size: Arc::new(Mutex::new(None)),
+        }
+    }
+
+    pub(crate) fn proxy(&self) -> Option<winit::event_loop::EventLoopProxy> {
+        if let State::Connected {
+            sender: ControlSender { proxy, .. },
+            ..
+        } = &self.state
+        {
+            Some(proxy.clone())
+        } else {
+            None
         }
     }
 
@@ -255,7 +271,9 @@ impl crate::core::Clipboard for Clipboard {
                 sender,
                 ..
             } => {
-                _ = sender.0.unbounded_send(crate::program::Control::StartDnd);
+                _ = sender
+                    .sender
+                    .unbounded_send(crate::program::Control::StartDnd);
                 queued_events.push(StartDnd {
                     internal,
                     source_surface,

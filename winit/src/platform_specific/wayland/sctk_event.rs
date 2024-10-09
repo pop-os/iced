@@ -70,7 +70,10 @@ use std::{
     time::Instant,
 };
 use wayland_protocols::wp::viewporter::client::wp_viewport::WpViewport;
-use winit::{dpi::PhysicalSize, event::WindowEvent, window::WindowId};
+use winit::{
+    dpi::PhysicalSize, event::WindowEvent, event_loop::EventLoopProxy,
+    window::WindowId,
+};
 use xkeysym::Keysym;
 
 use super::{
@@ -391,6 +394,7 @@ impl SctkEvent {
         subsurface_ids: &mut HashMap<ObjectId, (i32, i32, window::Id)>,
         sctk_tx: &channel::Sender<super::Action>,
         control_sender: &mpsc::UnboundedSender<Control>,
+        proxy: &EventLoopProxy,
         debug: &mut Debug,
         user_interfaces: &mut UserInterfaces<'a, P>,
         events: &mut Vec<(Option<window::Id>, iced_runtime::core::Event)>,
@@ -874,9 +878,10 @@ impl SctkEvent {
                     if clipboard.window_id().is_none() {
                         *clipboard = Clipboard::connect(
                             window.raw.clone(),
-                            crate::clipboard::ControlSender(
-                                control_sender.clone(),
-                            ),
+                            crate::clipboard::ControlSender {
+                                sender: control_sender.clone(),
+                                proxy: proxy.clone(),
+                            },
                         );
                     }
 
@@ -1026,9 +1031,10 @@ impl SctkEvent {
                         if clipboard.window_id().is_none() {
                             *clipboard = Clipboard::connect(
                                 sctk_winit.clone(),
-                                crate::clipboard::ControlSender(
-                                    control_sender.clone(),
-                                ),
+                                crate::clipboard::ControlSender {
+                                    sender: control_sender.clone(),
+                                    proxy: proxy.clone(),
+                                },
                             );
                         }
 
@@ -1170,7 +1176,10 @@ impl SctkEvent {
                 if clipboard.window_id().is_none() {
                     *clipboard = Clipboard::connect(
                         sctk_winit.clone(),
-                        crate::clipboard::ControlSender(control_sender.clone()),
+                        crate::clipboard::ControlSender {
+                            sender: control_sender.clone(),
+                            proxy: proxy.clone(),
+                        },
                     );
                 }
 

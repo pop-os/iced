@@ -173,6 +173,10 @@ impl DndTest {
             .on_drop(|_, _| {
                 dbg!("drop");
                 Message::Drag
+            })
+            .on_motion(|x, y| {
+                dbg!(x, y);
+                Message::Drag
             }),
             dnd_source::dnd_source(
                 container(text(format!(

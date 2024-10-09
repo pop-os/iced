@@ -161,6 +161,10 @@ impl WaylandSpecific {
                     log::error!("Missing control sender");
                     return Default::default();
                 };
+                let Some(proxy) = proxy.as_ref() else {
+                    log::error!("Missing event loop proxy");
+                    return Default::default();
+                };
 
                 sctk_event.process(
                     modifiers,
@@ -171,6 +175,7 @@ impl WaylandSpecific {
                     subsurface_ids,
                     sender,
                     event_sender,
+                    proxy,
                     debug,
                     user_interfaces,
                     events,

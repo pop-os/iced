@@ -5,7 +5,6 @@ mod state;
 mod window_manager;
 
 pub use runtime::{default, Appearance, DefaultStyle};
-use window_manager::Frame;
 use winit::event_loop::OwnedDisplayHandle;
 
 use crate::conversion;
@@ -867,12 +866,12 @@ async fn run_instance<'a, P, C>(
                         }
                     }) else {
                         eprintln!("No source surface");
-                        return;
+                        continue;
                     };
 
                     let Some(window) = window_manager.get_mut(window_id) else {
                         eprintln!("No window");
-                        return;
+                        continue;
                     };
 
                     let state = &window.state;
@@ -881,24 +880,24 @@ async fn run_instance<'a, P, C>(
                             let i: Box<dyn Any> = i;
                             i
                         })
-                        .and_then(|i| {
+                        .map(|i| {
                             i.downcast::<Arc<(
                                 core::Element<
                                     'static,
-                                    P::Message,
+                                    (),
                                     P::Theme,
                                     P::Renderer,
                                 >,
                                 core::widget::tree::State,
                             )>>()
-                            .ok()
+                            .unwrap()
                         })
                         .map(
                             |e: Box<
                                 Arc<(
                                     core::Element<
                                         'static,
-                                        P::Message,
+                                        (),
                                         P::Theme,
                                         P::Renderer,
                                     >,
@@ -1084,7 +1083,10 @@ async fn run_instance<'a, P, C>(
                 if clipboard.window_id().is_none() {
                     clipboard = Clipboard::connect(
                         window.raw.clone(),
-                        crate::clipboard::ControlSender(control_sender.clone()),
+                        crate::clipboard::ControlSender {
+                            sender: control_sender.clone(),
+                            proxy: proxy.raw.clone(),
+                        },
                     );
                 }
 
@@ -1524,7 +1526,6 @@ async fn run_instance<'a, P, C>(
                         }
                     });
                     let no_window_events = window_events.is_empty();
-
                     #[cfg(feature = "wayland")]
                     window_events.push(core::Event::PlatformSpecific(
                         core::event::PlatformSpecific::Wayland(
@@ -1775,7 +1776,9 @@ async fn run_instance<'a, P, C>(
                         events.push((cur_dnd_surface, core::Event::Dnd(e)));
                     }
                     dnd::DndEvent::Source(_) => {
-                        events.push((None, core::Event::Dnd(e.clone())))
+                        for w in window_manager.ids() {
+                            events.push((Some(w), core::Event::Dnd(e.clone())));
+                        }
                     }
                 };
             }
@@ -1951,16 +1954,19 @@ fn run_action<P, C>(
                         DndSurface(Arc::new(Box::new(window.raw.clone()))),
                         Vec::new(),
                     );
+                    let proxy = clipboard.proxy();
                     if clipboard.window_id() == Some(window.raw.id()) {
                         *clipboard = window_manager
                             .first()
                             .map(|window| window.raw.clone())
-                            .map(|w| {
+                            .zip(proxy)
+                            .map(|(w, proxy)| {
                                 Clipboard::connect(
                                     w,
-                                    crate::clipboard::ControlSender(
-                                        control_sender.clone(),
-                                    ),
+                                    crate::clipboard::ControlSender {
+                                        sender: control_sender.clone(),
+                                        proxy,
+                                    },
                                 )
                             })
                             .unwrap_or_else(Clipboard::unconnected);
