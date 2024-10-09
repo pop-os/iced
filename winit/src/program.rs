@@ -17,7 +17,7 @@ use crate::core::widget::Operation;
 use crate::core::window;
 use crate::core::Clipboard as CoreClipboard;
 use crate::core::Length;
-use crate::core::{Color, Element, Point, Size, Theme};
+use crate::core::{Element, Point, Size};
 use crate::futures::futures::channel::mpsc;
 use crate::futures::futures::channel::oneshot;
 use crate::futures::futures::task;
@@ -31,14 +31,11 @@ use crate::runtime::user_interface::{self, UserInterface};
 use crate::runtime::Debug;
 use crate::runtime::{self, Action, Task};
 use crate::{Clipboard, Error, Proxy, Settings};
-use dnd::DndAction;
 use dnd::DndSurface;
 use dnd::Icon;
 use iced_futures::core::widget::operation::search_id;
 use iced_graphics::Viewport;
-use iced_runtime::futures::futures::FutureExt;
 pub use state::State;
-use window_clipboard::mime;
 use window_clipboard::mime::ClipboardStoreData;
 use winit::raw_window_handle::HasWindowHandle;
 
@@ -50,7 +47,6 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::mem::ManuallyDrop;
 use std::sync::Arc;
-use std::sync::Mutex;
 use std::time::Duration;
 
 /// An interactive, native, cross-platform, multi-windowed application.
@@ -935,15 +931,16 @@ async fn run_instance<'a, P, C>(
                                     Length::Shrink,
                                     size.size(),
                                 );
-                                let mut surface = compositor.create_surface(
-                                    window.raw.clone(),
-                                    size.width.ceil() as u32,
-                                    size.height.ceil() as u32,
-                                );
                                 let viewport = Viewport::with_logical_size(
                                     size,
                                     state.viewport().scale_factor(),
                                 );
+                                let mut surface = compositor.create_surface(
+                                    window.raw.clone(),
+                                    viewport.physical_width(),
+                                    viewport.physical_height(),
+                                );
+
                                 let mut ui = UserInterface::build(
                                     e,
                                     size,
@@ -1259,7 +1256,8 @@ async fn run_instance<'a, P, C>(
                                         );
                                     let tree = Tree::new(NodeId(*a11y_id));
 
-                                    let focus = Arc::new(Mutex::new(None));
+                                    let focus =
+                                        Arc::new(std::sync::Mutex::new(None));
                                     let focus_clone = focus.clone();
                                     let operation: Box<dyn Operation<()>> =
                                     Box::new(operation::map(
