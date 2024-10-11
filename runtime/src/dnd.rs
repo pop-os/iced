@@ -78,7 +78,7 @@ impl std::fmt::Debug for DndAction {
 }
 
 /// Read the current contents of the Dnd operation.
-pub fn peek_dnd<T: AllowedMimeTypes>() -> Task<Option<(Vec<u8>, String)>> {
+pub fn peek_dnd<T: AllowedMimeTypes>() -> Task<Option<T>> {
     task::oneshot(|tx| {
         Action::Dnd(DndAction::PeekDnd(
             T::allowed()
@@ -87,6 +87,7 @@ pub fn peek_dnd<T: AllowedMimeTypes>() -> Task<Option<(Vec<u8>, String)>> {
             tx,
         ))
     })
+    .map(|data| data.and_then(|data| T::try_from(data).ok()))
 }
 
 /// Register a Dnd destination.
