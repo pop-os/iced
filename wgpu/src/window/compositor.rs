@@ -74,6 +74,7 @@ impl Compositor {
         let compatible_surface = compatible_window
             .and_then(|window| instance.create_surface(window).ok());
 
+        let mut set_wgpu_power_pref = false;
         let mut adapter = None;
         #[cfg_attr(not(unix), allow(dead_code))]
         if std::env::var_os("WGPU_ADAPTER_NAME").is_none() {
@@ -97,6 +98,23 @@ impl Compositor {
                             true
                         }
                     });
+            } else if std::env::var("XDG_SESSION_TYPE") == "x11" {
+                set_wgpu_power_pref = true;
+                fn is_desktop() -> bool {
+                    let chassis = std::fs::read_to_string(
+                        "/sys/class/dmi/id/chassis_type",
+                    )
+                    .unwrap_or_default();
+
+                    chassis.trim() == "3"
+                }
+
+                // Fixes X11 desktops displaying an invisible window when a dGPU is used, but an iGPU is present.
+                // Prefers using an iGPU on X11 laptops that containa dGPU.
+                std::env::set_var(
+                    "WGPU_POWER_PREF",
+                    if is_desktop() { "high" } else { "low" },
+                );
             }
         } else if let Ok(name) = std::env::var("WGPU_ADAPTER_NAME") {
             adapter = available_adapters
@@ -134,6 +152,10 @@ impl Compositor {
             };
 
         log::info!("Selected: {:#?}", adapter.get_info());
+
+        if set_wgpu_power_pref {
+            std::env::remove_var("WGPU_POWER_PREF");
+        }
 
         let format = compatible_surface.as_ref().and_then(|surface| {
             let capabilities = surface.get_capabilities(&adapter);
