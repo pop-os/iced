@@ -1,7 +1,6 @@
 //! Implement your own event loop to drive a user interface.
 
 use iced_core::clipboard::DndDestinationRectangles;
-use iced_core::widget::Operation;
 use iced_core::widget::tree::NAMED;
 
 use crate::core::event::{self, Event};

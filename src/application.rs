@@ -30,8 +30,6 @@
 //!     ]
 //! }
 //! ```
-use crate::message;
-use crate::program::{self, Appearance, DefaultStyle, Program};
 
 use crate::theme;
 
@@ -40,7 +38,9 @@ use crate::shell;
 use crate::window;
 use crate::{
     Element, Executor, Font, Never, Preset, Result, Settings, Size,
-    Subscription, Theme, task::Task,
+    Subscription, Theme, message,
+    program::{self, Program},
+    task::Task,
 };
 
 use iced_debug as debug;

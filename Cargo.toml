@@ -28,7 +28,7 @@ wgpu-bare = ["iced_renderer/wgpu-bare", "iced_widget/wgpu"]
 # Enables the `tiny-skia` software renderer
 
 
-default = ["tiny-skia", "x11", "wayland", "tokio"]
+default = ["tiny-skia", "tokio"]
 # Enable the `tiny-skia` software renderer backend
 tiny-skia = ["iced_renderer/tiny-skia"]
 # Enables the `image` widget
@@ -116,7 +116,11 @@ a11y = [
     "iced_winit?/a11y",
 ]
 # Enables the winit shell. Conflicts with `wayland` and `glutin`.
-winit = ["iced_winit", "iced_accessibility?/accesskit_winit"]
+winit = [
+    "iced_winit",
+    "iced_accessibility?/accesskit_winit",
+    "iced_program/winit",
+]
 # Enables the sctk shell. 
 wayland = ["iced_widget/wayland", "iced_core/wayland", "iced_winit/wayland"]
 [dependencies]

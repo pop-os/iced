@@ -10,7 +10,6 @@ pub use nested::Nested;
 use crate::layout;
 use crate::mouse;
 use crate::renderer;
-use crate::widget::Operation;
 use crate::widget::Tree;
 use crate::{Clipboard, Event, Layout, Rectangle, Shell, Size, Vector};
 

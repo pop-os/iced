@@ -504,17 +504,17 @@ compile_error!(
     Available options: thread-pool, tokio, or smol."
 );
 
-#[cfg(all(
-    target_family = "unix",
-    not(target_os = "macos"),
-    not(feature = "wayland"),
-    not(feature = "x11"),
-))]
-compile_error!(
-    "No Unix display server backend has been enabled. You must enable a \
-    display server feature.\n\
-    Available options: x11, wayland."
-);
+// #[cfg(all(
+//     target_family = "unix",
+//     not(target_os = "macos"),
+//     not(feature = "wayland"),
+//     not(feature = "x11"),
+// ))]
+// compile_error!(
+//     "No Unix display server backend has been enabled. You must enable a \
+//     display server feature.\n\
+//     Available options: x11, wayland."
+// );
 
 #[cfg(feature = "highlighter")]
 pub use iced_highlighter as highlighter;
@@ -543,19 +543,6 @@ pub mod platform_specific {
 pub use application::Application;
 #[cfg(feature = "winit")]
 pub use program::Program;
-
-// wayland application
-// #[cfg(feature = "wayland")]
-// pub mod wayland;
-// #[cfg(feature = "wayland")]
-// pub use wayland::application;
-// #[cfg(feature = "wayland")]
-// pub use wayland::application::Application;
-// #[cfg(feature = "wayland")]
-// pub use wayland::program;
-// #[doc(inline)]
-// #[cfg(feature = "wayland")]
-// pub use wayland::program::Program;
 
 #[cfg(feature = "advanced")]
 pub mod advanced;

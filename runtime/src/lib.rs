@@ -29,7 +29,6 @@ pub use user_interface::UserInterface;
 pub use window::Window;
 
 use crate::futures::futures::channel::oneshot;
-use dnd::DndAction;
 
 use std::borrow::Cow;
 use std::fmt;
@@ -70,6 +69,7 @@ pub enum Action<T> {
     /// This will normally close any application windows and
     /// terminate the runtime loop.
     Exit,
+
     /// Run a Dnd action.
     Dnd(crate::dnd::DndAction),
 
@@ -126,7 +126,7 @@ where
             Action::PlatformSpecific(action) => {
                 write!(f, "Action::PlatformSpecific({:?})", action)
             }
-            Action::Dnd(action) => write!(f, "Action::Dnd({:?})", action),
+            Action::Dnd(_) => write!(f, "Action::Dnd"),
         }
     }
 }

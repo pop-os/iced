@@ -2,10 +2,8 @@
 
 use std::any::Any;
 
-use bytes::buf::Take;
 use dnd::{DndDestinationRectangle, DndSurface};
-use iced_core::{clipboard::DndSource, Vector};
-use iced_futures::MaybeSend;
+use iced_core::clipboard::DndSource;
 use window_clipboard::mime::{AllowedMimeTypes, AsMimeTypes};
 
 use crate::{oneshot, task, Action, Task};

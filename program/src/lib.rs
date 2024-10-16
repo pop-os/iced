@@ -1,6 +1,7 @@
 //! The definition of an iced program.
 pub use iced_graphics as graphics;
 pub use iced_runtime as runtime;
+pub use iced_runtime::Task;
 pub use iced_runtime::core;
 pub use iced_runtime::futures;
 
@@ -17,14 +18,6 @@ use crate::core::window;
 use crate::core::{Element, Font, Settings};
 use crate::futures::{Executor, Subscription};
 use crate::graphics::compositor;
-use crate::runtime::task::Task;
-#[cfg(any(feature = "winit", feature = "wayland"))]
-use crate::shell;
-#[cfg(any(feature = "winit", feature = "wayland"))]
-pub use crate::shell::program::{Appearance, DefaultStyle};
-
-#[cfg(not(any(feature = "winit", feature = "wayland")))]
-pub use crate::runtime::{Appearance, DefaultStyle};
 
 /// The internal definition of a [`Program`].
 ///
@@ -124,138 +117,138 @@ pub trait Program: Sized {
         &[]
     }
 
-    #[cfg(any(feature = "winit", feature = "wayland"))]
-    /// Runs the [`Program`].
-    ///
-    /// The state of the [`Program`] must implement [`Default`].
-    /// If your state does not implement [`Default`], use [`run_with`]
-    /// instead.
-    ///
-    /// [`run_with`]: Self::run_with
-    fn run(
-        self,
-        settings: Settings,
-        window_settings: Option<window::Settings>,
-    ) -> Result
-    where
-        Self: 'static,
-        Self::State: Default,
-    {
-        self.run_with(settings, window_settings, || {
-            (Self::State::default(), Task::none())
-        })
-    }
+    // #[cfg(feature = "winit")]
+    // /// Runs the [`Program`].
+    // ///
+    // /// The state of the [`Program`] must implement [`Default`].
+    // /// If your state does not implement [`Default`], use [`run_with`]
+    // /// instead.
+    // ///
+    // /// [`run_with`]: Self::run_with
+    // fn run(
+    //     self,
+    //     settings: crate::Settings,
+    //     window_settings: Option<window::Settings>,
+    // ) -> crate::Result
+    // where
+    //     Self: 'static,
+    //     Self::State: Default,
+    // {
+    //     self.run_with(settings, window_settings, || {
+    //         (Self::State::default(), Task::none())
+    //     })
+    // }
 
-    #[cfg(any(feature = "winit", feature = "wayland"))]
-    /// Runs the [`Program`] with the given [`Settings`] and a closure that creates the initial state.
-    fn run_with<I>(
-        self,
-        settings: Settings,
-        window_settings: Option<window::Settings>,
-        initialize: I,
-    ) -> Result
-    where
-        Self: 'static,
-        I: FnOnce() -> (Self::State, Task<Self::Message>) + 'static,
-    {
-        use std::marker::PhantomData;
+    // #[cfg(feature = "winit")]
+    // /// Runs the [`Program`] with the given [`Settings`] and a closure that creates the initial state.
+    // fn run_with<I>(
+    //     self,
+    //     settings: crate::Settings,
+    //     window_settings: Option<window::Settings>,
+    //     initialize: I,
+    // ) -> crate::Result
+    // where
+    //     Self: 'static,
+    //     I: FnOnce() -> (Self::State, Task<Self::Message>) + 'static,
+    // {
+    //     use std::marker::PhantomData;
 
-        struct Instance<P: Program, I> {
-            program: P,
-            state: P::State,
-            _initialize: PhantomData<I>,
-        }
+    //     struct Instance<P: Program, I> {
+    //         program: P,
+    //         state: P::State,
+    //         _initialize: PhantomData<I>,
+    //     }
 
-        impl<P: Program, I: FnOnce() -> (P::State, Task<P::Message>)>
-            shell::Program for Instance<P, I>
-        {
-            type Message = P::Message;
-            type Theme = P::Theme;
-            type Renderer = P::Renderer;
-            type Flags = (P, I);
-            type Executor = P::Executor;
+    //     impl<P: Program, I: FnOnce() -> (P::State, Task<P::Message>)>
+    //         shell::Program for Instance<P, I>
+    //     {
+    //         type Message = P::Message;
+    //         type Theme = P::Theme;
+    //         type Renderer = P::Renderer;
+    //         type Flags = (P, I);
+    //         type Executor = P::Executor;
 
-            fn new(
-                (program, initialize): Self::Flags,
-            ) -> (Self, Task<Self::Message>) {
-                let (state, task) = initialize();
+    //         fn new(
+    //             (program, initialize): Self::Flags,
+    //         ) -> (Self, Task<Self::Message>) {
+    //             let (state, task) = initialize();
 
-                (
-                    Self {
-                        program,
-                        state,
-                        _initialize: PhantomData,
-                    },
-                    task,
-                )
-            }
+    //             (
+    //                 Self {
+    //                     program,
+    //                     state,
+    //                     _initialize: PhantomData,
+    //                 },
+    //                 task,
+    //             )
+    //         }
 
-            fn title(&self, window: window::Id) -> String {
-                self.program.title(&self.state, window)
-            }
+    //         fn title(&self, window: window::Id) -> String {
+    //             self.program.title(&self.state, window)
+    //         }
 
-            fn update(
-                &mut self,
-                message: Self::Message,
-            ) -> Task<Self::Message> {
-                self.program.update(&mut self.state, message)
-            }
+    //         fn update(
+    //             &mut self,
+    //             message: Self::Message,
+    //         ) -> Task<Self::Message> {
+    //             self.program.update(&mut self.state, message)
+    //         }
 
-            fn view(
-                &self,
-                window: window::Id,
-            ) -> crate::Element<'_, Self::Message, Self::Theme, Self::Renderer>
-            {
-                self.program.view(&self.state, window)
-            }
+    //         fn view(
+    //             &self,
+    //             window: window::Id,
+    //         ) -> crate::Element<'_, Self::Message, Self::Theme, Self::Renderer>
+    //         {
+    //             self.program.view(&self.state, window)
+    //         }
 
-            fn subscription(&self) -> Subscription<Self::Message> {
-                self.program.subscription(&self.state)
-            }
+    //         fn subscription(&self) -> Subscription<Self::Message> {
+    //             self.program.subscription(&self.state)
+    //         }
 
-            fn theme(&self, window: window::Id) -> Self::Theme {
-                self.program.theme(&self.state, window)
-            }
+    //         fn theme(&self, window: window::Id) -> Self::Theme {
+    //             self.program.theme(&self.state, window)
+    //         }
 
-            fn style(&self, theme: &Self::Theme) -> Appearance {
-                self.program.style(&self.state, theme)
-            }
+    //         fn style(&self, theme: &Self::Theme) -> Appearance {
+    //             self.program.style(&self.state, theme)
+    //         }
 
-            fn scale_factor(&self, window: window::Id) -> f64 {
-                self.program.scale_factor(&self.state, window)
-            }
-        }
+    //         fn scale_factor(&self, window: window::Id) -> f64 {
+    //             self.program.scale_factor(&self.state, window)
+    //         }
+    //     }
 
-        #[allow(clippy::needless_update)]
-        let renderer_settings = crate::graphics::Settings {
-            default_font: settings.default_font,
-            default_text_size: settings.default_text_size,
-            antialiasing: if settings.antialiasing {
-                Some(crate::graphics::Antialiasing::MSAAx4)
-            } else {
-                None
-            },
-            ..crate::graphics::Settings::default()
-        };
+    //     #[allow(clippy::needless_update)]
+    //     let renderer_settings = crate::graphics::Settings {
+    //         default_font: settings.default_font,
+    //         default_text_size: settings.default_text_size,
+    //         antialiasing: if settings.antialiasing {
+    //             Some(crate::graphics::Antialiasing::MSAAx4)
+    //         } else {
+    //             None
+    //         },
+    //         ..crate::graphics::Settings::default()
+    //     };
 
-        Ok(shell::program::run::<
-            Instance<Self, I>,
-            <Self::Renderer as compositor::Default>::Compositor,
-        >(
-            Settings {
-                id: settings.id,
-                fonts: settings.fonts,
-                default_font: settings.default_font,
-                default_text_size: settings.default_text_size,
-                antialiasing: settings.antialiasing,
-                exit_on_close_request: settings.exit_on_close_request,
-            }
-            .into(),
-            renderer_settings,
-            window_settings,
-            (self, initialize),
-        )?)
-    }
+    //     Ok(shell::program::run::<
+    //         Instance<Self, I>,
+    //         <Self::Renderer as compositor::Default>::Compositor,
+    //     >(
+    //         crate::Settings {
+    //             id: settings.id,
+    //             fonts: settings.fonts,
+    //             default_font: settings.default_font,
+    //             default_text_size: settings.default_text_size,
+    //             antialiasing: settings.antialiasing,
+    //             exit_on_close_request: settings.exit_on_close_request,
+    //         }
+    //         .into(),
+    //         renderer_settings,
+    //         window_settings,
+    //         (self, initialize),
+    //     )?)
+    // }
 }
 
 /// Decorates a [`Program`] with the given title function.

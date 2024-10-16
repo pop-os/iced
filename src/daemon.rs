@@ -13,7 +13,7 @@ use crate::{
 
 use iced_debug as debug;
 
-#[cfg(not(any(feature = "winit", feature = "wayland")))]
+#[cfg(not(feature = "winit"))]
 use crate::runtime::{Appearance, DefaultStyle};
 
 use std::borrow::Cow;
