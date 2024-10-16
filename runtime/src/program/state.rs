@@ -1,5 +1,3 @@
-use iced_core::widget::operation::Outcome;
-
 use crate::core::event::{self, Event};
 use crate::core::mouse;
 use crate::core::renderer;
@@ -211,7 +209,6 @@ where
                     operation::Outcome::Chain(next) => {
                         current_operation = Some(next);
                     }
-                    _ => {}
                 };
             }
         }
