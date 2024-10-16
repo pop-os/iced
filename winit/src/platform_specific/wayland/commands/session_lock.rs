@@ -6,7 +6,6 @@ use iced_runtime::{
 };
 use sctk::reexports::client::protocol::wl_output::WlOutput;
 
-
 pub fn lock<Message>() -> Task<Message> {
     task::effect(Action::PlatformSpecific(
         platform_specific::Action::Wayland(wayland::Action::SessionLock(

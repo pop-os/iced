@@ -5,7 +5,6 @@ pub use crate::slider::{
     default, Catalog, Handle, HandleShape, RailBackground, Status, Style,
     StyleFn,
 };
-use iced_renderer::core::{Degrees, Radians};
 
 use crate::core::border::Border;
 use crate::core::event::{self, Event};

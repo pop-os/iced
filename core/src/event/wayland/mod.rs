@@ -1,4 +1,3 @@
-mod data_device;
 mod layer;
 mod output;
 mod popup;
@@ -11,7 +10,6 @@ use sctk::reexports::client::protocol::{
     wl_output::WlOutput, wl_seat::WlSeat, wl_surface::WlSurface,
 };
 
-pub use data_device::*;
 pub use layer::*;
 pub use output::*;
 pub use popup::*;
@@ -29,36 +27,13 @@ pub enum Event {
     /// output event
     Output(OutputEvent, WlOutput),
     /// window event
-    Window(WindowEvent, WlSurface, Id),
+    Window(WindowEvent),
     /// Seat Event
     Seat(SeatEvent, WlSeat),
-    /// Data Device event
-    DataSource(DataSourceEvent),
-    /// Dnd Offer events
-    DndOffer(DndOfferEvent),
-    /// Selection Offer events
-    SelectionOffer(SelectionOfferEvent),
     /// Session lock events
     SessionLock(SessionLockEvent),
     /// Frame events
     Frame(Instant, WlSurface, Id),
     /// Request Resize
     RequestResize,
-}
-
-impl Event {
-    /// Translate the event by some vector
-    pub fn translate(&mut self, vector: crate::vector::Vector) {
-        match self {
-            Event::DndOffer(DndOfferEvent::Enter { x, y, .. }) => {
-                *x += vector.x as f64;
-                *y += vector.y as f64;
-            }
-            Event::DndOffer(DndOfferEvent::Motion { x, y }) => {
-                *x += vector.x as f64;
-                *y += vector.y as f64;
-            }
-            _ => {}
-        }
-    }
 }

@@ -1,11 +1,9 @@
 use std::fmt;
 use std::hash::{Hash, Hasher};
-use std::marker::PhantomData;
 
 use iced_core::layout::Limits;
 use iced_core::window::Id;
 use iced_core::Rectangle;
-use iced_futures::MaybeSend;
 use sctk::reexports::protocols::xdg::shell::client::xdg_positioner::{
     Anchor, Gravity,
 };

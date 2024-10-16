@@ -26,7 +26,6 @@ pub use content::Content;
 pub use controls::Controls;
 pub use direction::Direction;
 pub use draggable::Draggable;
-use iced_renderer::core::widget::Operation;
 pub use node::Node;
 pub use pane::Pane;
 pub use split::Split;

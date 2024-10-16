@@ -1,7 +1,5 @@
 //! Display a dropdown list of selectable values.
-use iced_renderer::core::text::LineHeight;
 
-use crate::container;
 use crate::core::alignment;
 use crate::core::event::{self, Event};
 use crate::core::keyboard;

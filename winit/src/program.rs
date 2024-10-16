@@ -357,6 +357,9 @@ where
                 return;
             };
 
+            // XXX what to do if the program is a daemon?
+            // Can we avoid creating a useless window that hangs around forever?
+
             let window: Arc<dyn winit::window::Window> = match event_loop
                 .create_window(
                     winit::window::WindowAttributes::default()
@@ -1377,7 +1380,6 @@ async fn run_instance<'a, P, C>(
                         }
 
                         window.raw.pre_present_notify();
-
                         debug.render_started();
                         match compositor.present(
                             &mut window.renderer,
@@ -1547,8 +1549,15 @@ async fn run_instance<'a, P, C>(
                     if let Some(requested_size) =
                         clipboard.requested_logical_size.lock().unwrap().take()
                     {
-                        let requested_physical_size = requested_size
-                            .to_physical(window.state.scale_factor());
+                        let requested_physical_size =
+                            winit::dpi::PhysicalSize::new(
+                                (requested_size.width as f64
+                                    * window.state.scale_factor())
+                                .ceil() as u32,
+                                (requested_size.height as f64
+                                    * window.state.scale_factor())
+                                .ceil() as u32,
+                            );
                         let physical_size = window.state.physical_size();
                         if requested_physical_size.width != physical_size.width
                             || requested_physical_size.height

@@ -905,9 +905,6 @@ impl SctkState {
                             }
                         },
                 },
-            Action::Window(_) => {
-                log::warn!("Sctk window actions are ignored.");
-            },
             Action::Popup(action) => match action {
                 platform_specific::wayland::popup::Action::Popup { popup, .. } => {
                     let parent_mismatch = self.popups.last().is_some_and(|p| {

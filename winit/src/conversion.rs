@@ -303,6 +303,20 @@ pub fn window_event(
 
             Some(Event::Window(window::Event::Moved(Point::new(x, y))))
         }
+        #[cfg(feature = "wayland")]
+        WindowEvent::SuggestedBounds(bounds) => {
+            let size = bounds.map(|bounds| {
+                let size = bounds.to_logical(scale_factor);
+                Size::new(size.width, size.height)
+            });
+
+            Some(Event::PlatformSpecific(PlatformSpecific::Wayland(
+                iced_runtime::core::event::wayland::Event::Window(
+                    iced_runtime::core::event::wayland::WindowEvent::SuggestedBounds(size),
+                ),
+            )))
+        }
+
         _ => None,
     }
 }

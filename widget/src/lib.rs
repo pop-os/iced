@@ -132,7 +132,3 @@ pub mod markdown;
 
 pub use crate::core::theme::{self, Theme};
 pub use renderer::Renderer;
-#[cfg(feature = "wayland")]
-pub mod dnd_listener;
-#[cfg(feature = "wayland")]
-pub mod dnd_source;

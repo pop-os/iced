@@ -724,55 +724,7 @@ impl SctkEvent {
                 surface_ids.get(&surface.id()).map(|id| id.inner()),
                 iced_runtime::core::Event::Touch(variant),
             )),
-            SctkEvent::WindowEvent {
-                variant,
-                id: surface,
-            } => {
-                let id = surface_ids.get(&surface.id()).map(|id| id.inner());
-                match variant {
-                WindowEventVariant::Created(..) => {},
-                WindowEventVariant::Close => {
-                    if let Some(e) =
-                        surface_ids.remove(&surface.id()).map(|id| {
-                            (
-                                Some(id.inner()),
-                                iced_runtime::core::Event::Window(
-                                    window::Event::Closed,
-                                ),
-                            )
-                        })
-                    {
-                        events.push(e);
-                    }
-                }
-                WindowEventVariant::WmCapabilities(caps) => {
-                    if let Some(e) = surface_ids
-                        .get(&surface.id())
-                        .map(|id| id.inner())
-                        .map(|id| {
-                            (Some(id), iced_runtime::core::Event::PlatformSpecific(
-                            PlatformSpecific::Wayland(wayland::Event::Window(
-                                wayland::WindowEvent::WmCapabilities(caps),
-                                surface,
-                                id,
-                            )),
-                        ))
-                        })
-                    {
-                        events.push(e);
-                    }
-                }
-                WindowEventVariant::ConfigureBounds { .. } => {}
-                WindowEventVariant::Configure(
-                    (new_width, new_height),
-                    configure,
-                    surface,
-                    _,
-                ) => {}
-                WindowEventVariant::ScaleFactorChanged(..) => {}
-                WindowEventVariant::StateChanged(s) => {}
-                WindowEventVariant::Size(_, _, _) => {}}
-            }
+            SctkEvent::WindowEvent { .. } => {}
             SctkEvent::LayerSurfaceEvent {
                 variant,
                 id: surface,

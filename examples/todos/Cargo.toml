@@ -11,6 +11,7 @@ iced_core.workspace = true
 # iced.features = ["async-std", "debug", "winit", "a11y", "tiny-skia"]
 # TODO(POP): Fix a11y not working with new winit
 iced.features = [
+    "a11y",
     "tokio",
     "debug",
     "winit",

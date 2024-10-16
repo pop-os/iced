@@ -1,10 +1,6 @@
-use crate::platform_specific::wayland::{
-    event_loop::state::SctkState,
-    sctk_event::{SctkEvent, WindowEventVariant},
-};
+use crate::platform_specific::wayland::event_loop::state::SctkState;
 use sctk::{
-    delegate_xdg_shell, delegate_xdg_window,
-    shell::{xdg::window::WindowHandler, WaylandSurface},
+    delegate_xdg_shell, delegate_xdg_window, shell::xdg::window::WindowHandler,
 };
 
 impl WindowHandler for SctkState {

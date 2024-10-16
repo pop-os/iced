@@ -16,7 +16,7 @@ use crate::core::{
 
 use std::ops::RangeInclusive;
 
-use iced_renderer::core::{border::Radius, Degrees, Radians};
+use iced_renderer::core::border::Radius;
 use iced_runtime::core::gradient::Linear;
 
 #[cfg(feature = "a11y")]
