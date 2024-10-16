@@ -11,8 +11,7 @@ use crate::core::mouse;
 use crate::core::touch;
 use crate::core::window;
 use crate::core::{Event, Point, Size};
-use winit::keyboard::SmolStr;
-use winit::platform::modifier_supplement::KeyEventExtModifierSupplement;
+use iced_futures::core::event::PlatformSpecific;
 
 /// Converts some [`window::Settings`] into some `WindowAttributes` from `winit`.
 pub fn window_attributes(
@@ -230,8 +229,6 @@ pub fn window_event(
                 }
             }.filter(|text| !text.as_str().chars().any(is_private_use));
 
-            let text_with_modifiers =
-                event.text_with_all_modifiers().map(|t| SmolStr::new(t));
             let winit::event::KeyEvent {
                 state,
                 location,
