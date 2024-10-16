@@ -202,7 +202,7 @@ where
     Renderer: core::text::Renderer,
     Theme: toggler::StyleSheet,
 {
-    Toggler::new(label, is_checked, f)
+    Toggler::new(label, is_checked, Some(f))
 }
 
 /// Creates a new [`TextInput`].
