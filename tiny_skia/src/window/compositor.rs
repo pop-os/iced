@@ -72,7 +72,7 @@ impl crate::graphics::Compositor for Compositor {
             clip_mask: tiny_skia::Mask::new(width, height)
                 .expect("Create clip mask"),
             layer_stack: VecDeque::new(),
-            background_color: Color::BLACK,
+            background_color: Color::TRANSPARENT,
             max_age: 0,
         };
 
