@@ -1,8 +1,6 @@
 //! Platform specific actions defined for wayland
 
-use std::{fmt, marker::PhantomData};
-
-use iced_futures::MaybeSend;
+use std::fmt;
 
 #[cfg(feature = "wayland")]
 /// Platform specific actions defined for wayland
@@ -20,6 +18,7 @@ impl fmt::Debug for Action {
         match self {
             #[cfg(feature = "wayland")]
             Action::Wayland(action) => action.fmt(_f),
+            #[cfg(not(feature = "wayland"))]
             _ => Ok(()),
         }
     }

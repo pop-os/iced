@@ -1,12 +1,12 @@
 //! Create and run daemons that run in the background.
 use crate::application;
 use crate::program::{self, Program};
-#[cfg(any(feature = "winit", feature = "wayland"))]
+#[cfg(feature = "winit")]
 pub use crate::shell::program::{Appearance, DefaultStyle};
 use crate::window;
 use crate::{Element, Executor, Font, Result, Settings, Subscription, Task};
 
-#[cfg(not(any(feature = "winit", feature = "wayland")))]
+#[cfg(not(feature = "winit"))]
 use crate::runtime::{Appearance, DefaultStyle};
 
 use std::borrow::Cow;
@@ -103,7 +103,7 @@ pub struct Daemon<P: Program> {
 }
 
 impl<P: Program> Daemon<P> {
-    #[cfg(any(feature = "winit", feature = "wayland"))]
+    #[cfg(feature = "winit")]
     /// Runs the [`Daemon`].
     ///
     /// The state of the [`Daemon`] must implement [`Default`].
@@ -111,7 +111,7 @@ impl<P: Program> Daemon<P> {
     /// instead.
     ///
     /// [`run_with`]: Self::run_with
-    pub fn run(self) -> Result
+    pub fn run(self) -> crate::Result
     where
         Self: 'static,
         P::State: Default,
@@ -119,9 +119,9 @@ impl<P: Program> Daemon<P> {
         self.raw.run(self.settings, None)
     }
 
-    #[cfg(any(feature = "winit", feature = "wayland"))]
+    #[cfg(feature = "winit")]
     /// Runs the [`Daemon`] with a closure that creates the initial state.
-    pub fn run_with<I>(self, initialize: I) -> Result
+    pub fn run_with<I>(self, initialize: I) -> crate::Result
     where
         Self: 'static,
         I: FnOnce() -> (P::State, Task<P::Message>) + 'static,
