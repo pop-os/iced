@@ -50,7 +50,7 @@ impl Pipeline {
                 image,
                 &tiny_skia::PixmapPaint {
                     opacity,
-                    quality: tiny_skia::FilterQuality::Bilinear,
+                    quality: tiny_skia::FilterQuality::Bicubic,
                     ..tiny_skia::PixmapPaint::default()
                 },
                 transform,

@@ -1,3 +1,5 @@
+use tiny_skia::Transform;
+
 use crate::core::renderer::Quad;
 use crate::core::{
     Background, Color, Gradient, Rectangle, Size, Transformation, Vector,
@@ -271,22 +273,22 @@ impl Engine {
                 // Draw corners that have too small border radii as having no border radius,
                 // but mask them with the rounded rectangle with the correct border radius.
                 let mut temp_pixmap = tiny_skia::Pixmap::new(
-                    physical_bounds.width as u32,
-                    physical_bounds.height as u32,
+                    path_bounds.width as u32,
+                    path_bounds.height as u32,
                 )
                 .unwrap();
 
                 let mut quad_mask = tiny_skia::Mask::new(
-                    physical_bounds.width as u32,
-                    physical_bounds.height as u32,
+                    path_bounds.width as u32,
+                    path_bounds.height as u32,
                 )
                 .unwrap();
 
                 let zero_bounds = Rectangle {
                     x: 0.0,
                     y: 0.0,
-                    width: physical_bounds.width,
-                    height: physical_bounds.height,
+                    width: path_bounds.width,
+                    height: path_bounds.height,
                 };
                 let path = rounded_rectangle(zero_bounds, fill_border_radius);
 
@@ -297,16 +299,12 @@ impl Engine {
                     transform,
                 );
                 let path_bounds = Rectangle {
-                    x: (border_width / 2.0) * transformation.scale_factor(),
-                    y: (border_width / 2.0) * transformation.scale_factor(),
-                    width: physical_bounds.width
-                        - border_width * transformation.scale_factor(),
-                    height: physical_bounds.height
-                        - border_width * transformation.scale_factor(),
+                    x: (border_width / 2.0),
+                    y: (border_width / 2.0),
+                    width: path_bounds.width - border_width,
+                    height: path_bounds.height - border_width,
                 };
-                for r in &mut border_radius {
-                    *r /= transformation.scale_factor();
-                }
+
                 let border_radius_path =
                     rounded_rectangle(path_bounds, border_radius);
 
@@ -320,7 +318,7 @@ impl Engine {
                         ..tiny_skia::Paint::default()
                     },
                     &tiny_skia::Stroke {
-                        width: border_width * transformation.scale_factor(),
+                        width: border_width,
                         ..tiny_skia::Stroke::default()
                     },
                     transform,
@@ -328,8 +326,8 @@ impl Engine {
                 );
 
                 pixels.draw_pixmap(
-                    (quad.bounds.x / transformation.scale_factor()) as i32,
-                    (quad.bounds.y / transformation.scale_factor()) as i32,
+                    (quad.bounds.x) as i32,
+                    (quad.bounds.y) as i32,
                     temp_pixmap.as_ref(),
                     &tiny_skia::PixmapPaint::default(),
                     transform,
@@ -579,7 +577,7 @@ impl Engine {
                 let center = physical_bounds.center();
                 let radians = f32::from(handle.rotation);
 
-                let transform = into_transform(_transformation).post_rotate_at(
+                let transform = Transform::default().post_rotate_at(
                     radians.to_degrees(),
                     center.x,
                     center.y,
@@ -588,7 +586,7 @@ impl Engine {
                 self.raster_pipeline.draw(
                     &handle.handle,
                     handle.filter_method,
-                    *bounds,
+                    physical_bounds,
                     handle.opacity,
                     _pixels,
                     transform,
@@ -610,7 +608,7 @@ impl Engine {
                 let center = physical_bounds.center();
                 let radians = f32::from(handle.rotation);
 
-                let transform = into_transform(_transformation).post_rotate_at(
+                let transform = Transform::default().post_rotate_at(
                     radians.to_degrees(),
                     center.x,
                     center.y,
@@ -619,7 +617,7 @@ impl Engine {
                 self.vector_pipeline.draw(
                     &handle.handle,
                     handle.color,
-                    *bounds,
+                    physical_bounds,
                     handle.opacity,
                     _pixels,
                     transform,
