@@ -2,7 +2,6 @@
 
 use iced_core::clipboard::DndDestinationRectangles;
 use iced_core::widget::tree::NAMED;
-use iced_core::widget::Operation;
 
 use crate::core::event::{self, Event};
 use crate::core::layout;

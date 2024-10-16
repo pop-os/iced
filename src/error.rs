@@ -1,6 +1,6 @@
 use crate::futures;
 use crate::graphics;
-#[cfg(any(feature = "winit", feature = "wayland"))]
+#[cfg(feature = "winit")]
 use crate::shell;
 
 /// An error that occurred while running an application.
@@ -19,7 +19,7 @@ pub enum Error {
     GraphicsCreationFailed(graphics::Error),
 }
 
-#[cfg(any(feature = "winit", feature = "wayland"))]
+#[cfg(feature = "winit")]
 impl From<shell::Error> for Error {
     fn from(error: shell::Error) -> Error {
         match error {
@@ -27,10 +27,6 @@ impl From<shell::Error> for Error {
                 Error::ExecutorCreationFailed(error)
             }
             #[cfg(feature = "winit")]
-            shell::Error::WindowCreationFailed(error) => {
-                Error::WindowCreationFailed(Box::new(error))
-            }
-            #[cfg(feature = "wayland")]
             shell::Error::WindowCreationFailed(error) => {
                 Error::WindowCreationFailed(Box::new(error))
             }
