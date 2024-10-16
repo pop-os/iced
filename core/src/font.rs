@@ -71,6 +71,7 @@ pub enum Family {
 /// The weight of some text.
 #[allow(missing_docs)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Weight {
     Thin,
     ExtraLight,
@@ -87,6 +88,7 @@ pub enum Weight {
 /// The width of some text.
 #[allow(missing_docs)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Stretch {
     UltraCondensed,
     ExtraCondensed,
@@ -103,6 +105,7 @@ pub enum Stretch {
 /// The style of some text.
 #[allow(missing_docs)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Style {
     #[default]
     Normal,
