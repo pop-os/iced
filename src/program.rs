@@ -1,13 +1,13 @@
 use crate::core::text;
 use crate::graphics::compositor;
-#[cfg(any(feature = "winit", feature = "wayland"))]
+#[cfg(feature = "winit")]
 use crate::shell;
-#[cfg(any(feature = "winit", feature = "wayland"))]
+#[cfg(feature = "winit")]
 pub use crate::shell::program::{Appearance, DefaultStyle};
 use crate::window;
-use crate::{Element, Executor, Result, Settings, Subscription, Task};
+use crate::{Element, Executor, Subscription, Task};
 
-#[cfg(not(any(feature = "winit", feature = "wayland")))]
+#[cfg(not(feature = "winit"))]
 pub use crate::runtime::{Appearance, DefaultStyle};
 
 /// The internal definition of a [`Program`].
@@ -66,7 +66,7 @@ pub trait Program: Sized {
         1.0
     }
 
-    #[cfg(any(feature = "winit", feature = "wayland"))]
+    #[cfg(feature = "winit")]
     /// Runs the [`Program`].
     ///
     /// The state of the [`Program`] must implement [`Default`].
@@ -76,9 +76,9 @@ pub trait Program: Sized {
     /// [`run_with`]: Self::run_with
     fn run(
         self,
-        settings: Settings,
+        settings: crate::Settings,
         window_settings: Option<window::Settings>,
-    ) -> Result
+    ) -> crate::Result
     where
         Self: 'static,
         Self::State: Default,
@@ -88,14 +88,14 @@ pub trait Program: Sized {
         })
     }
 
-    #[cfg(any(feature = "winit", feature = "wayland"))]
+    #[cfg(feature = "winit")]
     /// Runs the [`Program`] with the given [`Settings`] and a closure that creates the initial state.
     fn run_with<I>(
         self,
-        settings: Settings,
+        settings: crate::Settings,
         window_settings: Option<window::Settings>,
         initialize: I,
-    ) -> Result
+    ) -> crate::Result
     where
         Self: 'static,
         I: FnOnce() -> (Self::State, Task<Self::Message>) + 'static,
@@ -184,7 +184,7 @@ pub trait Program: Sized {
             Instance<Self, I>,
             <Self::Renderer as compositor::Default>::Compositor,
         >(
-            Settings {
+            crate::Settings {
                 id: settings.id,
                 fonts: settings.fonts,
                 default_font: settings.default_font,

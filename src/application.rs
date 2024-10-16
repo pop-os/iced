@@ -154,7 +154,7 @@ pub struct Application<P: Program> {
 }
 
 impl<P: Program> Application<P> {
-    #[cfg(any(feature = "winit", feature = "wayland"))]
+    #[cfg(feature = "winit")]
     /// Runs the [`Application`].
     ///
     /// The state of the [`Application`] must implement [`Default`].
@@ -162,7 +162,7 @@ impl<P: Program> Application<P> {
     /// instead.
     ///
     /// [`run_with`]: Self::run_with
-    pub fn run(self) -> Result
+    pub fn run(self) -> crate::Result
     where
         Self: 'static,
         P::State: Default,
@@ -170,9 +170,9 @@ impl<P: Program> Application<P> {
         self.raw.run(self.settings, Some(self.window))
     }
 
-    #[cfg(any(feature = "winit", feature = "wayland"))]
+    #[cfg(feature = "winit")]
     /// Runs the [`Application`] with a closure that creates the initial state.
-    pub fn run_with<I>(self, initialize: I) -> Result
+    pub fn run_with<I>(self, initialize: I) -> crate::Result
     where
         Self: 'static,
         I: FnOnce() -> (P::State, Task<P::Message>) + 'static,

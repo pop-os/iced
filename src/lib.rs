@@ -512,19 +512,6 @@ pub use application::Application;
 #[cfg(feature = "winit")]
 pub use program::Program;
 
-// wayland application
-// #[cfg(feature = "wayland")]
-// pub mod wayland;
-// #[cfg(feature = "wayland")]
-// pub use wayland::application;
-// #[cfg(feature = "wayland")]
-// pub use wayland::application::Application;
-// #[cfg(feature = "wayland")]
-// pub use wayland::program;
-// #[doc(inline)]
-// #[cfg(feature = "wayland")]
-// pub use wayland::program::Program;
-
 #[cfg(feature = "advanced")]
 pub mod advanced;
 
