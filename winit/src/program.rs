@@ -198,7 +198,13 @@ where
     let task = if let Some(window_settings) = window_settings {
         let mut task = Some(task);
 
-        let (_id, open) = runtime::window::open(window_settings);
+        let open = iced_runtime::task::oneshot(|channel| {
+            iced_runtime::Action::Window(iced_runtime::window::Action::Open(
+                iced_runtime::core::window::Id::RESERVED,
+                window_settings,
+                channel,
+            ))
+        });
 
         open.then(move |_| task.take().unwrap_or(Task::none()))
     } else {
@@ -356,9 +362,6 @@ where
             else {
                 return;
             };
-
-            // XXX what to do if the program is a daemon?
-            // Can we avoid creating a useless window that hangs around forever?
 
             let window: Arc<dyn winit::window::Window> = match event_loop
                 .create_window(
