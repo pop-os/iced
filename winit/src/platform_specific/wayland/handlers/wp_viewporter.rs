@@ -1,6 +1,5 @@
 //! Handling of the wp-viewporter.
 
-
 use sctk::reexports::client::globals::{BindError, GlobalList};
 use sctk::reexports::client::protocol::wl_surface::WlSurface;
 use sctk::reexports::client::Dispatch;
