@@ -7,8 +7,7 @@ use sctk::{
     seat::{
         keyboard::Modifiers,
         pointer::{
-            AxisScroll, BTN_EXTRA, BTN_LEFT, BTN_MIDDLE, BTN_RIGHT,
-            BTN_SIDE,
+            AxisScroll, BTN_EXTRA, BTN_LEFT, BTN_MIDDLE, BTN_RIGHT, BTN_SIDE,
         },
     },
 };

@@ -1,26 +1,31 @@
 use crate::{
-    handlers::activation::IcedRequestData, platform_specific::{
+    handlers::activation::IcedRequestData,
+    platform_specific::{
         wayland::{
             handlers::{
                 wp_fractional_scaling::FractionalScalingManager,
                 wp_viewporter::ViewporterState,
             },
-            sctk_event::{
-                LayerSurfaceEventVariant, SctkEvent,
-            },
+            sctk_event::{LayerSurfaceEventVariant, SctkEvent},
         },
         Event,
-    }, program::Control
+    },
+    program::Control,
 };
 use iced_futures::futures::channel::{mpsc, oneshot};
 use raw_window_handle::HasWindowHandle;
 use std::{
     collections::{HashMap, HashSet},
     convert::Infallible,
-    fmt::Debug, sync::{atomic::AtomicU32, Arc, Mutex}, time::Duration,
+    fmt::Debug,
+    sync::{atomic::AtomicU32, Arc, Mutex},
+    time::Duration,
 };
 use wayland_backend::client::ObjectId;
-use winit::{dpi::{LogicalPosition, LogicalSize}, platform::wayland::WindowExtWayland};
+use winit::{
+    dpi::{LogicalPosition, LogicalSize},
+    platform::wayland::WindowExtWayland,
+};
 
 use iced_runtime::{
     core::{self, touch, Point},
@@ -57,7 +62,10 @@ use sctk::{
     },
     registry::RegistryState,
     seat::{
-        keyboard::KeyEvent, pointer::{CursorIcon, PointerData, ThemedPointer}, touch::TouchData, SeatState
+        keyboard::KeyEvent,
+        pointer::{CursorIcon, PointerData, ThemedPointer},
+        touch::TouchData,
+        SeatState,
     },
     session_lock::{
         SessionLock, SessionLockState, SessionLockSurface,
@@ -76,10 +84,13 @@ use sctk::{
     },
     shm::{multi::MultiPool, Shm},
 };
-use wayland_protocols::{wp::{
-    fractional_scale::v1::client::wp_fractional_scale_v1::WpFractionalScaleV1,
-    viewporter::client::wp_viewport::WpViewport,
-}, xdg::shell::client::xdg_surface::XdgSurface};
+use wayland_protocols::{
+    wp::{
+        fractional_scale::v1::client::wp_fractional_scale_v1::WpFractionalScaleV1,
+        viewporter::client::wp_viewport::WpViewport,
+    },
+    xdg::shell::client::xdg_surface::XdgSurface,
+};
 
 pub static TOKEN_CTR: AtomicU32 = AtomicU32::new(0);
 
@@ -167,16 +178,17 @@ impl PopupParent {
 pub enum CommonSurface {
     Popup(Popup, Arc<XdgPositioner>),
     Layer(LayerSurface),
-    Lock(SessionLockSurface)
+    Lock(SessionLockSurface),
 }
 
 impl CommonSurface {
     pub fn wl_surface(&self) -> &WlSurface {
-        let wl_surface =
-        match self {
+        let wl_surface = match self {
             CommonSurface::Popup(popup, _) => popup.wl_surface(),
             CommonSurface::Layer(layer_surface) => layer_surface.wl_surface(),
-            CommonSurface::Lock(session_lock_surface) => session_lock_surface.wl_surface(),
+            CommonSurface::Lock(session_lock_surface) => {
+                session_lock_surface.wl_surface()
+            }
         };
         wl_surface
     }
@@ -195,7 +207,15 @@ pub struct Common {
 
 impl Default for Common {
     fn default() -> Self {
-        Self { fractional_scale: Default::default(), has_focus: Default::default(), ime_pos: Default::default(), ime_size: Default::default(), size: LogicalSize::new(1, 1), requested_size: (None, None), wp_viewport: None}
+        Self {
+            fractional_scale: Default::default(),
+            has_focus: Default::default(),
+            ime_pos: Default::default(),
+            ime_size: Default::default(),
+            size: LogicalSize::new(1, 1),
+            requested_size: (None, None),
+            wp_viewport: None,
+        }
     }
 }
 
@@ -207,8 +227,6 @@ impl From<LogicalSize<u32>> for Common {
         }
     }
 }
-
-
 
 #[derive(Debug)]
 pub struct SctkPopup {
@@ -253,31 +271,39 @@ pub struct SctkPopupData {
 
 pub struct SctkWindow {
     pub(crate) window: Arc<dyn winit::window::Window>,
-    pub(crate) id: core::window::Id
+    pub(crate) id: core::window::Id,
 }
 
 impl SctkWindow {
     pub fn wl_surface(&self, conn: &Connection) -> WlSurface {
         let window_handle = self.window.window_handle().unwrap();
         let ptr = {
-            let raw_window_handle::RawWindowHandle::Wayland(h) = window_handle.as_raw() else {
+            let raw_window_handle::RawWindowHandle::Wayland(h) =
+                window_handle.as_raw()
+            else {
                 panic!("Invalid window handle");
             };
             h.surface
-
         };
-        let id = unsafe { ObjectId::from_ptr(WlSurface::interface(), ptr.as_ptr().cast()) }.unwrap();
+        let id = unsafe {
+            ObjectId::from_ptr(WlSurface::interface(), ptr.as_ptr().cast())
+        }
+        .unwrap();
         WlSurface::from_id(conn, id).unwrap()
     }
 
     pub fn xdg_surface(&self, conn: &Connection) -> XdgSurface {
         let window_handle = self.window.xdg_surface_handle().unwrap();
         let ptr = {
-            let h = window_handle.xdg_surface_handle().expect("Invalid window handle");
+            let h = window_handle
+                .xdg_surface_handle()
+                .expect("Invalid window handle");
             h.as_raw()
-
         };
-        let id = unsafe { ObjectId::from_ptr(XdgSurface::interface(), ptr.as_ptr().cast()) }.unwrap();
+        let id = unsafe {
+            ObjectId::from_ptr(XdgSurface::interface(), ptr.as_ptr().cast())
+        }
+        .unwrap();
         XdgSurface::from_id(conn, id).unwrap()
     }
 }
@@ -288,7 +314,7 @@ pub(crate) enum FrameStatus {
     /// Requested redraw, but frame wasn't received
     RequestedRedraw,
     /// Ready for requested redraw
-    Ready
+    Ready,
 }
 
 /// Wrapper to carry sctk state.
@@ -395,7 +421,10 @@ pub enum LayerSurfaceCreationError {
     LayerSurfaceCreationFailed(GlobalError),
 }
 
-pub(crate) fn receive_frame(frame_status: &mut HashMap<ObjectId, FrameStatus>, s: &WlSurface) {
+pub(crate) fn receive_frame(
+    frame_status: &mut HashMap<ObjectId, FrameStatus>,
+    s: &WlSurface,
+) {
     let e = frame_status.entry(s.id()).or_insert(FrameStatus::Received);
     if matches!(e, FrameStatus::RequestedRedraw) {
         *e = FrameStatus::Ready;
@@ -404,7 +433,10 @@ pub(crate) fn receive_frame(frame_status: &mut HashMap<ObjectId, FrameStatus>, s
 
 impl SctkState {
     pub fn request_redraw(&mut self, surface: &WlSurface) {
-        let e = self.frame_status.entry(surface.id()).or_insert(FrameStatus::RequestedRedraw);
+        let e = self
+            .frame_status
+            .entry(surface.id())
+            .or_insert(FrameStatus::RequestedRedraw);
         if matches!(e, FrameStatus::Received) {
             *e = FrameStatus::Ready;
         }
@@ -446,10 +478,11 @@ impl SctkState {
             let mut common = layer_surface.common.lock().unwrap();
             common.fractional_scale = Some(scale_factor);
             if legacy {
-                let _ =
-                    layer_surface.surface.wl_surface().set_buffer_scale(scale_factor as i32);
+                let _ = layer_surface
+                    .surface
+                    .wl_surface()
+                    .set_buffer_scale(scale_factor as i32);
             }
-            
         }
 
         if let Some(lock_surface) = self
@@ -464,13 +497,19 @@ impl SctkState {
             let mut common = lock_surface.common.lock().unwrap();
             common.fractional_scale = Some(scale_factor);
             if legacy {
-                let _ =
-                    lock_surface.session_lock_surface.wl_surface().set_buffer_scale(scale_factor as i32);
+                let _ = lock_surface
+                    .session_lock_surface
+                    .wl_surface()
+                    .set_buffer_scale(scale_factor as i32);
             }
         }
 
         if let Some(id) = id {
-            self.sctk_events.push(SctkEvent::SurfaceScaleFactorChanged(scale_factor, surface.clone(), id));
+            self.sctk_events.push(SctkEvent::SurfaceScaleFactorChanged(
+                scale_factor,
+                surface.clone(),
+                id,
+            ));
         }
 
         // TODO winit sets cursor size after handling the change for the window, so maybe that should be done as well.
@@ -482,7 +521,13 @@ impl SctkState {
         &mut self,
         settings: SctkPopupSettings,
     ) -> Result<
-        (core::window::Id, WlSurface, WlSurface, CommonSurface, Arc<Mutex<Common>>),
+        (
+            core::window::Id,
+            WlSurface,
+            WlSurface,
+            CommonSurface,
+            Arc<Mutex<Common>>,
+        ),
         PopupCreationError,
     > {
         let (parent, toplevel) = if let Some(parent) =
@@ -613,20 +658,32 @@ impl SctkState {
         };
         if grab {
             if let Some(s) = self.seats.first() {
-                let ptr_data = s.ptr.as_ref().and_then(|p| p.pointer().data::<PointerData>()).and_then(|data| data.latest_button_serial());
-                if let Some(serial) = ptr_data.or_else(|| s.touch.as_ref().and_then(|t| t.data::<TouchData>()).and_then(|t| t.latest_down_serial())).or_else(|| s.last_kbd_press
+                let ptr_data = s
+                    .ptr
                     .as_ref()
-                    .map(|p| p.1)) {
-                    popup.xdg_popup().grab(
-                        &s.seat,
-                        serial
-                    );
+                    .and_then(|p| p.pointer().data::<PointerData>())
+                    .and_then(|data| data.latest_button_serial());
+                if let Some(serial) = ptr_data
+                    .or_else(|| {
+                        s.touch
+                            .as_ref()
+                            .and_then(|t| t.data::<TouchData>())
+                            .and_then(|t| t.latest_down_serial())
+                    })
+                    .or_else(|| s.last_kbd_press.as_ref().map(|p| p.1))
+                {
+                    popup.xdg_popup().grab(&s.seat, serial);
                 }
             } else {
                 log::error!("Can't take grab on popup. Missing serial.");
             }
         }
-        popup.xdg_surface().set_window_geometry(0, 0, size.0 as i32, size.1 as i32);
+        popup.xdg_surface().set_window_geometry(
+            0,
+            0,
+            size.0 as i32,
+            size.1 as i32,
+        );
         _ = wl_surface.frame(&self.queue_handle, wl_surface.clone());
         wl_surface.commit();
 
@@ -656,7 +713,7 @@ impl SctkState {
             last_configure: None,
             _pending_requests: Default::default(),
             wp_fractional_scale,
-            common: common.clone()
+            common: common.clone(),
         });
 
         Ok((
@@ -664,7 +721,7 @@ impl SctkState {
             parent.wl_surface().clone(),
             toplevel.clone(),
             CommonSurface::Popup(popup.clone(), positioner.clone()),
-            common
+            common,
         ))
     }
 
@@ -683,7 +740,10 @@ impl SctkState {
             exclusive_zone,
             ..
         }: SctkLayerSurfaceSettings,
-    ) -> Result<(core::window::Id, CommonSurface, Arc<Mutex<Common>>), LayerSurfaceCreationError> {
+    ) -> Result<
+        (core::window::Id, CommonSurface, Arc<Mutex<Common>>),
+        LayerSurfaceCreationError,
+    > {
         let wl_output = match output {
             IcedOutput::All => None, // TODO
             IcedOutput::Active => None,
@@ -746,7 +806,10 @@ impl SctkState {
                     &self.queue_handle,
                 )
             });
-        let mut common = Common::from(LogicalSize::new(size.0.unwrap_or(1), size.1.unwrap_or(1)));
+        let mut common = Common::from(LogicalSize::new(
+            size.0.unwrap_or(1),
+            size.1.unwrap_or(1),
+        ));
         common.requested_size = size;
         common.wp_viewport = wp_viewport;
         let common = Arc::new(Mutex::new(common));
@@ -763,7 +826,7 @@ impl SctkState {
             last_configure: None,
             _pending_requests: Vec::new(),
             wp_fractional_scale,
-            common: common.clone()
+            common: common.clone(),
         });
         Ok((id, CommonSurface::Layer(layer_surface), common))
     }
@@ -787,19 +850,18 @@ impl SctkState {
                 viewport
             });
             let wp_fractional_scale =
-            self.fractional_scaling_manager.as_ref().map(|fsm| {
-                fsm.fractional_scaling(&wl_surface, &self.queue_handle)
-            });
-            let common = Arc::new(Mutex::new(Common::from(
-                LogicalSize::new(1, 1)
-            )));
+                self.fractional_scaling_manager.as_ref().map(|fsm| {
+                    fsm.fractional_scaling(&wl_surface, &self.queue_handle)
+                });
+            let common =
+                Arc::new(Mutex::new(Common::from(LogicalSize::new(1, 1))));
             self.lock_surfaces.push(SctkLockSurface {
                 id,
                 session_lock_surface: session_lock_surface.clone(),
                 last_configure: None,
                 wp_fractional_scale,
                 wp_viewport,
-                common: common.clone()
+                common: common.clone(),
             });
             Some((CommonSurface::Lock(session_lock_surface), common))
         } else {
@@ -842,7 +904,6 @@ impl SctkState {
                                     prev_configure.new_size = (width.unwrap_or(prev_configure.new_size.0), width.unwrap_or(prev_configure.new_size.1));
                                     _ = send_event(&self.events_sender, &self.proxy,
                                         SctkEvent::LayerSurfaceEvent { variant: LayerSurfaceEventVariant::Configure(prev_configure, wl_surface.clone(), false), id: wl_surface.clone()});
-                                    
                                 }
                             }
                         },
@@ -857,7 +918,6 @@ impl SctkState {
                                             id: l.surface.wl_surface().clone(),
                                     }
                                 );
-                                
                             }
                         },
                         platform_specific::wayland::layer_surface::Action::Anchor { id, anchor } => {
@@ -939,7 +999,7 @@ impl SctkState {
                                         TimeoutAction::Drop
                                     }
                                 } else {
-                                    match state.get_popup(popup) { 
+                                    match state.get_popup(popup) {
                                         Ok((id, parent_id, toplevel_id, surface, common)) => {
                                             let wl_surface = surface.wl_surface().clone();
                                             receive_frame(&mut state.frame_status, &wl_surface);
@@ -947,7 +1007,7 @@ impl SctkState {
                                                 SctkEvent::PopupEvent {
                                                     variant: crate::platform_specific::wayland::sctk_event::PopupEventVariant::Created(queue_handle.clone(), surface, id, common, state.connection.display()),
                                                     toplevel_id, parent_id, id: wl_surface });
-                                        } 
+                                        }
                                         Err(err) => {
                                             log::error!("Failed to create popup. {err:?}");
                                         }
@@ -959,16 +1019,15 @@ impl SctkState {
                         // log::error!("Invalid popup Id {:?}", popup.id);
                     } else {
                         self.pending_popup = None;
-                        match self.get_popup(popup) { 
+                        match self.get_popup(popup) {
                             Ok((id, parent_id, toplevel_id, surface, common)) => {
                                 let wl_surface = surface.wl_surface().clone();
-                               
                                 receive_frame(&mut self.frame_status, &wl_surface);
-                                send_event(&self.events_sender, &self.proxy, 
+                                send_event(&self.events_sender, &self.proxy,
                                     SctkEvent::PopupEvent {
                                         variant: crate::platform_specific::wayland::sctk_event::PopupEventVariant::Created(self.queue_handle.clone(), surface, id, common, self.connection.display()),
                                         toplevel_id, parent_id, id: wl_surface });
-                            } 
+                            }
                             Err(err) => {
                                 log::error!("Failed to create popup. {err:?}");
                             }
@@ -1068,7 +1127,6 @@ impl SctkState {
                     } else {
                         // if we don't have the global, we don't want to stall the app
                         _ = channel.send(None);
-                        
                     }
                 },
                 platform_specific::wayland::activation::Action::Activate { window, token } => {
@@ -1124,8 +1182,13 @@ impl SctkState {
     }
 }
 
-pub(crate) fn send_event(sender: &mpsc::UnboundedSender<Control>, proxy: &winit::event_loop::EventLoopProxy, sctk_event: SctkEvent) {
-    _ = sender.unbounded_send(Control::PlatformSpecific(Event::Wayland(sctk_event)));
+pub(crate) fn send_event(
+    sender: &mpsc::UnboundedSender<Control>,
+    proxy: &winit::event_loop::EventLoopProxy,
+    sctk_event: SctkEvent,
+) {
+    _ = sender
+        .unbounded_send(Control::PlatformSpecific(Event::Wayland(sctk_event)));
     proxy.wake_up();
 }
 
