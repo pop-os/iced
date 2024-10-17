@@ -1406,7 +1406,7 @@ async fn run_instance<P>(
             }
             Event::Exit => break,
             Event::Dnd(e) => {
-                use raw_window_handle::HasWindowHandle;
+                use winit::raw_window_handle::HasWindowHandle;
                 match &e {
                     dnd::DndEvent::Offer(_, dnd::OfferEvent::Leave) => {
                         events.push((cur_dnd_surface, core::Event::Dnd(e)));
