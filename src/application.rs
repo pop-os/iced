@@ -37,7 +37,7 @@ use crate::runtime::{Appearance, DefaultStyle};
 pub use crate::shell::program::{Appearance, DefaultStyle};
 use crate::window;
 use crate::{
-    Element, Executor, Font, Result, Settings, Size, Subscription, Task,
+    Element, Executor, Font, Settings, Size, Subscription, Task,
 };
 
 use std::borrow::Cow;

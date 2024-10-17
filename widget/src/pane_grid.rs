@@ -327,7 +327,7 @@ where
                     ids,
                     |state, (_, content)| content.diff(state),
                     |(_, content)| content.state(),
-                )
+                );
             }
             Contents::Maximized(_, content, _) => tree.diff_children_custom(
                 &mut [content],

@@ -165,11 +165,11 @@ impl Default for State {
     fn default() -> Self {
         Self {
             is_hovered: Default::default(),
-            drag_initiated: Default::default(),
+            drag_initiated: None,
             is_out_of_bounds: true,
-            last_click: Default::default(),
+            last_click: None,
             cursor_position: None,
-            bounds: Default::default(),
+            bounds: Rectangle::default(),
             previous_click: None,
         }
     }
@@ -346,7 +346,7 @@ where
         renderer: &Renderer,
         dnd_rectangles: &mut crate::core::clipboard::DndDestinationRectangles,
     ) {
-        if let Some(state) = state.children.iter().next() {
+        if let Some(state) = state.children.first() {
             self.content.as_widget().drag_destinations(
                 state,
                 layout,
@@ -415,20 +415,19 @@ fn update<Message: Clone, Theme, Renderer>(
     }
 
     if !cursor.is_over(layout.bounds()) {
-        if !state.is_out_of_bounds {
-            if widget
+        if !state.is_out_of_bounds
+            && widget
                 .on_enter
                 .as_ref()
                 .or(widget.on_exit.as_ref())
                 .is_some()
-            {
-                if let Event::Mouse(mouse::Event::CursorMoved { .. }) = event {
-                    state.is_out_of_bounds = true;
-                    if let Some(message) = widget.on_exit.as_ref() {
-                        shell.publish(message.clone());
-                    }
-                    return event::Status::Captured;
+        {
+            if let Event::Mouse(mouse::Event::CursorMoved { .. }) = event {
+                state.is_out_of_bounds = true;
+                if let Some(message) = widget.on_exit.as_ref() {
+                    shell.publish(message.clone());
                 }
+                return event::Status::Captured;
             }
         }
 
