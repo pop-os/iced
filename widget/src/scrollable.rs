@@ -818,7 +818,7 @@ where
                         // TODO: Configurable speed/friction (?)
                         Vector::new(x, y) * 60.
                     }
-                    mouse::ScrollDelta::Pixels { x, y } => -Vector::new(x, y),
+                    mouse::ScrollDelta::Pixels { x, y } => Vector::new(x, y),
                 };
 
                 let is_shift_pressed = state.keyboard_modifiers.shift();
