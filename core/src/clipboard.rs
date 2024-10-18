@@ -69,7 +69,7 @@ pub trait Clipboard {
     /// Reads the current content of the [`Clipboard`] as text.
     fn read_data(
         &self,
-        kind: Kind,
+        _kind: Kind,
         _mimes: Vec<String>,
     ) -> Option<(Vec<u8>, String)> {
         None
@@ -78,7 +78,7 @@ pub trait Clipboard {
     /// Writes the given contents to the [`Clipboard`].
     fn write_data(
         &mut self,
-        kind: Kind,
+        _kind: Kind,
         _contents: ClipboardStoreData<
             Box<dyn Send + Sync + 'static + mime::AsMimeTypes>,
         >,
@@ -119,7 +119,7 @@ pub trait Clipboard {
     }
 
     /// Request window size
-    fn request_logical_window_size(&self, width: f32, height: f32) {}
+    fn request_logical_window_size(&self, _width: f32, _height: f32) {}
 }
 
 /// The kind of [`Clipboard`].
@@ -187,10 +187,7 @@ pub fn peek_dnd<T: AllowedMimeTypes>(
     clipboard: &mut dyn Clipboard,
     mime: Option<String>,
 ) -> Option<T> {
-    let Some(mime) = mime.or_else(|| T::allowed().first().cloned().into())
-    else {
-        return None;
-    };
+    let mime = mime.or_else(|| T::allowed().first().cloned())?;
     clipboard
         .peek_dnd(mime)
         .and_then(|data| T::try_from(data).ok())
@@ -206,7 +203,7 @@ pub enum DndSource {
 }
 
 /// A list of DnD destination rectangles.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct DndDestinationRectangles {
     /// The rectangle of the DnD destination.
     rectangles: Vec<DndDestinationRectangle>,
@@ -215,9 +212,7 @@ pub struct DndDestinationRectangles {
 impl DndDestinationRectangles {
     /// Creates a new [`DndDestinationRectangles`].
     pub fn new() -> Self {
-        Self {
-            rectangles: Vec::new(),
-        }
+        Self::default()
     }
 
     /// Creates a new [`DndDestinationRectangles`] with the given capacity.

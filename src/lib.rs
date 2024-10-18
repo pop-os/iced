@@ -700,7 +700,7 @@ pub type Element<
 /// The result of running an iced program.
 pub type Result = std::result::Result<(), Error>;
 
-#[cfg(any(feature = "winit"))]
+#[cfg(feature = "winit")]
 /// Runs a basic iced application with default [`Settings`] given its title,
 /// update, and view logic.
 ///

@@ -461,7 +461,7 @@ where
                 size,
                 line_height,
                 shaping,
-                wrap,
+                wrap: _,
             } = &self.icon;
             let size = size.unwrap_or(Pixels(bounds.height * 0.7));
 

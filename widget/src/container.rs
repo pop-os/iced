@@ -592,7 +592,7 @@ pub fn visible_bounds(id: Id) -> Task<Option<Rectangle>> {
     }
 
     task::widget(VisibleBounds {
-        target: id.into(),
+        target: id,
         depth: 0,
         scrollables: Vec::new(),
         bounds: None,

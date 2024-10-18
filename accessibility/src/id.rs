@@ -137,12 +137,12 @@ impl From<Id> for u64 {
     }
 }
 
-impl ToString for Id {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for Id {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self.0 {
-            Internal::Unique(_) => "Undefined".to_string(),
-            Internal::Custom(_, id) => id.to_string(),
-            Internal::Set(_) => "Set".to_string(),
+            Internal::Unique(_) => write!(f, "Undefined"),
+            Internal::Custom(_, id) => write!(f, "{}", id.to_string()),
+            Internal::Set(_) => write!(f, "Set"),
         }
     }
 }
