@@ -1,8 +1,8 @@
 //! Draw paragraphs.
 use crate::core;
 use crate::core::alignment;
-use crate::core::text::{Hit, LineHeight, Shaping, Span, Text, Wrapping};
-use crate::core::{Font, Pixels, Point, Rectangle, Size};
+use crate::core::text::{Hit, Shaping, Span, Text, Wrapping};
+use crate::core::{Font, Point, Rectangle, Size};
 use crate::text;
 
 use std::fmt;

@@ -1,5 +1,3 @@
-use tiny_skia::Transform;
-
 use crate::core::renderer::Quad;
 use crate::core::{
     Background, Color, Gradient, Rectangle, Size, Transformation, Vector,
@@ -565,6 +563,8 @@ impl Engine {
         match image {
             #[cfg(feature = "image")]
             Image::Raster { handle, bounds } => {
+                use tiny_skia::Transform;
+
                 let physical_bounds = *bounds * _transformation;
 
                 if !_clip_bounds.intersects(&physical_bounds) {
@@ -608,7 +608,7 @@ impl Engine {
                 let center = physical_bounds.center();
                 let radians = f32::from(handle.rotation);
 
-                let transform = Transform::default().post_rotate_at(
+                let transform = tiny_skia::Transform::default().post_rotate_at(
                     radians.to_degrees(),
                     center.x,
                     center.y,

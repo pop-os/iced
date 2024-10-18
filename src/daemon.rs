@@ -4,7 +4,7 @@ use crate::program::{self, Program};
 #[cfg(feature = "winit")]
 pub use crate::shell::program::{Appearance, DefaultStyle};
 use crate::window;
-use crate::{Element, Executor, Font, Result, Settings, Subscription, Task};
+use crate::{Element, Executor, Font, Settings, Subscription, Task};
 
 #[cfg(not(feature = "winit"))]
 use crate::runtime::{Appearance, DefaultStyle};

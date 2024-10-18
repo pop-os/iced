@@ -32,8 +32,6 @@ use crate::{
     Widget,
 };
 
-use std::borrow::Cow;
-
 pub use text::{LineHeight, Shaping, Wrapping};
 
 /// A bunch of text.
@@ -313,7 +311,7 @@ where
     }
 
     fn set_id(&mut self, id: crate::widget::Id) {
-        self.id = id
+        self.id = id;
     }
 }
 
