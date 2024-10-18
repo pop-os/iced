@@ -28,6 +28,7 @@ pub use task::Task;
 pub use user_interface::UserInterface;
 pub use window::Window;
 
+use crate::core::Color;
 use crate::futures::futures::channel::oneshot;
 
 use std::borrow::Cow;
@@ -143,13 +144,13 @@ pub fn exit<T>() -> Task<T> {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Appearance {
     /// The background [`Color`] of the application.
-    pub background_color: iced_core::Color,
+    pub background_color: Color,
 
     /// The default text [`Color`] of the application.
-    pub text_color: iced_core::Color,
+    pub text_color: Color,
 
     /// The default icon [`Color`] of the application.
-    pub icon_color: iced_core::Color,
+    pub icon_color: Color,
 }
 
 /// The default style of a [`Program`].
@@ -164,7 +165,7 @@ impl DefaultStyle for iced_core::Theme {
     }
 }
 
-/// The default [`Appearance`] of a [`Program`] with the built-in [`Theme`].
+/// The default [`Appearance`] of a [`Program`] with the built-in [`iced_core::Theme`].
 pub fn default(theme: &iced_core::Theme) -> Appearance {
     let palette = theme.extended_palette();
 

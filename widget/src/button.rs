@@ -972,7 +972,7 @@ fn disabled(style: Style) -> Style {
     }
 }
 
-/// Produces a [`Command`] that focuses the [`Button`] with the given [`Id`].
+/// Produces a [`Task`] that focuses the [`Button`] with the given [`Id`].
 pub fn focus<Message: 'static + Send>(id: Id) -> Task<Message> {
     task::widget(operation::focusable::focus(id))
 }

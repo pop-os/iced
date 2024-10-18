@@ -113,7 +113,7 @@ where
         self
     }
 
-    /// Sets the [`text::Wrap`] mode of the [`Menu`].
+    /// Sets the [`text::Wrapping`] mode of the [`Menu`].
     pub fn text_wrap(mut self, wrap: text::Wrapping) -> Self {
         self.text_wrap = wrap;
         self
