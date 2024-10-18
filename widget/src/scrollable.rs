@@ -927,7 +927,7 @@ where
                             -movement * 60.0
                         }
                         mouse::ScrollDelta::Pixels { x, y } => {
-                            -Vector::new(x, y)
+                            Vector::new(x, y)
                         }
                     };
 
