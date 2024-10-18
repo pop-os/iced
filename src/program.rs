@@ -89,7 +89,7 @@ pub trait Program: Sized {
     }
 
     #[cfg(feature = "winit")]
-    /// Runs the [`Program`] with the given [`Settings`] and a closure that creates the initial state.
+    /// Runs the [`Program`] with the given [`Settings`](crate::Settings) and a closure that creates the initial state.
     fn run_with<I>(
         self,
         settings: crate::Settings,

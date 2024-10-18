@@ -9,7 +9,7 @@ use crate::event::{self, Event};
 use crate::layout;
 use crate::mouse;
 use crate::renderer;
-use crate::widget::Tree;
+use crate::widget::{Operation, Tree};
 use crate::{Clipboard, Layout, Point, Rectangle, Shell, Size, Vector};
 
 /// An interactive component that can be displayed on top of other widgets.
@@ -40,7 +40,7 @@ where
         &mut self,
         _layout: Layout<'_>,
         _renderer: &Renderer,
-        _operation: &mut dyn crate::widget::Operation,
+        _operation: &mut dyn Operation,
     ) {
     }
 
