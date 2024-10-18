@@ -80,8 +80,8 @@ pub fn peek_dnd<T: AllowedMimeTypes>() -> Task<Option<T>> {
     task::oneshot(|tx| {
         Action::Dnd(DndAction::PeekDnd(
             T::allowed()
-                .get(0)
-                .map_or_else(|| String::new(), |s| s.to_string()),
+                .first()
+                .map_or_else(String::new, std::string::ToString::to_string),
             tx,
         ))
     })

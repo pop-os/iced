@@ -269,13 +269,13 @@ impl Tree {
             new_children.iter().map(|c| c.borrow().id()).collect(),
             |tree, widget| {
                 let borrowed: &mut dyn Widget<_, _, _> = widget.borrow_mut();
-                tree.diff(borrowed)
+                tree.diff(borrowed);
             },
             |widget| {
                 let borrowed: &dyn Widget<_, _, _> = widget.borrow();
                 Self::new(borrowed)
             },
-        )
+        );
     }
 
     /// Reconciles the children of the tree with the provided list of widgets using custom

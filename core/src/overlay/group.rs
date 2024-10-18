@@ -4,7 +4,6 @@ use crate::mouse;
 use crate::overlay;
 use crate::renderer;
 use crate::widget;
-use crate::widget::Operation;
 use crate::{Clipboard, Event, Layout, Overlay, Point, Rectangle, Shell, Size};
 
 /// An [`Overlay`] container that displays multiple overlay [`overlay::Element`]
