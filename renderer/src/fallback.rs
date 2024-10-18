@@ -3,7 +3,7 @@ use crate::core::image;
 use crate::core::renderer;
 use crate::core::svg;
 use crate::core::{
-    self, Background, Color, Image, Point, Rectangle, Size, Svg, Transformation,
+    self, Background, Color, Point, Rectangle, Size, Svg, Transformation,
 };
 use crate::graphics;
 use crate::graphics::compositor;

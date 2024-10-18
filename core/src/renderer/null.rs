@@ -1,5 +1,5 @@
 use crate::alignment;
-use crate::image::{self, Image};
+use crate::image;
 use crate::renderer::{self, Renderer};
 use crate::svg;
 use crate::text::{self, Text};

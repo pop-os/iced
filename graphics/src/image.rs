@@ -4,8 +4,6 @@ pub use ::image as image_rs;
 
 use crate::core::image;
 use crate::core::svg;
-use crate::core::Color;
-use crate::core::Radians;
 use crate::core::Rectangle;
 
 /// A raster or vector image.

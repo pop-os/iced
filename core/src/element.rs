@@ -311,7 +311,7 @@ where
     }
 
     fn diff(&mut self, tree: &mut Tree) {
-        self.widget.diff(tree)
+        self.widget.diff(tree);
     }
 
     fn size(&self) -> Size<Length> {

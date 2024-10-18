@@ -36,9 +36,7 @@ use crate::runtime::{Appearance, DefaultStyle};
 #[cfg(feature = "winit")]
 pub use crate::shell::program::{Appearance, DefaultStyle};
 use crate::window;
-use crate::{
-    Element, Executor, Font, Result, Settings, Size, Subscription, Task,
-};
+use crate::{Element, Executor, Font, Settings, Size, Subscription, Task};
 
 use std::borrow::Cow;
 
