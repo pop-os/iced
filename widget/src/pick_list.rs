@@ -254,7 +254,7 @@ where
         self
     }
 
-    /// Sets the [`text::Wrap`] mode of the [`PickList`].
+    /// Sets the [`text::Wrapping`] mode of the [`PickList`].
     pub fn text_wrap(mut self, wrap: text::Wrapping) -> Self {
         self.text_wrap = wrap;
         self
