@@ -176,7 +176,7 @@ where
         tree.diff_children(&mut [
             self.content.as_widget_mut(),
             self.tooltip.as_widget_mut(),
-        ])
+        ]);
     }
 
     fn layout(
