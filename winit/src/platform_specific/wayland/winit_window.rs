@@ -224,17 +224,21 @@ impl winit::window::Window for SctkWinitWindow {
     }
 
     fn current_monitor(&self) -> Option<winit::monitor::MonitorHandle> {
-        todo!()
+        tracing::warn!(
+            "current_monitor is not implemented for wayland windows."
+        );
+        None
     }
 
     fn available_monitors(
         &self,
     ) -> Box<dyn Iterator<Item = winit::monitor::MonitorHandle>> {
-        todo!()
+        Box::new(None.into_iter())
     }
 
     fn has_focus(&self) -> bool {
-        todo!()
+        tracing::warn!("has_focus is not implemented for wayland windows.");
+        false
     }
 
     fn set_ime_cursor_area(
