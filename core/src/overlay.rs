@@ -35,7 +35,7 @@ where
         cursor: mouse::Cursor,
     );
 
-    /// Applies an [`Operation`] to the [`Overlay`].
+    /// Applies an [`crate::widget::Operation`] to the [`Overlay`].
     fn operate(
         &mut self,
         _layout: Layout<'_>,
