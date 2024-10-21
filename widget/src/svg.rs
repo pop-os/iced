@@ -179,14 +179,14 @@ where
     }
 
     #[cfg(feature = "a11y")]
-    /// Sets the name of the [`Button`].
+    /// Sets the name of the [`Svg`].
     pub fn name(mut self, name: impl Into<Cow<'a, str>>) -> Self {
         self.name = Some(name.into());
         self
     }
 
     #[cfg(feature = "a11y")]
-    /// Sets the description of the [`Button`].
+    /// Sets the description of the [`Svg`].
     pub fn description_widget<T: iced_accessibility::Describes>(
         mut self,
         description: &T,
@@ -198,7 +198,7 @@ where
     }
 
     #[cfg(feature = "a11y")]
-    /// Sets the description of the [`Button`].
+    /// Sets the description of the [`Svg`].
     pub fn description(mut self, description: impl Into<Cow<'a, str>>) -> Self {
         self.description =
             Some(iced_accessibility::Description::Text(description.into()));
@@ -206,7 +206,7 @@ where
     }
 
     #[cfg(feature = "a11y")]
-    /// Sets the label of the [`Button`].
+    /// Sets the label of the [`Svg`].
     pub fn label(mut self, label: &dyn iced_accessibility::Labels) -> Self {
         self.label =
             Some(label.label().into_iter().map(|l| l.into()).collect());
