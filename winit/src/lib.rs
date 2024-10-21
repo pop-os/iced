@@ -1347,6 +1347,16 @@ async fn run_instance<P>(
                 }
 
                 for (id, event) in events.drain(..) {
+                    if id.is_none()
+                        && matches!(
+                            event,
+                            core::Event::Keyboard(_)
+                                | core::Event::Touch(_)
+                                | core::Event::Mouse(_)
+                        )
+                    {
+                        continue;
+                    }
                     runtime.broadcast(subscription::Event::Interaction {
                         window: id.unwrap_or(window::Id::NONE),
                         event,
