@@ -143,14 +143,14 @@ pub fn exit<T>() -> Task<T> {
 /// The appearance of a program.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Appearance {
-    /// The background [`Color`] of the application.
-    pub background_color: Color,
+    /// The background [`iced_core::Color`] of the application.
+    pub background_color: iced_core::Color,
 
-    /// The default text [`Color`] of the application.
-    pub text_color: Color,
+    /// The default text [`iced_core::Color`] of the application.
+    pub text_color: iced_core::Color,
 
-    /// The default icon [`Color`] of the application.
-    pub icon_color: Color,
+    /// The default icon [`iced_core::Color`] of the application.
+    pub icon_color: iced_core::Color,
 }
 
 /// The default style of a [`Program`].

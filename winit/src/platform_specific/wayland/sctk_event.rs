@@ -67,7 +67,6 @@ use std::{
     collections::HashMap,
     num::NonZeroU32,
     sync::{Arc, Mutex},
-    time::Instant,
 };
 use wayland_protocols::wp::viewporter::client::wp_viewport::WpViewport;
 use winit::{
@@ -81,67 +80,6 @@ use super::{
     keymap::raw_keycode_to_physicalkey,
     winit_window::SctkWinitWindow,
 };
-
-pub enum IcedSctkEvent {
-    /// Emitted when new events arrive from the OS to be processed.
-    ///
-    /// This event type is useful as a place to put code that should be done before you start
-    /// processing events, such as updating frame timing information for benchmarking or checking
-    /// the [`StartCause`] to see if a timer set by
-    /// [`ControlFlow::WaitUntil`](crate::platform_specific::wayland::event_loop::control_flow::ControlFlow::WaitUntil)
-    /// has elapsed.
-    NewEvents(StartCause),
-
-    /// An event produced by sctk
-    SctkEvent(SctkEvent),
-
-    /// Emitted when all of the event loop's input events have been processed and redraw processing
-    /// is about to begin.
-    ///
-    /// This event is useful as a place to put your code that should be run after all
-    /// state-changing events have been handled and you want to do stuff (updating state, performing
-    /// calculations, etc) that happens as the "main body" of your event loop. If your program only draws
-    /// graphics when something changes, it's usually better to do it in response to
-    /// [`window::RedrawRequest`], which gets emitted
-    /// immediately after this event. Programs that draw graphics continuously, like most games,
-    /// can render here unconditionally for simplicity.
-    MainEventsCleared,
-
-    /// Emitted after [`MainEventsCleared`] when a window should be redrawn.
-    ///
-    /// This gets triggered in two scenarios:
-    /// - The OS has performed an operation that's invalidated the window's contents (such as
-    ///   resizing the window).
-    /// - The application has explicitly requested a redraw via [`iced_runtime::core::Shell::request_redraw`].
-    ///
-    /// During each iteration of the event loop, Winit will aggregate duplicate redraw requests
-    /// into a single event, to help avoid duplicating rendering work.
-    ///
-    /// Mainly of interest to applications with mostly-static graphics that avoid redrawing unless
-    /// something changes, like most non-game GUIs.
-    ///
-    /// [`MainEventsCleared`]: Self::MainEventsCleared
-    RedrawRequested(ObjectId),
-
-    /// Emitted after all [`RedrawRequested`] events have been processed and control flow is about to
-    /// be taken away from the program. If there are no `RedrawRequested` events, it is emitted
-    /// immediately after `MainEventsCleared`.
-    ///
-    /// This event is useful for doing any cleanup or bookkeeping work after all the rendering
-    /// tasks have been completed.
-    ///
-    /// [`RedrawRequested`]: Self::RedrawRequested
-    RedrawEventsCleared,
-
-    /// Emitted when the event loop is being shut down.
-    ///
-    /// This is irreversible - if this event is emitted, it is guaranteed to be the last event that
-    /// gets emitted. You generally want to treat this as an "do on quit" event.
-    LoopDestroyed,
-
-    /// Frame callback event
-    Frame(WlSurface, u32),
-}
 
 #[derive(Debug, Clone)]
 pub enum SctkEvent {
@@ -322,36 +260,6 @@ pub enum LayerSurfaceEventVariant {
     Configure(LayerSurfaceConfigure, WlSurface, bool),
     /// Scale Factor
     ScaleFactorChanged(f64, Option<WpViewport>),
-}
-
-/// Describes the reason the event loop is resuming.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum StartCause {
-    /// Sent if the time specified by [`ControlFlow::WaitUntil`] has been reached. Contains the
-    /// moment the timeout was requested and the requested resume time. The actual resume time is
-    /// guaranteed to be equal to or after the requested resume time.
-    ///
-    /// [`ControlFlow::WaitUntil`]: crate::platform_specific::wayland::event_loop::control_flow::ControlFlow::WaitUntil
-    ResumeTimeReached {
-        start: Instant,
-        requested_resume: Instant,
-    },
-
-    /// Sent if the OS has new events to send to the window, after a wait was requested. Contains
-    /// the moment the wait was requested and the resume time, if requested.
-    WaitCancelled {
-        start: Instant,
-        requested_resume: Option<Instant>,
-    },
-
-    /// Sent if the event loop is being resumed after the loop's control flow was set to
-    /// [`ControlFlow::Poll`].
-    ///
-    /// [`ControlFlow::Poll`]: crate::platform_specific::wayland::event_loop::control_flow::ControlFlow::Poll
-    Poll,
-
-    /// Sent once, immediately after `run` is called. Indicates that the loop was just initialized.
-    Init,
 }
 
 /// Pending update to a window requested by the user.

@@ -268,14 +268,14 @@ where
     }
 
     #[cfg(feature = "a11y")]
-    /// Sets the name of the [`Button`].
+    /// Sets the name of the [`Checkbox`].
     pub fn name(mut self, name: impl Into<Cow<'a, str>>) -> Self {
         self.name = Some(name.into());
         self
     }
 
     #[cfg(feature = "a11y")]
-    /// Sets the description of the [`Button`].
+    /// Sets the description of the [`Checkbox`].
     pub fn description_widget<T: iced_accessibility::Describes>(
         mut self,
         description: &T,
@@ -287,7 +287,7 @@ where
     }
 
     #[cfg(feature = "a11y")]
-    /// Sets the description of the [`Button`].
+    /// Sets the description of the [`Checkbox`].
     pub fn description(mut self, description: impl Into<Cow<'a, str>>) -> Self {
         self.description =
             Some(iced_accessibility::Description::Text(description.into()));
