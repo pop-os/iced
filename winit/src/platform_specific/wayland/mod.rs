@@ -18,7 +18,6 @@ use sctk::reexports::calloop;
 use sctk::reexports::client::protocol::wl_surface::WlSurface;
 use sctk::seat::keyboard::Modifiers;
 use sctk_event::SctkEvent;
-use sctk_event::UserInterfaces;
 use std::{collections::HashMap, sync::Arc};
 use subsurface_widget::{SubsurfaceInstance, SubsurfaceState};
 use wayland_backend::client::ObjectId;
@@ -128,7 +127,7 @@ impl WaylandSpecific {
         compositor: &mut C,
         window_manager: &mut WindowManager<P, C>,
         debug: &mut Debug,
-        user_interfaces: &mut UserInterfaces<'a, P>,
+        user_interfaces: &mut super::UserInterfaces<'a, P>,
         clipboard: &mut crate::Clipboard,
         #[cfg(feature = "a11y")] adapters: &mut HashMap<
             window::Id,

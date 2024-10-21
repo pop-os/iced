@@ -281,16 +281,6 @@ pub struct SurfaceCompositorUpdate {
     /// New scale factor.
     pub scale_factor: Option<i32>,
 }
-pub type UserInterfaces<'a, P> = HashMap<
-    SurfaceId,
-    user_interface::UserInterface<
-        'a,
-        <P as Program>::Message,
-        <P as Program>::Theme,
-        <P as Program>::Renderer,
-    >,
-    rustc_hash::FxBuildHasher,
->;
 
 impl SctkEvent {
     pub(crate) fn process<'a, P, C>(
@@ -305,7 +295,7 @@ impl SctkEvent {
         control_sender: &mpsc::UnboundedSender<Control>,
         proxy: &EventLoopProxy,
         debug: &mut Debug,
-        user_interfaces: &mut UserInterfaces<'a, P>,
+        user_interfaces: &mut crate::platform_specific::UserInterfaces<'a, P>,
         events: &mut Vec<(Option<window::Id>, iced_runtime::core::Event)>,
         clipboard: &mut Clipboard,
         subsurface_state: &mut Option<SubsurfaceState>,

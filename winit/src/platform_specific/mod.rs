@@ -1,16 +1,17 @@
 //! Wayland specific shell
 //!
 
+use std::collections::HashMap;
+
 use iced_graphics::Compositor;
-use iced_runtime::{core::window, platform_specific, Debug};
-use sctk::reexports::client::Connection;
-use wayland::sctk_event::UserInterfaces;
+use iced_runtime::{core::window, user_interface, Debug};
 
 #[cfg(all(feature = "wayland", target_os = "linux"))]
 pub mod wayland;
 
 #[cfg(all(feature = "wayland", target_os = "linux"))]
 pub use wayland::*;
+#[cfg(all(feature = "wayland", target_os = "linux"))]
 use wayland_backend::client::Backend;
 
 use crate::{program::WindowManager, Program};
@@ -52,7 +53,7 @@ impl PlatformSpecific {
     ) {
         match action {
             #[cfg(all(feature = "wayland", target_os = "linux"))]
-            platform_specific::Action::Wayland(a) => {
+            iced_runtime::platform_specific::Action::Wayland(a) => {
                 self.send_wayland(wayland::Action::Action(a));
             }
         }
@@ -92,7 +93,7 @@ impl PlatformSpecific {
                             wayland_display_handle.display.as_ptr().cast(),
                         )
                     };
-                    Connection::from_backend(backend)
+                    sctk::reexports::client::Connection::from_backend(backend)
                 }
                 _ => {
                     return;
@@ -135,6 +136,17 @@ impl PlatformSpecific {
         }
     }
 }
+
+pub type UserInterfaces<'a, P> = HashMap<
+    window::Id,
+    user_interface::UserInterface<
+        'a,
+        <P as Program>::Message,
+        <P as Program>::Theme,
+        <P as Program>::Renderer,
+    >,
+    rustc_hash::FxBuildHasher,
+>;
 
 pub(crate) fn handle_event<'a, P, C>(
     e: Event,
