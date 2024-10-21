@@ -14,14 +14,6 @@ keywords.workspace = true
 workspace = true
 
 [features]
-default = ["x11", "wayland", "wayland-dlopen"]
-debug = ["iced_debug/enable"]
-sysinfo = ["dep:sysinfo"]
-unconditional-rendering = []
-linux-theme-detection = ["dep:mundy", "mundy/async-io", "mundy/color-scheme"]
-x11 = ["winit/x11"]
-system = ["sysinfo"]
-program = []
 wayland = [
     "winit/wayland",
     "sctk",
@@ -34,6 +26,14 @@ wayland = [
     "xkeysym",
     "wayland-csd-adwaita",
 ]
+default = ["x11", "wayland-dlopen"]
+debug = ["iced_debug/enable"]
+sysinfo = ["dep:sysinfo"]
+unconditional-rendering = []
+linux-theme-detection = ["dep:mundy", "mundy/async-io", "mundy/color-scheme"]
+x11 = ["winit/x11"]
+system = ["sysinfo"]
+program = []
 wayland-dlopen = ["winit/wayland-dlopen"]
 wayland-csd-adwaita = ["winit/wayland-csd-adwaita"]
 multi-window = ["iced_runtime/multi-window"]

@@ -66,7 +66,7 @@ impl PlatformSpecific {
     ) {
         match action {
             #[cfg(all(feature = "wayland", target_os = "linux"))]
-            platform_specific::Action::Wayland(a) => {
+            iced_runtime::platform_specific::Action::Wayland(a) => {
                 self.send_wayland(wayland::Action::Action(a));
             }
         }
@@ -106,7 +106,7 @@ impl PlatformSpecific {
                             wayland_display_handle.display.as_ptr().cast(),
                         )
                     };
-                    Connection::from_backend(backend)
+                    sctk::reexports::client::Connection::from_backend(backend)
                 }
                 _ => {
                     return;
