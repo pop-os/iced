@@ -71,6 +71,7 @@ where
                 mouse_interaction: mouse::Interaction::None,
                 prev_dnd_destination_rectangles_count: 0,
                 resize_enabled: false,
+                redraw_requested: false,
             },
         );
 
@@ -167,6 +168,7 @@ where
     pub surface: C::Surface,
     pub renderer: P::Renderer,
     pub resize_enabled: bool,
+    pub(crate) redraw_requested: bool,
 }
 
 impl<P, C> Window<P, C>
@@ -193,6 +195,9 @@ where
     }
 
     pub fn request_redraw(&mut self) {
-        self.raw.request_redraw();
+        if !self.redraw_requested {
+            self.redraw_requested = true;
+            self.raw.request_redraw();
+        }
     }
 }

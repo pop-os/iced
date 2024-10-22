@@ -28,11 +28,9 @@ pub(crate) enum Action {
     Action(iced_runtime::platform_specific::wayland::Action),
     SetCursor(CursorIcon),
     RequestRedraw(ObjectId),
-    PrePresentNotify(ObjectId),
     TrackWindow(Arc<dyn winit::window::Window>, window::Id),
     RemoveWindow(window::Id),
     Dropped(SurfaceIdWrapper),
-    Ready,
 }
 
 impl std::fmt::Debug for Action {
@@ -45,16 +43,12 @@ impl std::fmt::Debug for Action {
             Self::RequestRedraw(arg0) => {
                 f.debug_tuple("RequestRedraw").field(arg0).finish()
             }
-            Self::PrePresentNotify(arg0) => {
-                f.debug_tuple("PrePresentNotify").field(arg0).finish()
-            }
             Self::TrackWindow(_arg0, arg1) => {
                 f.debug_tuple("TrackWindow").field(arg1).finish()
             }
             Self::RemoveWindow(arg0) => {
                 f.debug_tuple("RemoveWindow").field(arg0).finish()
             }
-            Self::Ready => write!(f, "Ready"),
             Self::Dropped(_surface_id_wrapper) => write!(f, "Dropped"),
         }
     }
