@@ -314,7 +314,10 @@ impl core::text::Renderer for Renderer {
         layer.draw_text(text, position, color, clip_bounds, transformation);
     }
 
-    fn fill_raw(&mut self, _raw: Self::Raw) {}
+    fn fill_raw(&mut self, raw: Self::Raw) {
+        let (layer, transformation) = self.layers.current_mut();
+        layer.draw_raw(raw, transformation);
+    }
 }
 
 #[cfg(feature = "geometry")]
