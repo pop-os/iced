@@ -5,7 +5,7 @@ use crate::core::{
 use crate::graphics;
 use crate::graphics::color;
 use crate::graphics::layer;
-use crate::graphics::text::{Editor, Paragraph};
+use crate::graphics::text::{Editor, Paragraph, Raw};
 use crate::graphics::Mesh;
 use crate::image::{self, Image};
 use crate::primitive::{self, Primitive};
@@ -108,6 +108,15 @@ impl Layer {
             vertical_alignment: text.vertical_alignment,
             shaping: text.shaping,
             clip_bounds: clip_bounds * transformation,
+        };
+
+        self.pending_text.push(text);
+    }
+
+    pub fn draw_raw(&mut self, raw: Raw, transformation: Transformation) {
+        let text = Text::Raw {
+            raw,
+            transformation,
         };
 
         self.pending_text.push(text);
