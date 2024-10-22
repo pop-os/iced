@@ -72,13 +72,6 @@ impl PlatformSpecific {
         }
     }
 
-    pub(crate) fn send_ready(&mut self) {
-        #[cfg(all(feature = "wayland", target_os = "linux"))]
-        {
-            self.send_wayland(wayland::Action::Ready);
-        }
-    }
-
     pub(crate) fn update_subsurfaces(
         &mut self,
         id: window::Id,

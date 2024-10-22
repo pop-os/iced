@@ -16,19 +16,7 @@ use winit::{
 
 use crate::platform_specific::SurfaceIdWrapper;
 
-use super::event_loop::state::{
-    Common, CommonSurface, SctkLayerSurface, SctkLockSurface, SctkPopup,
-    SctkState, TOKEN_CTR,
-};
-
-#[derive(Debug)]
-pub(crate) enum Surface {
-    Popup(SctkPopup),
-    Layer(SctkLayerSurface),
-    Lock(SctkLockSurface),
-}
-
-impl Surface {}
+use super::event_loop::state::{Common, CommonSurface, SctkState, TOKEN_CTR};
 
 #[derive(Debug)]
 pub struct SctkWinitWindow {
@@ -38,7 +26,6 @@ pub struct SctkWinitWindow {
     common: Arc<Mutex<Common>>,
     display: WlDisplay,
     pub(crate) queue_handle: QueueHandle<SctkState>,
-    wait_redraw: bool,
 }
 
 impl Drop for SctkWinitWindow {
@@ -63,7 +50,6 @@ impl SctkWinitWindow {
             surface,
             display,
             queue_handle,
-            wait_redraw: false,
         })
     }
 }
@@ -88,9 +74,6 @@ impl winit::window::Window for SctkWinitWindow {
     fn pre_present_notify(&self) {
         let surface = self.surface.wl_surface();
         _ = surface.frame(&self.queue_handle, surface.clone());
-        _ = self
-            .tx
-            .send(Action::PrePresentNotify(self.surface.wl_surface().id()));
     }
 
     fn set_cursor(&self, cursor: winit_core::cursor::Cursor) {

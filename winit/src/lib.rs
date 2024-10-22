@@ -949,7 +949,7 @@ async fn run_instance<P>(
                 );
                 actions += 1;
             }
-            Event::Winit(window_id, event) => {
+            Event::Winit(window_id, event::WindowEvent::RedrawRequested) => {
                 let Some(mut current_compositor) = compositor.as_mut() else {
                     continue;
                 };
@@ -959,6 +959,8 @@ async fn run_instance<P>(
                 else {
                     continue;
                 };
+                // TODO only redraw when requested by event...
+                window.redraw_requested = false;
 
                 let physical_size = window.state.physical_size();
                 let mut logical_size = window.state.logical_size();
@@ -1203,7 +1205,8 @@ async fn run_instance<P>(
                         }
                     },
                 }
-
+            }
+            Event::Winit(window_id, event) => {
                 if !is_daemon
                     && matches!(event, winit::event::WindowEvent::Destroyed)
                     && !is_window_opening

@@ -377,7 +377,6 @@ pub struct SctkState {
     pub(crate) id_map: HashMap<ObjectId, core::window::Id>,
     pub(crate) to_commit: HashMap<core::window::Id, WlSurface>,
     pub(crate) destroyed: HashSet<core::window::Id>,
-    pub(crate) ready: bool,
     pub(crate) pending_popup: Option<(SctkPopupSettings, usize)>,
 
     pub(crate) activation_token_ctr: u32,

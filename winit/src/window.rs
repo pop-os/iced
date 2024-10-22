@@ -86,6 +86,7 @@ where
                 drag_resize_window_func: None,
                 prev_dnd_destination_rectangles_count: 0,
                 viewport_version: 0,
+                redraw_requested: false,
             },
         );
 
@@ -191,6 +192,7 @@ where
     pub redraw_at: Option<Instant>,
     preedit: Option<Preedit<P::Renderer>>,
     ime_state: Option<(Rectangle, input_method::Purpose)>,
+    pub(crate) redraw_requested: bool,
 }
 
 impl<P, C> Window<P, C>
@@ -219,11 +221,15 @@ where
     pub fn request_redraw(&mut self, redraw_request: RedrawRequest) {
         match redraw_request {
             RedrawRequest::NextFrame => {
-                self.raw.request_redraw();
+                if !self.redraw_requested {
+                    self.redraw_requested = true;
+                    self.raw.request_redraw();
+                }
                 self.redraw_at = None;
             }
             RedrawRequest::At(at) => {
                 self.redraw_at = Some(at);
+                self.redraw_requested = false;
             }
             RedrawRequest::Wait => {}
         }

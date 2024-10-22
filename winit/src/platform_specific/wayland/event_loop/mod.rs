@@ -101,50 +101,51 @@ impl SctkEventLoop {
             _ = loop_handle
                 .insert_source(action_rx, |event, _, state| {
                     match event {
-                    calloop::channel::Event::Msg(e) => match e {
-                        crate::platform_specific::Action::Action(a) => {
-                            if let Err(err) = state.handle_action(a) {
-                                log::warn!("{err:?}");
+                        calloop::channel::Event::Msg(e) => match e {
+                            crate::platform_specific::Action::Action(a) => {
+                                if let Err(err) = state.handle_action(a) {
+                                    log::warn!("{err:?}");
+                                }
                             }
-                        }
-                        crate::platform_specific::Action::TrackWindow(
-                            window,
-                            id,
-                        ) => {
-                            state.windows.push(SctkWindow { window, id });
-                        }
-                        crate::platform_specific::Action::RemoveWindow(id) => {
-                            // TODO clean up popups matching the window.
-                            state.windows.retain(|window| id != window.id);
-                        }
-                        crate::platform_specific::Action::SetCursor(icon) => {
-                            if let Some(seat) = state.seats.get_mut(0) {
-                                seat.icon = Some(icon);
-                                seat.set_cursor(&state.connection, icon);
+                            crate::platform_specific::Action::TrackWindow(
+                                window,
+                                id,
+                            ) => {
+                                state.windows.push(SctkWindow { window, id });
                             }
-                        }
-                        crate::platform_specific::Action::RequestRedraw(id) => {
-                            let e = state.frame_status.entry(id).or_insert(FrameStatus::RequestedRedraw);
-                            if matches!(e, FrameStatus::Received) {
-                                *e = FrameStatus::Ready;
+                            crate::platform_specific::Action::RemoveWindow(
+                                id,
+                            ) => {
+                                // TODO clean up popups matching the window.
+                                state.windows.retain(|window| id != window.id);
                             }
+                            crate::platform_specific::Action::SetCursor(
+                                icon,
+                            ) => {
+                                if let Some(seat) = state.seats.get_mut(0) {
+                                    seat.icon = Some(icon);
+                                    seat.set_cursor(&state.connection, icon);
+                                }
+                            }
+                            crate::platform_specific::Action::RequestRedraw(
+                                id,
+                            ) => {
+                                let e = state
+                                    .frame_status
+                                    .entry(id)
+                                    .or_insert(FrameStatus::RequestedRedraw);
+                                if matches!(e, FrameStatus::Received) {
+                                    *e = FrameStatus::Ready;
+                                }
+                            }
+                            crate::platform_specific::Action::Dropped(id) => {
+                                _ = state.destroyed.remove(&id.inner());
+                            }
+                        },
+                        calloop::channel::Event::Closed => {
+                            log::info!("Calloop channel closed.");
                         }
-                        crate::platform_specific::Action::PrePresentNotify(
-                            _,
-                        ) => {
-                            // TODO
-                        }
-                        crate::platform_specific::Action::Ready => {
-                            state.ready = true;
-                        }
-                        crate::platform_specific::Action::Dropped(id) => {
-                            _ = state.destroyed.remove(&id.inner());
-                        }
-                    },
-                    calloop::channel::Event::Closed => {
-                        log::info!("Calloop channel closed.");
                     }
-                }
                 })
                 .unwrap();
             let wayland_source =
@@ -225,7 +226,6 @@ impl SctkEventLoop {
                     proxy,
                     id_map: Default::default(),
                     to_commit: HashMap::new(),
-                    ready: true,
                     destroyed: HashSet::new(),
                     pending_popup: Default::default(),
                     activation_token_ctr: 0,
@@ -303,9 +303,6 @@ impl SctkEventLoop {
                         }
                     }
                 }
-                if !state.state.ready {
-                    continue;
-                }
 
                 if let Err(err) =
                     state.event_loop.dispatch(None, &mut state.state)
@@ -370,7 +367,6 @@ impl SctkEventLoop {
                         );
                     }
                 }
-
                 if wake_up {
                     state.state.proxy.wake_up();
                 }
