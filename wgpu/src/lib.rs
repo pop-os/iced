@@ -824,7 +824,8 @@ impl core::text::Renderer for Renderer {
     }
 
     fn fill_raw(&mut self, raw: Self::Raw) {
-        // TODO
+        let (layer, transformation) = self.layers.current_mut();
+        layer.draw_text_raw(raw, transformation);
     }
 }
 
