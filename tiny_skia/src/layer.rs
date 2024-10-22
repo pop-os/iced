@@ -4,7 +4,7 @@ use crate::core::{
 };
 use crate::graphics::damage;
 use crate::graphics::layer;
-use crate::graphics::text::{Editor, Paragraph, Text};
+use crate::graphics::text::{Editor, Paragraph, Raw, Text};
 use crate::graphics::{self, Image};
 use crate::Primitive;
 
@@ -113,6 +113,15 @@ impl Layer {
     ) {
         self.text
             .push(Item::Cached(text, clip_bounds, transformation));
+    }
+
+    pub fn draw_raw(&mut self, raw: Raw, transformation: Transformation) {
+        let text = Text::Raw {
+            raw,
+            transformation,
+        };
+
+        self.text.push(Item::Live(text));
     }
 
     pub fn draw_image(&mut self, image: Image, transformation: Transformation) {
