@@ -511,7 +511,7 @@ where
                     let radius = (radius)
                         .max(2.0 * border_width)
                         .min(bounds.height / 2.0)
-                        .min(bounds.width / 2.0);
+                        .min(bounds.width / 2.0 + 2.0 * border_width);
                     (radius * 2.0, radius * 2.0, Radius::from(radius))
                 }
                 HandleShape::Rectangle {
@@ -519,12 +519,8 @@ where
                     width,
                     border_radius,
                 } => {
-                    let width = (f32::from(width))
-                        .max(2.0 * border_width)
-                        .min(bounds.width);
-                    let height = (f32::from(height))
-                        .max(2.0 * border_width)
-                        .min(bounds.height);
+                    let width = (f32::from(width)).max(2.0 * border_width);
+                    let height = (f32::from(height)).max(2.0 * border_width);
                     let mut border_radius: [f32; 4] = border_radius.into();
                     for r in &mut border_radius {
                         *r = (*r)
@@ -611,23 +607,9 @@ where
         renderer.fill_quad(
             renderer::Quad {
                 bounds: Rectangle {
-                    x: bounds.x,
+                    x: bounds.x + offset + handle_width / 2.0,
                     y: rail_y - style.rail.width / 2.0,
-                    width: offset + handle_width / 2.0,
-                    height: style.rail.width,
-                },
-                border: style.rail.border,
-                ..renderer::Quad::default()
-            },
-            style.rail.backgrounds.0,
-        );
-
-        renderer.fill_quad(
-            renderer::Quad {
-                bounds: Rectangle {
-                    x: bounds.x,
-                    y: rail_y - style.rail.width / 2.0,
-                    width: offset + handle_width / 2.0,
+                    width: bounds.width - offset - handle_width / 2.0,
                     height: style.rail.width,
                 },
                 border: style.rail.border,
