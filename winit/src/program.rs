@@ -795,7 +795,6 @@ async fn run_instance<'a, P, C>(
         let event = if let Ok(event) = event_receiver.try_next() {
             event
         } else {
-            platform_specific_handler.send_ready();
             event_receiver.next().await
         };
 
@@ -1134,6 +1133,8 @@ async fn run_instance<'a, P, C>(
                         else {
                             continue;
                         };
+
+                        window.redraw_requested = false;
 
                         // TODO: Avoid redrawing all the time by forcing widgets to
                         // request redraws on state changes
