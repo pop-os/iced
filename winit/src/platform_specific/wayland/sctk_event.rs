@@ -748,19 +748,66 @@ impl SctkEvent {
                         );
                     }
 
-                    let _ = user_interfaces.insert(
+                    let mut ui = crate::program::build_user_interface(
+                        program,
+                        user_interface::Cache::default(),
+                        &mut window.renderer,
+                        logical_size,
+                        debug,
                         surface_id,
-                        crate::build_user_interface(
-                            program,
-                            user_interface::Cache::default(),
-                            &mut window.renderer,
-                            logical_size,
-                            surface_id,
-                            window.raw.clone(),
-                            window.prev_dnd_destination_rectangles_count,
-                            clipboard,
-                        ),
+                        window.raw.clone(),
+                        window.prev_dnd_destination_rectangles_count,
+                        clipboard,
                     );
+
+                    _ = ui.update(
+                        &vec![iced_runtime::core::Event::PlatformSpecific(
+                            iced_runtime::core::event::PlatformSpecific::Wayland(
+                                iced_runtime::core::event::wayland::Event::RequestResize,
+                            ),
+                        )],
+                        window.state.cursor(),
+                        &mut window.renderer,
+                        clipboard,
+                        &mut Vec::new(),
+                    );
+
+                    if let Some(requested_size) =
+                        clipboard.requested_logical_size.lock().unwrap().take()
+                    {
+                        let requested_physical_size =
+                            winit::dpi::PhysicalSize::new(
+                                (requested_size.width as f64
+                                    * window.state.scale_factor())
+                                .ceil() as u32,
+                                (requested_size.height as f64
+                                    * window.state.scale_factor())
+                                .ceil() as u32,
+                            );
+                        let physical_size = window.state.physical_size();
+                        if requested_physical_size.width != physical_size.width
+                            || requested_physical_size.height
+                                != physical_size.height
+                        {
+                            // FIXME what to do when we are stuck in a configure event/resize request loop
+                            // We don't have control over how winit handles this.
+                            window.resize_enabled = true;
+
+                            let s = winit::dpi::Size::Physical(
+                                requested_physical_size,
+                            );
+                            _ = window.raw.request_surface_size(s);
+                            window.raw.set_min_surface_size(Some(s));
+                            window.raw.set_max_surface_size(Some(s));
+                            window.state.synchronize(
+                                &program,
+                                surface_id,
+                                window.raw.as_ref(),
+                            );
+                        }
+                    }
+
+                    let _ = user_interfaces.insert(surface_id, ui);
                 }
                 LayerSurfaceEventVariant::ScaleFactorChanged(..) => {}
                 LayerSurfaceEventVariant::Configure(
@@ -902,7 +949,8 @@ impl SctkEvent {
                             );
                         }
 
-                        let window = window_manager.insert(
+                       let window = window_manager.insert(
+<<<<<<< HEAD
                             surface_id,
                             sctk_winit,
                             program,
@@ -911,20 +959,74 @@ impl SctkEvent {
                             theme::Mode::None, // TODO do we really need to track the system theme here?
                         );
                         let logical_size = window.logical_size();
-                        todo!()
-                        // let _ = user_interfaces.insert(
-                        //     surface_id,
-                        //     crate::build_user_interface(
-                        //         program,
-                        //         user_interface::Cache::default(),
-                        //         &mut window.renderer,
-                        //         logical_size,
-                        //         surface_id,
-                        //         window.raw.clone(),
-                        //         window.prev_dnd_destination_rectangles_count,
-                        //         clipboard,
-                        //     ),
-                        // );
+                        
+
+                        let mut ui = crate::program::build_user_interface(
+                            program,
+                            user_interface::Cache::default(),
+                            &mut window.renderer,
+                            logical_size,
+                            debug,
+                            surface_id,
+                            window.raw.clone(),
+                            window.prev_dnd_destination_rectangles_count,
+                            clipboard,
+                        );
+
+                        _ = ui.update(
+                            &vec![iced_runtime::core::Event::PlatformSpecific(
+                                iced_runtime::core::event::PlatformSpecific::Wayland(
+                                    iced_runtime::core::event::wayland::Event::RequestResize,
+                                ),
+                            )],
+                            window.state.cursor(),
+                            &mut window.renderer,
+                            clipboard,
+                            &mut Vec::new(),
+                        );
+
+                        if let Some(requested_size) = clipboard
+                            .requested_logical_size
+                            .lock()
+                            .unwrap()
+                            .take()
+                        {
+                            let requested_physical_size =
+                                winit::dpi::PhysicalSize::new(
+                                    (requested_size.width as f64
+                                        * window.state.scale_factor())
+                                    .ceil()
+                                        as u32,
+                                    (requested_size.height as f64
+                                        * window.state.scale_factor())
+                                    .ceil()
+                                        as u32,
+                                );
+                            let physical_size = window.state.physical_size();
+                            if requested_physical_size.width
+                                != physical_size.width
+                                || requested_physical_size.height
+                                    != physical_size.height
+                            {
+                                // FIXME what to do when we are stuck in a configure event/resize request loop
+                                // We don't have control over how winit handles this.
+                                window.resize_enabled = true;
+
+                                let s = winit::dpi::Size::Physical(
+                                    requested_physical_size,
+                                );
+                                _ = window.raw.request_surface_size(s);
+                                window.raw.set_min_surface_size(Some(s));
+                                window.raw.set_max_surface_size(Some(s));
+                                window.state.synchronize(
+                                    &program,
+                                    surface_id,
+                                    window.raw.as_ref(),
+                                );
+                            }
+                        }
+
+                        let _ = user_interfaces.insert(surface_id, ui);
                     }
                     PopupEventVariant::Configure(_, _, _) => {} // TODO
                     PopupEventVariant::RepositionionedPopup { token: _ } => {}
