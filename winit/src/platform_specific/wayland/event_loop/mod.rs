@@ -18,9 +18,7 @@ use crate::{
 };
 
 use raw_window_handle::HasDisplayHandle;
-use sctk::reexports::{
-    calloop_wayland_source::WaylandSource, client::protocol::wl_subcompositor,
-};
+use sctk::reexports::calloop_wayland_source::WaylandSource;
 use sctk::{
     activation::ActivationState,
     compositor::CompositorState,
