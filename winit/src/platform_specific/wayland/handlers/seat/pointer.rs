@@ -117,14 +117,14 @@ impl PointerHandler for SctkState {
                                 device_id: Default::default(),
                                 delta: if horizontal.discrete > 0 {
                                     MouseScrollDelta::LineDelta(
-                                        horizontal.discrete as f32,
-                                        vertical.discrete as f32,
+                                        -horizontal.discrete as f32,
+                                        -vertical.discrete as f32,
                                     )
                                 } else {
                                     MouseScrollDelta::PixelDelta(
                                         PhysicalPosition::new(
-                                            horizontal.absolute,
-                                            vertical.absolute,
+                                            -horizontal.absolute,
+                                            -vertical.absolute,
                                         ),
                                     )
                                 },
