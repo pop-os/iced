@@ -159,6 +159,9 @@ pub enum Action {
     /// This enables mouse events for the window and stops mouse events
     /// from being passed to whatever is underneath.
     DisableMousePassthrough(Id),
+
+    /// Set window blur.
+    SetBlur(bool),
 }
 
 /// Subscribes to the frames of the window of the running application.
@@ -455,4 +458,11 @@ pub fn enable_mouse_passthrough<Message>(id: Id) -> Task<Message> {
 /// from being passed to whatever is underneath.
 pub fn disable_mouse_passthrough<Message>(id: Id) -> Task<Message> {
     task::effect(crate::Action::Window(Action::DisableMousePassthrough(id)))
+}
+
+/// Sets the blur effect for the window.
+///
+/// This is only supported on platforms that support window blur.
+pub fn set_blur<Message>(enable: bool) -> Task<Message> {
+    task::effect(crate::Action::Window(Action::SetBlur(enable)))
 }
