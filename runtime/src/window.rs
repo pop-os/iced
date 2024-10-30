@@ -188,6 +188,8 @@ pub enum Action {
 
     /// Recompute the layouts of all the windows.
     RelayoutAll,
+    /// Set window blur.
+    SetBlur(bool),
 }
 
 /// A window managed by iced.
@@ -536,4 +538,11 @@ pub fn allow_automatic_tabbing<T>(enabled: bool) -> Task<T> {
     task::effect(crate::Action::Window(Action::SetAllowAutomaticTabbing(
         enabled,
     )))
+}
+
+/// Sets the blur effect for the window.
+///
+/// This is only supported on platforms that support window blur.
+pub fn set_blur<Message>(enable: bool) -> Task<Message> {
+    task::effect(crate::Action::Window(Action::SetBlur(enable)))
 }

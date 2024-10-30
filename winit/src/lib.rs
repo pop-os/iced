@@ -1960,6 +1960,11 @@ fn run_action<'a, P, C>(
                     window.raw.request_redraw();
                 }
             }
+            window::Action::SetBlur(enable) => {
+                for (_, window) in window_manager.iter_mut() {
+                    window.raw.set_blur(enable);
+                }
+            }
         },
         Action::System(action) => match action {
             system::Action::GetInformation(_channel) => {
