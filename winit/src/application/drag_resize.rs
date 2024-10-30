@@ -12,7 +12,7 @@ pub fn event_func(
         ) -> bool,
     >,
 > {
-    if window.drag_resize_window(ResizeDirection::East).is_ok() {
+    if drag_resize_supported() {
         // Keep track of cursor when it is within a resizeable border.
         let mut cursor_prev_resize_direction = None;
 
@@ -60,6 +60,27 @@ pub fn event_func(
     } else {
         None
     }
+}
+
+/// Test if the current target should be assumed to have winit drag_resize support
+const fn drag_resize_supported() -> bool {
+    #[cfg(all(
+        unix,
+        not(target_vendor = "apple"),
+        not(target_os = "android"),
+        not(target_os = "emscripten")
+    ))]
+    {
+        return true;
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        return true;
+    }
+
+    #[allow(unreachable_code)]
+    false
 }
 
 /// Get the cursor icon that corresponds to the resize direction.
