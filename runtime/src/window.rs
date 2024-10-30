@@ -552,7 +552,7 @@ pub fn enable_blur<Message>(id: Id) -> Task<Message> {
     task::effect(crate::Action::Window(Action::EnableBlur(id)))
 }
 
-/// Enable the blur effect for a window.
+/// Disable the blur effect for a window.
 ///
 /// This is only supported on platforms that support window blur.
 pub fn disable_blur<Message>(id: Id) -> Task<Message> {
