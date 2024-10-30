@@ -2202,9 +2202,14 @@ fn run_action<P, C>(
                     let _ = window.raw.set_cursor_hittest(true);
                 }
             }
-            window::Action::SetBlur(enable) => {
-                if let Some(window) = window_manager.get_mut(0) {
-                    window.raw.set_blur(enable);
+            window::Action::EnableBlur(id) => {
+                if let Some(window) = window_manager.get_mut(id) {
+                    window.raw.set_blur(true);
+                }
+            }
+            window::Action::DisableBlur(id) => {
+                if let Some(window) = window_manager.get_mut(id) {
+                    window.raw.set_blur(false);
                 }
             }
         },
