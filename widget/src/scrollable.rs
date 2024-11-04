@@ -384,9 +384,9 @@ pub struct Scrollbar {
 impl Default for Scrollbar {
     fn default() -> Self {
         Self {
-            width: 10.0,
+            width: 8.0,
             margin: 0.0,
-            scroller_width: 10.0,
+            scroller_width: 8.0,
             alignment: Anchor::Start,
             spacing: None,
         }
