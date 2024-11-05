@@ -858,9 +858,40 @@ where
 
                 let had_input_method = shell.input_method().is_enabled();
 
+                let mut c_event = match event.clone() {
+                    Event::Dnd(dnd::DndEvent::Offer(
+                        id,
+                        dnd::OfferEvent::Enter {
+                            x,
+                            y,
+                            mime_types,
+                            surface,
+                        },
+                    )) => Event::Dnd(dnd::DndEvent::Offer(
+                        id.clone(),
+                        dnd::OfferEvent::Enter {
+                            x: x + translation.x as f64,
+                            y: y + translation.y as f64,
+                            mime_types: mime_types.clone(),
+                            surface: surface.clone(),
+                        },
+                    )),
+                    Event::Dnd(dnd::DndEvent::Offer(
+                        id,
+                        dnd::OfferEvent::Motion { x, y },
+                    )) => Event::Dnd(dnd::DndEvent::Offer(
+                        id.clone(),
+                        dnd::OfferEvent::Motion {
+                            x: x + translation.x as f64,
+                            y: y + translation.y as f64,
+                        },
+                    )),
+                    e => e,
+                };
+
                 self.content.as_widget_mut().update(
                     &mut tree.children[0],
-                    event,
+                    &c_event,
                     content,
                     cursor,
                     renderer,
