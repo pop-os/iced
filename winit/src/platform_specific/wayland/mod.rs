@@ -181,6 +181,10 @@ impl WaylandSpecific {
         };
     }
 
+    pub(crate) fn clear_subsurface_list(&mut self) {
+        let _ = crate::subsurface_widget::take_subsurfaces();
+    }
+
     pub(crate) fn update_subsurfaces(
         &mut self,
         id: window::Id,
