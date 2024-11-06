@@ -59,6 +59,13 @@ impl PlatformSpecific {
         }
     }
 
+    pub(crate) fn clear_subsurface_list(&mut self) {
+        #[cfg(all(feature = "wayland", target_os = "linux"))]
+        {
+            self.wayland.clear_subsurface_list();
+        }
+    }
+
     pub(crate) fn update_subsurfaces(
         &mut self,
         id: window::Id,
