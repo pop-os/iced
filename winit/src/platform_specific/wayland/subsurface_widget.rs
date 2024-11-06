@@ -582,17 +582,16 @@ pub(crate) fn take_subsurfaces() -> Vec<SubsurfaceInfo> {
 }
 
 #[must_use]
-pub struct Subsurface<'a> {
+pub struct Subsurface {
     buffer_size: Size<f32>,
-    buffer: &'a SubsurfaceBuffer,
+    buffer: SubsurfaceBuffer,
     width: Length,
     height: Length,
     content_fit: ContentFit,
     alpha: f32,
 }
 
-impl<'a, Message, Theme, Renderer> Widget<Message, Theme, Renderer>
-    for Subsurface<'a>
+impl<Message, Theme, Renderer> Widget<Message, Theme, Renderer> for Subsurface
 where
     Renderer: renderer::Renderer,
 {
@@ -648,11 +647,11 @@ where
     }
 }
 
-impl<'a> Subsurface<'a> {
+impl Subsurface {
     pub fn new(
         buffer_width: u32,
         buffer_height: u32,
-        buffer: &'a SubsurfaceBuffer,
+        buffer: SubsurfaceBuffer,
     ) -> Self {
         Self {
             buffer_size: Size::new(buffer_width as f32, buffer_height as f32),
@@ -686,13 +685,13 @@ impl<'a> Subsurface<'a> {
     }
 }
 
-impl<'a, Message, Theme, Renderer> From<Subsurface<'a>>
-    for Element<'a, Message, Theme, Renderer>
+impl<Message, Theme, Renderer> From<Subsurface>
+    for Element<'static, Message, Theme, Renderer>
 where
-    Message: Clone + 'a,
+    Message: Clone,
     Renderer: renderer::Renderer,
 {
-    fn from(subsurface: Subsurface<'a>) -> Self {
+    fn from(subsurface: Subsurface) -> Self {
         Self::new(subsurface)
     }
 }
