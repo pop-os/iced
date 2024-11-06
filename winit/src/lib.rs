@@ -1133,6 +1133,7 @@ async fn run_instance<P>(
                     },
                     cursor,
                 );
+                platform_specific_handler.clear_subsurface_list();
                 draw_span.finish();
 
                 if let user_interface::State::Updated {
