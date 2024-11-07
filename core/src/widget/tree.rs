@@ -306,16 +306,16 @@ impl Tree {
             HashMap<String, &mut Tree>,
             VecDeque<(usize, &mut Tree)>,
         ) = self.children.iter_mut().enumerate().fold(
-            (HashMap::new(), Vec::with_capacity(children_len)),
+            (HashMap::new(), VecDeque::with_capacity(children_len)),
             |(mut id_map, mut id_list), (i, c)| {
                 if let Some(id) = c.id.as_ref() {
                     if let Internal::Custom(_, ref name) = id.0 {
                         let _ = id_map.insert(name.to_string(), c);
                     } else {
-                        id_list.push((i, c));
+                        id_list.push_back((i, c));
                     }
                 } else {
-                    id_list.push((i, c));
+                    id_list.push_back((i, c));
                 }
                 (id_map, id_list)
             },
