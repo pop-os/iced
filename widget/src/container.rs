@@ -403,13 +403,8 @@ where
         cursor: mouse::Cursor,
     ) -> iced_accessibility::A11yTree {
         let c_layout = layout.children().next().unwrap();
-        let c_state = state.children.get(0);
 
-        self.content.as_widget().a11y_nodes(
-            c_layout,
-            c_state.unwrap_or(&Tree::empty()),
-            cursor,
-        )
+        self.content.as_widget().a11y_nodes(c_layout, state, cursor)
     }
 
     fn drag_destinations(

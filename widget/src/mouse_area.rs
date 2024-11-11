@@ -360,6 +360,22 @@ where
             );
         }
     }
+
+    fn a11y_nodes(
+        &self,
+        layout: Layout<'_>,
+        state: &Tree,
+        cursor: mouse::Cursor,
+    ) -> iced_accessibility::A11yTree {
+        let c_state = state.children.get(0);
+
+        let ret = self.content.as_widget().a11y_nodes(
+            layout,
+            c_state.unwrap_or(&Tree::empty()),
+            cursor,
+        );
+        return ret;
+    }
 }
 
 impl<'a, Message, Theme, Renderer> From<MouseArea<'a, Message, Theme, Renderer>>
