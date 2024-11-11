@@ -334,18 +334,12 @@ where
         tree: &Tree,
         cursor_position: mouse::Cursor,
     ) -> iced_accessibility::A11yTree {
-        use std::rc::Rc;
-
-        let tree = tree.state.downcast_ref::<Rc<RefCell<Option<Tree>>>>();
-        if let Some(tree) = tree.borrow().as_ref() {
-            self.content.borrow().element.as_widget().a11y_nodes(
-                layout,
-                &tree.children[0],
-                cursor_position,
-            )
-        } else {
-            iced_accessibility::A11yTree::default()
-        }
+        let state = tree.state.downcast_ref::<State>().tree.borrow();
+        self.content.borrow().element.as_widget().a11y_nodes(
+            layout,
+            &*state,
+            cursor_position,
+        )
     }
 
     fn id(&self) -> Option<core::widget::Id> {
