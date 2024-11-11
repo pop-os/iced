@@ -63,6 +63,16 @@ pub use text::editor::{
     Action, Cursor, Edit, Line, LineEnding, Motion, Position, Selection,
 };
 
+/// The identifier of a [`TextEditor`].
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Id(widget::Id);
+
+impl From<widget::Id> for Id {
+    fn from(value: widget::Id) -> Self {
+        Id(value)
+    }
+}
+
 /// A multi-line text input.
 ///
 /// # Example
@@ -1095,6 +1105,13 @@ where
         let state = tree.state.downcast_mut::<State<Highlighter>>();
 
         operation.focusable(self.id.as_ref(), layout.bounds(), state);
+    }
+
+    fn id(&self) -> Option<widget::Id> {
+        self.id.clone()
+    }
+    fn set_id(&mut self, id: widget::Id) {
+        self.id = Some(id);
     }
 }
 
