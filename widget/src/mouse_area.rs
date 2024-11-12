@@ -356,6 +356,7 @@ where
         }
     }
 
+    #[cfg(feature = "a11y")]
     fn a11y_nodes(
         &self,
         layout: Layout<'_>,
