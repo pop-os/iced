@@ -1096,7 +1096,7 @@ async fn run_instance<'a, P, C>(
                 is_window_opening = false;
             }
             Event::UserEvent(action) => {
-                run_action(
+                let exited = run_action(
                     action,
                     &program,
                     &mut compositor,
@@ -1111,6 +1111,9 @@ async fn run_instance<'a, P, C>(
                     &mut is_window_opening,
                     &mut platform_specific_handler,
                 );
+                if exited {
+                    runtime.track(None.into_iter());
+                }
                 actions += 1;
             }
             Event::NewEvents(
@@ -1442,6 +1445,7 @@ async fn run_instance<'a, P, C>(
                             && !is_window_opening
                             && window_manager.is_empty()
                         {
+                            runtime.track(None.into_iter());
                             control_sender
                                 .start_send(Control::Exit)
                                 .expect("Send control action");
@@ -1469,7 +1473,7 @@ async fn run_instance<'a, P, C>(
                             winit::event::WindowEvent::CloseRequested
                         ) && window.exit_on_close_request
                         {
-                            run_action(
+                            _ = run_action(
                                 Action::Window(runtime::window::Action::Close(
                                     id,
                                 )),
@@ -1919,7 +1923,8 @@ fn run_action<P, C>(
     ui_caches: &mut FxHashMap<window::Id, user_interface::Cache>,
     is_window_opening: &mut bool,
     platform_specific: &mut crate::platform_specific::PlatformSpecific,
-) where
+) -> bool
+where
     P: Program,
     C: Compositor<Renderer = P::Renderer> + 'static,
     P::Theme: DefaultStyle,
@@ -2257,6 +2262,7 @@ fn run_action<P, C>(
             control_sender
                 .start_send(Control::Exit)
                 .expect("Send control action");
+            return true;
         }
         Action::Dnd(a) => match a {
             iced_runtime::dnd::DndAction::RegisterDndDestination {
@@ -2295,6 +2301,7 @@ fn run_action<P, C>(
             platform_specific.send_action(a);
         }
     }
+    false
 }
 
 /// Build the user interface for every window.
