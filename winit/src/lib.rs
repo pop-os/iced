@@ -931,7 +931,7 @@ async fn run_instance<P>(
                 }
             }
             Event::UserEvent(action) => {
-                run_action(
+                let exited = run_action(
                     action,
                     &program,
                     &mut runtime,
@@ -947,6 +947,9 @@ async fn run_instance<P>(
                     &mut system_theme,
                     &mut platform_specific_handler,
                 );
+                if exited {
+                    runtime.track(None.into_iter());
+                }
                 actions += 1;
             }
             Event::Winit(window_id, event::WindowEvent::RedrawRequested) => {
@@ -1058,7 +1061,7 @@ async fn run_instance<P>(
                                 continue;
                             }
 
-                            run_action(
+                            _ = run_action(
                                 action,
                                 &program,
                                 &mut runtime,
@@ -1212,6 +1215,7 @@ async fn run_instance<P>(
                     && !is_window_opening
                     && window_manager.is_empty()
                 {
+                    runtime.track(None.into_iter());
                     control_sender
                         .start_send(Control::Exit)
                         .expect("Send control action");
@@ -1246,7 +1250,7 @@ async fn run_instance<P>(
                 if matches!(event, winit::event::WindowEvent::CloseRequested)
                     && window.exit_on_close_request
                 {
-                    run_action(
+                    _ = run_action(
                         Action::Window(runtime::window::Action::Close(id)),
                         &program,
                         &mut runtime,
@@ -1385,7 +1389,7 @@ async fn run_instance<P>(
                     ));
 
                     for action in actions {
-                        run_action(
+                        let exited = run_action(
                             action,
                             &program,
                             &mut runtime,
@@ -1401,6 +1405,9 @@ async fn run_instance<P>(
                             &mut system_theme,
                             &mut platform_specific_handler,
                         );
+                        if exited {
+                            runtime.track(None.into_iter());
+                        }
                     }
 
                     for (_id, window) in window_manager.iter_mut() {
@@ -1601,7 +1608,8 @@ fn run_action<'a, P, C>(
     is_window_opening: &mut bool,
     system_theme: &mut theme::Mode,
     platform_specific: &mut crate::platform_specific::PlatformSpecific,
-) where
+) -> bool
+where
     P: Program,
     C: Compositor<Renderer = P::Renderer> + 'static,
     P::Theme: theme::Base,
@@ -1999,7 +2007,7 @@ fn run_action<'a, P, C>(
                 }
 
                 let Some(theme) = conversion::window_theme(mode) else {
-                    return;
+                    return false;
                 };
 
                 for (_id, window) in window_manager.iter_mut() {
@@ -2083,6 +2091,7 @@ fn run_action<'a, P, C>(
             control_sender
                 .start_send(Control::Exit)
                 .expect("Send control action");
+            return true;
         }
         Action::Dnd(a) => match a {
             iced_runtime::dnd::DndAction::RegisterDndDestination {
@@ -2115,6 +2124,7 @@ fn run_action<'a, P, C>(
             platform_specific.send_action(a);
         }
     }
+    false
 }
 
 /// Build the user interface for every window.
