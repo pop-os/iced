@@ -193,7 +193,7 @@ where
     };
 
     let (program, task) = runtime.enter(|| P::new(flags));
-    let is_daemon = window_settings.is_none();
+    let is_daemon = window_settings.is_none() || settings.is_daemon;
 
     let task = if let Some(window_settings) = window_settings {
         let mut task = Some(task);

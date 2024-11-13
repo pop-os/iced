@@ -12,4 +12,7 @@ pub struct Settings {
 
     /// The fonts to load on boot.
     pub fonts: Vec<Cow<'static, [u8]>>,
+
+    /// Whether the application should exit when no windows are left
+    pub is_daemon: bool,
 }
