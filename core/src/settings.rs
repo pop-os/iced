@@ -43,6 +43,9 @@ pub struct Settings {
 
     /// If set to true the application will exit when the main window is closed.
     pub exit_on_close_request: bool,
+
+    /// Whether the application is a daemon
+    pub is_daemon: bool,
 }
 
 impl Default for Settings {
@@ -55,6 +58,7 @@ impl Default for Settings {
             default_text_size: Pixels(14.0),
             antialiasing: false,
             exit_on_close_request: false,
+            is_daemon: false,
         }
     }
 }
@@ -65,6 +69,7 @@ impl From<Settings> for iced_winit::Settings {
         iced_winit::Settings {
             id: settings.id,
             fonts: settings.fonts,
+            is_daemon: settings.is_daemon,
         }
     }
 }

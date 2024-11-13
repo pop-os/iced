@@ -123,7 +123,7 @@ where
     };
 
     let (program, task) = runtime.enter(|| program::Instance::new(program));
-    let is_daemon = window_settings.is_none();
+    let is_daemon = settings.is_daemon || window_settings.is_none();
 
     let task = if let Some(window_settings) = window_settings {
         let mut task = Some(task);
