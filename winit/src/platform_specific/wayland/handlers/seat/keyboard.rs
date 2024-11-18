@@ -20,7 +20,7 @@ impl KeyboardHandler for SctkState {
         _keysyms: &[Keysym],
     ) {
         self.request_redraw(surface);
-        let (i, mut is_active, _seat) = {
+        let (i, mut is_active, seat) = {
             let (i, is_active, my_seat) =
                 match self.seats.iter_mut().enumerate().find_map(|(i, s)| {
                     if s.kbd.as_ref() == Some(keyboard) {
@@ -55,11 +55,12 @@ impl KeyboardHandler for SctkState {
                 id,
                 winit::event::WindowEvent::Focused(true),
             ));
-            // self.sctk_events.push(SctkEvent::KeyboardEvent {
-            //     variant: KeyboardEventVariant::Enter(surface.clone()),
-            //     kbd_id: keyboard.clone(),
-            //     seat_id: seat,
-            // })
+            self.sctk_events.push(SctkEvent::KeyboardEvent {
+                 variant: KeyboardEventVariant::Enter(surface.clone()),
+                 kbd_id: keyboard.clone(),
+                 seat_id: seat,
+                 surface: surface.clone(),
+            });
         }
     }
 
