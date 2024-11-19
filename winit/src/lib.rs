@@ -49,6 +49,7 @@ pub use error::Error;
 pub use proxy::Proxy;
 use winit::dpi::LogicalSize;
 use winit::dpi::PhysicalPosition;
+use winit::dpi::PhysicalSize;
 
 use crate::core::mouse;
 use crate::core::renderer;
@@ -1283,17 +1284,18 @@ async fn run_instance<P>(
                     proxy.free_slots(actions);
                     actions = 0;
                 }
+                let skip = events.is_empty() && messages.is_empty();
 
-                if events.is_empty()
-                    && messages.is_empty()
-                    && window_manager.is_idle()
-                {
+                if skip && window_manager.is_idle() {
                     continue;
                 }
 
                 let mut uis_stale = false;
-
+                let mut resized = false;
                 for (id, window) in window_manager.iter_mut() {
+                    if skip && !window.resize_enabled {
+                        continue;
+                    }
                     let interact_span = debug::interact(id);
                     let mut window_events = vec![];
 
@@ -1306,9 +1308,13 @@ async fn run_instance<P>(
                         }
                     });
 
-                    if window_events.is_empty() && messages.is_empty() {
-                        continue;
-                    }
+                    let no_window_events = window_events.is_empty();
+                    #[cfg(feature = "wayland")]
+                    window_events.push(core::Event::PlatformSpecific(
+                        core::event::PlatformSpecific::Wayland(
+                            core::event::wayland::Event::RequestResize,
+                        ),
+                    ));
 
                     let (ui_state, statuses) = user_interfaces
                         .get_mut(&id)
@@ -1320,10 +1326,49 @@ async fn run_instance<P>(
                             &mut clipboard,
                             &mut messages,
                         );
+                    let mut needs_redraw =
+                        !no_window_events || !messages.is_empty();
+                    if let Some(requested_size) =
+                        clipboard.requested_logical_size.lock().unwrap().take()
+                    {
+                        let requested_physical_size: PhysicalSize<u32> =
+                            winit::dpi::PhysicalSize::from_logical(
+                                requested_size.cast::<u32>(),
+                                window.state.scale_factor(),
+                            );
+
+                        let physical_size = window.state.physical_size();
+                        if requested_physical_size.width != physical_size.width
+                            || requested_physical_size.height
+                                != physical_size.height
+                        {
+                            // FIXME what to do when we are stuck in a configure event/resize request loop
+                            // We don't have control over how winit handles this.
+                            window.resize_enabled = true;
+                            resized = true;
+                            needs_redraw = true;
+                            let s = winit::dpi::Size::Logical(
+                                requested_size.cast(),
+                            );
+                            _ = window.raw.request_surface_size(s);
+                            window.raw.set_min_surface_size(Some(s));
+                            window.raw.set_max_surface_size(Some(s));
+                            window.state.synchronize(
+                                &program,
+                                id,
+                                window.raw.as_ref(),
+                            );
+                        }
+                    }
 
                     #[cfg(feature = "unconditional-rendering")]
                     window.request_redraw(window::RedrawRequest::NextFrame);
 
+                    if needs_redraw {
+                        window.request_redraw(
+                            core::window::RedrawRequest::NextFrame,
+                        );
+                    }
                     match ui_state {
                         user_interface::State::Updated {
                             redraw_request: _redraw_request,

@@ -87,6 +87,7 @@ where
                 prev_dnd_destination_rectangles_count: 0,
                 viewport_version: 0,
                 redraw_requested: false,
+                resize_enabled: false,
             },
         );
 
@@ -102,7 +103,7 @@ where
     pub fn is_idle(&self) -> bool {
         self.entries
             .values()
-            .all(|window| window.redraw_at.is_none())
+            .all(|window| window.redraw_at.is_none() && !window.resize_enabled)
     }
 
     pub fn redraw_at(&self) -> Option<Instant> {
@@ -193,6 +194,7 @@ where
     preedit: Option<Preedit<P::Renderer>>,
     ime_state: Option<(Rectangle, input_method::Purpose)>,
     pub(crate) redraw_requested: bool,
+    pub resize_enabled: bool,
 }
 
 impl<P, C> Window<P, C>
