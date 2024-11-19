@@ -5,6 +5,7 @@ mod state;
 mod window_manager;
 
 pub use runtime::{default, Appearance, DefaultStyle};
+use winit::dpi::PhysicalSize;
 use winit::event_loop::OwnedDisplayHandle;
 
 use crate::conversion;
@@ -1557,15 +1558,12 @@ async fn run_instance<'a, P, C>(
                     if let Some(requested_size) =
                         clipboard.requested_logical_size.lock().unwrap().take()
                     {
-                        let requested_physical_size =
-                            winit::dpi::PhysicalSize::new(
-                                (requested_size.width as f64
-                                    * window.state.scale_factor())
-                                .ceil() as u32,
-                                (requested_size.height as f64
-                                    * window.state.scale_factor())
-                                .ceil() as u32,
+                        let requested_physical_size: PhysicalSize<u32> =
+                            winit::dpi::PhysicalSize::from_logical(
+                                requested_size.cast::<u32>(),
+                                window.state.scale_factor(),
                             );
+
                         let physical_size = window.state.physical_size();
                         if requested_physical_size.width != physical_size.width
                             || requested_physical_size.height
@@ -1576,8 +1574,8 @@ async fn run_instance<'a, P, C>(
                             window.resize_enabled = true;
                             resized = true;
                             needs_redraw = true;
-                            let s = winit::dpi::Size::Physical(
-                                requested_physical_size,
+                            let s = winit::dpi::Size::Logical(
+                                requested_size.cast(),
                             );
                             _ = window.raw.request_surface_size(s);
                             window.raw.set_min_surface_size(Some(s));
