@@ -963,7 +963,6 @@ async fn run_instance<P>(
                 else {
                     continue;
                 };
-                // TODO only redraw when requested by event...
                 window.redraw_requested = false;
 
                 let physical_size = window.state.physical_size();
