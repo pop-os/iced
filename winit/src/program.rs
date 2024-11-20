@@ -1235,103 +1235,10 @@ async fn run_instance<'a, P, C>(
                         {
                             let logical_size = window.state.logical_size();
                             debug.layout_started();
-                            let mut ui = user_interfaces
+                            let ui = user_interfaces
                                 .remove(&id)
                                 .expect("Remove user interface")
                                 .relayout(logical_size, &mut window.renderer);
-
-                            #[cfg(feature = "a11y")]
-                            {
-                                use iced_accessibility::{
-                                    accesskit::{
-                                        NodeBuilder, NodeId, Role, Tree,
-                                        TreeUpdate,
-                                    },
-                                    A11yId, A11yNode, A11yTree,
-                                };
-                                if let Some(Some((a11y_id, adapter))) =
-                                    a11y_enabled.then(|| adapters.get_mut(&id))
-                                {
-                                    // TODO cleanup duplication
-                                    let child_tree =
-                                        ui.a11y_nodes(window.state.cursor());
-                                    let mut root =
-                                        NodeBuilder::new(Role::Window);
-                                    root.set_name(
-                                        window.state.title.to_string(),
-                                    );
-                                    let window_tree =
-                                        A11yTree::node_with_child_tree(
-                                            A11yNode::new(root, *a11y_id),
-                                            child_tree,
-                                        );
-                                    let tree = Tree::new(NodeId(*a11y_id));
-
-                                    let focus =
-                                        Arc::new(std::sync::Mutex::new(None));
-                                    let focus_clone = focus.clone();
-                                    let operation: Box<dyn Operation<()>> =
-                                    Box::new(operation::map(
-                                        Box::new(
-                                            operation::focusable::find_focused(
-                                            ),
-                                        ),
-                                        move |id| {
-                                            let mut guard = focus.lock().unwrap();
-                                            _ = guard.replace(id);
-                                        },
-                                    ));
-                                    let mut current_operation = Some(operation);
-
-                                    while let Some(mut operation) =
-                                        current_operation.take()
-                                    {
-                                        ui.operate(
-                                            &window.renderer,
-                                            operation.as_mut(),
-                                        );
-
-                                        match operation.finish() {
-                                            operation::Outcome::None => {}
-                                            operation::Outcome::Some(()) => {
-                                                break;
-                                            }
-                                            operation::Outcome::Chain(next) => {
-                                                current_operation = Some(next);
-                                            }
-                                        }
-                                    }
-                                    let mut guard = focus_clone.lock().unwrap();
-                                    let focus = guard
-                                        .take()
-                                        .map(|id| A11yId::Widget(id));
-                                    tracing::debug!(
-                                        "focus: {:?}\ntree root: {:?}\n children: {:?}",
-                                        &focus,
-                                        window_tree
-                                            .root()
-                                            .iter()
-                                            .map(|n| (n.node().role(), n.id()))
-                                            .collect::<Vec<_>>(),
-                                        window_tree
-                                            .children()
-                                            .iter()
-                                            .map(|n| (n.node().role(), n.id()))
-                                            .collect::<Vec<_>>()
-                                    );
-                                    let focus = focus
-                                        .filter(|f_id| {
-                                            window_tree.contains(f_id)
-                                        })
-                                        .map(|id| id.into())
-                                        .unwrap_or_else(|| tree.root);
-                                    adapter.update_if_active(|| TreeUpdate {
-                                        nodes: window_tree.into(),
-                                        tree: Some(tree),
-                                        focus,
-                                    });
-                                }
-                            }
 
                             let _ = user_interfaces.insert(id, ui);
                             debug.layout_finished();
@@ -1665,6 +1572,10 @@ async fn run_instance<'a, P, C>(
                         &mut window_manager,
                         cached_interfaces,
                         &mut clipboard,
+                        #[cfg(feature = "a11y")]
+                        a11y_enabled,
+                        #[cfg(feature = "a11y")]
+                        &mut adapters,
                     ));
 
                     if actions > 0 {
@@ -2309,6 +2220,11 @@ pub fn build_user_interfaces<'a, P: Program, C>(
     window_manager: &mut WindowManager<P, C>,
     mut cached_user_interfaces: FxHashMap<window::Id, user_interface::Cache>,
     clipboard: &mut Clipboard,
+    #[cfg(feature = "a11y")] a11y_enabled: bool,
+    #[cfg(feature = "a11y")] adapters: &mut HashMap<
+        window::Id,
+        (u64, iced_accessibility::accesskit_winit::Adapter),
+    >,
 ) -> FxHashMap<window::Id, UserInterface<'a, P::Message, P::Theme, P::Renderer>>
 where
     C: Compositor<Renderer = P::Renderer>,
@@ -2318,7 +2234,7 @@ where
         .drain()
         .filter_map(|(id, cache)| {
             let window = window_manager.get_mut(id)?;
-            let interface = build_user_interface(
+            let mut interface = build_user_interface(
                 program,
                 cache,
                 &mut window.renderer,
@@ -2329,6 +2245,78 @@ where
                 window.prev_dnd_destination_rectangles_count,
                 clipboard,
             );
+            #[cfg(feature = "a11y")]
+            {
+                use iced_accessibility::{
+                    accesskit::{NodeBuilder, NodeId, Role, Tree, TreeUpdate},
+                    A11yId, A11yNode, A11yTree,
+                };
+                if let Some(Some((a11y_id, adapter))) =
+                    a11y_enabled.then(|| adapters.get_mut(&id))
+                {
+                    // TODO cleanup duplication
+                    let child_tree =
+                        interface.a11y_nodes(window.state.cursor());
+                    let mut root = NodeBuilder::new(Role::Window);
+                    root.set_name(window.state.title.to_string());
+                    let window_tree = A11yTree::node_with_child_tree(
+                        A11yNode::new(root, *a11y_id),
+                        child_tree,
+                    );
+                    let tree = Tree::new(NodeId(*a11y_id));
+
+                    let focus = Arc::new(std::sync::Mutex::new(None));
+                    let focus_clone = focus.clone();
+                    let operation: Box<dyn Operation<()>> =
+                        Box::new(operation::map(
+                            Box::new(operation::focusable::find_focused()),
+                            move |id| {
+                                let mut guard = focus.lock().unwrap();
+                                _ = guard.replace(id);
+                            },
+                        ));
+                    let mut current_operation = Some(operation);
+
+                    while let Some(mut operation) = current_operation.take() {
+                        interface.operate(&window.renderer, operation.as_mut());
+
+                        match operation.finish() {
+                            operation::Outcome::None => {}
+                            operation::Outcome::Some(()) => {
+                                break;
+                            }
+                            operation::Outcome::Chain(next) => {
+                                current_operation = Some(next);
+                            }
+                        }
+                    }
+                    let mut guard = focus_clone.lock().unwrap();
+                    let focus = guard.take().map(|id| A11yId::Widget(id));
+                    tracing::debug!(
+                        "focus: {:?}\ntree root: {:?}\n children: {:?}",
+                        &focus,
+                        window_tree
+                            .root()
+                            .iter()
+                            .map(|n| (n.node().role(), n.id()))
+                            .collect::<Vec<_>>(),
+                        window_tree
+                            .children()
+                            .iter()
+                            .map(|n| (n.node().role(), n.id()))
+                            .collect::<Vec<_>>()
+                    );
+                    let focus = focus
+                        .filter(|f_id| window_tree.contains(f_id))
+                        .map(|id| id.into())
+                        .unwrap_or_else(|| tree.root);
+                    adapter.update_if_active(|| TreeUpdate {
+                        nodes: window_tree.into(),
+                        tree: Some(tree),
+                        focus,
+                    });
+                }
+            }
 
             let dnd_rectangles = interface.dnd_rectangles(
                 window.prev_dnd_destination_rectangles_count,
