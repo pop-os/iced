@@ -323,7 +323,6 @@ impl SctkEvent {
             <<P as Program>::Renderer as compositor::Default>::Compositor,
         >,
         surface_ids: &mut HashMap<ObjectId, SurfaceIdWrapper>,
-        subsurface_ids: &mut HashMap<ObjectId, (i32, i32, window::Id)>,
         sctk_tx: &channel::Sender<super::Action>,
         control_sender: &mpsc::UnboundedSender<Control>,
         proxy: &EventLoopProxy,
@@ -357,13 +356,6 @@ impl SctkEvent {
                     iced_runtime::core::Event::Mouse(mouse::Event::CursorLeft),
                 )),
                 PointerEventKind::Motion { .. } => {
-                    let offset = if let Some((x_offset, y_offset, _)) =
-                        subsurface_ids.get(&variant.surface.id())
-                    {
-                        (*x_offset, *y_offset)
-                    } else {
-                        (0, 0)
-                    };
                     let id = surface_ids
                         .get(&variant.surface.id())
                         .map(|id| id.inner());
@@ -371,11 +363,7 @@ impl SctkEvent {
                         id.clone().and_then(|id| window_manager.get_mut(id))
                     {
                         w.state.set_logical_cursor_pos(
-                            (
-                                variant.position.0 + offset.0 as f64,
-                                variant.position.1 + offset.1 as f64,
-                            )
-                                .into(),
+                            (variant.position.0, variant.position.1).into(),
                         )
                     }
                     events.push((
@@ -383,8 +371,8 @@ impl SctkEvent {
                         iced_runtime::core::Event::Mouse(
                             mouse::Event::CursorMoved {
                                 position: Point::new(
-                                    variant.position.0 as f32 + offset.0 as f32,
-                                    variant.position.1 as f32 + offset.1 as f32,
+                                    variant.position.0 as f32,
+                                    variant.position.1 as f32,
                                 ),
                             },
                         ),
