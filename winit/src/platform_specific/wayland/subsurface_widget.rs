@@ -368,8 +368,6 @@ impl SubsurfaceState {
     // Update `subsurfaces` from `view_subsurfaces`
     pub(crate) fn update_subsurfaces(
         &mut self,
-        parent_id: window::Id,
-        subsurface_ids: &mut HashMap<ObjectId, (i32, i32, window::Id)>,
         parent: &WlSurface,
         subsurfaces: &mut Vec<SubsurfaceInstance>,
         view_subsurfaces: &[SubsurfaceInfo],
@@ -405,16 +403,7 @@ impl SubsurfaceState {
         for (subsurface_data, subsurface) in
             view_subsurfaces.iter().zip(subsurfaces.iter_mut())
         {
-            subsurface.attach_and_commit(
-                parent_id,
-                subsurface_ids,
-                subsurface_data,
-                self,
-            );
-        }
-
-        if let Some(backend) = parent.backend().upgrade() {
-            subsurface_ids.retain(|k, _| backend.info(k.clone()).is_ok());
+            subsurface.attach_and_commit(subsurface_data, self);
         }
     }
 
@@ -478,8 +467,6 @@ impl SubsurfaceInstance {
     // TODO correct damage? no damage/commit if unchanged?
     fn attach_and_commit(
         &mut self,
-        parent_id: window::Id,
-        subsurface_ids: &mut HashMap<ObjectId, (i32, i32, window::Id)>,
         info: &SubsurfaceInfo,
         state: &mut SubsurfaceState,
     ) {
@@ -541,11 +528,6 @@ impl SubsurfaceInstance {
             let alpha = (info.alpha.clamp(0.0, 1.0) * u32::MAX as f32) as u32;
             wp_alpha_modifier_surface.set_multiplier(alpha);
         }
-
-        _ = subsurface_ids.insert(
-            self.wl_surface.id(),
-            (info.bounds.x as i32, info.bounds.y as i32, parent_id),
-        );
 
         self.wl_buffer = Some(buffer);
         self.bounds = Some(info.bounds);

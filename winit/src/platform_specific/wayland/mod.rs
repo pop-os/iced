@@ -63,7 +63,6 @@ pub(crate) struct WaylandSpecific {
     modifiers: Modifiers,
     surface_ids: HashMap<ObjectId, SurfaceIdWrapper>,
     destroyed_surface_ids: HashMap<ObjectId, SurfaceIdWrapper>,
-    subsurface_ids: HashMap<ObjectId, (i32, i32, window::Id)>,
     subsurface_state: Option<SubsurfaceState>,
     surface_subsurfaces: HashMap<window::Id, Vec<SubsurfaceInstance>>,
 }
@@ -138,7 +137,6 @@ impl WaylandSpecific {
             display_handle,
             surface_ids,
             destroyed_surface_ids,
-            subsurface_ids,
             modifiers,
             subsurface_state,
             surface_subsurfaces,
@@ -165,7 +163,6 @@ impl WaylandSpecific {
                     compositor,
                     window_manager,
                     surface_ids,
-                    subsurface_ids,
                     sender,
                     event_sender,
                     proxy,
@@ -198,8 +195,6 @@ impl WaylandSpecific {
         };
 
         subsurface_state.update_subsurfaces(
-            id,
-            &mut self.subsurface_ids,
             wl_surface,
             surface_subsurfaces,
             &subsurfaces,
