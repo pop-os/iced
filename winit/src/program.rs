@@ -2186,7 +2186,6 @@ where
                 if let Some(window) = window_manager.get_mut(id) {
                     let bytes = compositor.screenshot(
                         &mut window.renderer,
-                        &mut window.surface,
                         window.state.viewport(),
                         window.state.background_color(),
                         &debug.overlay(),
