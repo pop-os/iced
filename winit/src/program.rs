@@ -948,11 +948,6 @@ async fn run_instance<'a, P, C>(
                                     size,
                                     state.viewport().scale_factor(),
                                 );
-                                let mut surface = compositor.create_surface(
-                                    window.raw.clone(),
-                                    viewport.physical_width(),
-                                    viewport.physical_height(),
-                                );
 
                                 let mut ui = UserInterface::build(
                                     e,
@@ -974,7 +969,6 @@ async fn run_instance<'a, P, C>(
                                     .clear_subsurface_list();
                                 let mut bytes = compositor.screenshot(
                                     &mut renderer,
-                                    &mut surface,
                                     &viewport,
                                     core::Color::TRANSPARENT,
                                     &debug.overlay(),
