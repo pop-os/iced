@@ -7,7 +7,7 @@ use iced::{
     window::{self, Id, Settings},
     Element, Length, Subscription, Task,
 };
-use sctk::reexports::client::{Connection, Proxy};
+use cctk::sctk::reexports::client::{Connection, Proxy};
 
 mod wayland;
 

@@ -1,9 +1,9 @@
 use crate::platform_specific::wayland::Action;
-use raw_window_handle::HandleError;
-use sctk::reexports::{
+use cctk::sctk::reexports::{
     calloop::channel,
     client::{protocol::wl_display::WlDisplay, Proxy, QueueHandle},
 };
+use raw_window_handle::HandleError;
 use std::sync::{Arc, Mutex};
 use winit::{
     dpi::LogicalSize,

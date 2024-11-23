@@ -2,7 +2,7 @@ use std::fmt;
 
 use iced_core::window::Id;
 
-use sctk::reexports::client::protocol::wl_output::WlOutput;
+use cctk::sctk::reexports::client::protocol::wl_output::WlOutput;
 
 /// Session lock action
 #[derive(Clone)]

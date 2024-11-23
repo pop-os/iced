@@ -2,7 +2,7 @@ use crate::platform_specific::wayland::{
     event_loop::state::SctkState,
     sctk_event::{LayerSurfaceEventVariant, SctkEvent},
 };
-use sctk::{
+use cctk::sctk::{
     delegate_layer,
     reexports::client::Proxy,
     shell::{
@@ -16,9 +16,9 @@ use winit::dpi::LogicalSize;
 impl LayerShellHandler for SctkState {
     fn closed(
         &mut self,
-        _conn: &sctk::reexports::client::Connection,
-        _qh: &sctk::reexports::client::QueueHandle<Self>,
-        layer: &sctk::shell::wlr_layer::LayerSurface,
+        _conn: &cctk::sctk::reexports::client::Connection,
+        _qh: &cctk::sctk::reexports::client::QueueHandle<Self>,
+        layer: &cctk::sctk::shell::wlr_layer::LayerSurface,
     ) {
         let layer = match self.layer_surfaces.iter().position(|s| {
             s.surface.wl_surface().id() == layer.wl_surface().id()
@@ -36,10 +36,10 @@ impl LayerShellHandler for SctkState {
 
     fn configure(
         &mut self,
-        _conn: &sctk::reexports::client::Connection,
-        _qh: &sctk::reexports::client::QueueHandle<Self>,
-        layer: &sctk::shell::wlr_layer::LayerSurface,
-        mut configure: sctk::shell::wlr_layer::LayerSurfaceConfigure,
+        _conn: &cctk::sctk::reexports::client::Connection,
+        _qh: &cctk::sctk::reexports::client::QueueHandle<Self>,
+        layer: &cctk::sctk::shell::wlr_layer::LayerSurface,
+        mut configure: cctk::sctk::shell::wlr_layer::LayerSurfaceConfigure,
         _serial: u32,
     ) {
         self.request_redraw(layer.wl_surface());

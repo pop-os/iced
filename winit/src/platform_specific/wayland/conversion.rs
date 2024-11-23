@@ -1,8 +1,4 @@
-use iced_runtime::core::{
-    keyboard,
-    mouse::{self, ScrollDelta},
-};
-use sctk::{
+use cctk::sctk::{
     reexports::client::protocol::wl_pointer::AxisSource,
     seat::{
         keyboard::Modifiers,
@@ -10,6 +6,10 @@ use sctk::{
             AxisScroll, BTN_EXTRA, BTN_LEFT, BTN_MIDDLE, BTN_RIGHT, BTN_SIDE,
         },
     },
+};
+use iced_runtime::core::{
+    keyboard,
+    mouse::{self, ScrollDelta},
 };
 
 /// An error that occurred while running an application.
