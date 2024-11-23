@@ -2,8 +2,8 @@ use crate::platform_specific::wayland::{
     event_loop::state::SctkState,
     sctk_event::{KeyboardEventVariant, SctkEvent},
 };
-use sctk::reexports::client::Proxy;
-use sctk::{
+use cctk::sctk::reexports::client::Proxy;
+use cctk::sctk::{
     delegate_keyboard,
     seat::keyboard::{KeyboardHandler, Keysym},
 };
@@ -11,10 +11,10 @@ use sctk::{
 impl KeyboardHandler for SctkState {
     fn enter(
         &mut self,
-        _conn: &sctk::reexports::client::Connection,
-        _qh: &sctk::reexports::client::QueueHandle<Self>,
-        keyboard: &sctk::reexports::client::protocol::wl_keyboard::WlKeyboard,
-        surface: &sctk::reexports::client::protocol::wl_surface::WlSurface,
+        _conn: &cctk::sctk::reexports::client::Connection,
+        _qh: &cctk::sctk::reexports::client::QueueHandle<Self>,
+        keyboard: &cctk::sctk::reexports::client::protocol::wl_keyboard::WlKeyboard,
+        surface: &cctk::sctk::reexports::client::protocol::wl_surface::WlSurface,
         _serial: u32,
         _raw: &[u32],
         _keysyms: &[Keysym],
@@ -57,20 +57,20 @@ impl KeyboardHandler for SctkState {
                 winit::event::WindowEvent::Focused(true),
             ));
             self.sctk_events.push(SctkEvent::KeyboardEvent {
-                 variant: KeyboardEventVariant::Enter(surface.clone()),
-                 kbd_id: keyboard.clone(),
-                 seat_id: seat,
-                 surface: surface.clone(),
+                variant: KeyboardEventVariant::Enter(surface.clone()),
+                kbd_id: keyboard.clone(),
+                seat_id: seat,
+                surface: surface.clone(),
             });
         }
     }
 
     fn leave(
         &mut self,
-        _conn: &sctk::reexports::client::Connection,
-        _qh: &sctk::reexports::client::QueueHandle<Self>,
-        keyboard: &sctk::reexports::client::protocol::wl_keyboard::WlKeyboard,
-        surface: &sctk::reexports::client::protocol::wl_surface::WlSurface,
+        _conn: &cctk::sctk::reexports::client::Connection,
+        _qh: &cctk::sctk::reexports::client::QueueHandle<Self>,
+        keyboard: &cctk::sctk::reexports::client::protocol::wl_keyboard::WlKeyboard,
+        surface: &cctk::sctk::reexports::client::protocol::wl_surface::WlSurface,
         _serial: u32,
     ) {
         self.request_redraw(surface);
@@ -129,11 +129,11 @@ impl KeyboardHandler for SctkState {
 
     fn press_key(
         &mut self,
-        _conn: &sctk::reexports::client::Connection,
-        _qh: &sctk::reexports::client::QueueHandle<Self>,
-        keyboard: &sctk::reexports::client::protocol::wl_keyboard::WlKeyboard,
+        _conn: &cctk::sctk::reexports::client::Connection,
+        _qh: &cctk::sctk::reexports::client::QueueHandle<Self>,
+        keyboard: &cctk::sctk::reexports::client::protocol::wl_keyboard::WlKeyboard,
         serial: u32,
-        event: sctk::seat::keyboard::KeyEvent,
+        event: cctk::sctk::seat::keyboard::KeyEvent,
     ) {
         let (is_active, my_seat) =
             match self.seats.iter_mut().enumerate().find_map(|(i, s)| {
@@ -185,11 +185,11 @@ impl KeyboardHandler for SctkState {
 
     fn release_key(
         &mut self,
-        _conn: &sctk::reexports::client::Connection,
-        _qh: &sctk::reexports::client::QueueHandle<Self>,
-        keyboard: &sctk::reexports::client::protocol::wl_keyboard::WlKeyboard,
+        _conn: &cctk::sctk::reexports::client::Connection,
+        _qh: &cctk::sctk::reexports::client::QueueHandle<Self>,
+        keyboard: &cctk::sctk::reexports::client::protocol::wl_keyboard::WlKeyboard,
         _serial: u32,
-        event: sctk::seat::keyboard::KeyEvent,
+        event: cctk::sctk::seat::keyboard::KeyEvent,
     ) {
         let (is_active, my_seat) =
             match self.seats.iter_mut().enumerate().find_map(|(i, s)| {
@@ -220,11 +220,11 @@ impl KeyboardHandler for SctkState {
 
     fn update_modifiers(
         &mut self,
-        _conn: &sctk::reexports::client::Connection,
-        _qh: &sctk::reexports::client::QueueHandle<Self>,
-        keyboard: &sctk::reexports::client::protocol::wl_keyboard::WlKeyboard,
+        _conn: &cctk::sctk::reexports::client::Connection,
+        _qh: &cctk::sctk::reexports::client::QueueHandle<Self>,
+        keyboard: &cctk::sctk::reexports::client::protocol::wl_keyboard::WlKeyboard,
         _serial: u32,
-        modifiers: sctk::seat::keyboard::Modifiers,
+        modifiers: cctk::sctk::seat::keyboard::Modifiers,
         layout: u32,
     ) {
         let (is_active, my_seat) =

@@ -1281,6 +1281,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "cosmic-client-toolkit"
+version = "0.1.0"
+source = "git+https://github.com/pop-os/cosmic-protocols?rev=27d70b6#27d70b6eb9c785a2a48341016f32a7b1ac4980ac"
+dependencies = [
+ "cosmic-protocols",
+ "libc",
+ "smithay-client-toolkit 0.19.2",
+ "wayland-client",
+ "wayland-protocols 0.32.9",
+]
+
+[[package]]
+name = "cosmic-protocols"
+version = "0.1.0"
+source = "git+https://github.com/pop-os/cosmic-protocols?rev=27d70b6#27d70b6eb9c785a2a48341016f32a7b1ac4980ac"
+dependencies = [
+ "bitflags 2.10.0",
+ "wayland-backend",
+ "wayland-client",
+ "wayland-protocols 0.32.9",
+ "wayland-protocols-wlr 0.3.9",
+ "wayland-scanner",
+ "wayland-server",
+]
+
+[[package]]
 name = "cosmic-text"
 version = "0.16.0"
 source = "git+https://github.com/pop-os/cosmic-text.git#0d9af4f7de087878100b296c81d1baca2e05433d"
@@ -2960,6 +2986,7 @@ dependencies = [
  "approx",
  "bitflags 2.10.0",
  "bytes",
+ "cosmic-client-toolkit",
  "dnd",
  "glam",
  "iced_accessibility",
@@ -2970,7 +2997,6 @@ dependencies = [
  "raw-window-handle",
  "rustc-hash 2.1.1",
  "serde",
- "smithay-client-toolkit 0.19.2",
  "smol_str 0.3.2",
  "thiserror 2.0.17",
  "web-time",
@@ -3064,6 +3090,7 @@ name = "iced_runtime"
 version = "0.14.0"
 dependencies = [
  "bytes",
+ "cosmic-client-toolkit",
  "dnd",
  "iced_accessibility",
  "iced_core",
@@ -3071,7 +3098,6 @@ dependencies = [
  "iced_selector",
  "raw-window-handle",
  "sipper",
- "smithay-client-toolkit 0.19.2",
  "thiserror 2.0.17",
  "window_clipboard",
 ]
@@ -3131,6 +3157,7 @@ dependencies = [
  "as-raw-xcb-connection",
  "bitflags 2.10.0",
  "bytemuck",
+ "cosmic-client-toolkit",
  "cryoglyph",
  "futures",
  "glam",
@@ -3143,7 +3170,6 @@ dependencies = [
  "resvg",
  "rustc-hash 2.1.1",
  "rustix 0.38.44",
- "smithay-client-toolkit 0.19.2",
  "thiserror 2.0.17",
  "tiny-xlib",
  "wayland-backend",
@@ -3158,6 +3184,7 @@ dependencies = [
 name = "iced_widget"
 version = "0.14.2"
 dependencies = [
+ "cosmic-client-toolkit",
  "dnd",
  "iced_accessibility",
  "iced_highlighter",
@@ -3169,7 +3196,6 @@ dependencies = [
  "pulldown-cmark",
  "qrcode",
  "rustc-hash 2.1.1",
- "smithay-client-toolkit 0.19.2",
  "thiserror 2.0.17",
  "unicode-segmentation",
  "window_clipboard",
@@ -3179,6 +3205,7 @@ dependencies = [
 name = "iced_winit"
 version = "0.14.0"
 dependencies = [
+ "cosmic-client-toolkit",
  "cursor-icon",
  "dnd",
  "iced_accessibility",
@@ -3191,7 +3218,6 @@ dependencies = [
  "mundy",
  "raw-window-handle",
  "rustc-hash 2.1.1",
- "smithay-client-toolkit 0.19.2",
  "sysinfo",
  "thiserror 2.0.17",
  "tracing",
@@ -5756,10 +5782,10 @@ dependencies = [
 name = "sctk_drag"
 version = "0.1.0"
 dependencies = [
+ "cosmic-client-toolkit",
  "env_logger",
  "iced",
  "iced_core",
- "smithay-client-toolkit 0.19.2",
 ]
 
 [[package]]
@@ -5785,12 +5811,12 @@ name = "sctk_subsurface"
 version = "0.1.0"
 dependencies = [
  "calloop 0.12.4",
+ "cosmic-client-toolkit",
  "env_logger",
  "futures-channel",
  "iced",
  "iced_runtime",
  "rustix 0.38.44",
- "smithay-client-toolkit 0.18.0",
 ]
 
 [[package]]
@@ -5815,6 +5841,7 @@ name = "sctk_todos"
 version = "0.1.0"
 dependencies = [
  "async-std",
+ "cosmic-client-toolkit",
  "directories-next",
  "env_logger",
  "iced",
@@ -5823,7 +5850,6 @@ dependencies = [
  "once_cell",
  "serde",
  "serde_json",
- "smithay-client-toolkit 0.19.2",
 ]
 
 [[package]]
@@ -7513,6 +7539,7 @@ dependencies = [
  "wayland-backend",
  "wayland-client",
  "wayland-scanner",
+ "wayland-server",
 ]
 
 [[package]]
@@ -7578,6 +7605,7 @@ dependencies = [
  "wayland-client",
  "wayland-protocols 0.32.9",
  "wayland-scanner",
+ "wayland-server",
 ]
 
 [[package]]
@@ -7589,6 +7617,19 @@ dependencies = [
  "proc-macro2",
  "quick-xml 0.37.5",
  "quote",
+]
+
+[[package]]
+name = "wayland-server"
+version = "0.31.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fcbd4f3aba6c9fba70445ad2a484c0ef0356c1a9459b1e8e435bedc1971a6222"
+dependencies = [
+ "bitflags 2.10.0",
+ "downcast-rs",
+ "rustix 1.1.2",
+ "wayland-backend",
+ "wayland-scanner",
 ]
 
 [[package]]

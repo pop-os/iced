@@ -5,7 +5,7 @@ use iced::{
 };
 use iced_runtime::futures::subscription;
 use rustix::{io::Errno, shm::ShmOFlags};
-use sctk::{
+use cctk::sctk::{
     reexports::{
         calloop_wayland_source::WaylandSource,
         client::{
@@ -40,7 +40,7 @@ impl ProvidesRegistryState for AppData {
         &mut self.registry_state
     }
 
-    sctk::registry_handlers!();
+    cctk::sctk::registry_handlers!();
 }
 
 impl ShmHandler for AppData {

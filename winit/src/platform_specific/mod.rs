@@ -3,10 +3,10 @@
 
 use std::collections::HashMap;
 
+#[cfg(all(feature = "wayland", target_os = "linux"))]
+use cctk::sctk::reexports::client::Connection;
 use iced_graphics::{Compositor, compositor};
 use iced_runtime::{core::window, platform_specific, user_interface};
-#[cfg(all(feature = "wayland", target_os = "linux"))]
-use sctk::reexports::client::Connection;
 
 #[cfg(all(feature = "wayland", target_os = "linux"))]
 pub mod wayland;
@@ -79,7 +79,7 @@ impl PlatformSpecific {
     ) {
         #[cfg(all(feature = "wayland", target_os = "linux"))]
         {
-            use sctk::reexports::client::{
+            use cctk::sctk::reexports::client::{
                 Proxy, protocol::wl_surface::WlSurface,
             };
             use wayland_backend::client::ObjectId;
@@ -99,7 +99,9 @@ impl PlatformSpecific {
                             wayland_display_handle.display.as_ptr().cast(),
                         )
                     };
-                    sctk::reexports::client::Connection::from_backend(backend)
+                    cctk::sctk::reexports::client::Connection::from_backend(
+                        backend,
+                    )
                 }
                 _ => {
                     return;

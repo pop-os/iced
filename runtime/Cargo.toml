@@ -18,7 +18,7 @@ debug = []
 selector = ["dep:iced_selector"]
 multi-window = []
 a11y = ["iced_accessibility", "iced_core/a11y"]
-wayland = ["iced_core/wayland", "sctk"]
+wayland = ["iced_core/wayland", "cctk"]
 
 [dependencies]
 bytes.workspace = true
@@ -34,8 +34,8 @@ sipper.optional = true
 iced_selector.workspace = true
 iced_selector.optional = true
 iced_futures.features = ["thread-pool"]
-sctk.workspace = true
-sctk.optional = true
+cctk.workspace = true
+cctk.optional = true
 iced_accessibility.workspace = true
 iced_accessibility.optional = true
 window_clipboard.workspace = true

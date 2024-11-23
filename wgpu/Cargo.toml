@@ -51,7 +51,7 @@ resvg.optional = true
 
 rustix = { version = "0.38" }
 raw-window-handle.workspace = true
-sctk.workspace = true
+cctk.workspace = true
 wayland-protocols.workspace = true
 wayland-backend = { version = "0.3.3", features = ["client_system"] }
 wayland-client = { version = "0.31.2" }

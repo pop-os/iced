@@ -16,7 +16,7 @@ workspace = true
 [features]
 wayland = [
     "winit/wayland",
-    "sctk",
+    "cctk",
     "wayland-protocols",
     "raw-window-handle",
     "iced_runtime/wayland",
@@ -69,8 +69,8 @@ mundy.workspace = true
 mundy.optional = true
 
 raw-window-handle = { version = "0.6", optional = true }
-sctk.workspace = true
-sctk.optional = true
+cctk.workspace = true
+cctk.optional = true
 wayland-protocols.workspace = true
 wayland-protocols.optional = true
 wayland-backend = { version = "0.3.1", features = [

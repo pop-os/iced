@@ -18,8 +18,8 @@ use crate::{
 };
 
 use raw_window_handle::HasDisplayHandle;
-use sctk::reexports::calloop_wayland_source::WaylandSource;
-use sctk::{
+use cctk::sctk::reexports::calloop_wayland_source::WaylandSource;
+use cctk::sctk::{
     activation::ActivationState,
     compositor::CompositorState,
     globals::GlobalData,

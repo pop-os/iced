@@ -37,7 +37,7 @@ use iced_runtime::{
     user_interface,
 };
 
-use sctk::{
+use cctk::sctk::{
     output::OutputInfo,
     reexports::{
         calloop::channel,
@@ -216,7 +216,7 @@ pub enum WindowEventVariant {
     Configure((NonZeroU32, NonZeroU32), WindowConfigure, WlSurface, bool),
     Size((NonZeroU32, NonZeroU32), WlSurface, bool),
     /// window state changed
-    StateChanged(sctk::reexports::csd_frame::WindowState),
+    StateChanged(cctk::sctk::reexports::csd_frame::WindowState),
     /// Scale Factor
     ScaleFactorChanged(f64, Option<WpViewport>),
 }
@@ -748,12 +748,11 @@ impl SctkEvent {
                         );
                     }
 
-                    let mut ui = crate::program::build_user_interface(
+                    let mut ui = crate::build_user_interface(
                         program,
                         user_interface::Cache::default(),
                         &mut window.renderer,
                         logical_size,
-                        debug,
                         surface_id,
                         window.raw.clone(),
                         window.prev_dnd_destination_rectangles_count,
@@ -949,8 +948,7 @@ impl SctkEvent {
                             );
                         }
 
-                       let window = window_manager.insert(
-<<<<<<< HEAD
+                        let window = window_manager.insert(
                             surface_id,
                             sctk_winit,
                             program,
@@ -959,14 +957,12 @@ impl SctkEvent {
                             theme::Mode::None, // TODO do we really need to track the system theme here?
                         );
                         let logical_size = window.logical_size();
-                        
 
-                        let mut ui = crate::program::build_user_interface(
+                        let mut ui = crate::build_user_interface(
                             program,
                             user_interface::Cache::default(),
                             &mut window.renderer,
                             logical_size,
-                            debug,
                             surface_id,
                             window.raw.clone(),
                             window.prev_dnd_destination_rectangles_count,

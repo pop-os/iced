@@ -28,7 +28,7 @@ wgpu-bare = ["iced_renderer/wgpu-bare", "iced_widget/wgpu"]
 # Enables the `tiny-skia` software renderer
 
 
-default = ["tiny-skia", "tokio"]
+default = ["tiny-skia", "tokio", "wayland", "x11"]
 # Enable the `tiny-skia` software renderer backend
 tiny-skia = ["iced_renderer/tiny-skia"]
 # Enables the `image` widget
@@ -278,7 +278,7 @@ tiny-skia = { version = "0.11", default-features = false, features = [
     "std",
     "simd",
 ] }
-sctk = { package = "smithay-client-toolkit", version = "0.19.1" }
+cctk = { git = "https://github.com/pop-os/cosmic-protocols", package = "cosmic-client-toolkit", rev = "27d70b6" }
 softbuffer = { git = "https://github.com/pop-os/softbuffer", tag = "cosmic-4.0" }
 syntect = "5.2"
 tokio = "1.0"

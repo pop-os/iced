@@ -39,7 +39,7 @@ use iced_runtime::{
         },
     },
 };
-use sctk::{
+use cctk::sctk::{
     activation::{ActivationState, RequestData},
     compositor::CompositorState,
     error::GlobalError,
@@ -980,7 +980,7 @@ impl SctkState {
                             }
                         }
                         if self.pending_popup.replace((popup, 0)).is_none() {
-                            let timer = sctk::reexports::calloop::timer::Timer::from_duration(Duration::from_millis(30));
+                            let timer = cctk::sctk::reexports::calloop::timer::Timer::from_duration(Duration::from_millis(30));
                             let queue_handle = self.queue_handle.clone();
                             _ = self.loop_handle.insert_source(timer, move |_, _, state| {
                                 let Some((popup, attempt)) = state.pending_popup.take() else {

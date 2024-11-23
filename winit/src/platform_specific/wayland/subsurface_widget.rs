@@ -21,8 +21,7 @@ use std::{
 };
 
 use crate::futures::futures::channel::oneshot;
-use iced_futures::core::window;
-use sctk::{
+use cctk::sctk::{
     compositor::SurfaceData,
     globals::GlobalData,
     reexports::client::{
@@ -38,6 +37,7 @@ use sctk::{
         },
     },
 };
+use iced_futures::core::window;
 use wayland_backend::client::ObjectId;
 use wayland_protocols::wp::{
     alpha_modifier::v1::client::{
@@ -346,7 +346,7 @@ impl SubsurfaceState {
         let wp_viewport = self.wp_viewporter.get_viewport(
             &wl_surface,
             &self.qh,
-            sctk::globals::GlobalData,
+            cctk::sctk::globals::GlobalData,
         );
 
         let wp_alpha_modifier_surface =

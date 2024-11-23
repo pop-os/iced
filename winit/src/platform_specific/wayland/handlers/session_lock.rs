@@ -1,7 +1,7 @@
 use crate::platform_specific::wayland::{
     handlers::SctkState, sctk_event::SctkEvent,
 };
-use sctk::{
+use cctk::sctk::{
     delegate_session_lock,
     reexports::client::{Connection, QueueHandle},
     session_lock::{
