@@ -2,23 +2,23 @@ use crate::platform_specific::wayland::{
     event_loop::{state::SctkSeat, state::SctkState},
     sctk_event::{KeyboardEventVariant, SctkEvent, SeatEventVariant},
 };
-use iced_runtime::keyboard::Modifiers;
-use sctk::{
+use cctk::sctk::{
     delegate_seat,
     reexports::client::{protocol::wl_keyboard::WlKeyboard, Proxy},
     seat::{pointer::ThemeSpec, SeatHandler},
 };
+use iced_runtime::keyboard::Modifiers;
 
 impl SeatHandler for SctkState {
-    fn seat_state(&mut self) -> &mut sctk::seat::SeatState {
+    fn seat_state(&mut self) -> &mut cctk::sctk::seat::SeatState {
         &mut self.seat_state
     }
 
     fn new_seat(
         &mut self,
-        _conn: &sctk::reexports::client::Connection,
-        qh: &sctk::reexports::client::QueueHandle<Self>,
-        seat: sctk::reexports::client::protocol::wl_seat::WlSeat,
+        _conn: &cctk::sctk::reexports::client::Connection,
+        qh: &cctk::sctk::reexports::client::QueueHandle<Self>,
+        seat: cctk::sctk::reexports::client::protocol::wl_seat::WlSeat,
     ) {
         self.sctk_events.push(SctkEvent::SeatEvent {
             variant: SeatEventVariant::New,
@@ -43,10 +43,10 @@ impl SeatHandler for SctkState {
 
     fn new_capability(
         &mut self,
-        _conn: &sctk::reexports::client::Connection,
-        qh: &sctk::reexports::client::QueueHandle<Self>,
-        seat: sctk::reexports::client::protocol::wl_seat::WlSeat,
-        capability: sctk::seat::Capability,
+        _conn: &cctk::sctk::reexports::client::Connection,
+        qh: &cctk::sctk::reexports::client::QueueHandle<Self>,
+        seat: cctk::sctk::reexports::client::protocol::wl_seat::WlSeat,
+        capability: cctk::sctk::seat::Capability,
     ) {
         let my_seat = match self.seats.iter_mut().find(|s| s.seat == seat) {
             Some(s) => s,
@@ -71,7 +71,7 @@ impl SeatHandler for SctkState {
         };
         // TODO data device
         match capability {
-            sctk::seat::Capability::Keyboard => {
+            cctk::sctk::seat::Capability::Keyboard => {
                 let seat_clone = seat.clone();
                 let seat_clone_2 = seat.clone();
                 if let Ok(kbd) = self.seat_state.get_keyboard_with_repeat(
@@ -107,7 +107,7 @@ impl SeatHandler for SctkState {
                     _ = my_seat.kbd.replace(kbd);
                 }
             }
-            sctk::seat::Capability::Pointer => {
+            cctk::sctk::seat::Capability::Pointer => {
                 let surface = self.compositor_state.create_surface(qh);
 
                 if let Ok(ptr) = self.seat_state.get_pointer_with_theme(
@@ -127,7 +127,7 @@ impl SeatHandler for SctkState {
                     _ = my_seat.ptr.replace(ptr);
                 }
             }
-            sctk::seat::Capability::Touch => {
+            cctk::sctk::seat::Capability::Touch => {
                 if let Some(touch) = self.seat_state.get_touch(qh, &seat).ok() {
                     self.sctk_events.push(SctkEvent::SeatEvent {
                         variant: SeatEventVariant::NewCapability(
@@ -145,10 +145,10 @@ impl SeatHandler for SctkState {
 
     fn remove_capability(
         &mut self,
-        _conn: &sctk::reexports::client::Connection,
-        _qh: &sctk::reexports::client::QueueHandle<Self>,
-        seat: sctk::reexports::client::protocol::wl_seat::WlSeat,
-        capability: sctk::seat::Capability,
+        _conn: &cctk::sctk::reexports::client::Connection,
+        _qh: &cctk::sctk::reexports::client::QueueHandle<Self>,
+        seat: cctk::sctk::reexports::client::protocol::wl_seat::WlSeat,
+        capability: cctk::sctk::seat::Capability,
     ) {
         let my_seat = match self.seats.iter_mut().find(|s| s.seat == seat) {
             Some(s) => s,
@@ -158,7 +158,7 @@ impl SeatHandler for SctkState {
         // TODO data device
         match capability {
             // TODO use repeating kbd?
-            sctk::seat::Capability::Keyboard => {
+            cctk::sctk::seat::Capability::Keyboard => {
                 if let Some(kbd) = my_seat.kbd.take() {
                     self.sctk_events.push(SctkEvent::SeatEvent {
                         variant: SeatEventVariant::RemoveCapability(
@@ -169,7 +169,7 @@ impl SeatHandler for SctkState {
                     });
                 }
             }
-            sctk::seat::Capability::Pointer => {
+            cctk::sctk::seat::Capability::Pointer => {
                 if let Some(ptr) = my_seat.ptr.take() {
                     self.sctk_events.push(SctkEvent::SeatEvent {
                         variant: SeatEventVariant::RemoveCapability(
@@ -180,7 +180,7 @@ impl SeatHandler for SctkState {
                     });
                 }
             }
-            sctk::seat::Capability::Touch => {
+            cctk::sctk::seat::Capability::Touch => {
                 if let Some(touch) = my_seat.touch.take() {
                     self.sctk_events.push(SctkEvent::SeatEvent {
                         variant: SeatEventVariant::RemoveCapability(
@@ -197,9 +197,9 @@ impl SeatHandler for SctkState {
 
     fn remove_seat(
         &mut self,
-        _conn: &sctk::reexports::client::Connection,
-        _qh: &sctk::reexports::client::QueueHandle<Self>,
-        seat: sctk::reexports::client::protocol::wl_seat::WlSeat,
+        _conn: &cctk::sctk::reexports::client::Connection,
+        _qh: &cctk::sctk::reexports::client::QueueHandle<Self>,
+        seat: cctk::sctk::reexports::client::protocol::wl_seat::WlSeat,
     ) {
         self.sctk_events.push(SctkEvent::SeatEvent {
             variant: SeatEventVariant::Remove,

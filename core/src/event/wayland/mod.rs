@@ -6,7 +6,7 @@ mod session_lock;
 mod window;
 
 use crate::{time::Instant, window::Id};
-use sctk::reexports::client::protocol::{
+use cctk::sctk::reexports::client::protocol::{
     wl_output::WlOutput, wl_seat::WlSeat, wl_surface::WlSurface,
 };
 

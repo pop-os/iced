@@ -1,5 +1,5 @@
 use iced_futures::futures::channel::oneshot::Sender;
-use sctk::{
+use cctk::sctk::{
     activation::{ActivationHandler, RequestData, RequestDataExt},
     delegate_activation,
     reexports::client::protocol::{wl_seat::WlSeat, wl_surface::WlSurface},

@@ -4,7 +4,7 @@ use iced_runtime::{
     platform_specific::{self, wayland},
     task, Action, Task,
 };
-use sctk::reexports::client::protocol::wl_output::WlOutput;
+use cctk::sctk::reexports::client::protocol::wl_output::WlOutput;
 
 pub fn lock<Message>() -> Task<Message> {
     task::effect(Action::PlatformSpecific(

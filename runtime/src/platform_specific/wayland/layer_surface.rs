@@ -1,7 +1,7 @@
 use std::fmt;
 
 use iced_core::layout::Limits;
-use sctk::{
+use cctk::sctk::{
     reexports::client::protocol::wl_output::WlOutput,
     shell::wlr_layer::{Anchor, KeyboardInteractivity, Layer},
 };

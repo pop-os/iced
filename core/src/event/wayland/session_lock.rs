@@ -1,5 +1,5 @@
 use crate::window::Id;
-use sctk::reexports::client::protocol::wl_surface::WlSurface;
+use cctk::sctk::reexports::client::protocol::wl_surface::WlSurface;
 
 /// session lock events
 #[derive(Debug, Clone, PartialEq, Eq)]

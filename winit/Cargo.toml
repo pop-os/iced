@@ -21,7 +21,7 @@ program = []
 x11 = ["winit/x11"]
 wayland = [
     "winit/wayland",
-    "sctk",
+    "cctk",
     "wayland-protocols",
     "raw-window-handle",
     "iced_runtime/wayland",
@@ -58,8 +58,8 @@ sysinfo.optional = true
 
 [target.'cfg(target_os = "linux")'.dependencies]
 raw-window-handle = { version = "0.6", optional = true }
-sctk.workspace = true
-sctk.optional = true
+cctk.workspace = true
+cctk.optional = true
 wayland-protocols.workspace = true
 wayland-protocols.optional = true
 wayland-backend = { version = "0.3.1", features = [

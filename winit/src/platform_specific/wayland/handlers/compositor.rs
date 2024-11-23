@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0-only
-use sctk::{
+use cctk::sctk::{
     compositor::CompositorHandler,
     delegate_compositor,
     reexports::client::{

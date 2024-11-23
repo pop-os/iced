@@ -1,10 +1,10 @@
 use crate::graphics::compositor::Window;
-use raw_window_handle::{RawDisplayHandle, WaylandDisplayHandle};
-use sctk::{
+use cctk::sctk::{
     dmabuf::{DmabufFeedback, DmabufHandler, DmabufState},
     registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
 };
+use raw_window_handle::{RawDisplayHandle, WaylandDisplayHandle};
 use wayland_client::{
     backend::Backend, globals::registry_queue_init, protocol::wl_buffer,
     Connection, QueueHandle,
@@ -111,5 +111,5 @@ pub fn get_wayland_device_ids<W: Window>(window: &W) -> Option<(u16, u16)> {
     }
 }
 
-sctk::delegate_dmabuf!(AppData);
-sctk::delegate_registry!(AppData);
+cctk::sctk::delegate_dmabuf!(AppData);
+cctk::sctk::delegate_registry!(AppData);

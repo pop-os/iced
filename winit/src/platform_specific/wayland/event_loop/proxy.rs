@@ -3,7 +3,7 @@ use iced_futures::futures::{
     task::{Context, Poll},
     Sink,
 };
-use sctk::reexports::calloop;
+use cctk::sctk::reexports::calloop;
 use std::pin::Pin;
 
 /// An event loop proxy that implements `Sink`.

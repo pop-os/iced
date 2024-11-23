@@ -7,7 +7,7 @@ use crate::{
     },
 };
 use iced_runtime::core::{touch, Point};
-use sctk::{
+use cctk::sctk::{
     delegate_touch,
     reexports::client::{
         protocol::{wl_surface::WlSurface, wl_touch::WlTouch},

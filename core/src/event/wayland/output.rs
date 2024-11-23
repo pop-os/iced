@@ -1,4 +1,4 @@
-use sctk::output::OutputInfo;
+use cctk::sctk::output::OutputInfo;
 
 /// output events
 #[derive(Debug, Clone)]

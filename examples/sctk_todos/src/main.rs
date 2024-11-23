@@ -96,7 +96,7 @@ impl Todos {
                 get_layer_surface(iced::platform_specific::runtime::wayland::layer_surface::SctkLayerSurfaceSettings {
                     size: Some((None, Some(500))),
                     pointer_interactivity: true,
-                    keyboard_interactivity: sctk::shell::wlr_layer::KeyboardInteractivity::OnDemand,
+                    keyboard_interactivity: cctk::sctk::shell::wlr_layer::KeyboardInteractivity::OnDemand,
                     anchor: Anchor::LEFT.union(Anchor::RIGHT).union(Anchor::TOP),
                     ..Default::default()
                 }),
