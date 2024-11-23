@@ -37,7 +37,7 @@ use iced_runtime::{
     user_interface, Debug,
 };
 
-use sctk::{
+use cctk::sctk::{
     output::OutputInfo,
     reexports::{
         calloop::channel,
@@ -216,7 +216,7 @@ pub enum WindowEventVariant {
     Configure((NonZeroU32, NonZeroU32), WindowConfigure, WlSurface, bool),
     Size((NonZeroU32, NonZeroU32), WlSurface, bool),
     /// window state changed
-    StateChanged(sctk::reexports::csd_frame::WindowState),
+    StateChanged(cctk::sctk::reexports::csd_frame::WindowState),
     /// Scale Factor
     ScaleFactorChanged(f64, Option<WpViewport>),
 }

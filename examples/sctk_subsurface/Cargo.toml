@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-sctk = { package = "smithay-client-toolkit", git = "https://github.com/smithay/client-toolkit", rev = "828b1eb" }
+# sctk = { package = "smithay-client-toolkit", git = "https://github.com/smithay/client-toolkit", rev = "828b1eb" }
 iced = { path = "../..", default-features = false, features = [
     "tokio",
     "wayland",
@@ -17,3 +17,4 @@ env_logger = "0.10"
 futures-channel = "0.3.29"
 calloop = "0.12.3"
 rustix = { version = "0.38.30", features = ["fs", "shm"] }
+cctk.workspace = true

@@ -17,7 +17,7 @@ workspace = true
 auto-detect-theme = ["dep:dark-light"]
 advanced = []
 a11y = ["iced_accessibility"]
-wayland = ["sctk"]
+wayland = ["cctk"]
 
 [dependencies]
 bitflags.workspace = true
@@ -38,8 +38,8 @@ window_clipboard.workspace = true
 dnd.workspace = true
 mime.workspace = true
 
-sctk.workspace = true
-sctk.optional = true
+cctk.workspace = true
+cctk.optional = true
 # /TODO(POP)
 
 dark-light.workspace = true

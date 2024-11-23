@@ -4,7 +4,7 @@ use crate::{
         event_loop::state::SctkState, sctk_event::SctkEvent,
     },
 };
-use sctk::{
+use cctk::sctk::{
     delegate_pointer,
     reexports::client::Proxy,
     seat::pointer::{
@@ -19,10 +19,10 @@ use winit::{
 impl PointerHandler for SctkState {
     fn pointer_frame(
         &mut self,
-        conn: &sctk::reexports::client::Connection,
-        _qh: &sctk::reexports::client::QueueHandle<Self>,
-        pointer: &sctk::reexports::client::protocol::wl_pointer::WlPointer,
-        events: &[sctk::seat::pointer::PointerEvent],
+        conn: &cctk::sctk::reexports::client::Connection,
+        _qh: &cctk::sctk::reexports::client::QueueHandle<Self>,
+        pointer: &cctk::sctk::reexports::client::protocol::wl_pointer::WlPointer,
+        events: &[cctk::sctk::seat::pointer::PointerEvent],
     ) {
         let (is_active, my_seat) =
             match self.seats.iter_mut().enumerate().find_map(|(i, s)| {

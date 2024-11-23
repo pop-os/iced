@@ -2,7 +2,7 @@ use crate::platform_specific::wayland::{
     event_loop::state::{self, PopupParent, SctkState},
     sctk_event::{PopupEventVariant, SctkEvent},
 };
-use sctk::{
+use cctk::sctk::{
     delegate_xdg_popup, reexports::client::Proxy,
     shell::xdg::popup::PopupHandler,
 };
@@ -10,10 +10,10 @@ use sctk::{
 impl PopupHandler for SctkState {
     fn configure(
         &mut self,
-        _conn: &sctk::reexports::client::Connection,
-        _qh: &sctk::reexports::client::QueueHandle<Self>,
-        popup: &sctk::shell::xdg::popup::Popup,
-        configure: sctk::shell::xdg::popup::PopupConfigure,
+        _conn: &cctk::sctk::reexports::client::Connection,
+        _qh: &cctk::sctk::reexports::client::QueueHandle<Self>,
+        popup: &cctk::sctk::shell::xdg::popup::Popup,
+        configure: cctk::sctk::shell::xdg::popup::PopupConfigure,
     ) {
         self.request_redraw(popup.wl_surface());
         let sctk_popup = match self.popups.iter_mut().find(|s| {
@@ -43,9 +43,9 @@ impl PopupHandler for SctkState {
 
     fn done(
         &mut self,
-        _conn: &sctk::reexports::client::Connection,
-        _qh: &sctk::reexports::client::QueueHandle<Self>,
-        popup: &sctk::shell::xdg::popup::Popup,
+        _conn: &cctk::sctk::reexports::client::Connection,
+        _qh: &cctk::sctk::reexports::client::QueueHandle<Self>,
+        popup: &cctk::sctk::shell::xdg::popup::Popup,
     ) {
         let sctk_popup = match self.popups.iter().position(|s| {
             s.popup.wl_surface().clone() == popup.wl_surface().clone()

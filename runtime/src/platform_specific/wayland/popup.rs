@@ -4,7 +4,7 @@ use std::hash::{Hash, Hasher};
 use iced_core::layout::Limits;
 use iced_core::window::Id;
 use iced_core::Rectangle;
-use sctk::reexports::protocols::xdg::shell::client::xdg_positioner::{
+use cctk::sctk::reexports::protocols::xdg::shell::client::xdg_positioner::{
     Anchor, Gravity,
 };
 /// Popup creation details

@@ -13,7 +13,7 @@ use iced_runtime::{
     task, Action, Task,
 };
 
-pub use sctk::shell::wlr_layer::{Anchor, KeyboardInteractivity, Layer};
+pub use cctk::sctk::shell::wlr_layer::{Anchor, KeyboardInteractivity, Layer};
 
 // TODO ASHLEY: maybe implement as builder that outputs a batched commands
 /// <https://wayland.app/protocols/wlr-layer-shell-unstable-v1#zwlr_layer_shell_v1:request:get_layer_surface>
