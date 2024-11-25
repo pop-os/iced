@@ -1,10 +1,12 @@
 //! Query or update internal widget state.
 pub mod focusable;
+pub mod image;
 pub mod scrollable;
 pub mod search_id;
 pub mod text_input;
 
 pub use focusable::Focusable;
+pub use image::Image;
 pub use scrollable::Scrollable;
 pub use text_input::TextInput;
 
@@ -46,6 +48,9 @@ pub trait Operation<T = ()>: Send {
 
     /// Operates on a widget that has text input.
     fn text_input(&mut self, _state: &mut dyn TextInput, _id: Option<&Id>) {}
+
+    /// Operates on a widget that displays an image.
+    fn image(&mut self, _state: &mut dyn Image, _id: Option<&Id>) {}
 
     /// Operates on a custom widget.
     fn custom(&mut self, _state: &mut dyn Any, _id: Option<&Id>) {}
@@ -92,6 +97,10 @@ where
 
     fn text_input(&mut self, state: &mut dyn TextInput, id: Option<&Id>) {
         self.as_mut().text_input(state, id);
+    }
+
+    fn image(&mut self, state: &mut dyn Image, id: Option<&Id>) {
+        self.as_mut().image(state, id);
     }
 
     fn custom(&mut self, state: &mut dyn Any, id: Option<&Id>) {
@@ -174,6 +183,10 @@ where
 
         fn text_input(&mut self, state: &mut dyn TextInput, id: Option<&Id>) {
             self.operation.text_input(state, id);
+        }
+
+        fn image(&mut self, state: &mut dyn Image, id: Option<&Id>) {
+            self.operation.image(state, id);
         }
 
         fn custom(&mut self, state: &mut dyn Any, id: Option<&Id>) {
@@ -266,6 +279,10 @@ where
                     self.operation.text_input(state, id);
                 }
 
+                fn image(&mut self, state: &mut dyn Image, id: Option<&Id>) {
+                    self.operation.image(state, id);
+                }
+
                 fn custom(&mut self, state: &mut dyn Any, id: Option<&Id>) {
                     self.operation.custom(state, id);
                 }
@@ -299,6 +316,10 @@ where
 
         fn text_input(&mut self, state: &mut dyn TextInput, id: Option<&Id>) {
             self.operation.text_input(state, id);
+        }
+
+        fn image(&mut self, state: &mut dyn Image, id: Option<&Id>) {
+            self.operation.image(state, id);
         }
 
         fn custom(&mut self, state: &mut dyn Any, id: Option<&Id>) {
@@ -385,6 +406,10 @@ where
 
         fn text_input(&mut self, state: &mut dyn TextInput, id: Option<&Id>) {
             self.operation.text_input(state, id);
+        }
+
+        fn image(&mut self, state: &mut dyn Image, id: Option<&Id>) {
+            self.operation.image(state, id);
         }
 
         fn custom(&mut self, state: &mut dyn std::any::Any, id: Option<&Id>) {

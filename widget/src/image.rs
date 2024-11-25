@@ -17,6 +17,8 @@
 //! ```
 //! <img src="https://github.com/iced-rs/iced/blob/9712b319bb7a32848001b96bd84977430f14b623/examples/resources/ferris.png?raw=true" width="300">
 pub mod viewer;
+use iced_runtime::core::widget::operation;
+use iced_runtime::core::widget::tree;
 use iced_runtime::core::widget::Id;
 pub use viewer::Viewer;
 
@@ -99,6 +101,12 @@ impl<'a, Handle> Image<'a, Handle> {
             border_radius: [0.0; 4],
             phantom_data: std::marker::PhantomData,
         }
+    }
+
+    /// Sets the [`Id`] of the [`TextInput`].
+    pub fn id(mut self, id: Id) -> Self {
+        self.id = id;
+        self
     }
 
     /// Sets the border radius of the image.
@@ -185,7 +193,8 @@ impl<'a, Handle> Image<'a, Handle> {
 }
 
 /// Computes the layout of an [`Image`].
-pub fn layout<Renderer, Handle>(
+pub fn layout<Renderer, Handle: 'static>(
+    tree: &mut Tree,
     renderer: &Renderer,
     limits: &layout::Limits,
     handle: &Handle,
@@ -198,6 +207,13 @@ pub fn layout<Renderer, Handle>(
 where
     Renderer: image::Renderer<Handle = Handle>,
 {
+    let state = tree.state.downcast_ref::<State<Handle>>();
+    let handle = if let Some(state_handle) = &state.handle {
+        state_handle
+    } else {
+        handle
+    };
+
     // The raw w/h of the underlying image
     let image_size = renderer.measure_image(handle);
     let image_size =
@@ -229,6 +245,7 @@ where
 
 /// Draws an [`Image`]
 pub fn draw<Renderer, Handle>(
+    tree: &Tree,
     renderer: &mut Renderer,
     layout: Layout<'_>,
     handle: &Handle,
@@ -239,8 +256,15 @@ pub fn draw<Renderer, Handle>(
     border_radius: [f32; 4],
 ) where
     Renderer: image::Renderer<Handle = Handle>,
-    Handle: Clone,
+    Handle: Clone + 'static,
 {
+    let state = tree.state.downcast_ref::<State<Handle>>();
+    let handle = if let Some(state_handle) = &state.handle {
+        state_handle
+    } else {
+        handle
+    };
+
     let Size { width, height } = renderer.measure_image(handle);
     let image_size = Size::new(width as f32, height as f32);
     let rotated_size = rotation.apply(image_size);
@@ -296,7 +320,7 @@ impl<'a, Message, Theme, Renderer, Handle> Widget<Message, Theme, Renderer>
     for Image<'a, Handle>
 where
     Renderer: image::Renderer<Handle = Handle>,
-    Handle: Clone,
+    Handle: Clone + 'static,
 {
     fn size(&self) -> Size<Length> {
         Size {
@@ -307,11 +331,12 @@ where
 
     fn layout(
         &self,
-        _tree: &mut Tree,
+        tree: &mut Tree,
         renderer: &Renderer,
         limits: &layout::Limits,
     ) -> layout::Node {
         layout(
+            tree,
             renderer,
             limits,
             &self.handle,
@@ -323,9 +348,20 @@ where
         )
     }
 
+    fn operate(
+        &self,
+        tree: &mut Tree,
+        _layout: Layout<'_>,
+        _renderer: &Renderer,
+        operation: &mut dyn operation::Operation,
+    ) {
+        let state = tree.state.downcast_mut::<State>();
+        operation.image(state, Some(&self.id));
+    }
+
     fn draw(
         &self,
-        _state: &Tree,
+        tree: &Tree,
         renderer: &mut Renderer,
         _theme: &Theme,
         _style: &renderer::Style,
@@ -334,6 +370,7 @@ where
         _viewport: &Rectangle,
     ) {
         draw(
+            tree,
             renderer,
             layout,
             &self.handle,
@@ -404,15 +441,41 @@ where
     fn set_id(&mut self, id: Id) {
         self.id = id;
     }
+
+    fn state(&self) -> tree::State {
+        tree::State::new(State::<Handle>::new())
+    }
+}
+
+/// The state of a [`Image`].
+#[derive(Debug, Default, Clone)]
+pub struct State<Handle = image::Handle> {
+    handle: Option<Handle>,
+}
+
+impl<Handle> State<Handle> {
+    pub fn new() -> Self {
+        Self { handle: None }
+    }
+
+    pub fn set_handle(&mut self, handle: Handle) {
+        self.handle = Some(handle);
+    }
 }
 
 impl<'a, Message, Theme, Renderer, Handle> From<Image<'a, Handle>>
     for Element<'a, Message, Theme, Renderer>
 where
     Renderer: image::Renderer<Handle = Handle>,
-    Handle: Clone + 'a,
+    Handle: Clone + 'static,
 {
     fn from(image: Image<'a, Handle>) -> Element<'a, Message, Theme, Renderer> {
         Element::new(image)
+    }
+}
+
+impl operation::Image for State {
+    fn set_handle(&mut self, handle: image::Handle) {
+        State::set_handle(self, handle);
     }
 }
