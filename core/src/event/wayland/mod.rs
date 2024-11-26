@@ -1,5 +1,6 @@
 mod layer;
 mod output;
+mod overlap_notify;
 mod popup;
 mod seat;
 mod session_lock;
@@ -12,6 +13,7 @@ use cctk::sctk::reexports::client::protocol::{
 
 pub use layer::*;
 pub use output::*;
+pub use overlap_notify::*;
 pub use popup::*;
 pub use seat::*;
 pub use session_lock::*;
@@ -26,6 +28,8 @@ pub enum Event {
     Popup(PopupEvent, WlSurface, Id),
     /// output event
     Output(OutputEvent, WlOutput),
+    /// Overlap notify event
+    OverlapNotify(overlap_notify::OverlapNotifyEvent),
     /// window event
     Window(WindowEvent),
     /// Seat Event

@@ -1,5 +1,8 @@
 use crate::{
-    handlers::activation::IcedRequestData,
+    handlers::{
+        activation::IcedRequestData,
+        overlap::{OverlapNotificationV1, OverlapNotifyV1},
+    },
     platform_specific::{
         wayland::{
             handlers::{
@@ -27,22 +30,11 @@ use winit::{
     platform::wayland::WindowExtWayland,
 };
 
-use iced_runtime::{
-    core::{self, touch, Point},
-    keyboard::Modifiers,
-    platform_specific::{
-        self,
-        wayland::{
-            layer_surface::{IcedMargin, IcedOutput, SctkLayerSurfaceSettings},
-            popup::SctkPopupSettings,
-            Action,
-        },
-    },
-};
-use cctk::sctk::{
+use cctk::{cosmic_protocols::overlap_notify::v1::client::zcosmic_overlap_notification_v1::ZcosmicOverlapNotificationV1, sctk::{
     activation::{ActivationState, RequestData},
     compositor::CompositorState,
     error::GlobalError,
+    globals::GlobalData,
     output::OutputState,
     reexports::{
         calloop::{timer::TimeoutAction, LoopHandle},
@@ -74,7 +66,7 @@ use cctk::sctk::{
     shell::{
         wlr_layer::{
             Anchor, KeyboardInteractivity, Layer, LayerShell, LayerSurface,
-            LayerSurfaceConfigure,
+            LayerSurfaceConfigure, SurfaceKind,
         },
         xdg::{
             popup::{Popup, PopupConfigure},
@@ -83,6 +75,18 @@ use cctk::sctk::{
         WaylandSurface,
     },
     shm::{multi::MultiPool, Shm},
+}, toplevel_info::ToplevelInfoState, toplevel_management::ToplevelManagerState};
+use iced_runtime::{
+    core::{self, touch, Point},
+    keyboard::Modifiers,
+    platform_specific::{
+        self,
+        wayland::{
+            layer_surface::{IcedMargin, IcedOutput, SctkLayerSurfaceSettings},
+            popup::SctkPopupSettings,
+            Action,
+        },
+    },
 };
 use wayland_protocols::{
     wp::{
@@ -326,7 +330,11 @@ pub struct SctkState {
     /// a memory pool
     pub(crate) _multipool: Option<MultiPool<WlSurface>>,
 
-    // all present outputs
+    /// all notification objects
+    pub(crate) overlap_notifications:
+        HashMap<ObjectId, ZcosmicOverlapNotificationV1>,
+
+    /// all present outputs
     pub(crate) outputs: Vec<WlOutput>,
     // though (for now) only one seat will be active in an iced application at a time, all ought to be tracked
     // Active seat is the first seat in the list
@@ -379,6 +387,9 @@ pub struct SctkState {
     pub(crate) to_commit: HashMap<core::window::Id, WlSurface>,
     pub(crate) destroyed: HashSet<core::window::Id>,
     pub(crate) pending_popup: Option<(SctkPopupSettings, usize)>,
+    pub(crate) overlap_notify: Option<OverlapNotifyV1>,
+    pub(crate) toplevel_info: Option<ToplevelInfoState>,
+    pub(crate) toplevel_manager: Option<ToplevelManagerState>,
 
     pub(crate) activation_token_ctr: u32,
     pub(crate) token_senders: HashMap<u32, oneshot::Sender<Option<String>>>,
@@ -1176,6 +1187,27 @@ impl SctkState {
                     }
                 }
             }
+            Action::OverlapNotify(id, enabled) => {
+                if let Some(layer_surface) = self.layer_surfaces.iter_mut().find(|l| l.id == id) {
+                    let Some(overlap_notify_state) = self.overlap_notify.as_ref() else {
+                        tracing::error!("Overlap notify is not supported.");
+                        return Ok(());
+                    };
+                    let my_id = layer_surface.surface.wl_surface().id();
+                    if enabled && !self.overlap_notifications.contains_key(&my_id) {
+                        let SurfaceKind::Wlr(wlr) = &layer_surface.surface.kind() else {
+                            tracing::error!("Overlap notify is not supported for non wlr surface.");
+                            return Ok(());
+                        };
+                        let notification = overlap_notify_state.notify.notify_on_overlap(wlr, &self.queue_handle, OverlapNotificationV1 { surface: layer_surface.surface.wl_surface().clone() });
+                        _ = self.overlap_notifications.insert(my_id, notification);
+                    } else {
+                        _ = self.overlap_notifications.remove(&my_id);
+                    }
+                } else {
+                    tracing::error!("Overlap notify subscription cannot be created for surface. No matching layer surface found.");
+                }
+            },
         };
         Ok(())
     }

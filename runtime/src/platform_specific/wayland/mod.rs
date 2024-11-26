@@ -2,6 +2,8 @@
 
 use std::fmt::Debug;
 
+use iced_core::window::Id;
+
 /// activation Actions
 pub mod activation;
 
@@ -22,20 +24,25 @@ pub enum Action {
     Activation(activation::Action),
     /// session lock
     SessionLock(session_lock::Action),
+    /// Overlap Notify
+    OverlapNotify(Id, bool),
 }
 
 impl Debug for Action {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::LayerSurface(arg0) => {
+            Action::LayerSurface(arg0) => {
                 f.debug_tuple("LayerSurface").field(arg0).finish()
             }
-            Self::Popup(arg0) => f.debug_tuple("Popup").field(arg0).finish(),
-            Self::Activation(arg0) => {
+            Action::Popup(arg0) => f.debug_tuple("Popup").field(arg0).finish(),
+            Action::Activation(arg0) => {
                 f.debug_tuple("Activation").field(arg0).finish()
             }
-            Self::SessionLock(arg0) => {
+            Action::SessionLock(arg0) => {
                 f.debug_tuple("SessionLock").field(arg0).finish()
+            }
+            Action::OverlapNotify(id, _) => {
+                f.debug_tuple("OverlapNotify").field(id).finish()
             }
         }
     }
