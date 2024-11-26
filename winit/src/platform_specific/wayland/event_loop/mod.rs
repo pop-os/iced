@@ -7,6 +7,7 @@ use crate::platform_specific::SurfaceIdWrapper;
 use crate::{
     Control,
     futures::futures::channel::mpsc,
+    handlers::overlap::OverlapNotifyV1,
     platform_specific::wayland::{
         handlers::{
             wp_fractional_scaling::FractionalScalingManager,
@@ -17,25 +18,29 @@ use crate::{
     subsurface_widget::SubsurfaceState,
 };
 
-use raw_window_handle::HasDisplayHandle;
 use cctk::sctk::reexports::calloop_wayland_source::WaylandSource;
-use cctk::sctk::{
-    activation::ActivationState,
-    compositor::CompositorState,
-    globals::GlobalData,
-    output::OutputState,
-    reexports::{
-        calloop::{self, EventLoop},
-        client::{
-            ConnectError, Connection, Proxy, globals::registry_queue_init,
+use cctk::{
+    sctk::{
+        activation::ActivationState,
+        compositor::CompositorState,
+        globals::GlobalData,
+        output::OutputState,
+        reexports::{
+            calloop::{self, EventLoop},
+            client::{
+                ConnectError, Connection, Proxy, globals::registry_queue_init,
+            },
         },
+        registry::RegistryState,
+        seat::SeatState,
+        session_lock::SessionLockState,
+        shell::{WaylandSurface, wlr_layer::LayerShell, xdg::XdgShell},
+        shm::Shm,
     },
-    registry::RegistryState,
-    seat::SeatState,
-    session_lock::SessionLockState,
-    shell::{WaylandSurface, wlr_layer::LayerShell, xdg::XdgShell},
-    shm::Shm,
+    toplevel_info::ToplevelInfoState,
+    toplevel_management::ToplevelManagerState,
 };
+use raw_window_handle::HasDisplayHandle;
 use state::{FrameStatus, SctkWindow};
 #[cfg(feature = "a11y")]
 use std::sync::{Arc, Mutex};
@@ -188,7 +193,6 @@ impl SctkEventLoop {
                 event_loop,
                 state: SctkState {
                     connection,
-                    registry_state,
                     seat_state: SeatState::new(&globals, &qh),
                     output_state: OutputState::new(&globals, &qh),
                     compositor_state: CompositorState::bind(&globals, &qh)
@@ -201,6 +205,16 @@ impl SctkEventLoop {
                     activation_state: ActivationState::bind(&globals, &qh).ok(),
                     session_lock_state: SessionLockState::new(&globals, &qh),
                     session_lock: None,
+                    overlap_notify: OverlapNotifyV1::bind(&globals, &qh).ok(),
+                    toplevel_info: ToplevelInfoState::try_new(
+                        &registry_state,
+                        &qh,
+                    ),
+                    toplevel_manager: ToplevelManagerState::try_new(
+                        &registry_state,
+                        &qh,
+                    ),
+                    registry_state,
 
                     queue_handle: qh,
                     loop_handle,
@@ -228,6 +242,7 @@ impl SctkEventLoop {
                     pending_popup: Default::default(),
                     activation_token_ctr: 0,
                     token_senders: HashMap::new(),
+                    overlap_notifications: HashMap::new(),
                 },
                 _features: Default::default(),
             };

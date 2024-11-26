@@ -20,9 +20,12 @@ use iced_futures::{
         Clipboard as _,
         event::{
             PlatformSpecific,
-            wayland::{LayerEvent, PopupEvent, SessionLockEvent},
+            wayland::{
+                LayerEvent, OverlapNotifyEvent, PopupEvent, SessionLockEvent,
+            },
         },
     },
+    event,
     futures::channel::mpsc,
 };
 use iced_graphics::{Compositor, compositor};
@@ -37,30 +40,33 @@ use iced_runtime::{
     user_interface,
 };
 
-use cctk::sctk::{
-    output::OutputInfo,
-    reexports::{
-        calloop::channel,
-        client::{
-            Proxy, QueueHandle,
-            backend::ObjectId,
-            protocol::{
-                wl_display::WlDisplay, wl_keyboard::WlKeyboard,
-                wl_output::WlOutput, wl_pointer::WlPointer, wl_seat::WlSeat,
-                wl_surface::WlSurface, wl_touch::WlTouch,
+use cctk::{
+    cosmic_protocols::overlap_notify::v1::client::zcosmic_overlap_notification_v1,
+    sctk::{
+        output::OutputInfo,
+        reexports::{
+            calloop::channel,
+            client::{
+                Proxy, QueueHandle,
+                backend::ObjectId,
+                protocol::{
+                    wl_display::WlDisplay, wl_keyboard::WlKeyboard,
+                    wl_output::WlOutput, wl_pointer::WlPointer,
+                    wl_seat::WlSeat, wl_surface::WlSurface, wl_touch::WlTouch,
+                },
             },
+            csd_frame::WindowManagerCapabilities,
         },
-        csd_frame::WindowManagerCapabilities,
-    },
-    seat::{
-        Capability,
-        keyboard::{KeyEvent, Modifiers},
-        pointer::{PointerEvent, PointerEventKind},
-    },
-    session_lock::SessionLockSurfaceConfigure,
-    shell::{
-        wlr_layer::LayerSurfaceConfigure,
-        xdg::{popup::PopupConfigure, window::WindowConfigure},
+        seat::{
+            Capability,
+            keyboard::{KeyEvent, Modifiers},
+            pointer::{PointerEvent, PointerEventKind},
+        },
+        session_lock::SessionLockSurfaceConfigure,
+        shell::{
+            wlr_layer::{Layer, LayerSurfaceConfigure},
+            xdg::{popup::PopupConfigure, window::WindowConfigure},
+        },
     },
 };
 use std::{
@@ -68,7 +74,10 @@ use std::{
     num::NonZeroU32,
     sync::{Arc, Mutex},
 };
-use wayland_protocols::wp::viewporter::client::wp_viewport::WpViewport;
+use wayland_protocols::{
+    ext::foreign_toplevel_list::v1::client::ext_foreign_toplevel_handle_v1::ExtForeignToplevelHandleV1,
+    wp::viewporter::client::wp_viewport::WpViewport,
+};
 use winit::{
     dpi::PhysicalSize, event::WindowEvent, event_loop::EventLoopProxy,
     window::WindowId,
@@ -119,6 +128,26 @@ pub enum SctkEvent {
     LayerSurfaceEvent {
         variant: LayerSurfaceEventVariant,
         id: WlSurface,
+    },
+    OverlapToplevelAdd {
+        surface: WlSurface,
+        toplevel: ExtForeignToplevelHandleV1,
+        logical_rect: iced_runtime::core::Rectangle,
+    },
+    OverlapToplevelRemove {
+        surface: WlSurface,
+        toplevel: ExtForeignToplevelHandleV1,
+    },
+    OverlapLayerAdd {
+        surface: WlSurface,
+        identifier: String,
+        exclusive: u32,
+        layer: Option<Layer>,
+        logical_rect: iced_runtime::core::Rectangle,
+    },
+    OverlapLayerRemove {
+        surface: WlSurface,
+        identifier: String,
     },
     PopupEvent {
         variant: PopupEventVariant,
@@ -1194,6 +1223,87 @@ impl SctkEvent {
             }
             SctkEvent::Subcompositor(s) => {
                 *subsurface_state = Some(s);
+            }
+            SctkEvent::OverlapToplevelAdd {
+                surface,
+                toplevel,
+                logical_rect,
+            } => {
+                if let Some(id) = surface_ids.get(&surface.id()) {
+                    events.push((
+                        Some(id.inner()),
+                        iced_runtime::core::Event::PlatformSpecific(
+                            PlatformSpecific::Wayland(
+                                wayland::Event::OverlapNotify(
+                                    OverlapNotifyEvent::OverlapToplevelAdd {
+                                        toplevel,
+                                        logical_rect,
+                                    },
+                                ),
+                            ),
+                        ),
+                    ))
+                }
+            }
+            SctkEvent::OverlapToplevelRemove { surface, toplevel } => {
+                if let Some(id) = surface_ids.get(&surface.id()) {
+                    events.push((
+                        Some(id.inner()),
+                        iced_runtime::core::Event::PlatformSpecific(
+                            PlatformSpecific::Wayland(
+                                wayland::Event::OverlapNotify(
+                                    OverlapNotifyEvent::OverlapToplevelRemove {
+                                        toplevel,
+                                    },
+                                ),
+                            ),
+                        ),
+                    ))
+                }
+            }
+            SctkEvent::OverlapLayerAdd {
+                surface,
+                identifier,
+                exclusive,
+                layer,
+                logical_rect,
+            } => {
+                if let Some(id) = surface_ids.get(&surface.id()) {
+                    events.push((
+                        Some(id.inner()),
+                        iced_runtime::core::Event::PlatformSpecific(
+                            PlatformSpecific::Wayland(
+                                wayland::Event::OverlapNotify(
+                                    OverlapNotifyEvent::OverlapLayerAdd {
+                                        identifier,
+                                        exclusive,
+                                        layer,
+                                        logical_rect,
+                                    },
+                                ),
+                            ),
+                        ),
+                    ))
+                }
+            }
+            SctkEvent::OverlapLayerRemove {
+                surface,
+                identifier,
+            } => {
+                if let Some(id) = surface_ids.get(&surface.id()) {
+                    events.push((
+                        Some(id.inner()),
+                        iced_runtime::core::Event::PlatformSpecific(
+                            PlatformSpecific::Wayland(
+                                wayland::Event::OverlapNotify(
+                                    OverlapNotifyEvent::OverlapLayerRemove {
+                                        identifier,
+                                    },
+                                ),
+                            ),
+                        ),
+                    ))
+                }
             }
         }
     }
