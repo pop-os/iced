@@ -278,7 +278,7 @@ tiny-skia = { version = "0.11", default-features = false, features = [
     "std",
     "simd",
 ] }
-cctk = { git = "https://github.com/pop-os/cosmic-protocols", package = "cosmic-client-toolkit", rev = "27d70b6" }
+cctk = { git = "https://github.com/pop-os/cosmic-protocols", package = "cosmic-client-toolkit", rev = "d218c76" }
 softbuffer = { git = "https://github.com/pop-os/softbuffer", tag = "cosmic-4.0" }
 syntect = "5.2"
 tokio = "1.0"
