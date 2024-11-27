@@ -17,7 +17,7 @@ use dnd::DndSurface;
 use iced_debug::core::theme;
 use iced_futures::{
     core::{
-        Clipboard as _,
+        Clipboard as _, Clipboard as _, Size,
         event::{
             PlatformSpecific,
             wayland::{
@@ -844,9 +844,12 @@ impl SctkEvent {
                     surface,
                     first,
                 ) => {
-                    if let Some(w) = surface_ids
-                        .get(&surface.id())
-                        .and_then(|id| window_manager.get_mut(id.inner()))
+                    if let Some((id, w)) =
+                        surface_ids.get(&surface.id()).and_then(|id| {
+                            window_manager
+                                .get_mut(id.inner())
+                                .map(|v| (id.inner(), v))
+                        })
                     {
                         let scale = w.state.scale_factor();
                         let p_w = (configure.new_size.0.max(1) as f64 * scale)
@@ -860,6 +863,26 @@ impl SctkEvent {
                                 p_w, p_h,
                             )),
                         );
+                        if first {
+                            events.push((
+                                Some(id),
+                                iced_runtime::core::Event::Window(
+                                    window::Event::Resized(
+                                        w.state.logical_size(),
+                                    ),
+                                ),
+                            ))
+                        } else {
+                            events.push((
+                                Some(id),
+                                iced_runtime::core::Event::Window(
+                                    window::Event::Opened {
+                                        size: w.state.logical_size(),
+                                        position: Default::default(),
+                                    },
+                                ),
+                            ))
+                        }
                     }
                 }
             },
@@ -1054,7 +1077,34 @@ impl SctkEvent {
 
                         let _ = user_interfaces.insert(surface_id, ui);
                     }
-                    PopupEventVariant::Configure(_, _, _) => {} // TODO
+                    PopupEventVariant::Configure(configure, surface, first) => {
+                        let size = Size::new(
+                            configure.width as f32,
+                            configure.height as f32,
+                        );
+                        if let Some(id) =
+                            surface_ids.get(&surface.id()).map(|id| id.inner())
+                        {
+                            if first {
+                                events.push((
+                                    Some(id),
+                                    iced_runtime::core::Event::Window(
+                                        window::Event::Resized(size),
+                                    ),
+                                ))
+                            } else {
+                                events.push((
+                                    Some(id),
+                                    iced_runtime::core::Event::Window(
+                                        window::Event::Opened {
+                                            size: size,
+                                            position: Default::default(),
+                                        },
+                                    ),
+                                ))
+                            }
+                        }
+                    } // TODO
                     PopupEventVariant::RepositionionedPopup { token: _ } => {}
                     PopupEventVariant::Size(_, _) => {}
                     PopupEventVariant::ScaleFactorChanged(..) => {}
@@ -1202,7 +1252,38 @@ impl SctkEvent {
                 //     ),
                 // );
             }
-            SctkEvent::SessionLockSurfaceConfigure { .. } => {}
+            SctkEvent::SessionLockSurfaceConfigure {
+                surface,
+                configure,
+                first,
+            } => {
+                let size = Size::new(
+                    configure.new_size.0 as f32,
+                    configure.new_size.1 as f32,
+                );
+                if let Some(id) =
+                    surface_ids.get(&surface.id()).map(|id| id.inner())
+                {
+                    if first {
+                        events.push((
+                            Some(id),
+                            iced_runtime::core::Event::Window(
+                                window::Event::Resized(size),
+                            ),
+                        ))
+                    } else {
+                        events.push((
+                            Some(id),
+                            iced_runtime::core::Event::Window(
+                                window::Event::Opened {
+                                    size: size,
+                                    position: Default::default(),
+                                },
+                            ),
+                        ))
+                    }
+                }
+            }
             SctkEvent::SessionLockSurfaceDone { surface } => {
                 if let Some(id) = surface_ids.remove(&surface.id()) {
                     _ = window_manager.remove(id.inner());
