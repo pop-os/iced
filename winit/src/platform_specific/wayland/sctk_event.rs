@@ -140,6 +140,7 @@ pub enum SctkEvent {
     },
     OverlapLayerAdd {
         surface: WlSurface,
+        namespace: String,
         identifier: String,
         exclusive: u32,
         layer: Option<Layer>,
@@ -1251,6 +1252,7 @@ impl SctkEvent {
             }
             SctkEvent::OverlapLayerAdd {
                 surface,
+                namespace,
                 identifier,
                 exclusive,
                 layer,
@@ -1264,6 +1266,7 @@ impl SctkEvent {
                                 wayland::Event::OverlapNotify(
                                     OverlapNotifyEvent::OverlapLayerAdd {
                                         identifier,
+                                        namespace,
                                         exclusive,
                                         layer,
                                         logical_rect,
