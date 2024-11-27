@@ -1,8 +1,9 @@
 use env_logger::Env;
 use iced::alignment::{self, Alignment};
 use iced::event::{self, listen_raw, Event};
-use iced::platform_specific::shell::commands::layer_surface::{
-    get_layer_surface, Anchor,
+use iced::platform_specific::shell::commands::{
+    layer_surface::{get_layer_surface, Anchor},
+    overlap_notify::overlap_notify,
 };
 use iced::theme::{self, Theme};
 use iced::widget::{
@@ -24,11 +25,11 @@ use std::fmt::Debug;
 static INPUT_ID: Lazy<text_input::Id> = Lazy::new(|| text_input::Id::unique());
 
 pub fn main() -> iced::Result {
-    let env = Env::default()
-        .filter_or("MY_LOG_LEVEL", "info")
-        .write_style_or("MY_LOG_STYLE", "always");
+    // let env = Env::default()
+    //     .filter_or("MY_LOG_LEVEL", "info")
+    //     .write_style_or("MY_LOG_STYLE", "always");
 
-    env_logger::init_from_env(env);
+    // env_logger::init_from_env(env);
     iced::daemon(Todos::title, Todos::update, Todos::view)
         .subscription(Todos::subscription)
         .font(include_bytes!("../fonts/icons.ttf").as_slice())
@@ -89,17 +90,20 @@ impl Debug for Message {
 
 impl Todos {
     fn new() -> (Todos, Task<Message>) {
+        let id = window::Id::unique();
         (
             Todos::Loading,
             Task::batch(vec![
                 Task::perform(SavedState::load(), Message::Loaded),
                 get_layer_surface(iced::platform_specific::runtime::wayland::layer_surface::SctkLayerSurfaceSettings {
+                    id: id.clone(),
                     size: Some((None, Some(500))),
                     pointer_interactivity: true,
                     keyboard_interactivity: cctk::sctk::shell::wlr_layer::KeyboardInteractivity::OnDemand,
                     anchor: Anchor::LEFT.union(Anchor::RIGHT).union(Anchor::TOP),
                     ..Default::default()
                 }),
+                overlap_notify(id, true)
             ]),
         )
     }
@@ -311,12 +315,22 @@ impl Todos {
                 }),
                 (
                     Event::PlatformSpecific(event::PlatformSpecific::Wayland(
-                        event::wayland::Event::Window(e),
+                        event::wayland::Event::Layer(e, ..),
                     )),
                     _,
                     _,
                 ) => {
-                    dbg!(&e);
+                    dbg!(e);
+                    None
+                }
+                (
+                    Event::PlatformSpecific(event::PlatformSpecific::Wayland(
+                        event::wayland::Event::OverlapNotify(e),
+                    )),
+                    _,
+                    _,
+                ) => {
+                    dbg!(e);
                     None
                 }
                 _ => None,

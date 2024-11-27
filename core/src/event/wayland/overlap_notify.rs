@@ -11,6 +11,7 @@ pub enum OverlapNotifyEvent {
     },
     OverlapLayerAdd {
         identifier: String,
+        namespace: String,
         exclusive: u32,
         layer: Option<Layer>,
         logical_rect: crate::Rectangle,

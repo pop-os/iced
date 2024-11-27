@@ -82,13 +82,14 @@ impl Dispatch<ZcosmicOverlapNotificationV1, OverlapNotificationV1, SctkState>
             }
             zcosmic_overlap_notification_v1::Event::LayerEnter {
                 identifier,
+                namespace,
                 exclusive,
                 layer,
                 x,
                 y,
                 width,
                 height,
-            } => SctkEvent::OverlapLayerAdd { surface, identifier, exclusive, layer: match layer {
+            } => SctkEvent::OverlapLayerAdd { surface, namespace, identifier, exclusive, layer: match layer {
                 wayland_client::WEnum::Value(v) => match v {
                     cctk::sctk::reexports::protocols_wlr::layer_shell::v1::client::zwlr_layer_shell_v1::Layer::Background => Some(Layer::Background),
                     cctk::sctk::reexports::protocols_wlr::layer_shell::v1::client::zwlr_layer_shell_v1::Layer::Bottom => Some(Layer::Bottom),
