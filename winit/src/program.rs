@@ -5,6 +5,7 @@ mod state;
 mod window_manager;
 
 pub use runtime::{default, Appearance, DefaultStyle};
+use winit::dpi::PhysicalSize;
 use winit::event_loop::OwnedDisplayHandle;
 
 use crate::conversion;
@@ -193,7 +194,7 @@ where
     };
 
     let (program, task) = runtime.enter(|| P::new(flags));
-    let is_daemon = window_settings.is_none();
+    let is_daemon = window_settings.is_none() || settings.is_daemon;
 
     let task = if let Some(window_settings) = window_settings {
         let mut task = Some(task);
@@ -314,7 +315,7 @@ where
             #[cfg(target_os = "windows")]
             let is_move_or_resize = matches!(
                 event,
-                winit::event::WindowEvent::Resized(_)
+                winit::event::WindowEvent::SurfaceResized(_)
                     | winit::event::WindowEvent::Moved(_)
             );
 
@@ -330,12 +331,7 @@ where
             #[cfg(target_os = "windows")]
             {
                 if is_move_or_resize {
-                    self.process_event(
-                        event_loop,
-                        Event::EventLoopAwakened(
-                            winit::event::Event::AboutToWait,
-                        ),
-                    );
+                    self.process_event(event_loop, Some(Event::AboutToWait));
                 }
             }
         }
@@ -801,6 +797,7 @@ async fn run_instance<'a, P, C>(
         let Some(event) = event else {
             break;
         };
+        let mut rebuild_a11y_tree = false;
 
         match event {
             Event::StartDnd => {
@@ -1096,7 +1093,8 @@ async fn run_instance<'a, P, C>(
                 is_window_opening = false;
             }
             Event::UserEvent(action) => {
-                run_action(
+                rebuild_a11y_tree = true;
+                let exited = run_action(
                     action,
                     &program,
                     &mut compositor,
@@ -1111,6 +1109,9 @@ async fn run_instance<'a, P, C>(
                     &mut is_window_opening,
                     &mut platform_specific_handler,
                 );
+                if exited {
+                    runtime.track(None.into_iter());
+                }
                 actions += 1;
             }
             Event::NewEvents(
@@ -1126,6 +1127,18 @@ async fn run_instance<'a, P, C>(
                 }
             }
             Event::Winit(window_id, event) => {
+                #[cfg(feature = "a11y")]
+                {
+                    if let Some((id, window)) =
+                        window_manager.get_mut_alias(window_id)
+                    {
+                        if let Some(Some((_, adapter))) =
+                            a11y_enabled.then(|| adapters.get_mut(&id))
+                        {
+                            adapter.process_event(window.raw.as_ref(), &event);
+                        };
+                    }
+                }
                 match event {
                     event::WindowEvent::RedrawRequested => {
                         let Some((id, window)) =
@@ -1235,99 +1248,6 @@ async fn run_instance<'a, P, C>(
                                 .remove(&id)
                                 .expect("Remove user interface")
                                 .relayout(logical_size, &mut window.renderer);
-
-                            #[cfg(feature = "a11y")]
-                            {
-                                use iced_accessibility::{
-                                    accesskit::{
-                                        NodeBuilder, NodeId, Role, Tree,
-                                        TreeUpdate,
-                                    },
-                                    A11yId, A11yNode, A11yTree,
-                                };
-                                if let Some(Some((a11y_id, adapter))) =
-                                    a11y_enabled.then(|| adapters.get_mut(&id))
-                                {
-                                    // TODO cleanup duplication
-                                    let child_tree =
-                                        ui.a11y_nodes(window.state.cursor());
-                                    let mut root =
-                                        NodeBuilder::new(Role::Window);
-                                    root.set_name(
-                                        window.state.title.to_string(),
-                                    );
-                                    let window_tree =
-                                        A11yTree::node_with_child_tree(
-                                            A11yNode::new(root, *a11y_id),
-                                            child_tree,
-                                        );
-                                    let tree = Tree::new(NodeId(*a11y_id));
-
-                                    let focus =
-                                        Arc::new(std::sync::Mutex::new(None));
-                                    let focus_clone = focus.clone();
-                                    let operation: Box<dyn Operation<()>> =
-                                    Box::new(operation::map(
-                                        Box::new(
-                                            operation::focusable::find_focused(
-                                            ),
-                                        ),
-                                        move |id| {
-                                            let mut guard = focus.lock().unwrap();
-                                            _ = guard.replace(id);
-                                        },
-                                    ));
-                                    let mut current_operation = Some(operation);
-
-                                    while let Some(mut operation) =
-                                        current_operation.take()
-                                    {
-                                        ui.operate(
-                                            &window.renderer,
-                                            operation.as_mut(),
-                                        );
-
-                                        match operation.finish() {
-                                            operation::Outcome::None => {}
-                                            operation::Outcome::Some(()) => {
-                                                break;
-                                            }
-                                            operation::Outcome::Chain(next) => {
-                                                current_operation = Some(next);
-                                            }
-                                        }
-                                    }
-                                    let mut guard = focus_clone.lock().unwrap();
-                                    let focus = guard
-                                        .take()
-                                        .map(|id| A11yId::Widget(id));
-                                    tracing::debug!(
-                                        "focus: {:?}\ntree root: {:?}\n children: {:?}",
-                                        &focus,
-                                        window_tree
-                                            .root()
-                                            .iter()
-                                            .map(|n| (n.node().role(), n.id()))
-                                            .collect::<Vec<_>>(),
-                                        window_tree
-                                            .children()
-                                            .iter()
-                                            .map(|n| (n.node().role(), n.id()))
-                                            .collect::<Vec<_>>()
-                                    );
-                                    let focus = focus
-                                        .filter(|f_id| {
-                                            window_tree.contains(f_id)
-                                        })
-                                        .map(|id| id.into())
-                                        .unwrap_or_else(|| tree.root);
-                                    adapter.update_if_active(|| TreeUpdate {
-                                        nodes: window_tree.into(),
-                                        tree: Some(tree),
-                                        focus,
-                                    });
-                                }
-                            }
 
                             let _ = user_interfaces.insert(id, ui);
                             debug.layout_finished();
@@ -1442,6 +1362,7 @@ async fn run_instance<'a, P, C>(
                             && !is_window_opening
                             && window_manager.is_empty()
                         {
+                            runtime.track(None.into_iter());
                             control_sender
                                 .start_send(Control::Exit)
                                 .expect("Send control action");
@@ -1469,7 +1390,7 @@ async fn run_instance<'a, P, C>(
                             winit::event::WindowEvent::CloseRequested
                         ) && window.exit_on_close_request
                         {
-                            run_action(
+                            _ = run_action(
                                 Action::Window(runtime::window::Action::Close(
                                     id,
                                 )),
@@ -1553,15 +1474,12 @@ async fn run_instance<'a, P, C>(
                     if let Some(requested_size) =
                         clipboard.requested_logical_size.lock().unwrap().take()
                     {
-                        let requested_physical_size =
-                            winit::dpi::PhysicalSize::new(
-                                (requested_size.width as f64
-                                    * window.state.scale_factor())
-                                .ceil() as u32,
-                                (requested_size.height as f64
-                                    * window.state.scale_factor())
-                                .ceil() as u32,
+                        let requested_physical_size: PhysicalSize<u32> =
+                            winit::dpi::PhysicalSize::from_logical(
+                                requested_size.cast::<u32>(),
+                                window.state.scale_factor(),
                             );
+
                         let physical_size = window.state.physical_size();
                         if requested_physical_size.width != physical_size.width
                             || requested_physical_size.height
@@ -1572,8 +1490,8 @@ async fn run_instance<'a, P, C>(
                             window.resize_enabled = true;
                             resized = true;
                             needs_redraw = true;
-                            let s = winit::dpi::Size::Physical(
-                                requested_physical_size,
+                            let s = winit::dpi::Size::Logical(
+                                requested_size.cast(),
                             );
                             _ = window.raw.request_surface_size(s);
                             window.raw.set_min_surface_size(Some(s));
@@ -1656,6 +1574,7 @@ async fn run_instance<'a, P, C>(
 
                         window.request_redraw();
                     }
+                    rebuild_a11y_tree = true;
 
                     user_interfaces = ManuallyDrop::new(build_user_interfaces(
                         &program,
@@ -1805,6 +1724,7 @@ async fn run_instance<'a, P, C>(
             }
             #[cfg(feature = "a11y")]
             Event::Accessibility(id, e) => {
+                rebuild_a11y_tree = true;
                 match e.action {
                     iced_accessibility::accesskit::Action::Focus => {
                         // TODO send a command for this
@@ -1834,6 +1754,89 @@ async fn run_instance<'a, P, C>(
             }
             _ => {
                 // log ignored events?
+            }
+        }
+        #[cfg(feature = "a11y")]
+        {
+            use iced_accessibility::{
+                accesskit::{NodeBuilder, NodeId, Role, Tree, TreeUpdate},
+                A11yId, A11yNode, A11yTree,
+            };
+            if !a11y_enabled || !rebuild_a11y_tree {
+                continue;
+            }
+
+            for id in window_manager.ids() {
+                let Some((a11y_id, adapter)) = adapters.get_mut(&id) else {
+                    continue;
+                };
+                let Some(window) = window_manager.get(id) else {
+                    continue;
+                };
+                let interface =
+                    user_interfaces.get_mut(&id).expect("Get user interface");
+
+                // TODO cleanup duplication
+                let child_tree = interface.a11y_nodes(window.state.cursor());
+                let mut root = NodeBuilder::new(Role::Window);
+                root.set_name(window.state.title.to_string());
+                let window_tree = A11yTree::node_with_child_tree(
+                    A11yNode::new(root, *a11y_id),
+                    child_tree,
+                );
+                let tree = Tree::new(NodeId(*a11y_id));
+
+                let focus = Arc::new(std::sync::Mutex::new(None));
+                let focus_clone = focus.clone();
+                let operation: Box<dyn Operation<()>> =
+                    Box::new(operation::map(
+                        Box::new(operation::focusable::find_focused()),
+                        move |id| {
+                            let mut guard = focus.lock().unwrap();
+                            _ = guard.replace(id);
+                        },
+                    ));
+                let mut current_operation = Some(operation);
+
+                while let Some(mut operation) = current_operation.take() {
+                    interface.operate(&window.renderer, operation.as_mut());
+
+                    match operation.finish() {
+                        operation::Outcome::None => {}
+                        operation::Outcome::Some(()) => {
+                            break;
+                        }
+                        operation::Outcome::Chain(next) => {
+                            current_operation = Some(next);
+                        }
+                    }
+                }
+                let mut guard = focus_clone.lock().unwrap();
+                let focus = guard
+                    .take()
+                    .map(|id| A11yId::Widget(id))
+                    .filter(|f_id| window_tree.contains(f_id));
+                tracing::debug!(
+                    "tree root: {:?}\nchildren: {:?}\nfocus: {:?}\n",
+                    window_tree
+                        .root()
+                        .iter()
+                        .map(|n| (n.node(), n.id()))
+                        .collect::<Vec<_>>(),
+                    window_tree
+                        .children()
+                        .iter()
+                        .map(|n| (n.node(), n.id()))
+                        .collect::<Vec<_>>(),
+                    &focus,
+                );
+                let focus =
+                    focus.map(|id| id.into()).unwrap_or_else(|| tree.root);
+                adapter.update_if_active(|| TreeUpdate {
+                    nodes: window_tree.into(),
+                    tree: Some(tree),
+                    focus,
+                });
             }
         }
     }
@@ -1919,7 +1922,8 @@ fn run_action<P, C>(
     ui_caches: &mut FxHashMap<window::Id, user_interface::Cache>,
     is_window_opening: &mut bool,
     platform_specific: &mut crate::platform_specific::PlatformSpecific,
-) where
+) -> bool
+where
     P: Program,
     C: Compositor<Renderer = P::Renderer> + 'static,
     P::Theme: DefaultStyle,
@@ -2202,6 +2206,16 @@ fn run_action<P, C>(
                     let _ = window.raw.set_cursor_hittest(true);
                 }
             }
+            window::Action::EnableBlur(id) => {
+                if let Some(window) = window_manager.get_mut(id) {
+                    window.raw.set_blur(true);
+                }
+            }
+            window::Action::DisableBlur(id) => {
+                if let Some(window) = window_manager.get_mut(id) {
+                    window.raw.set_blur(false);
+                }
+            }
         },
         Action::System(action) => match action {
             system::Action::QueryInformation(_channel) => {
@@ -2247,6 +2261,7 @@ fn run_action<P, C>(
             control_sender
                 .start_send(Control::Exit)
                 .expect("Send control action");
+            return true;
         }
         Action::Dnd(a) => match a {
             iced_runtime::dnd::DndAction::RegisterDndDestination {
@@ -2285,6 +2300,7 @@ fn run_action<P, C>(
             platform_specific.send_action(a);
         }
     }
+    false
 }
 
 /// Build the user interface for every window.

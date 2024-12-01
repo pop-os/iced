@@ -376,9 +376,9 @@ pub struct Scrollbar {
 impl Default for Scrollbar {
     fn default() -> Self {
         Self {
-            width: 10.0,
+            width: 8.0,
             margin: 0.0,
-            scroller_width: 10.0,
+            scroller_width: 8.0,
             alignment: Anchor::Start,
             spacing: None,
         }
@@ -763,10 +763,40 @@ where
 
             let translation =
                 state.translation(self.direction, bounds, content_bounds);
+            let mut c_event = match event.clone() {
+                Event::Dnd(dnd::DndEvent::Offer(
+                    id,
+                    dnd::OfferEvent::Enter {
+                        x,
+                        y,
+                        mime_types,
+                        surface,
+                    },
+                )) => Event::Dnd(dnd::DndEvent::Offer(
+                    id.clone(),
+                    dnd::OfferEvent::Enter {
+                        x: x + translation.x as f64,
+                        y: y + translation.y as f64,
+                        mime_types: mime_types.clone(),
+                        surface: surface.clone(),
+                    },
+                )),
+                Event::Dnd(dnd::DndEvent::Offer(
+                    id,
+                    dnd::OfferEvent::Motion { x, y },
+                )) => Event::Dnd(dnd::DndEvent::Offer(
+                    id.clone(),
+                    dnd::OfferEvent::Motion {
+                        x: x + translation.x as f64,
+                        y: y + translation.y as f64,
+                    },
+                )),
+                e => e,
+            };
 
             self.content.as_widget_mut().on_event(
                 &mut tree.children[0],
-                event.clone(),
+                c_event,
                 content,
                 cursor,
                 renderer,
