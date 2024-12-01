@@ -468,8 +468,10 @@ fn update<Message: Clone, Theme, Renderer>(
                 );
                 state.last_click = Some(click);
                 if let mouse::click::Kind::Double = click.kind() {
+                    state.drag_initiated = None;
                     shell.publish(message.clone());
                     shell.capture_event();
+
                     return;
                 }
             }
