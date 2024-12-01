@@ -464,6 +464,7 @@ fn update<Message: Clone, Theme, Renderer>(
                 state.last_click = Some(click);
                 if let mouse::click::Kind::Double = click.kind() {
                     shell.publish(message.clone());
+                    state.drag_initiated = None;
                     return event::Status::Captured;
                 }
             }
