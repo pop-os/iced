@@ -580,7 +580,6 @@ pub(crate) fn take_subsurfaces() -> Vec<SubsurfaceInfo> {
 
 #[must_use]
 pub struct Subsurface {
-    buffer_size: Size<f32>,
     buffer: SubsurfaceBuffer,
     width: Length,
     height: Length,
@@ -603,10 +602,12 @@ where
         _renderer: &Renderer,
         limits: &layout::Limits,
     ) -> layout::Node {
-        let raw_size =
-            limits.resolve(self.width, self.height, self.buffer_size);
+        let buffer_size =
+            Size::new(self.buffer.width() as f32, self.buffer.height() as f32);
 
-        let full_size = self.content_fit.fit(self.buffer_size, raw_size);
+        let raw_size = limits.resolve(self.width, self.height, buffer_size);
+
+        let full_size = self.content_fit.fit(buffer_size, raw_size);
 
         let final_size = Size {
             width: match self.width {
@@ -645,13 +646,8 @@ where
 }
 
 impl Subsurface {
-    pub fn new(
-        buffer_width: u32,
-        buffer_height: u32,
-        buffer: SubsurfaceBuffer,
-    ) -> Self {
+    pub fn new(buffer: SubsurfaceBuffer) -> Self {
         Self {
-            buffer_size: Size::new(buffer_width as f32, buffer_height as f32),
             buffer,
             // Matches defaults of image widget
             width: Length::Shrink,
