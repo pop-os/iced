@@ -158,6 +158,20 @@ impl SubsurfaceBuffer {
         (subsurface_buffer, SubsurfaceBufferRelease(receiver))
     }
 
+    pub fn width(&self) -> i32 {
+        match &*self.0.source {
+            BufferSource::Dma(dma) => dma.width,
+            BufferSource::Shm(shm) => shm.width,
+        }
+    }
+
+    pub fn height(&self) -> i32 {
+        match &*self.0.source {
+            BufferSource::Dma(dma) => dma.height,
+            BufferSource::Shm(shm) => shm.height,
+        }
+    }
+
     // Behavior of `wl_buffer::released` is undefined if attached to multiple surfaces. To allow
     // things like that, create a new `wl_buffer` each time.
     fn create_buffer(
