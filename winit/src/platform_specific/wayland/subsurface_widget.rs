@@ -29,6 +29,7 @@ use cctk::sctk::{
         protocol::{
             wl_buffer::{self, WlBuffer},
             wl_compositor::WlCompositor,
+            wl_output,
             wl_shm::{self, WlShm},
             wl_shm_pool::{self, WlShmPool},
             wl_subcompositor::WlSubcompositor,
@@ -376,6 +377,7 @@ impl SubsurfaceState {
             wp_alpha_modifier_surface,
             wl_buffer: None,
             bounds: None,
+            transform: wl_output::Transform::Normal,
         }
     }
 
@@ -475,6 +477,7 @@ pub(crate) struct SubsurfaceInstance {
     wp_alpha_modifier_surface: Option<WpAlphaModifierSurfaceV1>,
     wl_buffer: Option<WlBuffer>,
     bounds: Option<Rectangle<f32>>,
+    transform: wl_output::Transform,
 }
 
 impl SubsurfaceInstance {
@@ -528,11 +531,15 @@ impl SubsurfaceInstance {
                 info.bounds.height as i32,
             );
         }
+        let transform_changed = self.transform != info.transform;
+        if transform_changed {
+            self.wl_surface.set_buffer_transform(info.transform);
+        }
         if buffer_changed {
             self.wl_surface.attach(Some(&buffer), 0, 0);
             self.wl_surface.damage(0, 0, i32::MAX, i32::MAX);
         }
-        if buffer_changed || bounds_changed {
+        if buffer_changed || bounds_changed || transform_changed {
             _ = self.wl_surface.frame(&state.qh, self.wl_surface.clone());
             self.wl_surface.commit();
         }
@@ -545,6 +552,7 @@ impl SubsurfaceInstance {
 
         self.wl_buffer = Some(buffer);
         self.bounds = Some(info.bounds);
+        self.transform = info.transform;
     }
 
     pub fn unmap(&self) {
@@ -568,6 +576,7 @@ pub(crate) struct SubsurfaceInfo {
     pub buffer: SubsurfaceBuffer,
     pub bounds: Rectangle<f32>,
     pub alpha: f32,
+    pub transform: wl_output::Transform,
 }
 
 thread_local! {
@@ -585,6 +594,7 @@ pub struct Subsurface {
     height: Length,
     content_fit: ContentFit,
     alpha: f32,
+    transform: wl_output::Transform,
 }
 
 impl<Message, Theme, Renderer> Widget<Message, Theme, Renderer> for Subsurface
@@ -602,9 +612,18 @@ where
         _renderer: &Renderer,
         limits: &layout::Limits,
     ) -> layout::Node {
-        let buffer_size =
-            Size::new(self.buffer.width() as f32, self.buffer.height() as f32);
+        let (width, height) = match self.transform {
+            wl_output::Transform::_90
+            | wl_output::Transform::_270
+            | wl_output::Transform::Flipped90
+            | wl_output::Transform::Flipped270 => {
+                (self.buffer.height(), self.buffer.width())
+            }
+            _ => (self.buffer.width(), self.buffer.height()),
+        };
+        let buffer_size = Size::new(width as f32, height as f32);
 
+        // TODO apply transform
         let raw_size = limits.resolve(self.width, self.height, buffer_size);
 
         let full_size = self.content_fit.fit(buffer_size, raw_size);
@@ -640,6 +659,7 @@ where
                 buffer: self.buffer.clone(),
                 bounds: layout.bounds(),
                 alpha: self.alpha,
+                transform: self.transform,
             })
         });
     }
@@ -654,6 +674,7 @@ impl Subsurface {
             height: Length::Shrink,
             content_fit: ContentFit::Contain,
             alpha: 1.,
+            transform: wl_output::Transform::Normal,
         }
     }
 
@@ -674,6 +695,11 @@ impl Subsurface {
 
     pub fn alpha(mut self, alpha: f32) -> Self {
         self.alpha = alpha;
+        self
+    }
+
+    pub fn transform(mut self, transform: wl_output::Transform) -> Self {
+        self.transform = transform;
         self
     }
 }
