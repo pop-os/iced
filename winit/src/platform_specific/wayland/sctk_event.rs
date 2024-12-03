@@ -666,16 +666,14 @@ impl SctkEvent {
                 LayerSurfaceEventVariant::Done => {
                     if let Some(id) = surface_ids.remove(&surface.id()) {
                         if let Some(w) = window_manager.remove(id.inner()) {
+                            clipboard.register_dnd_destination(
+                                DndSurface(Arc::new(Box::new(w.raw.clone()))),
+                                Vec::new(),
+                            );
                             if clipboard
                                 .window_id()
                                 .is_some_and(|id| w.raw.id() == id)
                             {
-                                clipboard.register_dnd_destination(
-                                    DndSurface(Arc::new(Box::new(
-                                        w.raw.clone(),
-                                    ))),
-                                    Vec::new(),
-                                );
                                 *clipboard = Clipboard::unconnected();
                             }
                         }
