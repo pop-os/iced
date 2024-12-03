@@ -245,6 +245,7 @@ where
         sender: mpsc::UnboundedSender<Event<Message>>,
         receiver: mpsc::UnboundedReceiver<Control>,
         error: Option<Error>,
+        proxy: Proxy<Message>,
 
         #[cfg(target_arch = "wasm32")]
         is_booted: std::rc::Rc<std::cell::RefCell<bool>>,
@@ -274,6 +275,7 @@ where
         sender: event_sender,
         receiver: control_receiver,
         error: None,
+        proxy: proxy.clone(),
 
         #[cfg(target_arch = "wasm32")]
         is_booted: std::rc::Rc::new(std::cell::RefCell::new(false)),
@@ -378,6 +380,7 @@ where
                 self.canvas = window.canvas();
             }
 
+            let proxy = self.proxy.raw.clone();
             let finish_boot = async move {
                 let mut compositor =
                     C::new(graphics_settings, window.clone()).await?;
@@ -390,6 +393,13 @@ where
                     .send(Boot {
                         compositor,
                         is_wayland,
+                        clipboard: Clipboard::connect(
+                            window,
+                            crate::clipboard::ControlSender {
+                                sender: control_sender,
+                                proxy,
+                            },
+                        ),
                     })
                     .ok()
                     .expect("Send boot event");
@@ -636,6 +646,7 @@ where
 struct Boot<C> {
     compositor: C,
     is_wayland: bool,
+    clipboard: Clipboard,
 }
 
 pub(crate) enum Event<Message: 'static> {
@@ -702,6 +713,7 @@ async fn run_instance<'a, P, C>(
     let Boot {
         mut compositor,
         is_wayland,
+        mut clipboard,
     } = boot.await.expect("Receive boot");
 
     let mut platform_specific_handler =
@@ -781,7 +793,6 @@ async fn run_instance<'a, P, C>(
             rustc_hash::FxBuildHasher,
         >,
     > = ManuallyDrop::new(FxHashMap::default());
-    let mut clipboard = Clipboard::unconnected();
 
     let mut cur_dnd_surface: Option<window::Id> = None;
 
