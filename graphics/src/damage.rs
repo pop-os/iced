@@ -52,8 +52,7 @@ pub fn group(mut damage: Vec<Rectangle>, bounds: Rectangle) -> Vec<Rectangle> {
     damage.sort_by(|a, b| {
         a.center()
             .distance(Point::ORIGIN)
-            .partial_cmp(&b.center().distance(Point::ORIGIN))
-            .unwrap_or(Ordering::Equal)
+            .total_cmp(&b.center().distance(Point::ORIGIN))
     });
 
     let mut output = Vec::new();
