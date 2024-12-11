@@ -70,7 +70,7 @@ impl Linear {
             let (Ok(index) | Err(index)) =
                 self.stops.binary_search_by(|stop| match stop {
                     None => Ordering::Greater,
-                    Some(stop) => stop.offset.partial_cmp(&offset).unwrap(),
+                    Some(stop) => stop.offset.total_cmp(&offset),
                 });
 
             if index < 8 {
