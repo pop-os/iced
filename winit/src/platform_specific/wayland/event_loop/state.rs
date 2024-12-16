@@ -14,8 +14,13 @@ use crate::{
         Event,
     },
     program::Control,
+    subsurface_widget::SubsurfaceState,
+    wayland::SubsurfaceInstance,
 };
-use iced_futures::futures::channel::{mpsc, oneshot};
+use iced_futures::{
+    core::{Rectangle, Size},
+    futures::channel::{mpsc, oneshot},
+};
 use raw_window_handle::HasWindowHandle;
 use std::{
     collections::{HashMap, HashSet},
@@ -82,9 +87,7 @@ use iced_runtime::{
     platform_specific::{
         self,
         wayland::{
-            layer_surface::{IcedMargin, IcedOutput, SctkLayerSurfaceSettings},
-            popup::SctkPopupSettings,
-            Action,
+            layer_surface::{IcedMargin, IcedOutput, SctkLayerSurfaceSettings}, popup::SctkPopupSettings, subsurface::{self, SctkSubsurfaceSettings}, Action
         },
     },
 };
@@ -183,6 +186,10 @@ pub enum CommonSurface {
     Popup(Popup, Arc<XdgPositioner>),
     Layer(LayerSurface),
     Lock(SessionLockSurface),
+    Subsurface {
+        wl_surface: WlSurface,
+        wl_subsurface: WlSubsurface,
+    },
 }
 
 impl CommonSurface {
@@ -193,6 +200,7 @@ impl CommonSurface {
             CommonSurface::Lock(session_lock_surface) => {
                 session_lock_surface.wl_surface()
             }
+            CommonSurface::Subsurface { ref wl_surface, .. } => wl_surface,
         };
         wl_surface
     }
@@ -263,6 +271,13 @@ pub struct SctkLockSurface {
     pub(crate) wp_fractional_scale: Option<WpFractionalScaleV1>,
     pub(crate) wp_viewport: Option<WpViewport>,
     pub(crate) common: Arc<Mutex<Common>>,
+}
+
+#[derive(Debug)]
+pub struct SctkSubsurface {
+    pub(crate) common: Arc<Mutex<Common>>,
+    pub(crate) id: core::window::Id,
+    pub(crate) instance: SubsurfaceInstance,
 }
 
 #[derive(Debug)]
@@ -347,6 +362,7 @@ pub struct SctkState {
     pub(crate) windows: Vec<SctkWindow>,
     pub(crate) layer_surfaces: Vec<SctkLayerSurface>,
     pub(crate) popups: Vec<SctkPopup>,
+    pub(crate) subsurfaces: Vec<SctkSubsurface>,
     pub(crate) lock_surfaces: Vec<SctkLockSurface>,
     pub(crate) _kbd_focus: Option<WlSurface>,
     pub(crate) touch_points: HashMap<touch::Finger, (WlSurface, Point)>,
@@ -390,6 +406,7 @@ pub struct SctkState {
     pub(crate) overlap_notify: Option<OverlapNotifyV1>,
     pub(crate) toplevel_info: Option<ToplevelInfoState>,
     pub(crate) toplevel_manager: Option<ToplevelManagerState>,
+    pub(crate) subsurface_state: Option<SubsurfaceState>,
 
     pub(crate) activation_token_ctr: u32,
     pub(crate) token_senders: HashMap<u32, oneshot::Sender<Option<String>>>,
@@ -431,6 +448,22 @@ pub enum LayerSurfaceCreationError {
     LayerSurfaceCreationFailed(GlobalError),
 }
 
+/// An error that occurred while running an application.
+#[derive(Debug, thiserror::Error)]
+pub enum SubsurfaceCreationError {
+    /// Subsurface creation failed
+    #[error("Subsurface creation failed")]
+    CreationFailed(GlobalError),
+
+    /// The specified parent is missing
+    #[error("The specified parent is missing")]
+    ParentMissing,
+
+    /// Subsurfaces are unsupported
+    #[error("Subsurfaces are unsupported")]
+    Unsupported,
+}
+
 pub(crate) fn receive_frame(
     frame_status: &mut HashMap<ObjectId, FrameStatus>,
     s: &WlSurface,
@@ -459,6 +492,18 @@ impl SctkState {
         legacy: bool,
     ) {
         let mut id = None;
+
+        for subsurface in &self.subsurfaces {
+            if subsurface.instance.parent != surface.id() {
+                continue;
+            }
+
+            self.sctk_events.push(SctkEvent::SurfaceScaleFactorChanged(
+                scale_factor,
+                surface.clone(),
+                subsurface.id,
+            ));
+        }
 
         if let Some(popup) = self
             .popups
@@ -920,6 +965,28 @@ impl SctkState {
                         platform_specific::wayland::layer_surface::Action::Destroy(id) => {
                             if let Some(i) = self.layer_surfaces.iter().position(|l| l.id == id) {
                                 let l = self.layer_surfaces.remove(i);
+                                
+                                for subsurface_id in self
+                                    .subsurfaces
+                                    .iter()
+                                    .enumerate()
+                                    .filter_map(|(i, s)| {
+                                        (s.instance.parent == l.surface.wl_surface().id())
+                                        .then_some(i)
+                                    })
+                                    .collect::<Vec<_>>()
+                                {
+                                    let s = self
+                                        .subsurfaces
+                                        .remove(subsurface_id);
+                                    crate::subsurface_widget::remove_iced_subsurface(
+                                        &s.instance.wl_surface,
+                                    );
+                                    send_event(&self.events_sender, &self.proxy,
+                                        SctkEvent::SubsurfaceEvent( crate::sctk_event::SubsurfaceEventVariant::Destroyed(s.instance) )
+                                    );
+                                }
+
                                 if let Some(destroyed) = self.id_map.remove(&l.surface.wl_surface().id()) {
                                     _ = self.destroyed.insert(destroyed);
                                 }
@@ -976,7 +1043,7 @@ impl SctkState {
                         },
                 },
             Action::Popup(action) => match action {
-                platform_specific::wayland::popup::Action::Popup { popup, .. } => {
+                platform_specific::wayland::popup::Action::Popup { mut popup, .. } => {
                     let parent_mismatch = self.popups.last().is_some_and(|p| {
                         self.id_map.get(&p.popup.wl_surface().id()).map_or(true, |p| *p != popup.parent)
                     });
@@ -992,12 +1059,14 @@ impl SctkState {
                             }
                         }
                         if self.pending_popup.replace((popup, 0)).is_none() {
+
                             let timer = cctk::sctk::reexports::calloop::timer::Timer::from_duration(Duration::from_millis(30));
                             let queue_handle = self.queue_handle.clone();
                             _ = self.loop_handle.insert_source(timer, move |_, _, state| {
-                                let Some((popup, attempt)) = state.pending_popup.take() else {
+                                let Some((mut popup, attempt)) = state.pending_popup.take() else {
                                     return TimeoutAction::Drop;
                                 };
+
                                 if !state.destroyed.is_empty() ||  state.popups.last().is_some_and(|p| {
                                     state.id_map.get(&p.popup.wl_surface().id()).map_or(true, |p| *p != popup.parent)
                                 })  {
@@ -1058,6 +1127,27 @@ impl SctkState {
                             return Ok(());
                         },
                     };
+                    
+                    for subsurface_id in self
+                        .subsurfaces
+                        .iter()
+                        .enumerate()
+                        .filter_map(|(i, s)| {
+                            (s.instance.parent == sctk_popup.popup.wl_surface().id())
+                            .then_some(i)
+                        })
+                        .collect::<Vec<_>>()
+                    {
+                        let s = self
+                            .subsurfaces
+                            .remove(subsurface_id);
+                        crate::subsurface_widget::remove_iced_subsurface(
+                            &s.instance.wl_surface,
+                        );
+                        send_event(&self.events_sender, &self.proxy,
+                            SctkEvent::SubsurfaceEvent( crate::sctk_event::SubsurfaceEventVariant::Destroyed(s.instance) )
+                        );
+                    }
                     let mut to_destroy = vec![sctk_popup];
                     while let Some(popup_to_destroy) = to_destroy.last() {
                         match popup_to_destroy.data.parent.clone() {
@@ -1179,6 +1269,27 @@ impl SctkState {
                         })
                     {
                         let surface = self.lock_surfaces.remove(i);
+                        
+                        for subsurface_id in self
+                            .subsurfaces
+                            .iter()
+                            .enumerate()
+                            .filter_map(|(i, s)| {
+                                (s.instance.parent == surface.session_lock_surface.wl_surface().id())
+                                .then_some(i)
+                            })
+                            .collect::<Vec<_>>()
+                        {
+                            let s = self
+                                .subsurfaces
+                                .remove(subsurface_id);
+                            crate::subsurface_widget::remove_iced_subsurface(
+                                &s.instance.wl_surface,
+                            );
+                            send_event(&self.events_sender, &self.proxy,
+                                SctkEvent::SubsurfaceEvent( crate::sctk_event::SubsurfaceEventVariant::Destroyed(s.instance) )
+                            );
+                        }
                         if let Some(id) = self.id_map.remove(&surface.session_lock_surface.wl_surface().id()) {
                             _ = self.destroyed.insert(id);
                         }
@@ -1208,8 +1319,151 @@ impl SctkState {
                     tracing::error!("Overlap notify subscription cannot be created for surface. No matching layer surface found.");
                 }
             },
+            Action::Subsurface(action) => match action {
+                platform_specific::wayland::subsurface::Action::Subsurface { subsurface: subsurface_settings } => {
+                    let parent_id = subsurface_settings.parent;
+                    if let Ok((_, parent, subsurface, common_surface, common)) = self.get_subsurface(subsurface_settings.clone()) {
+                        // TODO Ashley: all surfaces should probably have an optional title for a11y if nothing else
+                        receive_frame(&mut self.frame_status, &subsurface);
+                        send_event(&self.events_sender, &self.proxy,
+                            SctkEvent::SubsurfaceEvent (crate::sctk_event::SubsurfaceEventVariant::Created{
+                                parent_id,
+                                parent,
+                                surface: subsurface,
+                                qh: self.queue_handle.clone(),
+                                common_surface,
+                                surface_id: subsurface_settings.id,
+                                common,
+                                display: self.connection.display(),
+                                z: subsurface_settings.z,
+                            })
+                        );
+                    }
+                },
+                platform_specific::wayland::subsurface::Action::Destroy { id } => {
+                    if let Some(subsurface) = self.subsurfaces.iter().position(|s| s.id == id) {
+                        let subsurface = self.subsurfaces.remove(subsurface);
+                        subsurface.instance.wl_surface.attach(None, 0, 0);
+                        subsurface.instance.wl_surface.commit();
+                        send_event(&self.events_sender, &self.proxy,
+                            SctkEvent::SubsurfaceEvent( crate::sctk_event::SubsurfaceEventVariant::Destroyed(subsurface.instance) )
+                        );
+                    }
+                },
+            },
         };
         Ok(())
+    }
+
+    pub fn get_subsurface(
+        &mut self,
+        settings: SctkSubsurfaceSettings,
+    ) -> Result<
+        (
+            core::window::Id,
+            WlSurface,
+            WlSurface,
+            CommonSurface,
+            Arc<Mutex<Common>>,
+        ),
+        SubsurfaceCreationError,
+    > {
+        let Some(subsurface_state) = self.subsurface_state.as_ref() else {
+            return Err(SubsurfaceCreationError::Unsupported);
+        };
+
+        let size = settings.size.unwrap_or(Size::new(1., 1.));
+
+        let bounds = Rectangle::new(settings.loc, size);
+
+        let parent = if let Some(parent) =
+            self.layer_surfaces.iter().find(|l| l.id == settings.parent)
+        {
+            PopupParent::LayerSurface(parent.surface.wl_surface().clone())
+        } else if let Some(parent) =
+            self.windows.iter().find(|w| w.id == settings.parent)
+        {
+            PopupParent::Window(parent.wl_surface(&self.connection))
+        } else if let Some(i) = self
+            .popups
+            .iter()
+            .position(|p| p.data.id == settings.parent)
+        {
+            let parent = &self.popups[i];
+            PopupParent::Popup(parent.popup.wl_surface().clone())
+        } else {
+            return Err(SubsurfaceCreationError::ParentMissing);
+        };
+        let wl_surface =
+            self.compositor_state.create_surface(&self.queue_handle);
+        _ = self.id_map.insert(wl_surface.id(), settings.id.clone());
+
+        let parent_wl_surface = parent.wl_surface();
+        let wl_subsurface = subsurface_state.wl_subcompositor.get_subsurface(
+            &wl_surface,
+            parent_wl_surface,
+            &self.queue_handle,
+            (),
+        );
+        wl_subsurface.set_position(bounds.x as i32, bounds.y as i32);
+        _ = wl_surface.frame(&self.queue_handle, wl_surface.clone());
+        wl_surface.commit();
+
+        let wp_viewport = subsurface_state.wp_viewporter.get_viewport(
+            &wl_surface,
+            &self.queue_handle,
+            cctk::sctk::globals::GlobalData,
+        );
+
+        let wp_alpha_modifier_surface = subsurface_state
+            .wp_alpha_modifier
+            .as_ref()
+            .map(|wp_alpha_modifier| {
+                wp_alpha_modifier.get_surface(
+                    &wl_surface,
+                    &self.queue_handle,
+                    (),
+                )
+            });
+        wp_viewport.set_destination(size.width as i32, size.height as i32);
+
+        let mut common: Common =
+            LogicalSize::new(size.width as u32, size.height as u32).into();
+        let instance = SubsurfaceInstance {
+            wl_surface: wl_surface.clone(),
+            wl_subsurface: wl_subsurface.clone(),
+            wp_viewport: wp_viewport.clone(),
+            wp_alpha_modifier_surface: wp_alpha_modifier_surface,
+
+            wl_buffer: None,
+            bounds: Some(bounds),
+            transform:
+                cctk::wayland_client::protocol::wl_output::Transform::Normal,
+            z: settings.z,
+            parent: parent_wl_surface.id(),
+        };
+        common.wp_viewport = Some(wp_viewport);
+        let common = Arc::new(Mutex::new(common));
+
+        self.subsurfaces.push(SctkSubsurface {
+            common: common.clone(),
+            id: settings.id,
+            instance,
+        });
+        // XXX subsurfaces need to be sorted by z in descending order
+        self.subsurfaces
+            .sort_by(|a, b| b.instance.z.cmp(&a.instance.z));
+
+        Ok((
+            settings.id,
+            parent.wl_surface().clone(),
+            wl_surface.clone(),
+            CommonSurface::Subsurface {
+                wl_surface,
+                wl_subsurface,
+            },
+            common,
+        ))
     }
 }
 

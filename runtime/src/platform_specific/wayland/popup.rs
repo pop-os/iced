@@ -1,12 +1,15 @@
+use std::any::Any;
 use std::fmt;
 use std::hash::{Hash, Hasher};
+use std::sync::Arc;
 
-use iced_core::layout::Limits;
-use iced_core::window::Id;
-use iced_core::Rectangle;
 use cctk::sctk::reexports::protocols::xdg::shell::client::xdg_positioner::{
     Anchor, Gravity,
 };
+use iced_core::layout::Limits;
+use iced_core::window::Id;
+use iced_core::{Element, Rectangle};
+
 /// Popup creation details
 #[derive(Debug, Clone)]
 pub struct SctkPopupSettings {
@@ -53,6 +56,22 @@ pub struct SctkPositioner {
     pub offset: (i32, i32),
     /// whether the popup is reactive
     pub reactive: bool,
+}
+
+impl SctkPopupSettings {
+    // /// Create a popup with a self defined view
+    // pub fn with_view<M: 'static, T: 'static, R: 'static>(
+    //     mut self,
+    //     view: Box<
+    //         dyn Fn() -> Option<Element<'static, M, T, R>>
+    //             + Send
+    //             + Sync
+    //             + 'static,
+    //     >,
+    // ) -> Self {
+    //     self.popup_view = Some(Arc::new(view));
+    //     self
+    // }
 }
 
 impl Hash for SctkPositioner {

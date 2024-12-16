@@ -153,6 +153,7 @@ impl winit::window::Window for SctkWinitWindow {
                 }
             }
             CommonSurface::Lock(_) => {}
+            CommonSurface::Subsurface { .. } => {}
         }
         None
     }

@@ -1,11 +1,5 @@
-use futures_channel::mpsc;
-use iced::{
-    futures::{FutureExt, SinkExt},
-    platform_specific::shell::subsurface_widget::{Shmbuf, SubsurfaceBuffer},
-};
-use iced_runtime::futures::subscription;
-use rustix::{io::Errno, shm::ShmOFlags};
 use cctk::sctk::{
+    self,
     reexports::{
         calloop_wayland_source::WaylandSource,
         client::{
@@ -18,16 +12,24 @@ use cctk::sctk::{
     registry::{ProvidesRegistryState, RegistryState},
     shm::{Shm, ShmHandler},
 };
+use futures_channel::mpsc;
+use iced::{
+    futures::{FutureExt, SinkExt},
+    platform_specific::shell::subsurface_widget::{Shmbuf, SubsurfaceBuffer},
+};
+use iced_runtime::futures::subscription;
+use rustix::{io::Errno, shm::ShmOFlags};
 use std::{
     os::fd::OwnedFd,
     sync::Arc,
     thread,
-    time::{SystemTime, UNIX_EPOCH},
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 #[derive(Debug, Clone)]
 pub enum Event {
     RedBuffer(SubsurfaceBuffer),
+    GreenBuffer(SubsurfaceBuffer),
 }
 
 struct AppData {
@@ -81,6 +83,20 @@ async fn start(conn: Connection) -> mpsc::Receiver<Event> {
     };
 
     let buffer = SubsurfaceBuffer::new(Arc::new(shmbuf.into())).0;
+    let _ = sender.send(Event::GreenBuffer(buffer)).await;
+
+    let fd = create_memfile().unwrap();
+    rustix::io::write(&fd, &[0, 0, 255, 255]).unwrap();
+
+    let shmbuf = Shmbuf {
+        fd,
+        offset: 0,
+        width: 1,
+        height: 1,
+        stride: 4,
+        format: wl_shm::Format::Xrgb8888,
+    };
+    let buffer = SubsurfaceBuffer::new(Arc::new(shmbuf.into())).0;
     let _ = sender.send(Event::RedBuffer(buffer)).await;
 
     thread::spawn(move || {
@@ -90,6 +106,7 @@ async fn start(conn: Connection) -> mpsc::Receiver<Event> {
             .unwrap();
         loop {
             event_loop.dispatch(None, &mut app_data).unwrap();
+            std::thread::sleep(Duration::from_millis(500));
         }
     });
 
