@@ -156,8 +156,9 @@ impl WaylandSpecific {
             (u64, iced_accessibility::accesskit_winit::Adapter),
         >,
     ) where
-        P: Program,
+        P: 'static + Program,
         C: Compositor<Renderer = P::Renderer>,
+        P::Message: 'static,
     {
         let Self {
             winit_event_sender,

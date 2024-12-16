@@ -43,7 +43,7 @@ use cctk::{
     toplevel_management::ToplevelManagerState,
 };
 use raw_window_handle::HasDisplayHandle;
-use state::{FrameStatus, SctkWindow};
+use state::{send_event, FrameStatus, SctkWindow};
 #[cfg(feature = "a11y")]
 use std::sync::{Arc, Mutex};
 use std::{
@@ -122,7 +122,36 @@ impl SctkEventLoop {
                             }
                             crate::Action::RemoveWindow(id) => {
                                 // TODO clean up popups matching the window.
-                                state.windows.retain(|window| id != window.id);
+                                if let Some(pos) = state
+                                    .windows
+                                    .iter()
+                                    .position(|window| id == window.id)
+                                {
+                                    let w = state.windows.remove(pos);
+                                    for subsurface_id in state
+                                        .subsurfaces
+                                        .iter()
+                                        .enumerate()
+                                        .filter_map(|(i, s)| {
+                                            (winit::window::WindowId::from(
+                                                s.instance.parent.as_ptr()
+                                                    as u64,
+                                            ) == w.window.id())
+                                            .then_some(i)
+                                        })
+                                        .collect::<Vec<_>>()
+                                    {
+                                        let s = state
+                                            .subsurfaces
+                                            .remove(subsurface_id);
+                                        crate::subsurface_widget::remove_iced_subsurface(
+                                            &s.instance.wl_surface,
+                                        );
+                                        send_event(&state.events_sender, &state.proxy,
+                                            SctkEvent::SubsurfaceEvent( crate::sctk_event::SubsurfaceEventVariant::Destroyed(s.instance) )
+                                        );
+                                    }
+                                }
                             }
                             crate::platform_specific::Action::SetCursor(
                                 icon,
@@ -229,6 +258,7 @@ impl SctkEventLoop {
                     layer_surfaces: Vec::new(),
                     popups: Vec::new(),
                     lock_surfaces: Vec::new(),
+                    subsurfaces: Vec::new(),
                     _kbd_focus: None,
                     touch_points: HashMap::new(),
                     sctk_events: Vec::new(),
@@ -245,6 +275,7 @@ impl SctkEventLoop {
                     activation_token_ctr: 0,
                     token_senders: HashMap::new(),
                     overlap_notifications: HashMap::new(),
+                    subsurface_state: None,
                 },
                 _features: Default::default(),
             };
@@ -282,20 +313,23 @@ impl SctkEventLoop {
             if let (Ok(wl_subcompositor), Ok(wp_viewporter)) =
                 (wl_subcompositor, wp_viewporter)
             {
+                let subsurface_state = SubsurfaceState {
+                    wl_compositor,
+                    wl_subcompositor,
+                    wp_viewporter,
+                    wl_shm,
+                    wp_dmabuf,
+                    wp_alpha_modifier,
+                    qh: state.state.queue_handle.clone(),
+                    buffers: HashMap::new(),
+                    unmapped_subsurfaces: Vec::new(),
+                    new_iced_subsurfaces: Vec::new(),
+                };
+                state.state.subsurface_state = Some(subsurface_state.clone());
                 state::send_event(
                     &state.state.events_sender,
                     &state.state.proxy,
-                    SctkEvent::Subcompositor(SubsurfaceState {
-                        wl_compositor,
-                        wl_subcompositor,
-                        wp_viewporter,
-                        wl_shm,
-                        wp_dmabuf,
-                        wp_alpha_modifier,
-                        qh: state.state.queue_handle.clone(),
-                        buffers: HashMap::new(),
-                        unmapped_subsurfaces: Vec::new(),
-                    }),
+                    SctkEvent::Subcompositor(subsurface_state),
                 );
             } else {
                 log::warn!("Subsurfaces not supported.")

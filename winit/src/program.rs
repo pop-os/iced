@@ -2,10 +2,12 @@
 #[path = "application/drag_resize.rs"]
 mod drag_resize;
 mod state;
-mod window_manager;
+pub(crate) mod window_manager;
 
 pub use runtime::{default, Appearance, DefaultStyle};
+use window_manager::ViewFn;
 use winit::dpi::PhysicalSize;
+use winit::event::WindowEvent;
 use winit::event_loop::OwnedDisplayHandle;
 
 use crate::conversion;
@@ -48,6 +50,7 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::mem::ManuallyDrop;
 use std::sync::Arc;
+use std::sync::Mutex;
 use std::time::Duration;
 
 /// An interactive, native, cross-platform, multi-windowed application.
@@ -153,6 +156,10 @@ where
     #[allow(unused_variables)]
     fn scale_factor(&self, window: window::Id) -> f64 {
         1.0
+    }
+
+    fn with_program<T>(&self, f: impl Fn(&Self) -> T) -> T {
+        f(self)
     }
 }
 
@@ -320,6 +327,29 @@ where
                 winit::event::WindowEvent::SurfaceResized(_)
                     | winit::event::WindowEvent::Moved(_)
             );
+
+            #[cfg(feature = "wayland")]
+            {
+                if matches!(event, WindowEvent::RedrawRequested) {
+                    for id in
+                        crate::subsurface_widget::subsurface_ids(window_id)
+                    {
+                        _ = self.sender.start_send(Event::Winit(
+                            id,
+                            WindowEvent::RedrawRequested,
+                        ));
+                    }
+                } else if matches!(event, WindowEvent::RedrawRequested) {
+                    for id in
+                        crate::subsurface_widget::subsurface_ids(window_id)
+                    {
+                        _ = self.sender.start_send(Event::Winit(
+                            id,
+                            WindowEvent::CloseRequested,
+                        ));
+                    }
+                }
+            }
 
             self.process_event(
                 event_loop,
@@ -603,6 +633,30 @@ where
                                     .expect("Send event");
                             }
                             Control::Winit(id, e) => {
+                                #[cfg(feature = "wayland")]
+                                {
+                                    if matches!(e, WindowEvent::RedrawRequested)
+                                    {
+                                        for id in crate::subsurface_widget::subsurface_ids(id) {
+                                            _ = self.sender
+                                                .start_send(Event::Winit(
+                                                id,
+                                                WindowEvent::RedrawRequested,
+                                            ));
+                                        }
+                                    } else if matches!(
+                                        e,
+                                        WindowEvent::RedrawRequested
+                                    ) {
+                                        for id in crate::subsurface_widget::subsurface_ids(id) {
+                                            _ = self.sender
+                                                .start_send(Event::Winit(
+                                                id,
+                                                WindowEvent::CloseRequested,
+                                            ));
+                                        }
+                                    }
+                                }
                                 self.sender
                                     .start_send(Event::Winit(id, e))
                                     .expect("Send event");

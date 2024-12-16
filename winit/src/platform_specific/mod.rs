@@ -29,6 +29,7 @@ pub enum SurfaceIdWrapper {
     Window(window::Id),
     Popup(window::Id),
     SessionLock(window::Id),
+    Subsurface(window::Id),
 }
 impl SurfaceIdWrapper {
     pub fn inner(&self) -> window::Id {
@@ -37,6 +38,7 @@ impl SurfaceIdWrapper {
             SurfaceIdWrapper::Window(id) => *id,
             SurfaceIdWrapper::Popup(id) => *id,
             SurfaceIdWrapper::SessionLock(id) => *id,
+            SurfaceIdWrapper::Subsurface(id) => *id,
         }
     }
 }
@@ -162,7 +164,7 @@ pub(crate) fn handle_event<'a, P, C>(
         (u64, iced_accessibility::accesskit_winit::Adapter),
     >,
 ) where
-    P: Program,
+    P: 'static + Program,
     C: Compositor<Renderer = P::Renderer>,
 {
     match e {
