@@ -24,6 +24,7 @@ pub use iced_program as program;
 pub use program::core;
 pub use program::graphics;
 pub use program::runtime;
+use raw_window_handle::HasWindowHandle;
 pub use runtime::futures;
 use window_clipboard::mime::ClipboardStoreData;
 pub use winit;
@@ -657,6 +658,10 @@ async fn run_instance<P>(
     let mut clipboard = Clipboard::unconnected();
     let mut cur_dnd_surface: Option<window::Id> = None;
 
+    let mut dnd_surface: Option<
+        Arc<Box<dyn HasWindowHandle + Send + Sync + 'static>>,
+    > = None;
+
     #[cfg(feature = "a11y")]
     let (mut adapters, mut a11y_enabled) = (Default::default(), false);
     // let (mut adapters, mut a11y_enabled) = if let Some((main_id, title, raw)) =
@@ -1133,7 +1138,8 @@ async fn run_instance<P>(
                     },
                     cursor,
                 );
-                platform_specific_handler.clear_subsurface_list();
+                platform_specific_handler
+                    .update_subsurfaces(id, window.raw.rwh_06_window_handle());
                 draw_span.finish();
 
                 if let user_interface::State::Updated {
@@ -1508,7 +1514,14 @@ async fn run_instance<P>(
                     dnd::DndEvent::Offer(..) => {
                         events.push((cur_dnd_surface, core::Event::Dnd(e)));
                     }
-                    dnd::DndEvent::Source(_) => {
+                    dnd::DndEvent::Source(evt) => {
+                        match evt {
+                            dnd::SourceEvent::Finished
+                            | dnd::SourceEvent::Cancelled => {
+                                dnd_surface = None;
+                            }
+                            _ => {}
+                        }
                         for w in window_manager.ids() {
                             events.push((Some(w), core::Event::Dnd(e.clone())));
                         }

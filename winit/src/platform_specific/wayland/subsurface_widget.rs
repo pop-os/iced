@@ -23,7 +23,9 @@ use std::{
 use crate::futures::futures::channel::oneshot;
 use cctk::sctk::{
     compositor::SurfaceData,
-    globals::GlobalData,
+    error::GlobalError,
+    globals::{GlobalData, ProvidesBoundGlobal},
+    shm::slot::SlotPool,
     reexports::client::{
         Connection, Dispatch, Proxy, QueueHandle, delegate_noop,
         protocol::{
@@ -250,6 +252,7 @@ impl PartialEq for SubsurfaceBuffer {
     }
 }
 
+
 impl Dispatch<WlShmPool, GlobalData> for SctkState {
     fn event(
         _: &mut SctkState,
@@ -284,6 +287,23 @@ impl Dispatch<ZwpLinuxBufferParamsV1, GlobalData> for SctkState {
         _: &Connection,
         _: &QueueHandle<SctkState>,
     ) {
+    }
+}
+
+impl Dispatch<WlBuffer, GlobalData> for SctkState {
+    fn event(
+        _: &mut SctkState,
+        _: &WlBuffer,
+        event: wl_buffer::Event,
+        _: &GlobalData,
+        _: &Connection,
+        _: &QueueHandle<SctkState>,
+    ) {
+        match event {
+            wl_buffer::Event::Release => {
+            }
+            _ => unreachable!(),
+        }
     }
 }
 
@@ -324,6 +344,15 @@ impl Hash for WeakBufferSource {
     }
 }
 
+// Implement `ProvidesBoundGlobal` to use `SlotPool`
+struct ShmGlobal<'a>(&'a WlShm);
+
+impl<'a> ProvidesBoundGlobal<WlShm, 1> for ShmGlobal<'a> {
+    fn bound_global(&self) -> Result<WlShm, GlobalError> {
+        Ok(self.0.clone())
+    }
+}
+
 // create wl_buffer from BufferSource (avoid create_immed?)
 // release
 #[derive(Debug, Clone)]
@@ -341,6 +370,22 @@ pub struct SubsurfaceState {
 }
 
 impl SubsurfaceState {
+    pub fn create_surface(&self) -> WlSurface {
+        self
+            .wl_compositor
+            .create_surface(&self.qh, SurfaceData::new(None, 1))
+    }
+
+    pub fn update_surface_shm(&self, surface: &WlSurface, width: u32, height: u32, data: &[u8]) {
+        let shm = ShmGlobal(&self.wl_shm);
+        let mut pool = SlotPool::new(width as usize * height as usize * 4, &shm).unwrap();
+        let (buffer, canvas) = pool.create_buffer(width as i32, height as i32, width as i32 * 4, wl_shm::Format::Argb8888).unwrap();
+        canvas[0..width as usize * height as usize * 4].copy_from_slice(data);
+        surface.damage_buffer(0, 0, width as i32, height as i32);
+        buffer.attach_to(&surface);
+        surface.commit();
+    }
+
     fn create_subsurface(&self, parent: &WlSurface) -> SubsurfaceInstance {
         let wl_surface = self
             .wl_compositor
@@ -571,6 +616,7 @@ impl Drop for SubsurfaceInstance {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct SubsurfaceInfo {
     pub buffer: SubsurfaceBuffer,
     pub bounds: Rectangle<f32>,

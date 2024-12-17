@@ -296,6 +296,7 @@ wgpu = { version = "27.0", default-features = false, features = [
     "wgsl",
 ] }
 wayland-protocols = { version = "0.32.1", features = ["staging"] }
+wayland-client = { version = "0.31.5" }
 # web-time = "1.1"
 
 
