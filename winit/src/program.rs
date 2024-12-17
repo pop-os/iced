@@ -796,6 +796,8 @@ async fn run_instance<'a, P, C>(
 
     let mut cur_dnd_surface: Option<window::Id> = None;
 
+    let mut dnd_surface: Option<Arc<Box<dyn HasWindowHandle + Send + Sync + 'static>>> = None;
+
     debug.startup_finished();
     loop {
         // Empty the queue if possible
@@ -964,9 +966,7 @@ async fn run_instance<'a, P, C>(
                                         scale_factor: state.scale_factor(),
                                     },
                                     Default::default(),
-                                );
-                                platform_specific_handler
-                                    .clear_subsurface_list();
+                                );;
                                 let mut bytes = compositor.screenshot(
                                     &mut renderer,
                                     &viewport,
@@ -977,11 +977,25 @@ async fn run_instance<'a, P, C>(
                                     // rgba -> argb little endian
                                     pix.swap(0, 2);
                                 }
-                                Icon::Buffer {
-                                    data: Arc::new(bytes),
-                                    width: viewport.physical_width(),
-                                    height: viewport.physical_height(),
-                                    transparent: true,
+                                // update subsurfaces
+                                if let Some(surface) = platform_specific_handler.create_surface() {
+                                    // TODO Remove id
+                                    let id = window::Id::unique();
+                                    platform_specific_handler
+                                        .update_subsurfaces(id, &surface);
+                                    platform_specific_handler.update_surface_shm(&surface, viewport.physical_width(), viewport.physical_height(), &bytes);
+                                    let surface = Arc::new(surface);
+                                    dnd_surface = Some(surface.clone());
+                                    Icon::Surface(dnd::DndSurface(surface))
+                                } else {
+                                    platform_specific_handler
+                                        .clear_subsurface_list();
+                                    Icon::Buffer {
+                                        data: Arc::new(bytes),
+                                        width: viewport.physical_width(),
+                                        height: viewport.physical_height(),
+                                        transparent: true,
+                                    }
                                 }
                             },
                         );
@@ -1191,7 +1205,7 @@ async fn run_instance<'a, P, C>(
                             cursor,
                         );
                         platform_specific_handler
-                            .update_subsurfaces(id, window.raw.as_ref());
+                            .update_subsurfaces(id, window.raw.rwh_06_window_handle());
                         debug.draw_finished();
 
                         if new_mouse_interaction != window.mouse_interaction {
@@ -1276,7 +1290,7 @@ async fn run_instance<'a, P, C>(
                                     window.state.cursor(),
                                 );
                             platform_specific_handler
-                                .update_subsurfaces(id, window.raw.as_ref());
+                                .update_subsurfaces(id, window.raw.rwh_06_window_handle());
                             debug.draw_finished();
 
                             if new_mouse_interaction != window.mouse_interaction
@@ -1723,7 +1737,13 @@ async fn run_instance<'a, P, C>(
                     dnd::DndEvent::Offer(..) => {
                         events.push((cur_dnd_surface, core::Event::Dnd(e)));
                     }
-                    dnd::DndEvent::Source(_) => {
+                    dnd::DndEvent::Source(evt) => {
+                        match evt {
+                            dnd::SourceEvent::Finished | dnd::SourceEvent::Cancelled => {
+                                dnd_surface = None;
+                            }
+                            _ => {}
+                        }
                         for w in window_manager.ids() {
                             events.push((Some(w), core::Event::Dnd(e.clone())));
                         }
