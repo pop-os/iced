@@ -214,6 +214,7 @@ wasm-timer = "0.2"
 web-time = "1.1"
 wgpu = "22.0"
 wayland-protocols = { version = "0.32.1", features = ["staging"] }
+wayland-client = { version = "0.31.5" }
 # web-time = "1.1"
 
 
