@@ -112,6 +112,10 @@ impl PlatformSpecific {
 }
 
 impl WaylandSpecific {
+    pub(crate) fn display_handle(&self) -> Option<DisplayHandle> {
+        self.display_handle.as_ref()?.display_handle().ok()
+    }
+
     pub(crate) fn handle_event<'a, P, C>(
         &mut self,
         e: SctkEvent,
@@ -199,5 +203,37 @@ impl WaylandSpecific {
             surface_subsurfaces,
             &subsurfaces,
         );
+
+        wl_surface.commit(); // XXX for drag surface
+    }
+
+    // WIP cfg raw-window-handle
+    pub(crate) fn create_surface(&mut self, width: u32, height: u32, data: &[u8]) -> Option<Box<dyn HasWindowHandle + Send + Sync + 'static>> {
+        if let Some(subsurface_state) = self.subsurface_state.as_mut() {
+            let wl_surface = subsurface_state.create_surface(width, height, data);
+            Some(Box::new(Window(wl_surface)))
+        } else {
+            None
+        }
     }
 }
+struct Window(WlSurface);
+impl HasWindowHandle for Window {
+    fn window_handle(&self) -> Result<raw_window_handle::WindowHandle<'_>, raw_window_handle::HandleError> {
+        Ok(unsafe {
+            raw_window_handle::WindowHandle::borrow_raw(raw_window_handle::RawWindowHandle::Wayland(
+                raw_window_handle::WaylandWindowHandle::new(
+                    std::ptr::NonNull::new(self.0.id().as_ptr() as *mut _).unwrap(),
+                ),
+            ))
+        })
+    }
+}
+impl Drop for Window {
+    fn drop(&mut self) {
+        // TODO destroy when drag ends
+        //self.0.destroy();
+    }
+}
+use raw_window_handle::{DisplayHandle, HasDisplayHandle, HasWindowHandle};
+use wayland_client::Proxy;

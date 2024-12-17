@@ -964,9 +964,7 @@ async fn run_instance<'a, P, C>(
                                         scale_factor: state.scale_factor(),
                                     },
                                     Default::default(),
-                                );
-                                platform_specific_handler
-                                    .clear_subsurface_list();
+                                );;
                                 let mut bytes = compositor.screenshot(
                                     &mut renderer,
                                     &viewport,
@@ -977,17 +975,28 @@ async fn run_instance<'a, P, C>(
                                     // rgba -> argb little endian
                                     pix.swap(0, 2);
                                 }
-                                Icon::Buffer {
-                                    data: Arc::new(bytes),
-                                    width: viewport.physical_width(),
-                                    height: viewport.physical_height(),
-                                    transparent: true,
+                                // update subsurfaces
+                                if let Some(surface) = platform_specific_handler.create_surface(viewport.physical_width(), viewport.physical_height(), &bytes) {
+                                    let id = window::Id::unique(); // XXX remove at end of drag
+                                    platform_specific_handler
+                                        .update_subsurfaces(id, &surface);
+                                    Icon::Surface(dnd::DndSurface(Arc::new(surface)))
+                                } else {
+                                    platform_specific_handler
+                                        .clear_subsurface_list();
+                                    Icon::Buffer {
+                                        data: Arc::new(bytes),
+                                        width: viewport.physical_width(),
+                                        height: viewport.physical_height(),
+                                        transparent: true,
+                                    }
                                 }
                             },
                         );
 
                     clipboard.start_dnd_winit(
                         internal,
+                        // false
                         DndSurface(Arc::new(Box::new(window.raw.clone()))),
                         icon_surface,
                         content,
@@ -1191,7 +1200,7 @@ async fn run_instance<'a, P, C>(
                             cursor,
                         );
                         platform_specific_handler
-                            .update_subsurfaces(id, window.raw.as_ref());
+                            .update_subsurfaces(id, window.raw.rwh_06_window_handle());
                         debug.draw_finished();
 
                         if new_mouse_interaction != window.mouse_interaction {
@@ -1276,7 +1285,7 @@ async fn run_instance<'a, P, C>(
                                     window.state.cursor(),
                                 );
                             platform_specific_handler
-                                .update_subsurfaces(id, window.raw.as_ref());
+                                .update_subsurfaces(id, window.raw.rwh_06_window_handle());
                             debug.draw_finished();
 
                             if new_mouse_interaction != window.mouse_interaction

@@ -5,6 +5,7 @@ use std::collections::HashMap;
 
 use iced_graphics::Compositor;
 use iced_runtime::{core::window, user_interface, Debug};
+use raw_window_handle::HasWindowHandle;
 
 #[cfg(all(feature = "wayland", target_os = "linux"))]
 pub mod wayland;
@@ -69,7 +70,7 @@ impl PlatformSpecific {
     pub(crate) fn update_subsurfaces(
         &mut self,
         id: window::Id,
-        window: &dyn winit::window::Window,
+        window: &dyn HasWindowHandle,
     ) {
         #[cfg(all(feature = "wayland", target_os = "linux"))]
         {
@@ -78,12 +79,13 @@ impl PlatformSpecific {
             };
             use wayland_backend::client::ObjectId;
 
-            let Ok(backend) = window.rwh_06_display_handle().display_handle()
+            let Some(backend) = self.wayland.display_handle()
             else {
                 log::error!("No display handle");
                 return;
             };
 
+            // TODO use existing conn
             let conn = match backend.as_raw() {
                 raw_window_handle::RawDisplayHandle::Wayland(
                     wayland_display_handle,
@@ -102,7 +104,7 @@ impl PlatformSpecific {
                 }
             };
 
-            let Ok(raw) = window.rwh_06_window_handle().window_handle() else {
+            let Ok(raw) = window.window_handle() else {
                 log::error!("Invalid window handle {id:?}");
                 return;
             };
@@ -136,6 +138,14 @@ impl PlatformSpecific {
             };
             self.wayland.update_subsurfaces(id, &wl_surface);
         }
+    }
+
+    pub(crate) fn create_surface(&mut self, width: u32, height: u32, data: &[u8]) -> Option<Box<dyn HasWindowHandle + Send + Sync + 'static>> {
+        #[cfg(all(feature = "wayland", target_os = "linux"))]
+        {
+            return self.wayland.create_surface(width, height, data);
+        }
+        None
     }
 }
 
