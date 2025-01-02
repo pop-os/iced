@@ -62,7 +62,6 @@ pub(crate) struct WaylandSpecific {
     display_handle: Option<OwnedDisplayHandle>,
     modifiers: Modifiers,
     surface_ids: HashMap<ObjectId, SurfaceIdWrapper>,
-    destroyed_surface_ids: HashMap<ObjectId, SurfaceIdWrapper>,
     subsurface_state: Option<SubsurfaceState>,
     surface_subsurfaces: HashMap<window::Id, Vec<SubsurfaceInstance>>,
 }
@@ -137,7 +136,6 @@ impl WaylandSpecific {
             sender,
             display_handle,
             surface_ids,
-            destroyed_surface_ids,
             modifiers,
             subsurface_state,
             surface_subsurfaces,
