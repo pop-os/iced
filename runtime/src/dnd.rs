@@ -17,19 +17,6 @@ pub enum DndAction {
         /// The rectangles to register.
         rectangles: Vec<DndDestinationRectangle>,
     },
-    /// Start a Dnd operation.
-    StartDnd {
-        /// Whether the Dnd operation is internal.
-        internal: bool,
-        /// The source surface of the Dnd operation.
-        source_surface: Option<DndSource>,
-        /// The icon surface of the Dnd operation.
-        icon_surface: Option<Box<dyn Any + Send>>,
-        /// The content of the Dnd operation.
-        content: Box<dyn AsMimeTypes + Send + 'static>,
-        /// The actions of the Dnd operation.
-        actions: dnd::DndAction,
-    },
     /// End a Dnd operation.
     EndDnd,
     /// Peek the current Dnd operation.
@@ -52,19 +39,6 @@ impl std::fmt::Debug for DndAction {
                 .debug_struct("RegisterDndDestination")
                 .field("surface", surface)
                 .field("rectangles", rectangles)
-                .finish(),
-            Self::StartDnd {
-                internal,
-                source_surface,
-                icon_surface,
-                content: _,
-                actions,
-            } => f
-                .debug_struct("StartDnd")
-                .field("internal", internal)
-                .field("source_surface", source_surface)
-                .field("icon_surface", icon_surface)
-                .field("actions", actions)
                 .finish(),
             Self::EndDnd => f.write_str("EndDnd"),
             Self::PeekDnd(mime, _) => {
@@ -96,23 +70,6 @@ pub fn register_dnd_destination<Message>(
     task::effect(Action::Dnd(DndAction::RegisterDndDestination {
         surface,
         rectangles,
-    }))
-}
-
-/// Start a Dnd operation.
-pub fn start_dnd<Message>(
-    internal: bool,
-    source_surface: Option<DndSource>,
-    icon_surface: Option<Box<dyn Any + Send>>,
-    content: Box<dyn AsMimeTypes + Send + 'static>,
-    actions: dnd::DndAction,
-) -> Task<Message> {
-    task::effect(Action::Dnd(DndAction::StartDnd {
-        internal,
-        source_surface,
-        icon_surface,
-        content,
-        actions,
     }))
 }
 

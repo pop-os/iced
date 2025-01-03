@@ -888,117 +888,89 @@ async fn run_instance<'a, P, C>(
                     let state = &window.state;
                     let icon_surface = icon_surface
                         .map(|i| {
-                            let i: Box<dyn Any> = i;
-                            i
-                        })
-                        .map(|i| {
-                            i.downcast::<Arc<(
-                                core::Element<
-                                    'static,
-                                    (),
-                                    P::Theme,
-                                    P::Renderer,
-                                >,
-                                core::widget::tree::State,
-                            )>>()
-                            .unwrap()
-                        })
-                        .map(
-                            |e: Box<
-                                Arc<(
-                                    core::Element<
-                                        'static,
-                                        (),
-                                        P::Theme,
-                                        P::Renderer,
-                                    >,
-                                    core::widget::tree::State,
-                                )>,
-                            >| {
-                                let mut renderer = compositor.create_renderer();
+                            let mut icon_surface = i.downcast::<P::Theme, P::Renderer>();
 
-                                let e = Arc::into_inner(*e).unwrap();
-                                let (mut e, widget_state) = e;
-                                let lim = core::layout::Limits::new(
-                                    Size::new(1., 1.),
-                                    Size::new(
-                                        state.viewport().physical_width()
-                                            as f32,
-                                        state.viewport().physical_height()
-                                            as f32,
-                                    ),
-                                );
+                            let mut renderer = compositor.create_renderer();
 
-                                let mut tree = core::widget::Tree {
-                                    id: e.as_widget().id(),
-                                    tag: e.as_widget().tag(),
-                                    state: widget_state,
-                                    children: e.as_widget().children(),
-                                };
+                            let lim = core::layout::Limits::new(
+                                Size::new(1., 1.),
+                                Size::new(
+                                    state.viewport().physical_width()
+                                        as f32,
+                                    state.viewport().physical_height()
+                                        as f32,
+                                ),
+                            );
 
-                                let size = e
-                                    .as_widget()
-                                    .layout(&mut tree, &renderer, &lim);
-                                e.as_widget_mut().diff(&mut tree);
+                            let mut tree = core::widget::Tree {
+                                id: icon_surface.element.as_widget().id(),
+                                tag: icon_surface.element.as_widget().tag(),
+                                state: icon_surface.state,
+                                children: icon_surface.element.as_widget().children(),
+                            };
 
-                                let size = lim.resolve(
-                                    Length::Shrink,
-                                    Length::Shrink,
-                                    size.size(),
-                                );
-                                let viewport = Viewport::with_logical_size(
-                                    size,
-                                    state.viewport().scale_factor(),
-                                );
+                            let size = icon_surface.element
+                                .as_widget()
+                                .layout(&mut tree, &renderer, &lim);
+                            icon_surface.element.as_widget_mut().diff(&mut tree);
 
-                                let mut ui = UserInterface::build(
-                                    e,
-                                    size,
-                                    user_interface::Cache::default(),
-                                    &mut renderer,
-                                );
-                                _ = ui.draw(
-                                    &mut renderer,
-                                    state.theme(),
-                                    &renderer::Style {
-                                        icon_color: state.icon_color(),
-                                        text_color: state.text_color(),
-                                        scale_factor: state.scale_factor(),
-                                    },
-                                    Default::default(),
-                                );;
-                                let mut bytes = compositor.screenshot(
-                                    &mut renderer,
-                                    &viewport,
-                                    core::Color::TRANSPARENT,
-                                    &debug.overlay(),
-                                );
-                                for pix in bytes.chunks_exact_mut(4) {
-                                    // rgba -> argb little endian
-                                    pix.swap(0, 2);
+                            let size = lim.resolve(
+                                Length::Shrink,
+                                Length::Shrink,
+                                size.size(),
+                            );
+                            let viewport = Viewport::with_logical_size(
+                                size,
+                                state.viewport().scale_factor(),
+                            );
+
+                            let mut ui = UserInterface::build(
+                                icon_surface.element,
+                                size,
+                                user_interface::Cache::default(),
+                                &mut renderer,
+                            );
+                            _ = ui.draw(
+                                &mut renderer,
+                                state.theme(),
+                                &renderer::Style {
+                                    icon_color: state.icon_color(),
+                                    text_color: state.text_color(),
+                                    scale_factor: state.scale_factor(),
+                                },
+                                Default::default(),
+                            );;
+                            let mut bytes = compositor.screenshot(
+                                &mut renderer,
+                                &viewport,
+                                core::Color::TRANSPARENT,
+                                &debug.overlay(),
+                            );
+                            for pix in bytes.chunks_exact_mut(4) {
+                                // rgba -> argb little endian
+                                pix.swap(0, 2);
+                            }
+                            // update subsurfaces
+                            if let Some(surface) = platform_specific_handler.create_surface() {
+                                // TODO Remove id
+                                let id = window::Id::unique();
+                                platform_specific_handler
+                                    .update_subsurfaces(id, &surface);
+                                platform_specific_handler.update_surface_shm(&surface, viewport.physical_width(), viewport.physical_height(), &bytes, icon_surface.offset);
+                                let surface = Arc::new(surface);
+                                dnd_surface = Some(surface.clone());
+                                Icon::Surface(dnd::DndSurface(surface))
+                            } else {
+                                platform_specific_handler
+                                    .clear_subsurface_list();
+                                Icon::Buffer {
+                                    data: Arc::new(bytes),
+                                    width: viewport.physical_width(),
+                                    height: viewport.physical_height(),
+                                    transparent: true,
                                 }
-                                // update subsurfaces
-                                if let Some(surface) = platform_specific_handler.create_surface() {
-                                    // TODO Remove id
-                                    let id = window::Id::unique();
-                                    platform_specific_handler
-                                        .update_subsurfaces(id, &surface);
-                                    platform_specific_handler.update_surface_shm(&surface, viewport.physical_width(), viewport.physical_height(), &bytes);
-                                    let surface = Arc::new(surface);
-                                    dnd_surface = Some(surface.clone());
-                                    Icon::Surface(dnd::DndSurface(surface))
-                                } else {
-                                    platform_specific_handler
-                                        .clear_subsurface_list();
-                                    Icon::Buffer {
-                                        data: Arc::new(bytes),
-                                        width: viewport.physical_width(),
-                                        height: viewport.physical_height(),
-                                        transparent: true,
-                                    }
-                                }
-                            },
-                        );
+                            }
+                        });
 
                     clipboard.start_dnd_winit(
                         internal,
@@ -2296,21 +2268,6 @@ where
                 rectangles,
             } => {
                 clipboard.register_dnd_destination(surface, rectangles);
-            }
-            iced_runtime::dnd::DndAction::StartDnd {
-                internal,
-                source_surface,
-                icon_surface,
-                content,
-                actions,
-            } => {
-                clipboard.start_dnd(
-                    internal,
-                    source_surface,
-                    icon_surface.map(|d| d as Box<dyn Any>),
-                    content,
-                    actions,
-                );
             }
             iced_runtime::dnd::DndAction::EndDnd => {
                 clipboard.end_dnd();
