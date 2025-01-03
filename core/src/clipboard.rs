@@ -1,6 +1,6 @@
 //! Access the clipboard.
 
-use std::{any::Any, sync::Arc};
+use std::any::Any;
 
 use dnd::{DndAction, DndDestinationRectangle, DndSurface};
 use mime::{self, AllowedMimeTypes, AsMimeTypes, ClipboardStoreData};
@@ -98,7 +98,7 @@ pub fn start_dnd<T: 'static, R: 'static, M: 'static>(
         internal,
         source_surface,
         icon_surface.map(|i| {
-            let i: Box<dyn Any> = Box::new(Arc::new(i));
+            let i: Box<dyn Any> = Box::new(i);
             i
         }),
         content,
