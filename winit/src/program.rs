@@ -2279,21 +2279,6 @@ where
             } => {
                 clipboard.register_dnd_destination(surface, rectangles);
             }
-            iced_runtime::dnd::DndAction::StartDnd {
-                internal,
-                source_surface,
-                icon_surface,
-                content,
-                actions,
-            } => {
-                clipboard.start_dnd(
-                    internal,
-                    source_surface,
-                    icon_surface.map(|d| d as Box<dyn Any>),
-                    content,
-                    actions,
-                );
-            }
             iced_runtime::dnd::DndAction::EndDnd => {
                 clipboard.end_dnd();
             }
