@@ -2170,15 +2170,6 @@ where
             iced_runtime::dnd::DndAction::SetAction(a) => {
                 clipboard.set_action(a);
             }
-            iced_runtime::dnd::DndAction::StartDnd {
-                internal,
-                source_surface,
-                icon_surface,
-                content,
-                actions,
-            } => {
-                // removed
-            }
         },
         Action::PlatformSpecific(a) => {
             platform_specific.send_action(a);
