@@ -15,7 +15,7 @@ use cctk::sctk::reexports::client::protocol::wl_surface::WlSurface;
 use cctk::sctk::seat::keyboard::Modifiers;
 use iced_futures::futures::channel::mpsc;
 use iced_graphics::Compositor;
-use iced_runtime::core::window;
+use iced_runtime::core::{window, Vector};
 use iced_runtime::Debug;
 use raw_window_handle::{DisplayHandle, HasDisplayHandle, HasWindowHandle};
 use raw_window_handle::{HasRawDisplayHandle, RawWindowHandle};
@@ -239,12 +239,12 @@ impl WaylandSpecific {
         }
     }
 
-    pub(crate) fn update_surface_shm(&mut self, window: &dyn HasWindowHandle, width: u32, height: u32, data: &[u8]) {
+    pub(crate) fn update_surface_shm(&mut self, window: &dyn HasWindowHandle, width: u32, height: u32, data: &[u8], offset: Vector) {
         if let Some(subsurface_state) = self.subsurface_state.as_mut() {
             if let RawWindowHandle::Wayland(window) = window.window_handle().unwrap().as_raw() {
                 let id = unsafe { ObjectId::from_ptr(WlSurface::interface(), window.surface.as_ptr().cast()).unwrap() };
                 let surface = WlSurface::from_id(self.conn.as_ref().unwrap(), id).unwrap();
-                subsurface_state.update_surface_shm(&surface, width, height, data);
+                subsurface_state.update_surface_shm(&surface, width, height, data, offset);
             }
         }
     }

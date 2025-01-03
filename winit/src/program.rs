@@ -956,7 +956,7 @@ async fn run_instance<'a, P, C>(
                                 let id = window::Id::unique();
                                 platform_specific_handler
                                     .update_subsurfaces(id, &surface);
-                                platform_specific_handler.update_surface_shm(&surface, viewport.physical_width(), viewport.physical_height(), &bytes);
+                                platform_specific_handler.update_surface_shm(&surface, viewport.physical_width(), viewport.physical_height(), &bytes, icon_surface.offset);
                                 let surface = Arc::new(surface);
                                 dnd_surface = Some(surface.clone());
                                 Icon::Surface(dnd::DndSurface(surface))
