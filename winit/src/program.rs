@@ -888,7 +888,7 @@ async fn run_instance<'a, P, C>(
                     let state = &window.state;
                     let icon_surface = icon_surface
                         .map(|i| {
-                            let e = i.downcast::<Arc<(
+                            let e = i.downcast::<(
                                 core::Element<
                                     'static,
                                     (),
@@ -896,10 +896,9 @@ async fn run_instance<'a, P, C>(
                                     P::Renderer,
                                 >,
                                 core::widget::tree::State,
-                            )>>()
+                            )>()
                             .unwrap();
-                            let e = Arc::into_inner(*e).unwrap();
-                            let (mut e, widget_state) = e;
+                            let (mut e, widget_state) = *e;
 
                             let mut renderer = compositor.create_renderer();
 
