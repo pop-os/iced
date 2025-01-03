@@ -888,17 +888,7 @@ async fn run_instance<'a, P, C>(
                     let state = &window.state;
                     let icon_surface = icon_surface
                         .map(|i| {
-                            let e = i.downcast::<(
-                                core::Element<
-                                    'static,
-                                    (),
-                                    P::Theme,
-                                    P::Renderer,
-                                >,
-                                core::widget::tree::State,
-                            )>()
-                            .unwrap();
-                            let (mut e, widget_state) = *e;
+                            let mut icon_surface = i.downcast::<P::Theme, P::Renderer>();
 
                             let mut renderer = compositor.create_renderer();
 
@@ -913,16 +903,16 @@ async fn run_instance<'a, P, C>(
                             );
 
                             let mut tree = core::widget::Tree {
-                                id: e.as_widget().id(),
-                                tag: e.as_widget().tag(),
-                                state: widget_state,
-                                children: e.as_widget().children(),
+                                id: icon_surface.element.as_widget().id(),
+                                tag: icon_surface.element.as_widget().tag(),
+                                state: icon_surface.state,
+                                children: icon_surface.element.as_widget().children(),
                             };
 
-                            let size = e
+                            let size = icon_surface.element
                                 .as_widget()
                                 .layout(&mut tree, &renderer, &lim);
-                            e.as_widget_mut().diff(&mut tree);
+                            icon_surface.element.as_widget_mut().diff(&mut tree);
 
                             let size = lim.resolve(
                                 Length::Shrink,
@@ -935,7 +925,7 @@ async fn run_instance<'a, P, C>(
                             );
 
                             let mut ui = UserInterface::build(
-                                e,
+                                icon_surface.element,
                                 size,
                                 user_interface::Cache::default(),
                                 &mut renderer,
