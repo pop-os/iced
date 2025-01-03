@@ -1,6 +1,6 @@
 //! Access the clipboard.
 
-use std::{any::Any, sync::Arc};
+use std::any::Any;
 
 use dnd::{DndAction, DndDestinationRectangle, DndSurface};
 use mime::{self, AllowedMimeTypes, AsMimeTypes, ClipboardStoreData};
