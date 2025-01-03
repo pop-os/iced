@@ -886,6 +886,7 @@ async fn run_instance<'a, P, C>(
                     };
 
                     let state = &window.state;
+                    let mut dnd_buffer = None;
                     let icon_surface = icon_surface
                         .map(|i| {
                             let mut icon_surface = i.downcast::<P::Theme, P::Renderer>();
@@ -956,9 +957,9 @@ async fn run_instance<'a, P, C>(
                                 let id = window::Id::unique();
                                 platform_specific_handler
                                     .update_subsurfaces(id, &surface);
-                                platform_specific_handler.update_surface_shm(&surface, viewport.physical_width(), viewport.physical_height(), &bytes);
                                 let surface = Arc::new(surface);
                                 dnd_surface = Some(surface.clone());
+                                dnd_buffer = Some((viewport.physical_size(), bytes, icon_surface.offset));
                                 Icon::Surface(dnd::DndSurface(surface))
                             } else {
                                 platform_specific_handler
@@ -979,6 +980,11 @@ async fn run_instance<'a, P, C>(
                         content,
                         actions,
                     );
+
+                    // This needs to be after `wl_data_device::start_drag` for the offset to have an effect
+                    if let (Some(surface), Some((size, bytes, offset))) = (dnd_surface.as_ref(), dnd_buffer) {
+                        platform_specific_handler.update_surface_shm(&surface, size.width, size.height, &bytes, offset);
+                    }
                 }
             }
             Event::WindowCreated {

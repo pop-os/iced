@@ -5,25 +5,27 @@ use std::any::Any;
 use dnd::{DndAction, DndDestinationRectangle, DndSurface};
 use mime::{self, AllowedMimeTypes, AsMimeTypes, ClipboardStoreData};
 
-use crate::{widget::tree::State, window, Element};
+use crate::{widget::tree::State, window, Element, Vector};
 
 #[derive(Debug)]
 pub struct IconSurface<E> {
     pub element: E,
     pub state: State,
+    pub offset: Vector,
 }
 
 pub type DynIconSurface = IconSurface<Box<dyn Any>>;
 
 impl<T: 'static, R: 'static> IconSurface<Element<'static, (), T, R>> {
-    pub fn new(element: Element<'static, (), T, R>, state: State) -> Self {
-        Self { element, state }
+    pub fn new(element: Element<'static, (), T, R>, state: State, offset: Vector) -> Self {
+        Self { element, state, offset }
     }
 
     fn upcast(self) -> DynIconSurface {
         IconSurface {
             element: Box::new(self.element),
             state: self.state,
+            offset: self.offset,
         }
     }
 }
@@ -36,6 +38,7 @@ impl DynIconSurface {
         IconSurface {
             element: *self.element.downcast().expect("drag-and-drop icon surface has invalid element type"),
             state: self.state,
+            offset: self.offset,
         }
     }
 }
