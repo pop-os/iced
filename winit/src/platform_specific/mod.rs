@@ -4,7 +4,7 @@
 use std::collections::HashMap;
 
 use iced_graphics::Compositor;
-use iced_runtime::{core::window, user_interface, Debug};
+use iced_runtime::{core::{window, Vector}, user_interface, Debug};
 use raw_window_handle::HasWindowHandle;
 
 #[cfg(all(feature = "wayland", target_os = "linux"))]
@@ -128,10 +128,10 @@ impl PlatformSpecific {
         None
     }
 
-    pub(crate) fn update_surface_shm(&mut self, surface: &dyn HasWindowHandle, width: u32, height: u32, data: &[u8]) {
+    pub(crate) fn update_surface_shm(&mut self, surface: &dyn HasWindowHandle, width: u32, height: u32, data: &[u8], offset: Vector) {
         #[cfg(all(feature = "wayland", target_os = "linux"))]
         {
-            return self.wayland.update_surface_shm(surface, width, height, data);
+            return self.wayland.update_surface_shm(surface, width, height, data, offset);
         }
     }
 }
