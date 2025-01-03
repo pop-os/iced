@@ -17,7 +17,7 @@ use cctk::sctk::seat::keyboard::Modifiers;
 use cursor_icon::CursorIcon;
 use iced_futures::futures::channel::mpsc;
 use iced_graphics::{Compositor, compositor};
-use iced_runtime::core::window;
+use iced_runtime::core::{Vector, window};
 use raw_window_handle::{DisplayHandle, HasDisplayHandle, HasWindowHandle};
 use raw_window_handle::{HasRawDisplayHandle, RawWindowHandle};
 use sctk_event::SctkEvent;
@@ -245,6 +245,7 @@ impl WaylandSpecific {
         width: u32,
         height: u32,
         data: &[u8],
+        offset: Vector,
     ) {
         if let Some(subsurface_state) = self.subsurface_state.as_mut() {
             if let RawWindowHandle::Wayland(window) =
@@ -261,7 +262,7 @@ impl WaylandSpecific {
                     WlSurface::from_id(self.conn.as_ref().unwrap(), id)
                         .unwrap();
                 subsurface_state
-                    .update_surface_shm(&surface, width, height, data);
+                    .update_surface_shm(&surface, width, height, data, offset);
             }
         }
     }

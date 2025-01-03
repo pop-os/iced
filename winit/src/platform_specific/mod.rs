@@ -6,7 +6,10 @@ use std::collections::HashMap;
 #[cfg(all(feature = "wayland", target_os = "linux"))]
 use cctk::sctk::reexports::client::Connection;
 use iced_graphics::{Compositor, compositor};
-use iced_runtime::{core::window, platform_specific, user_interface};
+use iced_runtime::{
+    core::{Vector, window},
+    platform_specific, user_interface,
+};
 use raw_window_handle::HasWindowHandle;
 
 #[cfg(all(feature = "wayland", target_os = "linux"))]
@@ -149,12 +152,13 @@ impl PlatformSpecific {
         width: u32,
         height: u32,
         data: &[u8],
+        offset: Vector,
     ) {
         #[cfg(all(feature = "wayland", target_os = "linux"))]
         {
             return self
                 .wayland
-                .update_surface_shm(surface, width, height, data);
+                .update_surface_shm(surface, width, height, data, offset);
         }
     }
 }
