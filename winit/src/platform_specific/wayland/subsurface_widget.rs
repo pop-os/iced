@@ -378,9 +378,15 @@ impl SubsurfaceState {
         surface: &WlSurface,
         width: u32,
         height: u32,
+        scale: f64,
         data: &[u8],
         offset: Vector,
     ) {
+        let wp_viewport = self.wp_viewporter.get_viewport(
+            &surface,
+            &self.qh,
+            cctk::sctk::globals::GlobalData,
+        );
         let shm = ShmGlobal(&self.wl_shm);
         let mut pool =
             SlotPool::new(width as usize * height as usize * 4, &shm).unwrap();
@@ -396,7 +402,12 @@ impl SubsurfaceState {
         surface.damage_buffer(0, 0, width as i32, height as i32);
         buffer.attach_to(&surface);
         surface.offset(offset.x as i32, offset.y as i32);
+        wp_viewport.set_destination(
+            (width as f64 / scale) as i32,
+            (height as f64 / scale) as i32,
+        );
         surface.commit();
+        wp_viewport.destroy();
     }
 
     fn create_subsurface(&self, parent: &WlSurface) -> SubsurfaceInstance {

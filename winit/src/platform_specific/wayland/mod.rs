@@ -261,8 +261,9 @@ impl WaylandSpecific {
                 let surface =
                     WlSurface::from_id(self.conn.as_ref().unwrap(), id)
                         .unwrap();
-                subsurface_state
-                    .update_surface_shm(&surface, width, height, data, offset);
+                subsurface_state.update_surface_shm(
+                    &surface, width, height, scale, data, offset,
+                );
             }
         }
     }
