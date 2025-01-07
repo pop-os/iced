@@ -18,7 +18,7 @@ impl<T> DataOfferHandler for SctkState<T> {
         if self
             .dnd_offer
             .as_ref()
-            .map(|o| o.offer.inner() == offer.inner())
+            .map(|o| o.offer.as_ref().map(|o| o.inner()) == Some(offer.inner()))
             .unwrap_or(false)
         {
             self.sctk_events
@@ -41,7 +41,7 @@ impl<T> DataOfferHandler for SctkState<T> {
         if self
             .dnd_offer
             .as_ref()
-            .map(|o| o.offer.inner() == offer.inner())
+            .map(|o| o.offer.as_ref().map(|o| o.inner()) == Some(offer.inner()))
             .unwrap_or(false)
         {
             self.sctk_events

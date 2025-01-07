@@ -51,11 +51,22 @@ multi-window = ["iced_winit?/multi-window"]
 # Enables the advanced module
 advanced = []
 # Enables the `accesskit` accessibility library
-a11y = ["iced_accessibility", "iced_core/a11y", "iced_widget/a11y", "iced_winit?/a11y", "iced_sctk?/a11y"]
+a11y = [
+    "iced_accessibility",
+    "iced_core/a11y",
+    "iced_widget/a11y",
+    "iced_winit?/a11y",
+    "iced_sctk?/a11y",
+]
 # Enables the winit shell. Conflicts with `wayland` and `glutin`.
 winit = ["iced_winit", "iced_accessibility?/accesskit_winit"]
 # Enables the sctk shell. Conflicts with `winit` and `glutin`.
-wayland = ["iced_sctk", "iced_widget/wayland", "iced_accessibility?/accesskit_unix", "iced_core/wayland"]
+wayland = [
+    "iced_sctk",
+    "iced_widget/wayland",
+    "iced_accessibility?/accesskit_unix",
+    "iced_core/wayland",
+]
 # Enables clipboard for iced_sctk
 wayland-clipboard = ["iced_sctk?/clipboard"]
 # Enables the sctk with input method support.
@@ -79,6 +90,8 @@ iced_accessibility.workspace = true
 iced_accessibility.optional = true
 thiserror.workspace = true
 window_clipboard.workspace = true
+mime.workspace = true
+dnd.workspace = true
 
 image.workspace = true
 image.optional = true
@@ -98,7 +111,7 @@ members = [
     "winit",
     "examples/*",
     "accessibility",
-    "sctk"
+    "sctk",
 ]
 exclude = ["examples/integration"]
 
@@ -162,7 +175,7 @@ qrcode = { version = "0.12", default-features = false }
 raw-window-handle = "0.6"
 resvg = "0.37"
 rustc-hash = "1.0"
-sctk = { package = "smithay-client-toolkit", git = "https://github.com/smithay/client-toolkit", rev = "2e9bf9f" }
+sctk = { package = "smithay-client-toolkit", git = "https://github.com/smithay/client-toolkit", rev = "3bed072" }
 smol = "1.0"
 smol_str = "0.2"
 softbuffer = { git = "https://github.com/pop-os/softbuffer", tag = "cosmic-4.0" }
@@ -176,7 +189,7 @@ xxhash-rust = { version = "0.8", features = ["xxh3"] }
 unicode-segmentation = "1.0"
 wasm-bindgen-futures = "0.4"
 wasm-timer = "0.2"
-wayland-protocols = { version = "0.31.0", features = [ "staging"]}
+wayland-protocols = { version = "0.31.0", features = ["staging"] }
 web-sys = "0.3"
 web-time = "0.2"
 # wgpu = "0.19"
@@ -184,6 +197,10 @@ web-time = "0.2"
 wgpu = { git = "https://github.com/gfx-rs/wgpu", rev = "20fda69" }
 wayland-protocols-misc = { version = "0.2.0"}
 winapi = "0.3"
-window_clipboard = { git = "https://github.com/pop-os/window_clipboard.git", tag = "pop-mime-types" } 
-# window_clipboard = { path = "../window_clipboard" } 
+window_clipboard = { git = "https://github.com/pop-os/window_clipboard.git", tag = "pop-dnd" }
+dnd = { git = "https://github.com/pop-os/window_clipboard.git", tag = "pop-dnd" }
+mime = { git = "https://github.com/pop-os/window_clipboard.git", tag = "pop-dnd" }
+# window_clipboard = { path = "../window_clipboard" }
+# dnd = { path = "../window_clipboard/dnd" }
+# mime = { path = "../window_clipboard/mime" }
 winit = { git = "https://github.com/pop-os/winit.git", branch = "winit-0.29" }

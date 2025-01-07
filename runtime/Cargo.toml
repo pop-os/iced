@@ -26,3 +26,4 @@ thiserror.workspace = true
 iced_accessibility.workspace = true
 iced_accessibility.optional = true
 window_clipboard.workspace = true
+dnd.workspace = true

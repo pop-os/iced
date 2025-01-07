@@ -23,6 +23,8 @@ thiserror.workspace = true
 web-time.workspace = true
 xxhash-rust.workspace = true
 window_clipboard.workspace = true
+dnd.workspace = true
+mime.workspace = true
 
 sctk.workspace = true
 sctk.optional = true

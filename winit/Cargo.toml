@@ -33,6 +33,7 @@ log.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
 window_clipboard.workspace = true
+dnd.workspace = true
 winit.workspace = true
 
 sysinfo.workspace = true
