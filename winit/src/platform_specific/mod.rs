@@ -128,10 +128,10 @@ impl PlatformSpecific {
         None
     }
 
-    pub(crate) fn update_surface_shm(&mut self, surface: &dyn HasWindowHandle, width: u32, height: u32, data: &[u8], offset: Vector) {
+    pub(crate) fn update_surface_shm(&mut self, surface: &dyn HasWindowHandle, width: u32, height: u32, scale: f64, data: &[u8], offset: Vector) {
         #[cfg(all(feature = "wayland", target_os = "linux"))]
         {
-            return self.wayland.update_surface_shm(surface, width, height, data, offset);
+            return self.wayland.update_surface_shm(surface, width, height, scale, data, offset);
         }
     }
 }

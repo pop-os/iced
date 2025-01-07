@@ -959,7 +959,7 @@ async fn run_instance<'a, P, C>(
                                     .update_subsurfaces(id, &surface);
                                 let surface = Arc::new(surface);
                                 dnd_surface = Some(surface.clone());
-                                dnd_buffer = Some((viewport.physical_size(), bytes, icon_surface.offset));
+                                dnd_buffer = Some((viewport.physical_size(), state.scale_factor(), bytes, icon_surface.offset));
                                 Icon::Surface(dnd::DndSurface(surface))
                             } else {
                                 platform_specific_handler
@@ -982,8 +982,8 @@ async fn run_instance<'a, P, C>(
                     );
 
                     // This needs to be after `wl_data_device::start_drag` for the offset to have an effect
-                    if let (Some(surface), Some((size, bytes, offset))) = (dnd_surface.as_ref(), dnd_buffer) {
-                        platform_specific_handler.update_surface_shm(&surface, size.width, size.height, &bytes, offset);
+                    if let (Some(surface), Some((size, scale, bytes, offset))) = (dnd_surface.as_ref(), dnd_buffer) {
+                        platform_specific_handler.update_surface_shm(&surface, size.width, size.height, scale, &bytes, offset);
                     }
                 }
             }
