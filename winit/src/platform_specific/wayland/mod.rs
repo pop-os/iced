@@ -239,12 +239,12 @@ impl WaylandSpecific {
         }
     }
 
-    pub(crate) fn update_surface_shm(&mut self, window: &dyn HasWindowHandle, width: u32, height: u32, data: &[u8], offset: Vector) {
+    pub(crate) fn update_surface_shm(&mut self, window: &dyn HasWindowHandle, width: u32, height: u32, scale: f64, data: &[u8], offset: Vector) {
         if let Some(subsurface_state) = self.subsurface_state.as_mut() {
             if let RawWindowHandle::Wayland(window) = window.window_handle().unwrap().as_raw() {
                 let id = unsafe { ObjectId::from_ptr(WlSurface::interface(), window.surface.as_ptr().cast()).unwrap() };
                 let surface = WlSurface::from_id(self.conn.as_ref().unwrap(), id).unwrap();
-                subsurface_state.update_surface_shm(&surface, width, height, data, offset);
+                subsurface_state.update_surface_shm(&surface, width, height, scale, data, offset);
             }
         }
     }
