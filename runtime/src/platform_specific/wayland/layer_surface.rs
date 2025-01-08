@@ -1,15 +1,14 @@
-use std::fmt;
+use std::{fmt, sync::Arc};
 
 use iced_core::layout::Limits;
 use cctk::sctk::{
-    reexports::client::protocol::wl_output::WlOutput,
-    shell::wlr_layer::{Anchor, KeyboardInteractivity, Layer},
+    output::OutputState, reexports::client::protocol::wl_output::WlOutput, shell::wlr_layer::{Anchor, KeyboardInteractivity, Layer}
 };
 
 use iced_core::window::Id;
 
 /// output for layer surface
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum IcedOutput {
     /// show on all outputs
     All,
@@ -17,11 +16,31 @@ pub enum IcedOutput {
     Active,
     /// show on a specific output
     Output(WlOutput),
+    // decide on which output to show
+    GetOutput(Arc<dyn Fn(&Vec<WlOutput>, &OutputState) -> Option<WlOutput> + Send + Sync>),
 }
 
 impl Default for IcedOutput {
     fn default() -> Self {
         Self::Active
+    }
+}
+
+impl fmt::Debug for IcedOutput {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            IcedOutput::All => write!(f, "IcedOutput::All"),
+            IcedOutput::Active => write!(f, "IcedOutput::Active"),
+            IcedOutput::Output(output) => write!(
+                f,
+                "IcedOutput::Output({:?})",
+                output
+            ),
+            IcedOutput::GetOutput(_) => write!(
+                f,
+                "IcedOutput::GetOutput(Arc<dyn Fn(&Vec<WlOutput>, &OutputState) -> Option<WlOutput> + Send + Sync>)"
+            ),
+        }
     }
 }
 

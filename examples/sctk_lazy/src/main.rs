@@ -4,16 +4,19 @@ use iced::platform_specific::shell::commands::layer_surface::{
     get_layer_surface, KeyboardInteractivity,
 };
 
+use iced::platform_specific::shell::commands::output::get_output;
+use iced::runtime::platform_specific::wayland::layer_surface::IcedOutput;
 use iced::widget::{
     button, column, horizontal_space, lazy, pick_list, row, scrollable, text,
     text_input,
 };
 use iced::window::Id;
-use iced::Task;
+use iced::{stream, Task};
 use iced::{Element, Length};
 
 use std::collections::HashSet;
 use std::hash::Hash;
+use std::sync::Arc;
 
 pub fn main() -> iced::Result {
     iced::daemon(App::title, App::update, App::view).run_with(App::new)
@@ -126,10 +129,27 @@ enum Message {
     DeleteItem(Item),
     AddItem(String),
     ItemColorChanged(Item, Color),
+    GotOutput(Option<IcedOutput>),
 }
 
 impl App {
     fn new() -> (App, Task<Message>) {
+        (Self::default(), App::try_get_output())
+    }
+
+    fn try_get_output() -> Task<Message> {
+        let monitor = std::env::var("WL_OUTPUT").expect("Provide an Output (Monitor name) by setting env WL_OUTPUT!");
+        get_output(move |output_state| {
+            output_state.outputs().find(|o|
+                output_state
+                    .info(o)
+                    .map(|info| info.name.as_ref() == Some(&monitor))
+                    .unwrap_or(false)
+            ).clone()
+        }).map(|optn| Message::GotOutput(optn.map(|output| IcedOutput::Output(output))))
+    }
+
+    fn open(output: IcedOutput) -> Task<Message> {
         let mut initial_surface = SctkLayerSurfaceSettings::default();
         initial_surface.keyboard_interactivity =
             KeyboardInteractivity::OnDemand;
@@ -139,14 +159,15 @@ impl App {
             .max_height(500.0)
             .max_width(900.0);
         initial_surface.size = Some((Some(500), Some(500)));
-        (Self::default(), get_layer_surface(initial_surface))
+        initial_surface.output = output;
+        get_layer_surface(initial_surface)
     }
 
     fn title(&self, _id: Id) -> String {
         String::from("Lazy - Iced")
     }
 
-    fn update(&mut self, message: Message) {
+    fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::InputChanged(input) => {
                 self.input = input;
@@ -176,7 +197,18 @@ impl App {
                     });
                 }
             }
+            Message::GotOutput(optn) => {
+                return match optn {
+                    Some(output) => App::open(output),
+                    None => Task::stream(stream::channel(1, |_s| async {
+                                tokio::time::sleep(std::time::Duration::from_secs(1)).await
+                            }))
+                            .chain(App::try_get_output()
+                    )
+                }
+            }
         }
+        Task::none()
     }
 
     fn view(&self, _: Id) -> Element<Message> {
