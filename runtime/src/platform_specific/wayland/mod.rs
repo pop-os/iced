@@ -2,7 +2,7 @@
 
 use std::fmt::Debug;
 
-use cctk::{sctk::output::OutputState, wayland_client::protocol::wl_output::WlOutput};
+use cctk::{sctk::output::{OutputInfo, OutputState}, wayland_client::protocol::wl_output::WlOutput};
 use iced_core::window::Id;
 
 use crate::oneshot;
@@ -34,6 +34,11 @@ pub enum Action {
         f: Box<dyn Fn(&OutputState) -> Option<WlOutput> + Send + Sync>,
         channel: oneshot::Sender<Option<WlOutput>>,
     },
+    // OutputInfo getter
+    GetOutputInfo {
+        f: Box<dyn Fn(&OutputState) -> Option<OutputInfo> + Send + Sync>,
+        channel: oneshot::Sender<Option<OutputInfo>>,
+    }
 }
 
 impl Debug for Action {
@@ -52,8 +57,11 @@ impl Debug for Action {
             Action::OverlapNotify(id, _) => {
                 f.debug_tuple("OverlapNotify").field(id).finish()
             }
-            Action::GetOutput {..} => {
+            Action::GetOutput { .. } => {
                 f.debug_tuple("GetOutput").finish()
+            }
+            Action::GetOutputInfo { .. } => {
+                f.debug_tuple("GetOutputInfo").finish()
             }
         }
     }

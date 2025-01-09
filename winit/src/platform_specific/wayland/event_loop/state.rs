@@ -1212,6 +1212,9 @@ impl SctkState {
             Action::GetOutput { f, channel } => {
                 let _ = channel.send(f(&self.output_state));
             }
+            Action::GetOutputInfo { f, channel } => {
+                let _ = channel.send(f(&self.output_state));
+            }
         };
         Ok(())
     }
