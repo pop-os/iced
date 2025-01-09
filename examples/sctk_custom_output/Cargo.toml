@@ -1,9 +1,8 @@
 [package]
-name = "sctk_lazy"
+name = "sctk_custom_output"
 version = "0.1.0"
-authors = ["Nick Senger <dev@nsenger.com>"]
-edition = "2021"
-publish = false
+edition.workspace = true
+license.workspace = true
 
 [dependencies]
 iced = { path = "../..", features = [
@@ -15,3 +14,4 @@ iced = { path = "../..", features = [
     "tiny-skia",
     "advanced",
 ], default-features = false }
+tokio = { workspace = true, features = ["time"] }

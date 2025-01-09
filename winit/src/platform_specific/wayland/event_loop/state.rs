@@ -1209,11 +1209,13 @@ impl SctkState {
                     tracing::error!("Overlap notify subscription cannot be created for surface. No matching layer surface found.");
                 }
             },
-            Action::GetOutput { f, channel } => {
-                let _ = channel.send(f(&self.output_state));
-            }
-            Action::GetOutputInfo { f, channel } => {
-                let _ = channel.send(f(&self.output_state));
+            Action::Output(action) => match action {
+                platform_specific::wayland::output::Action::GetOutput { f, channel } => {
+                    let _ = channel.send(f(&self.output_state));
+                }
+                platform_specific::wayland::output::Action::GetOutputInfo { f, channel } => {
+                    let _ = channel.send(f(&self.output_state));
+                }
             }
         };
         Ok(())

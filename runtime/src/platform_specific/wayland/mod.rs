@@ -2,7 +2,6 @@
 
 use std::fmt::Debug;
 
-use cctk::{sctk::output::{OutputInfo, OutputState}, wayland_client::protocol::wl_output::WlOutput};
 use iced_core::window::Id;
 
 use crate::oneshot;
@@ -16,6 +15,8 @@ pub mod layer_surface;
 pub mod popup;
 /// session locks
 pub mod session_lock;
+/// Output (monitor) getters
+pub mod output;
 
 /// Platform specific actions defined for wayland
 pub enum Action {
@@ -29,16 +30,8 @@ pub enum Action {
     SessionLock(session_lock::Action),
     /// Overlap Notify
     OverlapNotify(Id, bool),
-    // WlOutput getter
-    GetOutput {
-        f: Box<dyn Fn(&OutputState) -> Option<WlOutput> + Send + Sync>,
-        channel: oneshot::Sender<Option<WlOutput>>,
-    },
-    // OutputInfo getter
-    GetOutputInfo {
-        f: Box<dyn Fn(&OutputState) -> Option<OutputInfo> + Send + Sync>,
-        channel: oneshot::Sender<Option<OutputInfo>>,
-    }
+    /// Output (monitor) getters
+    Output(output::Action),
 }
 
 impl Debug for Action {
@@ -57,11 +50,8 @@ impl Debug for Action {
             Action::OverlapNotify(id, _) => {
                 f.debug_tuple("OverlapNotify").field(id).finish()
             }
-            Action::GetOutput { .. } => {
-                f.debug_tuple("GetOutput").finish()
-            }
-            Action::GetOutputInfo { .. } => {
-                f.debug_tuple("GetOutputInfo").finish()
+            Action::Output(arg0) => {
+                f.debug_tuple("GetOutput").field(arg0).finish()
             }
         }
     }
