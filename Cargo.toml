@@ -214,6 +214,7 @@ wasm-timer = "0.2"
 web-time = "1.1"
 wgpu = "22.0"
 wayland-protocols = { version = "0.32.1", features = ["staging"] }
+wayland-client = { version = "0.31.5" }
 # web-time = "1.1"
 
 
@@ -222,9 +223,9 @@ wayland-protocols = { version = "0.32.1", features = ["staging"] }
 winapi = "0.3"
 # window_clipboard = "0.4.1"
 
-window_clipboard = { git = "https://github.com/pop-os/window_clipboard.git", tag = "pop-0.13" }
-dnd = { git = "https://github.com/pop-os/window_clipboard.git", tag = "pop-0.13" }
-mime = { git = "https://github.com/pop-os/window_clipboard.git", tag = "pop-0.13" }
+window_clipboard = { git = "https://github.com/pop-os/window_clipboard.git", tag = "pop-0.13-2" }
+dnd = { git = "https://github.com/pop-os/window_clipboard.git", tag = "pop-0.13-2" }
+mime = { git = "https://github.com/pop-os/window_clipboard.git", tag = "pop-0.13-2" }
 winit = { git = "https://github.com/pop-os/winit.git", tag = "iced-xdg-surface-0.13" }
 # winit = { path = "../../winit" }
 # winit = { git = "https://github.com/iced-rs/winit.git", rev = "254d6b3420ce4e674f516f7a2bd440665e05484d" }

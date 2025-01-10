@@ -17,10 +17,13 @@ use iced_futures::futures::channel::mpsc;
 use iced_graphics::Compositor;
 use iced_runtime::core::window;
 use iced_runtime::Debug;
+use raw_window_handle::{DisplayHandle, HasDisplayHandle, HasWindowHandle};
+use raw_window_handle::{HasRawDisplayHandle, RawWindowHandle};
 use sctk_event::SctkEvent;
 use std::{collections::HashMap, sync::Arc};
 use subsurface_widget::{SubsurfaceInstance, SubsurfaceState};
 use wayland_backend::client::ObjectId;
+use wayland_client::{Connection, Proxy};
 use winit::event_loop::OwnedDisplayHandle;
 use winit::window::CursorIcon;
 
@@ -60,9 +63,9 @@ pub(crate) struct WaylandSpecific {
     proxy: Option<winit::event_loop::EventLoopProxy>,
     sender: Option<calloop::channel::Sender<Action>>,
     display_handle: Option<OwnedDisplayHandle>,
+    conn: Option<Connection>,
     modifiers: Modifiers,
     surface_ids: HashMap<ObjectId, SurfaceIdWrapper>,
-    destroyed_surface_ids: HashMap<ObjectId, SurfaceIdWrapper>,
     subsurface_state: Option<SubsurfaceState>,
     surface_subsurfaces: HashMap<window::Id, Vec<SubsurfaceInstance>>,
 }
@@ -75,6 +78,28 @@ impl PlatformSpecific {
         display: OwnedDisplayHandle,
     ) -> Self {
         self.wayland.winit_event_sender = Some(tx);
+        self.wayland.conn = match display.raw_display_handle() {
+            Ok(raw_window_handle::RawDisplayHandle::Wayland(
+                wayland_display_handle,
+            )) => {
+                let backend = unsafe {
+                    wayland_backend::client::Backend::from_foreign_display(
+                        wayland_display_handle.display.as_ptr().cast(),
+                    )
+                };
+                Some(Connection::from_backend(
+                    backend,
+                ))
+            }
+            Ok(_) => {
+                log::error!("Non-Wayland display handle");
+                None
+            }
+            Err(_) => {
+                log::error!("No display handle");
+                None
+            }
+        };
         self.wayland.display_handle = Some(display);
         self.wayland.proxy = Some(raw);
         // TODO remove this
@@ -112,6 +137,10 @@ impl PlatformSpecific {
 }
 
 impl WaylandSpecific {
+    pub(crate) fn conn(&self) -> Option<&Connection> {
+        self.conn.as_ref()
+    }
+
     pub(crate) fn handle_event<'a, P, C>(
         &mut self,
         e: SctkEvent,
@@ -135,8 +164,8 @@ impl WaylandSpecific {
             proxy,
             sender,
             display_handle,
+            conn,
             surface_ids,
-            destroyed_surface_ids,
             modifiers,
             subsurface_state,
             surface_subsurfaces,
@@ -199,5 +228,44 @@ impl WaylandSpecific {
             surface_subsurfaces,
             &subsurfaces,
         );
+    }
+
+    pub(crate) fn create_surface(&mut self) -> Option<Box<dyn HasWindowHandle + Send + Sync + 'static>> {
+        if let Some(subsurface_state) = self.subsurface_state.as_mut() {
+            let wl_surface = subsurface_state.create_surface();
+            Some(Box::new(Window(wl_surface)))
+        } else {
+            None
+        }
+    }
+
+    pub(crate) fn update_surface_shm(&mut self, window: &dyn HasWindowHandle, width: u32, height: u32, data: &[u8]) {
+        if let Some(subsurface_state) = self.subsurface_state.as_mut() {
+            if let RawWindowHandle::Wayland(window) = window.window_handle().unwrap().as_raw() {
+                let id = unsafe { ObjectId::from_ptr(WlSurface::interface(), window.surface.as_ptr().cast()).unwrap() };
+                let surface = WlSurface::from_id(self.conn.as_ref().unwrap(), id).unwrap();
+                subsurface_state.update_surface_shm(&surface, width, height, data);
+            }
+        }
+    }
+}
+
+struct Window(WlSurface);
+
+impl HasWindowHandle for Window {
+    fn window_handle(&self) -> Result<raw_window_handle::WindowHandle<'_>, raw_window_handle::HandleError> {
+        Ok(unsafe {
+            raw_window_handle::WindowHandle::borrow_raw(raw_window_handle::RawWindowHandle::Wayland(
+                raw_window_handle::WaylandWindowHandle::new(
+                    std::ptr::NonNull::new(self.0.id().as_ptr() as *mut _).unwrap(),
+                ),
+            ))
+        })
+    }
+}
+
+impl Drop for Window {
+    fn drop(&mut self) {
+        self.0.destroy();
     }
 }

@@ -5,6 +5,7 @@ use std::collections::HashMap;
 
 use iced_graphics::Compositor;
 use iced_runtime::{core::window, user_interface, Debug};
+use raw_window_handle::HasWindowHandle;
 
 #[cfg(all(feature = "wayland", target_os = "linux"))]
 pub mod wayland;
@@ -69,7 +70,7 @@ impl PlatformSpecific {
     pub(crate) fn update_subsurfaces(
         &mut self,
         id: window::Id,
-        window: &dyn winit::window::Window,
+        window: &dyn HasWindowHandle,
     ) {
         #[cfg(all(feature = "wayland", target_os = "linux"))]
         {
@@ -78,31 +79,12 @@ impl PlatformSpecific {
             };
             use wayland_backend::client::ObjectId;
 
-            let Ok(backend) = window.rwh_06_display_handle().display_handle()
-            else {
-                log::error!("No display handle");
+            let Some(conn) = self.wayland.conn() else {
+                log::error!("No Wayland conn");
                 return;
             };
 
-            let conn = match backend.as_raw() {
-                raw_window_handle::RawDisplayHandle::Wayland(
-                    wayland_display_handle,
-                ) => {
-                    let backend = unsafe {
-                        Backend::from_foreign_display(
-                            wayland_display_handle.display.as_ptr().cast(),
-                        )
-                    };
-                    cctk::sctk::reexports::client::Connection::from_backend(
-                        backend,
-                    )
-                }
-                _ => {
-                    return;
-                }
-            };
-
-            let Ok(raw) = window.rwh_06_window_handle().window_handle() else {
+            let Ok(raw) = window.window_handle() else {
                 log::error!("Invalid window handle {id:?}");
                 return;
             };
@@ -135,6 +117,21 @@ impl PlatformSpecific {
                 }
             };
             self.wayland.update_subsurfaces(id, &wl_surface);
+        }
+    }
+
+    pub(crate) fn create_surface(&mut self) -> Option<Box<dyn HasWindowHandle + Send + Sync + 'static>> {
+        #[cfg(all(feature = "wayland", target_os = "linux"))]
+        {
+            return self.wayland.create_surface();
+        }
+        None
+    }
+
+    pub(crate) fn update_surface_shm(&mut self, surface: &dyn HasWindowHandle, width: u32, height: u32, data: &[u8]) {
+        #[cfg(all(feature = "wayland", target_os = "linux"))]
+        {
+            return self.wayland.update_surface_shm(surface, width, height, data);
         }
     }
 }
