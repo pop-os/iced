@@ -175,6 +175,8 @@ impl SctkEventLoop {
                             crate::Action::Dropped(id) => {
                                 _ = state.destroyed.remove(&id.inner());
                             }
+                            crate::Action::SubsurfaceResize(id, size) => {
+                                send_event(&state.events_sender, &state.proxy, SctkEvent::SubsurfaceEvent(crate::sctk_event::SubsurfaceEventVariant::Resized(id, size)))},
                         },
                         calloop::channel::Event::Closed => {
                             log::info!("Calloop channel closed.");

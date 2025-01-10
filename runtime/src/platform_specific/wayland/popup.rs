@@ -23,6 +23,8 @@ pub struct SctkPopupSettings {
     pub parent_size: Option<(u32, u32)>,
     /// whether a grab should be requested for the popup after creation
     pub grab: bool,
+    /// whether a popup should close when its child popups close
+    pub close_with_children: bool,
 }
 
 impl Hash for SctkPopupSettings {
@@ -56,22 +58,6 @@ pub struct SctkPositioner {
     pub offset: (i32, i32),
     /// whether the popup is reactive
     pub reactive: bool,
-}
-
-impl SctkPopupSettings {
-    // /// Create a popup with a self defined view
-    // pub fn with_view<M: 'static, T: 'static, R: 'static>(
-    //     mut self,
-    //     view: Box<
-    //         dyn Fn() -> Option<Element<'static, M, T, R>>
-    //             + Send
-    //             + Sync
-    //             + 'static,
-    //     >,
-    // ) -> Self {
-    //     self.popup_view = Some(Arc::new(view));
-    //     self
-    // }
 }
 
 impl Hash for SctkPositioner {
