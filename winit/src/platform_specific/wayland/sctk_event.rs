@@ -81,7 +81,9 @@ use wayland_protocols::{
     wp::viewporter::client::wp_viewport::WpViewport,
 };
 use winit::{
-    dpi::PhysicalSize, event::WindowEvent, event_loop::EventLoopProxy,
+    dpi::{self, PhysicalSize},
+    event::WindowEvent,
+    event_loop::EventLoopProxy,
     window::WindowId,
 };
 use xkeysym::Keysym;
@@ -295,6 +297,8 @@ pub enum SubsurfaceEventVariant {
     },
     /// Destroyed
     Destroyed(SubsurfaceInstance),
+    /// Resized
+    Resized(SurfaceId, dpi::Size),
 }
 
 #[derive(Debug, Clone)]
@@ -1589,6 +1593,32 @@ impl SctkEvent {
                     }
                     if let Some(subsurface_state) = subsurface_state.as_mut() {
                         subsurface_state.unmapped_subsurfaces.push(instance);
+                    }
+                }
+                SubsurfaceEventVariant::Resized(id, size) => {
+                    if let Some((id, w)) =
+                        window_manager.get_mut(id).map(|v| (id, v))
+                    {
+                        let scale = w.state.scale_factor();
+                        let physical_size = size.to_physical(scale);
+                        w.state.update(
+                            w.raw.as_ref(),
+                            &WindowEvent::SurfaceResized(PhysicalSize::new(
+                                physical_size.width,
+                                physical_size.height,
+                            )),
+                            debug,
+                        );
+
+                        events.push((
+                            Some(id),
+                            iced_runtime::core::Event::Window(
+                                window::Event::Opened {
+                                    size: w.state.logical_size(),
+                                    position: Default::default(),
+                                },
+                            ),
+                        ))
                     }
                 }
             },

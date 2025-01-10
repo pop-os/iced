@@ -1,6 +1,6 @@
 use crate::platform_specific::wayland::Action;
 use cctk::sctk::reexports::{
-    calloop::channel,
+    calloop::{channel, LoopHandle},
     client::{protocol::wl_display::WlDisplay, Proxy, QueueHandle},
 };
 use raw_window_handle::HandleError;
@@ -99,14 +99,14 @@ impl winit::window::Window for SctkWinitWindow {
     ) -> Option<winit::dpi::PhysicalSize<u32>> {
         let mut guard = self.common.lock().unwrap();
         self.request_redraw();
-        let size: LogicalSize<u32> =
+        let logical_size: LogicalSize<u32> =
             size.to_logical(guard.fractional_scale.unwrap_or(1.));
         match &self.surface {
             CommonSurface::Popup(popup, positioner) => {
-                if size.width == 0 || size.height == 0 {
+                if logical_size.width == 0 || logical_size.height == 0 {
                     return None;
                 }
-                guard.size = size;
+                guard.size = logical_size;
                 guard.requested_size.0 = Some(guard.size.width);
                 guard.requested_size.1 = Some(guard.size.height);
                 positioner.set_size(
@@ -134,16 +134,16 @@ impl winit::window::Window for SctkWinitWindow {
             }
             CommonSurface::Layer(layer_surface) => {
                 guard.requested_size = (
-                    (size.width > 0).then_some(size.width),
-                    (size.height > 0).then_some(size.height),
+                    (logical_size.width > 0).then_some(logical_size.width),
+                    (logical_size.height > 0).then_some(logical_size.height),
                 );
-                if size.width > 0 {
-                    guard.size.width = size.width;
+                if logical_size.width > 0 {
+                    guard.size.width = logical_size.width;
                 }
-                if size.height > 0 {
-                    guard.size.height = size.height;
+                if logical_size.height > 0 {
+                    guard.size.height = logical_size.height;
                 }
-                layer_surface.set_size(size.width, size.height);
+                layer_surface.set_size(logical_size.width, logical_size.height);
                 if let Some(viewport) = guard.wp_viewport.as_ref() {
                     // Set inner size without the borders.
                     viewport.set_destination(
@@ -153,7 +153,23 @@ impl winit::window::Window for SctkWinitWindow {
                 }
             }
             CommonSurface::Lock(_) => {}
-            CommonSurface::Subsurface { .. } => {}
+            CommonSurface::Subsurface { .. } => {
+                guard.requested_size = (
+                    (logical_size.width > 0).then_some(logical_size.width),
+                    (logical_size.height > 0).then_some(logical_size.height),
+                );
+                guard.size = logical_size;
+                if let Some(viewport) = guard.wp_viewport.as_ref() {
+                    // Set inner size without the borders.
+                    viewport.set_destination(
+                        guard.size.width as i32,
+                        guard.size.height as i32,
+                    );
+                }
+                _ = self
+                    .tx
+                    .send(Action::SubsurfaceResize(self.id.inner(), size));
+            }
         }
         None
     }

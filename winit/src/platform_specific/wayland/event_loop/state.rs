@@ -249,6 +249,7 @@ pub struct SctkPopup {
     pub(crate) data: SctkPopupData,
     pub(crate) common: Arc<Mutex<Common>>,
     pub(crate) wp_fractional_scale: Option<WpFractionalScaleV1>,
+    pub(crate) close_with_children: bool,
 }
 
 impl SctkPopup {
@@ -769,6 +770,7 @@ impl SctkState {
             _pending_requests: Default::default(),
             wp_fractional_scale,
             common: common.clone(),
+            close_with_children: settings.close_with_children
         });
 
         Ok((
@@ -1128,46 +1130,48 @@ impl SctkState {
                         },
                     };
                     
-                    for subsurface_id in self
-                        .subsurfaces
-                        .iter()
-                        .enumerate()
-                        .filter_map(|(i, s)| {
-                            (s.instance.parent == sctk_popup.popup.wl_surface().id())
-                            .then_some(i)
-                        })
-                        .collect::<Vec<_>>()
-                    {
-                        let s = self
-                            .subsurfaces
-                            .remove(subsurface_id);
-                        crate::subsurface_widget::remove_iced_subsurface(
-                            &s.instance.wl_surface,
-                        );
-                        send_event(&self.events_sender, &self.proxy,
-                            SctkEvent::SubsurfaceEvent( crate::sctk_event::SubsurfaceEventVariant::Destroyed(s.instance) )
-                        );
-                    }
                     let mut to_destroy = vec![sctk_popup];
-                    while let Some(popup_to_destroy) = to_destroy.last() {
-                        match popup_to_destroy.data.parent.clone() {
-                            PopupParent::LayerSurface(_) | PopupParent::Window(_) => {
-                                break;
-                            }
-                            PopupParent::Popup(popup_to_destroy_first) => {
-                                let popup_to_destroy_first = self
-                                    .popups
-                                    .iter()
-                                    .position(|p| p.popup.wl_surface() == &popup_to_destroy_first)
-                                    .unwrap();
-                                let popup_to_destroy_first = self.popups.remove(popup_to_destroy_first);
-                                to_destroy.push(popup_to_destroy_first);
-                            }
-                        }
+                    // TODO optionally destroy parents if they request to be destroyed with children
+                    while let Some(popup_to_destroy_last) = to_destroy.last().and_then(|popup| self
+                        .popups
+                        .iter()
+                        .position(|p| popup.data.parent.wl_surface() == p.popup.wl_surface() && p.close_with_children)) {
+                        
+                        let popup_to_destroy_last = self.popups.remove(popup_to_destroy_last);
+                        to_destroy.push(popup_to_destroy_last);  
+                    }
+                    to_destroy.reverse();
+
+                    while let Some(popup_to_destroy_first) = to_destroy.last().and_then(|popup| self
+                        .popups
+                        .iter()
+                        .position(|p| p.data.parent.wl_surface() == popup.popup.wl_surface())) {
+                        let popup_to_destroy_first = self.popups.remove(popup_to_destroy_first);
+                        to_destroy.push(popup_to_destroy_first);  
                     }
                     for popup in to_destroy.into_iter().rev() {
                         if let Some(id) = self.id_map.remove(&popup.popup.wl_surface().id()) {
                             _ = self.destroyed.insert(id);
+                        }
+                        for subsurface_id in self
+                            .subsurfaces
+                            .iter()
+                            .enumerate()
+                            .filter_map(|(i, s)| {
+                                (s.instance.parent == popup.popup.wl_surface().id())
+                                .then_some(i)
+                            })
+                            .collect::<Vec<_>>()
+                        {
+                            let s = self
+                                .subsurfaces
+                                .remove(subsurface_id);
+                            crate::subsurface_widget::remove_iced_subsurface(
+                                &s.instance.wl_surface,
+                            );
+                            send_event(&self.events_sender, &self.proxy,
+                                SctkEvent::SubsurfaceEvent( crate::sctk_event::SubsurfaceEventVariant::Destroyed(s.instance) )
+                            );
                         }
                         _ = send_event(&self.events_sender, &self.proxy,
                             SctkEvent::PopupEvent { variant: crate::sctk_event::PopupEventVariant::Done, toplevel_id: popup.data.toplevel.clone(), parent_id: popup.data.parent.wl_surface().clone(), id: popup.popup.wl_surface().clone() });
