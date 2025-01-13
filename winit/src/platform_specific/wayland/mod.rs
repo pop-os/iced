@@ -244,6 +244,7 @@ impl WaylandSpecific {
         window: &dyn HasWindowHandle,
         width: u32,
         height: u32,
+        scale: f64,
         data: &[u8],
         offset: Vector,
     ) {
