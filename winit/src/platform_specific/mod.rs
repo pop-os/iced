@@ -5,7 +5,7 @@ use std::collections::HashMap;
 
 use iced_graphics::Compositor;
 use iced_runtime::{core::{window, Vector}, user_interface, Debug};
-use raw_window_handle::HasWindowHandle;
+use winit::raw_window_handle::HasWindowHandle;
 
 #[cfg(all(feature = "wayland", target_os = "linux"))]
 pub mod wayland;
