@@ -79,7 +79,7 @@ a11y = [
 winit = ["iced_winit", "iced_accessibility?/accesskit_winit"]
 
 
-# Enables the sctk shell. 
+# Enables the sctk shell.
 wayland = ["iced_widget/wayland", "iced_core/wayland", "iced_winit/wayland"]
 [dependencies]
 iced_core.workspace = true
@@ -183,7 +183,7 @@ resvg = "0.42"
 web-sys = "0.3.69"
 guillotiere = "0.6"
 half = "2.2"
-image = { version = "0.24", default-features = false }
+image = { version = "0.25", default-features = false }
 kamadak-exif = "0.5"
 kurbo = "0.10"
 log = "0.4"
