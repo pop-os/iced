@@ -4,6 +4,8 @@ use std::fmt::Debug;
 
 use iced_core::window::Id;
 
+use crate::oneshot;
+
 /// activation Actions
 pub mod activation;
 
@@ -13,6 +15,8 @@ pub mod layer_surface;
 pub mod popup;
 /// session locks
 pub mod session_lock;
+/// Output (monitor) getters
+pub mod output;
 
 /// Platform specific actions defined for wayland
 pub enum Action {
@@ -26,6 +30,8 @@ pub enum Action {
     SessionLock(session_lock::Action),
     /// Overlap Notify
     OverlapNotify(Id, bool),
+    /// Output (monitor) getters
+    Output(output::Action),
 }
 
 impl Debug for Action {
@@ -43,6 +49,9 @@ impl Debug for Action {
             }
             Action::OverlapNotify(id, _) => {
                 f.debug_tuple("OverlapNotify").field(id).finish()
+            }
+            Action::Output(arg0) => {
+                f.debug_tuple("GetOutput").field(arg0).finish()
             }
         }
     }
