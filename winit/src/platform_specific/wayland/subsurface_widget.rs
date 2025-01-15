@@ -4,7 +4,7 @@ use crate::core::{
     layout::{self, Layout},
     mouse, renderer,
     widget::{self, Widget},
-    ContentFit, Element, Length, Rectangle, Size,
+    ContentFit, Element, Length, Rectangle, Size, Vector,
 };
 use std::{
     cell::RefCell,
@@ -377,14 +377,22 @@ impl SubsurfaceState {
             .create_surface(&self.qh, SurfaceData::new(None, 1))
     }
 
-    pub fn update_surface_shm(&self, surface: &WlSurface, width: u32, height: u32, data: &[u8]) {
+    pub fn update_surface_shm(&self, surface: &WlSurface, width: u32, height: u32, scale: f64, data: &[u8], offset: Vector) {
+        let wp_viewport = self.wp_viewporter.get_viewport(
+            &surface,
+            &self.qh,
+            cctk::sctk::globals::GlobalData,
+        );
         let shm = ShmGlobal(&self.wl_shm);
         let mut pool = SlotPool::new(width as usize * height as usize * 4, &shm).unwrap();
         let (buffer, canvas) = pool.create_buffer(width as i32, height as i32, width as i32 * 4, wl_shm::Format::Argb8888).unwrap();
         canvas[0..width as usize * height as usize * 4].copy_from_slice(data);
         surface.damage_buffer(0, 0, width as i32, height as i32);
         buffer.attach_to(&surface);
+        surface.offset(offset.x as i32, offset.y as i32);
+        wp_viewport.set_destination((width as f64 / scale) as i32, (height as f64 / scale) as i32);
         surface.commit();
+        wp_viewport.destroy();
     }
 
     fn create_subsurface(&self, parent: &WlSurface) -> SubsurfaceInstance {

@@ -3,7 +3,7 @@
 use std::sync::Mutex;
 use std::{any::Any, borrow::Cow};
 
-use crate::core::clipboard::DndSource;
+use crate::core::clipboard::{DndSource, DynIconSurface};
 use crate::core::clipboard::Kind;
 use std::sync::Arc;
 use winit::dpi::LogicalSize;
@@ -26,7 +26,7 @@ pub struct Clipboard {
 pub(crate) struct StartDnd {
     pub(crate) internal: bool,
     pub(crate) source_surface: Option<DndSource>,
-    pub(crate) icon_surface: Option<Box<dyn Any>>,
+    pub(crate) icon_surface: Option<DynIconSurface>,
     pub(crate) content: Box<dyn mime::AsMimeTypes + Send + 'static>,
     pub(crate) actions: DndAction,
 }
@@ -261,7 +261,7 @@ impl crate::core::Clipboard for Clipboard {
         &mut self,
         internal: bool,
         source_surface: Option<DndSource>,
-        icon_surface: Option<Box<dyn Any>>,
+        icon_surface: Option<DynIconSurface>,
         content: Box<dyn mime::AsMimeTypes + Send + 'static>,
         actions: DndAction,
     ) {
