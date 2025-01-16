@@ -401,6 +401,22 @@ fn update<Message: Clone, Theme, Renderer>(
     let state: &mut State = tree.state.downcast_mut();
     let cursor_position = cursor.position();
 
+    if let Some(drag_source) = state.drag_initiated {
+        if let Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left))
+        | Event::Touch(touch::Event::FingerLifted { .. }) = event
+        {
+            if let Some(position) = cursor_position {
+                if position.distance(drag_source) <= 1.0 {
+                    state.drag_initiated = None;
+                }
+            }
+        }
+
+        if let Event::Touch(touch::Event::FingerLost { .. }) = event {
+            state.drag_initiated = None;
+        }
+    }
+
     if let Event::Mouse(mouse::Event::CursorMoved { .. })
     | Event::Touch(touch::Event::FingerMoved { .. }) = event
     {
@@ -464,7 +480,6 @@ fn update<Message: Clone, Theme, Renderer>(
                 state.last_click = Some(click);
                 if let mouse::click::Kind::Double = click.kind() {
                     shell.publish(message.clone());
-                    state.drag_initiated = None;
                     return event::Status::Captured;
                 }
             }
@@ -510,7 +525,6 @@ fn update<Message: Clone, Theme, Renderer>(
         if let Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left))
         | Event::Touch(touch::Event::FingerLifted { .. }) = event
         {
-            state.drag_initiated = None;
             shell.publish(message.clone());
 
             return event::Status::Captured;
