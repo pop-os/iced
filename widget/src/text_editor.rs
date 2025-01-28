@@ -50,6 +50,7 @@ use crate::core::{
     Background, Border, Color, Element, Length, Padding, Pixels, Point,
     Rectangle, Shell, Size, SmolStr, Theme, Vector,
 };
+use crate::runtime::{task, Action as RuntimeAction, Task};
 
 use std::cell::RefCell;
 use std::fmt;
@@ -57,6 +58,16 @@ use std::ops::DerefMut;
 use std::sync::Arc;
 
 pub use text::editor::{Action, Edit, Motion};
+
+/// The identifier of a [`TextEditor`].
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Id(widget::Id);
+
+impl From<widget::Id> for Id {
+    fn from(value: widget::Id) -> Self {
+        Id(value)
+    }
+}
 
 /// A multi-line text input.
 ///
@@ -103,6 +114,7 @@ pub struct TextEditor<
     Theme: Catalog,
     Renderer: text::Renderer,
 {
+    id: Option<Id>,
     content: &'a Content<Renderer>,
     placeholder: Option<text::Fragment<'a>>,
     font: Option<Renderer::Font>,
@@ -131,6 +143,7 @@ where
     /// Creates new [`TextEditor`] with the given [`Content`].
     pub fn new(content: &'a Content<Renderer>) -> Self {
         Self {
+            id: None,
             content,
             placeholder: None,
             font: None,
@@ -149,6 +162,18 @@ where
             },
         }
     }
+
+    pub fn id(mut self, id: impl Into<Id>) -> Self {
+        self.id = Some(id.into());
+        self
+    }
+}
+
+/// Produces a [`Task`] that focuses the [`TextEditor`] with the given [`Id`].
+pub fn focus<T>(id: impl Into<Id>) -> Task<T> {
+    task::effect(RuntimeAction::widget(operation::focusable::focus(
+        id.into().0,
+    )))
 }
 
 impl<'a, Highlighter, Message, Theme, Renderer>
@@ -256,6 +281,7 @@ where
         ) -> highlighter::Format<Renderer::Font>,
     ) -> TextEditor<'a, H, Message, Theme, Renderer> {
         TextEditor {
+            id: self.id,
             content: self.content,
             placeholder: self.placeholder,
             font: self.font,
@@ -958,7 +984,14 @@ where
     ) {
         let state = tree.state.downcast_mut::<State<Highlighter>>();
 
-        operation.focusable(state, None);
+        operation.focusable(state, self.id.as_ref().map(|id| &id.0));
+    }
+
+    fn id(&self) -> Option<widget::Id> {
+        self.id.as_ref().map(|id| id.0.clone())
+    }
+    fn set_id(&mut self, id: widget::Id) {
+        self.id = Some(Id(id));
     }
 }
 
