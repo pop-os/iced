@@ -506,11 +506,11 @@ fn update<Message: Clone, Theme, Renderer>(
         }
     }
 
-    if let Some(message) = widget.on_release.as_ref() {
-        if let Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left))
-        | Event::Touch(touch::Event::FingerLifted { .. }) = event
-        {
-            state.drag_initiated = None;
+    if let Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left))
+    | Event::Touch(touch::Event::FingerLifted { .. }) = event
+    {
+        state.drag_initiated = None;
+        if let Some(message) = widget.on_release.as_ref() {
             shell.publish(message.clone());
 
             return event::Status::Captured;
