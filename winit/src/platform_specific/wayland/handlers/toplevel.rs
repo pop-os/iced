@@ -1,6 +1,5 @@
 use cctk::{
     cosmic_protocols::{
-        toplevel_info::v1::client::zcosmic_toplevel_handle_v1,
         toplevel_management::v1::client::zcosmic_toplevel_manager_v1,
     },
     toplevel_info::{ToplevelInfoHandler, ToplevelInfoState},
@@ -8,6 +7,7 @@ use cctk::{
     wayland_client::{self, WEnum},
 };
 use wayland_client::{Connection, QueueHandle};
+use wayland_protocols::ext::foreign_toplevel_list::v1::client::ext_foreign_toplevel_handle_v1;
 
 use crate::event_loop::state::SctkState;
 
@@ -39,7 +39,7 @@ impl ToplevelInfoHandler for SctkState {
         &mut self,
         _conn: &Connection,
         _qh: &QueueHandle<Self>,
-        _toplevel: &zcosmic_toplevel_handle_v1::ZcosmicToplevelHandleV1,
+        _toplevel: &ext_foreign_toplevel_handle_v1::ExtForeignToplevelHandleV1,
     ) {
         // TODO
     }
@@ -48,7 +48,7 @@ impl ToplevelInfoHandler for SctkState {
         &mut self,
         _conn: &Connection,
         _qh: &QueueHandle<Self>,
-        _toplevel: &zcosmic_toplevel_handle_v1::ZcosmicToplevelHandleV1,
+        _toplevel: &ext_foreign_toplevel_handle_v1::ExtForeignToplevelHandleV1,
     ) {
         // TODO
     }
@@ -57,7 +57,7 @@ impl ToplevelInfoHandler for SctkState {
         &mut self,
         _conn: &Connection,
         _qh: &QueueHandle<Self>,
-        _toplevel: &zcosmic_toplevel_handle_v1::ZcosmicToplevelHandleV1,
+        _toplevel: &ext_foreign_toplevel_handle_v1::ExtForeignToplevelHandleV1,
     ) {
         // TODO
     }
