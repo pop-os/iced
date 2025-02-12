@@ -877,19 +877,19 @@ impl SctkEvent {
                             events.push((
                                 Some(id),
                                 iced_runtime::core::Event::Window(
-                                    window::Event::Resized(
-                                        w.state.logical_size(),
-                                    ),
+                                    window::Event::Opened {
+                                        size: w.state.logical_size(),
+                                        position: Default::default(),
+                                    },
                                 ),
                             ))
                         } else {
                             events.push((
                                 Some(id),
                                 iced_runtime::core::Event::Window(
-                                    window::Event::Opened {
-                                        size: w.state.logical_size(),
-                                        position: Default::default(),
-                                    },
+                                    window::Event::Resized(
+                                        w.state.logical_size(),
+                                    ),
                                 ),
                             ))
                         }
@@ -1088,17 +1088,30 @@ impl SctkEvent {
                             configure.width as f32,
                             configure.height as f32,
                         );
-                        if let Some(id) =
-                            surface_ids.get(&surface.id()).map(|id| id.inner())
+
+                        if let Some((id, w)) =
+                            surface_ids.get(&surface.id()).and_then(|id| {
+                                window_manager
+                                    .get_mut(id.inner())
+                                    .map(|v| (id.inner(), v))
+                            })
                         {
+                            let scale = w.state.scale_factor();
+                            let p_w = (configure.width.max(1) as f64 * scale)
+                                .ceil()
+                                as u32;
+                            let p_h = (configure.height.max(1) as f64 * scale)
+                                .ceil()
+                                as u32;
+
+                            w.state.update(
+                                w.raw.as_ref(),
+                                &WindowEvent::SurfaceResized(
+                                    PhysicalSize::new(p_w, p_h),
+                                ),
+                                debug,
+                            );
                             if first {
-                                events.push((
-                                    Some(id),
-                                    iced_runtime::core::Event::Window(
-                                        window::Event::Resized(size),
-                                    ),
-                                ))
-                            } else {
                                 events.push((
                                     Some(id),
                                     iced_runtime::core::Event::Window(
@@ -1106,6 +1119,13 @@ impl SctkEvent {
                                             size: size,
                                             position: Default::default(),
                                         },
+                                    ),
+                                ))
+                            } else {
+                                events.push((
+                                    Some(id),
+                                    iced_runtime::core::Event::Window(
+                                        window::Event::Resized(size),
                                     ),
                                 ))
                             }
