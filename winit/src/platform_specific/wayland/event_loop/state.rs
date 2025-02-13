@@ -758,6 +758,7 @@ impl SctkState {
             IcedOutput::All => None, // TODO
             IcedOutput::Active => None,
             IcedOutput::Output(output) => Some(output),
+            IcedOutput::GetOutput(f) => f(&self.outputs, &self.output_state),
         };
 
         let layer_shell = self
@@ -1208,6 +1209,14 @@ impl SctkState {
                     tracing::error!("Overlap notify subscription cannot be created for surface. No matching layer surface found.");
                 }
             },
+            Action::Output(action) => match action {
+                platform_specific::wayland::output::Action::GetOutput { f, channel } => {
+                    let _ = channel.send(f(&self.output_state));
+                }
+                platform_specific::wayland::output::Action::GetOutputInfo { f, channel } => {
+                    let _ = channel.send(f(&self.output_state));
+                }
+            }
         };
         Ok(())
     }
