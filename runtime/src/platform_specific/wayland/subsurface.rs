@@ -32,22 +32,6 @@ impl Hash for SctkSubsurfaceSettings {
     }
 }
 
-impl SctkSubsurfaceSettings {
-    // /// Create a subsurface with a self defined view
-    // pub fn with_view<M: 'static, T: 'static, R: 'static>(
-    //     mut self,
-    //     view: Box<
-    //         dyn Fn() -> Option<Element<'static, M, T, R>>
-    //             + Send
-    //             + Sync
-    //             + 'static,
-    //     >,
-    // ) -> Self {
-    //     self.subsurface_view = Some(Arc::new(view));
-    //     self
-    // }
-}
-
 #[derive(Clone)]
 /// Window Action
 pub enum Action {
