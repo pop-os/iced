@@ -2,10 +2,13 @@
 #[path = "application/drag_resize.rs"]
 mod drag_resize;
 mod state;
-mod window_manager;
+pub(crate) mod window_manager;
 
+use iced_futures::core::window::Id;
 pub use runtime::{default, Appearance, DefaultStyle};
+use window_manager::ViewFn;
 use winit::dpi::PhysicalSize;
+use winit::event::WindowEvent;
 use winit::event_loop::OwnedDisplayHandle;
 
 use crate::conversion;
@@ -48,6 +51,7 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::mem::ManuallyDrop;
 use std::sync::Arc;
+use std::sync::Mutex;
 use std::time::Duration;
 
 /// An interactive, native, cross-platform, multi-windowed application.
@@ -153,6 +157,10 @@ where
     #[allow(unused_variables)]
     fn scale_factor(&self, window: window::Id) -> f64 {
         1.0
+    }
+
+    fn with_program<T>(&self, f: impl Fn(&Self) -> T) -> T {
+        f(self)
     }
 }
 
@@ -320,6 +328,29 @@ where
                 winit::event::WindowEvent::SurfaceResized(_)
                     | winit::event::WindowEvent::Moved(_)
             );
+
+            #[cfg(feature = "wayland")]
+            {
+                if matches!(event, WindowEvent::RedrawRequested) {
+                    for id in
+                        crate::subsurface_widget::subsurface_ids(window_id)
+                    {
+                        _ = self.sender.start_send(Event::Winit(
+                            id,
+                            WindowEvent::RedrawRequested,
+                        ));
+                    }
+                } else if matches!(event, WindowEvent::RedrawRequested) {
+                    for id in
+                        crate::subsurface_widget::subsurface_ids(window_id)
+                    {
+                        _ = self.sender.start_send(Event::Winit(
+                            id,
+                            WindowEvent::CloseRequested,
+                        ));
+                    }
+                }
+            }
 
             self.process_event(
                 event_loop,
@@ -603,6 +634,30 @@ where
                                     .expect("Send event");
                             }
                             Control::Winit(id, e) => {
+                                #[cfg(feature = "wayland")]
+                                {
+                                    if matches!(e, WindowEvent::RedrawRequested)
+                                    {
+                                        for id in crate::subsurface_widget::subsurface_ids(id) {
+                                            _ = self.sender
+                                                .start_send(Event::Winit(
+                                                id,
+                                                WindowEvent::RedrawRequested,
+                                            ));
+                                        }
+                                    } else if matches!(
+                                        e,
+                                        WindowEvent::RedrawRequested
+                                    ) {
+                                        for id in crate::subsurface_widget::subsurface_ids(id) {
+                                            _ = self.sender
+                                                .start_send(Event::Winit(
+                                                id,
+                                                WindowEvent::CloseRequested,
+                                            ));
+                                        }
+                                    }
+                                }
                                 self.sender
                                     .start_send(Event::Winit(id, e))
                                     .expect("Send event");
@@ -796,7 +851,9 @@ async fn run_instance<'a, P, C>(
 
     let mut cur_dnd_surface: Option<window::Id> = None;
 
-    let mut dnd_surface: Option<Arc<Box<dyn HasWindowHandle + Send + Sync + 'static>>> = None;
+    let mut dnd_surface: Option<
+        Arc<Box<dyn HasWindowHandle + Send + Sync + 'static>>,
+    > = None;
 
     debug.startup_finished();
     loop {
@@ -887,91 +944,99 @@ async fn run_instance<'a, P, C>(
 
                     let state = &window.state;
                     let mut dnd_buffer = None;
-                    let icon_surface = icon_surface
-                        .map(|i| {
-                            let mut icon_surface = i.downcast::<P::Theme, P::Renderer>();
+                    let icon_surface = icon_surface.map(|i| {
+                        let mut icon_surface =
+                            i.downcast::<P::Theme, P::Renderer>();
 
-                            let mut renderer = compositor.create_renderer();
+                        let mut renderer = compositor.create_renderer();
 
-                            let lim = core::layout::Limits::new(
-                                Size::new(1., 1.),
-                                Size::new(
-                                    state.viewport().physical_width()
-                                        as f32,
-                                    state.viewport().physical_height()
-                                        as f32,
-                                ),
-                            );
+                        let lim = core::layout::Limits::new(
+                            Size::new(1., 1.),
+                            Size::new(
+                                state.viewport().physical_width() as f32,
+                                state.viewport().physical_height() as f32,
+                            ),
+                        );
 
-                            let mut tree = core::widget::Tree {
-                                id: icon_surface.element.as_widget().id(),
-                                tag: icon_surface.element.as_widget().tag(),
-                                state: icon_surface.state,
-                                children: icon_surface.element.as_widget().children(),
-                            };
-
-                            let size = icon_surface.element
+                        let mut tree = core::widget::Tree {
+                            id: icon_surface.element.as_widget().id(),
+                            tag: icon_surface.element.as_widget().tag(),
+                            state: icon_surface.state,
+                            children: icon_surface
+                                .element
                                 .as_widget()
-                                .layout(&mut tree, &renderer, &lim);
-                            icon_surface.element.as_widget_mut().diff(&mut tree);
+                                .children(),
+                        };
 
-                            let size = lim.resolve(
-                                Length::Shrink,
-                                Length::Shrink,
-                                size.size(),
-                            );
-                            let viewport = Viewport::with_logical_size(
-                                size,
-                                state.viewport().scale_factor(),
-                            );
+                        let size = icon_surface
+                            .element
+                            .as_widget()
+                            .layout(&mut tree, &renderer, &lim);
+                        icon_surface.element.as_widget_mut().diff(&mut tree);
 
-                            let mut ui = UserInterface::build(
-                                icon_surface.element,
-                                size,
-                                user_interface::Cache::default(),
-                                &mut renderer,
-                            );
-                            _ = ui.draw(
-                                &mut renderer,
-                                state.theme(),
-                                &renderer::Style {
-                                    icon_color: state.icon_color(),
-                                    text_color: state.text_color(),
-                                    scale_factor: state.scale_factor(),
-                                },
-                                Default::default(),
-                            );;
-                            let mut bytes = compositor.screenshot(
-                                &mut renderer,
-                                &viewport,
-                                core::Color::TRANSPARENT,
-                                &debug.overlay(),
-                            );
-                            for pix in bytes.chunks_exact_mut(4) {
-                                // rgba -> argb little endian
-                                pix.swap(0, 2);
+                        let size = lim.resolve(
+                            Length::Shrink,
+                            Length::Shrink,
+                            size.size(),
+                        );
+                        let viewport = Viewport::with_logical_size(
+                            size,
+                            state.viewport().scale_factor(),
+                        );
+
+                        let mut ui = UserInterface::build(
+                            icon_surface.element,
+                            size,
+                            user_interface::Cache::default(),
+                            &mut renderer,
+                        );
+                        _ = ui.draw(
+                            &mut renderer,
+                            state.theme(),
+                            &renderer::Style {
+                                icon_color: state.icon_color(),
+                                text_color: state.text_color(),
+                                scale_factor: state.scale_factor(),
+                            },
+                            Default::default(),
+                        );
+                        let mut bytes = compositor.screenshot(
+                            &mut renderer,
+                            &viewport,
+                            core::Color::TRANSPARENT,
+                            &debug.overlay(),
+                        );
+                        for pix in bytes.chunks_exact_mut(4) {
+                            // rgba -> argb little endian
+                            pix.swap(0, 2);
+                        }
+                        // update subsurfaces
+                        if let Some(surface) =
+                            platform_specific_handler.create_surface()
+                        {
+                            // TODO Remove id
+                            let id = window::Id::unique();
+                            platform_specific_handler
+                                .update_subsurfaces(id, &surface);
+                            let surface = Arc::new(surface);
+                            dnd_surface = Some(surface.clone());
+                            dnd_buffer = Some((
+                                viewport.physical_size(),
+                                state.scale_factor(),
+                                bytes,
+                                icon_surface.offset,
+                            ));
+                            Icon::Surface(dnd::DndSurface(surface))
+                        } else {
+                            platform_specific_handler.clear_subsurface_list();
+                            Icon::Buffer {
+                                data: Arc::new(bytes),
+                                width: viewport.physical_width(),
+                                height: viewport.physical_height(),
+                                transparent: true,
                             }
-                            // update subsurfaces
-                            if let Some(surface) = platform_specific_handler.create_surface() {
-                                // TODO Remove id
-                                let id = window::Id::unique();
-                                platform_specific_handler
-                                    .update_subsurfaces(id, &surface);
-                                let surface = Arc::new(surface);
-                                dnd_surface = Some(surface.clone());
-                                dnd_buffer = Some((viewport.physical_size(), state.scale_factor(), bytes, icon_surface.offset));
-                                Icon::Surface(dnd::DndSurface(surface))
-                            } else {
-                                platform_specific_handler
-                                    .clear_subsurface_list();
-                                Icon::Buffer {
-                                    data: Arc::new(bytes),
-                                    width: viewport.physical_width(),
-                                    height: viewport.physical_height(),
-                                    transparent: true,
-                                }
-                            }
-                        });
+                        }
+                    });
 
                     clipboard.start_dnd_winit(
                         internal,
@@ -982,8 +1047,17 @@ async fn run_instance<'a, P, C>(
                     );
 
                     // This needs to be after `wl_data_device::start_drag` for the offset to have an effect
-                    if let (Some(surface), Some((size, scale, bytes, offset))) = (dnd_surface.as_ref(), dnd_buffer) {
-                        platform_specific_handler.update_surface_shm(&surface, size.width, size.height, scale, &bytes, offset);
+                    if let (Some(surface), Some((size, scale, bytes, offset))) =
+                        (dnd_surface.as_ref(), dnd_buffer)
+                    {
+                        platform_specific_handler.update_surface_shm(
+                            &surface,
+                            size.width,
+                            size.height,
+                            scale,
+                            &bytes,
+                            offset,
+                        );
                     }
                 }
             }
@@ -1182,8 +1256,10 @@ async fn run_instance<'a, P, C>(
                             },
                             cursor,
                         );
-                        platform_specific_handler
-                            .update_subsurfaces(id, window.raw.rwh_06_window_handle());
+                        platform_specific_handler.update_subsurfaces(
+                            id,
+                            window.raw.rwh_06_window_handle(),
+                        );
                         debug.draw_finished();
 
                         if new_mouse_interaction != window.mouse_interaction {
@@ -1267,8 +1343,10 @@ async fn run_instance<'a, P, C>(
                                     },
                                     window.state.cursor(),
                                 );
-                            platform_specific_handler
-                                .update_subsurfaces(id, window.raw.rwh_06_window_handle());
+                            platform_specific_handler.update_subsurfaces(
+                                id,
+                                window.raw.rwh_06_window_handle(),
+                            );
                             debug.draw_finished();
 
                             if new_mouse_interaction != window.mouse_interaction
@@ -1717,7 +1795,8 @@ async fn run_instance<'a, P, C>(
                     }
                     dnd::DndEvent::Source(evt) => {
                         match evt {
-                            dnd::SourceEvent::Finished | dnd::SourceEvent::Cancelled => {
+                            dnd::SourceEvent::Finished
+                            | dnd::SourceEvent::Cancelled => {
                                 dnd_surface = None;
                             }
                             _ => {}

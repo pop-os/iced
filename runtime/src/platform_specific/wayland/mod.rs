@@ -14,6 +14,9 @@ pub mod popup;
 /// session locks
 pub mod session_lock;
 
+// subsurfaces
+pub mod subsurface;
+
 /// Platform specific actions defined for wayland
 pub enum Action {
     /// LayerSurface Actions
@@ -26,6 +29,8 @@ pub enum Action {
     SessionLock(session_lock::Action),
     /// Overlap Notify
     OverlapNotify(Id, bool),
+    /// Subsurfaces
+    Subsurface(subsurface::Action),
 }
 
 impl Debug for Action {
@@ -43,6 +48,9 @@ impl Debug for Action {
             }
             Action::OverlapNotify(id, _) => {
                 f.debug_tuple("OverlapNotify").field(id).finish()
+            }
+            Action::Subsurface(action) => {
+                f.debug_tuple("Subsurface").field(action).finish()
             }
         }
     }

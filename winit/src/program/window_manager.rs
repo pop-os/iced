@@ -4,8 +4,9 @@ use crate::core::{Point, Size};
 use crate::graphics::Compositor;
 use crate::program::{DefaultStyle, Program, State};
 
+use iced_futures::core::Element;
 use std::collections::BTreeMap;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use winit::monitor::MonitorHandle;
 
 #[allow(missing_debug_implementations)]
@@ -15,7 +16,7 @@ where
     C: Compositor<Renderer = P::Renderer>,
     P::Theme: DefaultStyle,
 {
-    aliases: BTreeMap<winit::window::WindowId, Id>,
+    pub(crate) aliases: BTreeMap<winit::window::WindowId, Id>,
     entries: BTreeMap<Id, Window<P, C>>,
 }
 
@@ -144,6 +145,10 @@ pub(crate) enum Frame {
     Ready,
 }
 
+pub(crate) type ViewFn<M, T, R> = Arc<
+    Box<dyn Fn() -> Option<Element<'static, M, T, R>> + Send + Sync + 'static>,
+>;
+
 #[allow(missing_debug_implementations)]
 pub struct Window<P, C>
 where
@@ -200,4 +205,17 @@ where
             self.raw.request_redraw();
         }
     }
+
+    // pub fn with_view<T>(
+    //     &self,
+    //     f: impl Fn(&ViewFn<P::Message, P::Message, P::Message>) -> T,
+    // ) -> Option<T>
+    // where
+    //     P::Message: 'static,
+    // {
+    //     self.view_fn.as_ref().and_then(|m| {
+    //         let g = m.lock().unwrap();
+    //         g.downcast_ref().map(|v| f(v))
+    //     })
+    // }
 }

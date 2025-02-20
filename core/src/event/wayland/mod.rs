@@ -4,6 +4,7 @@ mod overlap_notify;
 mod popup;
 mod seat;
 mod session_lock;
+mod subsurface;
 mod window;
 
 use crate::{time::Instant, window::Id};
@@ -17,6 +18,7 @@ pub use overlap_notify::*;
 pub use popup::*;
 pub use seat::*;
 pub use session_lock::*;
+pub use subsurface::*;
 pub use window::*;
 
 /// wayland events
@@ -40,4 +42,6 @@ pub enum Event {
     Frame(Instant, WlSurface, Id),
     /// Request Resize
     RequestResize,
+    /// Subsurface
+    Subsurface(SubsurfaceEvent),
 }
