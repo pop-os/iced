@@ -1,0 +1,17 @@
+[package]
+name = "sctk_custom_output"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+iced = { path = "../..", features = [
+    "debug",
+    "lazy",
+    "wayland",
+    "winit",
+    "tokio",
+    "tiny-skia",
+    "advanced",
+], default-features = false }
+tokio = { workspace = true, features = ["time"] }
