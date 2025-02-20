@@ -397,21 +397,6 @@ impl graphics::Compositor for Compositor {
         width: u32,
         height: u32,
     ) {
-        let caps = surface.get_capabilities(&self.adapter);
-        let alpha_mode = if caps
-            .alpha_modes
-            .contains(&wgpu::CompositeAlphaMode::PostMultiplied)
-        {
-            wgpu::CompositeAlphaMode::PostMultiplied
-        } else if caps
-            .alpha_modes
-            .contains(&wgpu::CompositeAlphaMode::PreMultiplied)
-        {
-            wgpu::CompositeAlphaMode::PreMultiplied
-        } else {
-            wgpu::CompositeAlphaMode::Auto
-        };
-
         surface.configure(
             &self.engine.device,
             &wgpu::SurfaceConfiguration {
@@ -420,7 +405,7 @@ impl graphics::Compositor for Compositor {
                 present_mode: self.settings.present_mode,
                 width,
                 height,
-                alpha_mode,
+                alpha_mode: self.alpha_mode,
                 view_formats: vec![],
                 desired_maximum_frame_latency: 1,
             },
