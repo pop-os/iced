@@ -26,7 +26,6 @@ use cctk::sctk::{
     compositor::SurfaceData,
     error::GlobalError,
     globals::{GlobalData, ProvidesBoundGlobal},
-    shm::slot::SlotPool,
     reexports::client::{
         delegate_noop,
         protocol::{
@@ -41,6 +40,7 @@ use cctk::sctk::{
         },
         Connection, Dispatch, Proxy, QueueHandle,
     },
+    shm::slot::SlotPool,
 };
 use iced_futures::core::window;
 use wayland_backend::client::ObjectId;
@@ -255,7 +255,6 @@ impl PartialEq for SubsurfaceBuffer {
     }
 }
 
-
 impl Dispatch<WlShmPool, GlobalData> for SctkState {
     fn event(
         _: &mut SctkState,
@@ -303,8 +302,7 @@ impl Dispatch<WlBuffer, GlobalData> for SctkState {
         _: &QueueHandle<SctkState>,
     ) {
         match event {
-            wl_buffer::Event::Release => {
-            }
+            wl_buffer::Event::Release => {}
             _ => unreachable!(),
         }
     }
@@ -382,25 +380,43 @@ pub struct SubsurfaceState {
 
 impl SubsurfaceState {
     pub fn create_surface(&self) -> WlSurface {
-        self
-            .wl_compositor
+        self.wl_compositor
             .create_surface(&self.qh, SurfaceData::new(None, 1))
     }
 
-    pub fn update_surface_shm(&self, surface: &WlSurface, width: u32, height: u32, scale: f64, data: &[u8], offset: Vector) {
+    pub fn update_surface_shm(
+        &self,
+        surface: &WlSurface,
+        width: u32,
+        height: u32,
+        scale: f64,
+        data: &[u8],
+        offset: Vector,
+    ) {
         let wp_viewport = self.wp_viewporter.get_viewport(
             &surface,
             &self.qh,
             cctk::sctk::globals::GlobalData,
         );
         let shm = ShmGlobal(&self.wl_shm);
-        let mut pool = SlotPool::new(width as usize * height as usize * 4, &shm).unwrap();
-        let (buffer, canvas) = pool.create_buffer(width as i32, height as i32, width as i32 * 4, wl_shm::Format::Argb8888).unwrap();
+        let mut pool =
+            SlotPool::new(width as usize * height as usize * 4, &shm).unwrap();
+        let (buffer, canvas) = pool
+            .create_buffer(
+                width as i32,
+                height as i32,
+                width as i32 * 4,
+                wl_shm::Format::Argb8888,
+            )
+            .unwrap();
         canvas[0..width as usize * height as usize * 4].copy_from_slice(data);
         surface.damage_buffer(0, 0, width as i32, height as i32);
         buffer.attach_to(&surface);
         surface.offset(offset.x as i32, offset.y as i32);
-        wp_viewport.set_destination((width as f64 / scale) as i32, (height as f64 / scale) as i32);
+        wp_viewport.set_destination(
+            (width as f64 / scale) as i32,
+            (height as f64 / scale) as i32,
+        );
         surface.commit();
         wp_viewport.destroy();
     }
@@ -508,28 +524,34 @@ impl SubsurfaceState {
                         (parent.clone(), wl_subsurface, wl_surface, z)
                     },
                 ))
+                .chain(ICED_SUBSURFACES.with(|surfaces| {
+                    let b = surfaces.borrow();
+                    let v: Vec<_> = b
+                        .iter()
+                        .map(move |s| {
+                            (s.1.clone(), s.3.clone(), s.4.clone(), s.5)
+                        })
+                        .collect();
+                    v.into_iter()
+                }))
                 .collect();
 
             sorted_subsurfaces.sort_by(|a, b| {
                 let a_id = a.0.protocol_id();
                 let b_id = b.0.protocol_id();
-                (a_id, a.3).cmp(&(b_id, b.3))
+                (a.3, a_id).cmp(&(b.3, b_id))
             });
 
             // Attach buffers to subsurfaces, set viewports, and commit.
             for i in 1..sorted_subsurfaces.len() {
-                let Some(prev) = i.checked_sub(1) else {
-                    continue;
-                };
-                let [prev, subsurface] = &mut sorted_subsurfaces[prev..=i]
-                else {
-                    continue;
-                };
-                if prev.0 != subsurface.0 {
-                    continue;
+                let prev = &sorted_subsurfaces[0..i];
+                let subsurface = &sorted_subsurfaces[i];
+                for prev in prev.iter().rev() {
+                    if prev.0 != subsurface.0 {
+                        continue;
+                    }
+                    subsurface.1.place_above(&prev.2);
                 }
-
-                subsurface.1.place_above(&prev.2);
             }
         }
         if !self.new_iced_subsurfaces.is_empty() {

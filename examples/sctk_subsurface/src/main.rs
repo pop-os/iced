@@ -98,6 +98,7 @@ impl SubsurfaceApp {
                     loc: iced::Point::new(100., 200.),
                     size: Some(iced::Size::new(100., 100.)),
                     z: 1000,
+                    steal_keyboard_focus: false,
                 });
             }
             Message::Inc => {
@@ -136,7 +137,7 @@ impl SubsurfaceApp {
                                 subsurface_widget::Subsurface::new(
                                     green_buffer.clone()
                                 )
-                                .width(Length::Fill)
+                                .width(Length::Fixed(1920.))
                                 .height(Length::Fixed(200.))
                                 .z(1)
                             )

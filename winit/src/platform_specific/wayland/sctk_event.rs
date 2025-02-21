@@ -597,7 +597,6 @@ impl SctkEvent {
                     let physical_key = raw_keycode_to_physicalkey(ke.raw_code);
                     let physical_key =
                         crate::conversion::physical_key(physical_key);
-
                     events.push((
                         surface_ids.get(&surface.id()).map(|id| id.inner()),
                         iced_runtime::core::Event::Keyboard(

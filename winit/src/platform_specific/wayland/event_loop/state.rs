@@ -23,11 +23,7 @@ use iced_futures::{
 };
 use raw_window_handle::HasWindowHandle;
 use std::{
-    collections::{HashMap, HashSet},
-    convert::Infallible,
-    fmt::Debug,
-    sync::{atomic::AtomicU32, Arc, Mutex},
-    time::Duration,
+    collections::{HashMap, HashSet}, convert::Infallible, fmt::Debug, sync::{atomic::AtomicU32, Arc, Mutex}, thread::panicking, time::Duration
 };
 use wayland_backend::client::ObjectId;
 use winit::{
@@ -286,6 +282,7 @@ pub struct SctkLockSurface {
 #[derive(Debug)]
 pub struct SctkSubsurface {
     pub(crate) common: Arc<Mutex<Common>>,
+    pub(crate) steals_keyboard_focus: bool,
     pub(crate) id: core::window::Id,
     pub(crate) instance: SubsurfaceInstance,
 }
@@ -1403,13 +1400,23 @@ impl SctkState {
                     }
                 },
                 platform_specific::wayland::subsurface::Action::Destroy { id } => {
+                    let mut destroyed = vec![];
                     if let Some(subsurface) = self.subsurfaces.iter().position(|s| s.id == id) {
                         let subsurface = self.subsurfaces.remove(subsurface);
+                        destroyed.push((subsurface.instance.wl_surface.clone(), subsurface.instance.parent.clone()));
+
                         subsurface.instance.wl_surface.attach(None, 0, 0);
                         subsurface.instance.wl_surface.commit();
                         send_event(&self.events_sender, &self.proxy,
                             SctkEvent::SubsurfaceEvent( crate::sctk_event::SubsurfaceEventVariant::Destroyed(subsurface.instance) )
                         );
+                    }
+                    for (destroyed, parent) in destroyed {
+                        if let Some((wl_surface, f)) = self.seats.iter_mut().find(|f| {
+                            f.kbd_focus.as_ref().is_some_and(|f| *f == destroyed)
+                        }).and_then(|f| WlSurface::from_id(&self.connection, parent).ok().map(|wl| (wl, &mut f.kbd_focus))) {
+                            *f = Some(wl_surface);
+                        }
                     }
                 },
             },
@@ -1507,8 +1514,14 @@ impl SctkState {
         common.wp_viewport = Some(wp_viewport);
         let common = Arc::new(Mutex::new(common));
 
+        for focus in &mut self.seats {
+            if focus.kbd_focus.as_ref().is_some_and(|s| s == parent_wl_surface) {
+                focus.kbd_focus = Some(wl_surface.clone());
+            }
+        }
         self.subsurfaces.push(SctkSubsurface {
             common: common.clone(),
+            steals_keyboard_focus: settings.steal_keyboard_focus,
             id: settings.id,
             instance,
         });

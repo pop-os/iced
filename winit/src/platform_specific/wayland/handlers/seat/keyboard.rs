@@ -31,6 +31,15 @@ impl KeyboardHandler for SctkState {
                     Some((i, s)) => (i, i == 0, s),
                     None => return,
                 };
+
+            let surface = if let Some(subsurface) =
+                self.subsurfaces.iter().find(|s| {
+                    s.steals_keyboard_focus && s.instance.parent == surface.id()
+                }) {
+                &subsurface.instance.wl_surface
+            } else {
+                surface
+            };
             _ = my_seat.kbd_focus.replace(surface.clone());
 
             let seat = my_seat.seat.clone();
