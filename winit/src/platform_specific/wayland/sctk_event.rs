@@ -1284,17 +1284,26 @@ impl SctkEvent {
                     configure.new_size.0 as f32,
                     configure.new_size.1 as f32,
                 );
-                if let Some(id) =
-                    surface_ids.get(&surface.id()).map(|id| id.inner())
+                if let Some((id, w)) =
+                    surface_ids.get(&surface.id()).and_then(|id| {
+                        window_manager
+                            .get_mut(id.inner())
+                            .map(|v| (id.inner(), v))
+                    })
                 {
+                    let scale = w.state.scale_factor();
+                    let p_w = (configure.new_size.0.max(1) as f64 * scale)
+                        .round() as u32;
+                    let p_h = (configure.new_size.1.max(1) as f64 * scale)
+                        .round() as u32;
+                    w.state.update(
+                        w.raw.as_ref(),
+                        &WindowEvent::SurfaceResized(PhysicalSize::new(
+                            p_w, p_h,
+                        )),
+                        debug,
+                    );
                     if first {
-                        events.push((
-                            Some(id),
-                            iced_runtime::core::Event::Window(
-                                window::Event::Resized(size),
-                            ),
-                        ))
-                    } else {
                         events.push((
                             Some(id),
                             iced_runtime::core::Event::Window(
@@ -1302,6 +1311,13 @@ impl SctkEvent {
                                     size: size,
                                     position: Default::default(),
                                 },
+                            ),
+                        ))
+                    } else {
+                        events.push((
+                            Some(id),
+                            iced_runtime::core::Event::Window(
+                                window::Event::Resized(size),
                             ),
                         ))
                     }

@@ -277,6 +277,7 @@ pub struct SctkLockSurface {
     pub(crate) wp_fractional_scale: Option<WpFractionalScaleV1>,
     pub(crate) wp_viewport: Option<WpViewport>,
     pub(crate) common: Arc<Mutex<Common>>,
+    pub(crate) output: WlOutput,
 }
 
 #[derive(Debug)]
@@ -925,6 +926,7 @@ impl SctkState {
                 wp_fractional_scale,
                 wp_viewport,
                 common: common.clone(),
+                output: output.clone()
             });
             Some((CommonSurface::Lock(session_lock_surface), common))
         } else {
@@ -1314,11 +1316,15 @@ impl SctkState {
                     send_event(&self.events_sender, &self.proxy, SctkEvent::SessionUnlocked);
                 }
                 platform_specific::wayland::session_lock::Action::LockSurface { id, output } => {
+                    // Should we panic if the id does not match?
+                    if self.lock_surfaces.iter().any(|s| s.output == output) {
+                        tracing::warn!("Cannot create multiple lock surfaces for a single output.");
+                        return Ok(());
+                    }
                     // TODO how to handle this when there's no lock?
-                    if let Some((surface, common)) = self.get_lock_surface(id, &output) {
+                    if let Some((surface, _)) = self.get_lock_surface(id, &output) {
                         let wl_surface = surface.wl_surface();
                         receive_frame(&mut self.frame_status, &wl_surface);
-                        send_event(&self.events_sender, &self.proxy, SctkEvent::SessionLockSurfaceCreated { queue_handle: self.queue_handle.clone(), surface, native_id: id, common, display: self.connection.display() });
                     }
                 }
                 platform_specific::wayland::session_lock::Action::DestroyLockSurface { id } => {
