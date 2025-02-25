@@ -286,6 +286,7 @@ pub struct SctkSubsurface {
     pub(crate) steals_keyboard_focus: bool,
     pub(crate) id: core::window::Id,
     pub(crate) instance: SubsurfaceInstance,
+    pub(crate) settings: SctkSubsurfaceSettings
 }
 
 #[derive(Debug)]
@@ -1448,8 +1449,47 @@ impl SctkState {
         };
 
         let size = settings.size.unwrap_or(Size::new(1., 1.));
+        let half_w = size.width / 2.;
+        let half_h = size.height / 2.;
 
-        let bounds = Rectangle::new(settings.loc, size);
+        let mut loc = settings.loc;
+        match settings.gravity {
+            wayland_protocols::xdg::shell::client::xdg_positioner::Gravity::None => {
+                // center on 
+                loc.x -= half_w;
+                loc.y -= half_h;
+            },
+            wayland_protocols::xdg::shell::client::xdg_positioner::Gravity::Top => {
+                loc.x -= half_w;
+                loc.y -= size.height;
+            },
+            wayland_protocols::xdg::shell::client::xdg_positioner::Gravity::Bottom => {
+                loc.x -= half_w;
+            },
+            wayland_protocols::xdg::shell::client::xdg_positioner::Gravity::Left => {
+                loc.y -= half_h;
+            },
+            wayland_protocols::xdg::shell::client::xdg_positioner::Gravity::Right => {
+                loc.x -= size.width;
+                loc.y -= half_h;
+            },
+            wayland_protocols::xdg::shell::client::xdg_positioner::Gravity::TopLeft => {
+                loc.y -= size.height;
+
+            },
+            wayland_protocols::xdg::shell::client::xdg_positioner::Gravity::BottomLeft => {
+            },
+            wayland_protocols::xdg::shell::client::xdg_positioner::Gravity::TopRight => {
+                loc.x -= size.width;
+                loc.y -= size.height;
+            },
+            wayland_protocols::xdg::shell::client::xdg_positioner::Gravity::BottomRight => {
+                loc.x -= size.width;
+
+            },
+            _ => unimplemented!(),
+        };
+        let bounds = Rectangle::new(loc, size);        
 
         let parent = if let Some(parent) =
             self.layer_surfaces.iter().find(|l| l.id == settings.parent)
@@ -1525,18 +1565,20 @@ impl SctkState {
                 focus.kbd_focus = Some(wl_surface.clone());
             }
         }
+        let id = settings.id;
         self.subsurfaces.push(SctkSubsurface {
             common: common.clone(),
             steals_keyboard_focus: settings.steal_keyboard_focus,
             id: settings.id,
             instance,
+            settings
         });
         // XXX subsurfaces need to be sorted by z in descending order
         self.subsurfaces
             .sort_by(|a, b| b.instance.z.cmp(&a.instance.z));
 
         Ok((
-            settings.id,
+            id,
             parent.wl_surface().clone(),
             wl_surface.clone(),
             CommonSurface::Subsurface {

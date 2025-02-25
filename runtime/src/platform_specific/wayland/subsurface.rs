@@ -17,7 +17,7 @@ pub struct SctkSubsurfaceSettings {
     pub parent: Id,
     /// XXX must be unique, id of the subsurface
     pub id: Id,
-    /// position of the subsurface
+    /// anchor position of the subsurface
     pub loc: Point,
     /// size of the subsurface
     pub size: Option<Size>,
@@ -27,6 +27,11 @@ pub struct SctkSubsurfaceSettings {
     /// Steal Keyboard focus from parent while open.
     /// Will not work on a regular window.
     pub steal_keyboard_focus: bool,
+
+    /// offset of the subsurface from the anchor
+    pub offset: (i32, i32),
+    /// the gravity of the popup
+    pub gravity: Gravity,
 }
 
 impl Hash for SctkSubsurfaceSettings {

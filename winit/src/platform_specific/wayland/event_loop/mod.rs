@@ -52,7 +52,7 @@ use std::{
 };
 use tracing::error;
 use wayland_backend::client::Backend;
-use winit::event_loop::OwnedDisplayHandle;
+use winit::{dpi::LogicalSize, event_loop::OwnedDisplayHandle};
 
 use self::state::SctkState;
 
@@ -176,6 +176,60 @@ impl SctkEventLoop {
                                 _ = state.destroyed.remove(&id.inner());
                             }
                             crate::Action::SubsurfaceResize(id, size) => {
+                                // reposition the surface
+                                if let Some(pos) = state
+                                    .subsurfaces
+                                    .iter()
+                                    .position(|window| id == window.id)
+                                {
+                                    let subsurface = &mut state.subsurfaces[pos];
+                                    let settings = &subsurface.settings;
+                                    let mut loc = settings.loc;
+                                    let guard = subsurface.common.lock().unwrap();
+                                    let size: LogicalSize<f32> = size.to_logical(guard.fractional_scale.unwrap_or(1.));
+                                    let w = size.width;
+                                    let h = size.height;
+                                    let half_w = size.width / 2.;
+                                    let half_h = size.height / 2.;
+                                    match settings.gravity {
+                                        wayland_protocols::xdg::shell::client::xdg_positioner::Gravity::None => {
+                                            // center on 
+                                            loc.x -= half_w;
+                                            loc.y -= half_h;
+                                        },
+                                        wayland_protocols::xdg::shell::client::xdg_positioner::Gravity::Top => {
+                                            loc.x -= half_w;
+                                            loc.y -= size.height;
+                                        },
+                                        wayland_protocols::xdg::shell::client::xdg_positioner::Gravity::Bottom => {
+                                            loc.x -= half_w;
+                                        },
+                                        wayland_protocols::xdg::shell::client::xdg_positioner::Gravity::Left => {
+                                            loc.y -= half_h;
+                                        },
+                                        wayland_protocols::xdg::shell::client::xdg_positioner::Gravity::Right => {
+                                            loc.x -= size.width;
+                                            loc.y -= half_h;
+                                        },
+                                        wayland_protocols::xdg::shell::client::xdg_positioner::Gravity::TopLeft => {
+                                            loc.y -= size.height;
+                            
+                                        },
+                                        wayland_protocols::xdg::shell::client::xdg_positioner::Gravity::BottomLeft => {
+                                        },
+                                        wayland_protocols::xdg::shell::client::xdg_positioner::Gravity::TopRight => {
+                                            loc.x -= size.width;
+                                            loc.y -= size.height;
+                                        },
+                                        wayland_protocols::xdg::shell::client::xdg_positioner::Gravity::BottomRight => {
+                                            loc.x -= size.width;
+                            
+                                        },
+                                        _ => unimplemented!(),
+                                    };
+                                    subsurface.instance.wl_subsurface.set_position(loc.x as i32, loc.y as i32);
+
+                            }
                                 send_event(&state.events_sender, &state.proxy, SctkEvent::SubsurfaceEvent(crate::sctk_event::SubsurfaceEventVariant::Resized(id, size)))},
                         },
                         calloop::channel::Event::Closed => {
@@ -200,7 +254,7 @@ impl SctkEventLoop {
             let (viewporter_state, fractional_scaling_manager) =
                 match FractionalScalingManager::new(&globals, &qh) {
                     Ok(m) => {
-                        let viewporter_state =
+                        let viewporter_state: Option<ViewporterState> =
                             match ViewporterState::new(&globals, &qh) {
                                 Ok(s) => Some(s),
                                 Err(e) => {
