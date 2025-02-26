@@ -1468,19 +1468,19 @@ impl SctkState {
             },
             wayland_protocols::xdg::shell::client::xdg_positioner::Gravity::Left => {
                 loc.y -= half_h;
+                loc.x -= size.width;
             },
             wayland_protocols::xdg::shell::client::xdg_positioner::Gravity::Right => {
-                loc.x -= size.width;
                 loc.y -= half_h;
             },
             wayland_protocols::xdg::shell::client::xdg_positioner::Gravity::TopLeft => {
                 loc.y -= size.height;
-
+                loc.x -= size.width;
             },
             wayland_protocols::xdg::shell::client::xdg_positioner::Gravity::BottomLeft => {
+                loc.x -= size.width;
             },
             wayland_protocols::xdg::shell::client::xdg_positioner::Gravity::TopRight => {
-                loc.x -= size.width;
                 loc.y -= size.height;
             },
             wayland_protocols::xdg::shell::client::xdg_positioner::Gravity::BottomRight => {
@@ -1522,6 +1522,14 @@ impl SctkState {
         );
         wl_subsurface.set_position(bounds.x as i32, bounds.y as i32);
         _ = wl_surface.frame(&self.queue_handle, wl_surface.clone());
+        let region = self
+            .compositor_state
+            .wl_compositor()
+            .create_region(&self.queue_handle, ());
+        region.add(settings.input_region.x.round() as i32, settings.input_region.y.round() as i32, settings.input_region.width.round() as i32, settings.input_region.height.round() as i32);
+        wl_surface.set_input_region(Some(&region));
+        region.destroy();
+        
         wl_surface.commit();
 
         let wp_viewport = subsurface_state.wp_viewporter.get_viewport(

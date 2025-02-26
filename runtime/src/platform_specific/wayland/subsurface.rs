@@ -32,6 +32,9 @@ pub struct SctkSubsurfaceSettings {
     pub offset: (i32, i32),
     /// the gravity of the popup
     pub gravity: Gravity,
+
+    /// Region that accepts input for the subsurface
+    pub input_region: Rectangle,
 }
 
 impl Hash for SctkSubsurfaceSettings {

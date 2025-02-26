@@ -187,8 +187,7 @@ impl SctkEventLoop {
                                     let mut loc = settings.loc;
                                     let guard = subsurface.common.lock().unwrap();
                                     let size: LogicalSize<f32> = size.to_logical(guard.fractional_scale.unwrap_or(1.));
-                                    let w = size.width;
-                                    let h = size.height;
+                                    
                                     let half_w = size.width / 2.;
                                     let half_h = size.height / 2.;
                                     match settings.gravity {
@@ -206,19 +205,19 @@ impl SctkEventLoop {
                                         },
                                         wayland_protocols::xdg::shell::client::xdg_positioner::Gravity::Left => {
                                             loc.y -= half_h;
+                                            loc.x -= size.width;
                                         },
                                         wayland_protocols::xdg::shell::client::xdg_positioner::Gravity::Right => {
-                                            loc.x -= size.width;
                                             loc.y -= half_h;
                                         },
                                         wayland_protocols::xdg::shell::client::xdg_positioner::Gravity::TopLeft => {
                                             loc.y -= size.height;
-                            
+                                            loc.x -= size.width;
                                         },
                                         wayland_protocols::xdg::shell::client::xdg_positioner::Gravity::BottomLeft => {
+                                            loc.x -= size.width;
                                         },
                                         wayland_protocols::xdg::shell::client::xdg_positioner::Gravity::TopRight => {
-                                            loc.x -= size.width;
                                             loc.y -= size.height;
                                         },
                                         wayland_protocols::xdg::shell::client::xdg_positioner::Gravity::BottomRight => {
