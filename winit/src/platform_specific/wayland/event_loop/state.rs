@@ -1193,7 +1193,7 @@ impl SctkState {
                     {
                         Some(p) => self.popups.remove(p),
                         None => {
-                            log::warn!("No popup to destroy");
+                            log::info!("No popup to destroy");
                             return Ok(());
                         },
                     };
