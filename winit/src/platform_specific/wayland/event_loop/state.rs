@@ -295,6 +295,7 @@ pub struct SctkPopupData {
     pub(crate) parent: PopupParent,
     pub(crate) toplevel: WlSurface,
     pub(crate) positioner: Arc<XdgPositioner>,
+    pub(crate) grab: bool
 }
 
 pub struct SctkWindow {
@@ -781,6 +782,7 @@ impl SctkState {
                 parent: parent.clone(),
                 toplevel: toplevel.clone(),
                 positioner: positioner.clone(),
+                grab: settings.grab,
             },
             last_configure: None,
             _pending_requests: Default::default(),
@@ -1111,12 +1113,12 @@ impl SctkState {
                         return Ok(());
                     }
                     
-                    let parent_mismatch = self.popups.last().is_some_and(|p| {
-                        self.id_map.get(&p.popup.wl_surface().id()).map_or(true, |p|{
-                             *p != settings.parent})
+                    let parent_mismatch = self.popups.iter().rev().find(|p| {
+                        self.id_map.get(&p.popup.wl_surface().id()).map_or(true, |p_id|{
+                             *p_id != settings.parent && p.data.grab && settings.grab})
                     });
-                    if !self.destroyed.is_empty() || parent_mismatch {
-                        if parent_mismatch {
+                    if !self.destroyed.is_empty() || parent_mismatch.is_some() {
+                        if parent_mismatch.is_some() {
                             for i in 0..self.popups.len() {
                                 let id = self.id_map.get(&self.popups[i].popup.wl_surface().id());
                                 if let Some(id) = id {
