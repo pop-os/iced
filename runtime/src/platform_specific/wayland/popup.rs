@@ -25,6 +25,9 @@ pub struct SctkPopupSettings {
     pub grab: bool,
     /// whether a popup should close when its child popups close
     pub close_with_children: bool,
+    /// input zone
+    /// None results in accepting all input
+    pub input_zone: Option<Rectangle>,
 }
 
 impl Hash for SctkPopupSettings {

@@ -742,6 +742,14 @@ impl SctkState {
                 log::error!("Can't take grab on popup. Missing serial.");
             }
         }
+
+        if let Some(z) = settings.input_zone {
+            let region = self
+                .compositor_state
+                .wl_compositor()
+                .create_region(&self.queue_handle, ());
+            region.add(z.x.round() as i32, z.y.round() as i32, z.width.round() as i32, z.height.round() as i32);
+        }
         popup.xdg_surface().set_window_geometry(
             0,
             0,
