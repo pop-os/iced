@@ -1497,10 +1497,7 @@ impl SctkState {
             wayland_protocols::xdg::shell::client::xdg_positioner::Gravity::TopRight => {
                 loc.y -= size.height;
             },
-            wayland_protocols::xdg::shell::client::xdg_positioner::Gravity::BottomRight => {
-                loc.x -= size.width;
-
-            },
+            wayland_protocols::xdg::shell::client::xdg_positioner::Gravity::BottomRight => {},
             _ => unimplemented!(),
         };
         let bounds = Rectangle::new(loc, size);

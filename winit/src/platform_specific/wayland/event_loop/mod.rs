@@ -219,9 +219,7 @@ impl SctkEventLoop {
                                         wayland_protocols::xdg::shell::client::xdg_positioner::Gravity::TopRight => {
                                             loc.y -= size.height;
                                         },
-                                        wayland_protocols::xdg::shell::client::xdg_positioner::Gravity::BottomRight => {
-                                            loc.x -= size.width;
-                                        },
+                                        wayland_protocols::xdg::shell::client::xdg_positioner::Gravity::BottomRight => {},
                                         _ => unimplemented!(),
                                     };
                                     subsurface.instance.wl_subsurface.set_position(loc.x as i32, loc.y as i32);
