@@ -33,8 +33,9 @@ pub struct SctkSubsurfaceSettings {
     /// the gravity of the popup
     pub gravity: Gravity,
 
-    /// Region that accepts input for the subsurface
-    pub input_region: Rectangle,
+    /// input zone
+    /// None results in accepting all input
+    pub input_zone: Option<Rectangle>,
 }
 
 impl Hash for SctkSubsurfaceSettings {

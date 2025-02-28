@@ -1536,18 +1536,20 @@ impl SctkState {
         );
         wl_subsurface.set_position(bounds.x as i32, bounds.y as i32);
         _ = wl_surface.frame(&self.queue_handle, wl_surface.clone());
-        let region = self
-            .compositor_state
-            .wl_compositor()
-            .create_region(&self.queue_handle, ());
-        region.add(
-            settings.input_region.x.round() as i32,
-            settings.input_region.y.round() as i32,
-            settings.input_region.width.round() as i32,
-            settings.input_region.height.round() as i32,
-        );
-        wl_surface.set_input_region(Some(&region));
-        region.destroy();
+        if let Some(zone) = settings.input_zone {
+            let region = self
+                .compositor_state
+                .wl_compositor()
+                .create_region(&self.queue_handle, ());
+            region.add(
+                zone.x.round() as i32,
+                zone.y.round() as i32,
+                zone.width.round() as i32,
+                zone.height.round() as i32,
+            );
+            wl_surface.set_input_region(Some(&region));
+            region.destroy();
+        }
 
         wl_surface.commit();
 
