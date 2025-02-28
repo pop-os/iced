@@ -23,7 +23,12 @@ use iced_futures::{
 };
 use raw_window_handle::HasWindowHandle;
 use std::{
-    collections::{HashMap, HashSet}, convert::Infallible, fmt::Debug, sync::{atomic::AtomicU32, Arc, Mutex}, thread::panicking, time::Duration
+    collections::{HashMap, HashSet},
+    convert::Infallible,
+    fmt::Debug,
+    sync::{atomic::AtomicU32, Arc, Mutex},
+    thread::panicking,
+    time::Duration,
 };
 use wayland_backend::client::ObjectId;
 use winit::{
@@ -286,7 +291,7 @@ pub struct SctkSubsurface {
     pub(crate) steals_keyboard_focus: bool,
     pub(crate) id: core::window::Id,
     pub(crate) instance: SubsurfaceInstance,
-    pub(crate) settings: SctkSubsurfaceSettings
+    pub(crate) settings: SctkSubsurfaceSettings,
 }
 
 #[derive(Debug)]
@@ -295,7 +300,7 @@ pub struct SctkPopupData {
     pub(crate) parent: PopupParent,
     pub(crate) toplevel: WlSurface,
     pub(crate) positioner: Arc<XdgPositioner>,
-    pub(crate) grab: bool
+    pub(crate) grab: bool,
 }
 
 pub struct SctkWindow {
@@ -749,7 +754,12 @@ impl SctkState {
                 .compositor_state
                 .wl_compositor()
                 .create_region(&self.queue_handle, ());
-            region.add(z.x.round() as i32, z.y.round() as i32, z.width.round() as i32, z.height.round() as i32);
+            region.add(
+                z.x.round() as i32,
+                z.y.round() as i32,
+                z.width.round() as i32,
+                z.height.round() as i32,
+            );
         }
         popup.xdg_surface().set_window_geometry(
             0,
@@ -788,7 +798,7 @@ impl SctkState {
             _pending_requests: Default::default(),
             wp_fractional_scale,
             common: common.clone(),
-            close_with_children: settings.close_with_children
+            close_with_children: settings.close_with_children,
         });
 
         Ok((
@@ -937,7 +947,7 @@ impl SctkState {
                 wp_fractional_scale,
                 wp_viewport,
                 common: common.clone(),
-                output: output.clone()
+                output: output.clone(),
             });
             Some((CommonSurface::Lock(session_lock_surface), common))
         } else {
@@ -986,7 +996,6 @@ impl SctkState {
                         platform_specific::wayland::layer_surface::Action::Destroy(id) => {
                             if let Some(i) = self.layer_surfaces.iter().position(|l| l.id == id) {
                                 let l = self.layer_surfaces.remove(i);
-                                
                                 for subsurface_id in self
                                     .subsurfaces
                                     .iter()
@@ -1066,10 +1075,10 @@ impl SctkState {
             Action::Popup(action) => match action {
                 platform_specific::wayland::popup::Action::Popup { popup: settings } => {
                     // first check existing popup
-                    if let Some(existing) = self.popups.iter().position(|p| p.data.id == settings.id 
+                    if let Some(existing) = self.popups.iter().position(|p| p.data.id == settings.id
                     && (
-                        self.popups.iter().any(|parent| parent.popup.wl_surface() == p.data.parent.wl_surface() && parent.data.id == settings.parent) 
-                        || self.windows.iter().any(|w| w.id == settings.parent && *p.data.parent.wl_surface() == w.wl_surface(&self.connection)) 
+                        self.popups.iter().any(|parent| parent.popup.wl_surface() == p.data.parent.wl_surface() && parent.data.id == settings.parent)
+                        || self.windows.iter().any(|w| w.id == settings.parent && *p.data.parent.wl_surface() == w.wl_surface(&self.connection))
                         || self.layer_surfaces.iter().any(|l| l.id == settings.parent && p.data.parent.wl_surface() == l.surface.wl_surface()))
                     ) {
                         let existing = &mut self.popups[existing];
@@ -1079,7 +1088,6 @@ impl SctkState {
                         } else {
                             settings.positioner.size.unwrap()
                         };
-                
                         let Ok(positioner) = XdgPositioner::new(&self.xdg_shell_state)
                             .map_err(PopupCreationError::PositionerCreationFailed) else {
                                 log::error!("Failed to create popup positioner");
@@ -1112,7 +1120,6 @@ impl SctkState {
                             SctkEvent::PopupEvent { variant: crate::sctk_event::PopupEventVariant::Size(size.0, size.1), toplevel_id: existing.data.parent.wl_surface().clone(), parent_id: existing.data.parent.wl_surface().clone(), id: existing.popup.wl_surface().clone() });
                         return Ok(());
                     }
-                    
                     let parent_mismatch = self.popups.iter().rev().find(|p| {
                         self.id_map.get(&p.popup.wl_surface().id()).map_or(true, |p_id|{
                              *p_id != settings.parent && p.data.grab && settings.grab})
@@ -1197,16 +1204,14 @@ impl SctkState {
                             return Ok(());
                         },
                     };
-                    
                     let mut to_destroy = vec![sctk_popup];
                     // TODO optionally destroy parents if they request to be destroyed with children
                     while let Some(popup_to_destroy_last) = to_destroy.last().and_then(|popup| self
                         .popups
                         .iter()
                         .position(|p| popup.data.parent.wl_surface() == p.popup.wl_surface() && p.close_with_children)) {
-                        
                         let popup_to_destroy_last = self.popups.remove(popup_to_destroy_last);
-                        to_destroy.push(popup_to_destroy_last);  
+                        to_destroy.push(popup_to_destroy_last);
                     }
                     to_destroy.reverse();
 
@@ -1215,7 +1220,7 @@ impl SctkState {
                         .iter()
                         .position(|p| p.data.parent.wl_surface() == popup.popup.wl_surface())) {
                         let popup_to_destroy_first = self.popups.remove(popup_to_destroy_first);
-                        to_destroy.push(popup_to_destroy_first);  
+                        to_destroy.push(popup_to_destroy_first);
                     }
                     for popup in to_destroy.into_iter().rev() {
                         if let Some(id) = self.id_map.remove(&popup.popup.wl_surface().id()) {
@@ -1345,7 +1350,6 @@ impl SctkState {
                         })
                     {
                         let surface = self.lock_surfaces.remove(i);
-                        
                         for subsurface_id in self
                             .subsurfaces
                             .iter()
@@ -1499,7 +1503,7 @@ impl SctkState {
             },
             _ => unimplemented!(),
         };
-        let bounds = Rectangle::new(loc, size);        
+        let bounds = Rectangle::new(loc, size);
 
         let parent = if let Some(parent) =
             self.layer_surfaces.iter().find(|l| l.id == settings.parent)
@@ -1536,10 +1540,15 @@ impl SctkState {
             .compositor_state
             .wl_compositor()
             .create_region(&self.queue_handle, ());
-        region.add(settings.input_region.x.round() as i32, settings.input_region.y.round() as i32, settings.input_region.width.round() as i32, settings.input_region.height.round() as i32);
+        region.add(
+            settings.input_region.x.round() as i32,
+            settings.input_region.y.round() as i32,
+            settings.input_region.width.round() as i32,
+            settings.input_region.height.round() as i32,
+        );
         wl_surface.set_input_region(Some(&region));
         region.destroy();
-        
+
         wl_surface.commit();
 
         let wp_viewport = subsurface_state.wp_viewporter.get_viewport(
@@ -1579,7 +1588,11 @@ impl SctkState {
         let common = Arc::new(Mutex::new(common));
 
         for focus in &mut self.seats {
-            if focus.kbd_focus.as_ref().is_some_and(|s| s == parent_wl_surface) {
+            if focus
+                .kbd_focus
+                .as_ref()
+                .is_some_and(|s| s == parent_wl_surface)
+            {
                 focus.kbd_focus = Some(wl_surface.clone());
             }
         }
@@ -1589,7 +1602,7 @@ impl SctkState {
             steals_keyboard_focus: settings.steal_keyboard_focus,
             id: settings.id,
             instance,
-            settings
+            settings,
         });
         // XXX subsurfaces need to be sorted by z in descending order
         self.subsurfaces

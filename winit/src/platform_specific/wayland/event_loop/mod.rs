@@ -187,7 +187,6 @@ impl SctkEventLoop {
                                     let mut loc = settings.loc;
                                     let guard = subsurface.common.lock().unwrap();
                                     let size: LogicalSize<f32> = size.to_logical(guard.fractional_scale.unwrap_or(1.));
-                                    
                                     let half_w = size.width / 2.;
                                     let half_h = size.height / 2.;
                                     match settings.gravity {
@@ -222,7 +221,6 @@ impl SctkEventLoop {
                                         },
                                         wayland_protocols::xdg::shell::client::xdg_positioner::Gravity::BottomRight => {
                                             loc.x -= size.width;
-                            
                                         },
                                         _ => unimplemented!(),
                                     };
