@@ -536,11 +536,7 @@ impl SubsurfaceState {
                 }))
                 .collect();
 
-            sorted_subsurfaces.sort_by(|a, b| {
-                let a_id = a.0.protocol_id();
-                let b_id = b.0.protocol_id();
-                (a.3, a_id).cmp(&(b.3, b_id))
-            });
+            sorted_subsurfaces.sort_by(|a, b| a.3.cmp(&b.3));
 
             // Attach buffers to subsurfaces, set viewports, and commit.
             for i in 1..sorted_subsurfaces.len() {

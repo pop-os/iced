@@ -1,6 +1,10 @@
 // Shows a subsurface with a 1x1 px red buffer, stretch to window size
 
-use cctk::sctk::reexports::client::{Connection, Proxy};
+use cctk::sctk::reexports::{
+    client::{Connection, Proxy},
+    protocols::xdg::shell::client::xdg_positioner::{Anchor, Gravity},
+};
+
 use iced::platform_specific::shell::commands::subsurface::get_subsurface;
 use iced::{
     event::wayland::Event as WaylandEvent,
@@ -99,6 +103,9 @@ impl SubsurfaceApp {
                     size: Some(iced::Size::new(100., 100.)),
                     z: 1000,
                     steal_keyboard_focus: false,
+                    gravity: Gravity::BottomRight,
+                    input_zone: None,
+                    offset: (0, 0),
                 });
             }
             Message::Inc => {
