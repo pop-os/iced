@@ -258,9 +258,18 @@ impl SctkPopup {
         self.popup
             .xdg_surface()
             .set_window_geometry(0, 0, w as i32, h as i32);
+        self.update_viewport(w, h);
         // update positioner
         self.data.positioner.set_size(w as i32, h as i32);
         self.popup.reposition(&self.data.positioner, token);
+    }
+
+    pub(crate) fn update_viewport(&mut self, w: u32, h: u32) {
+        let common = self.common.lock().unwrap();
+        if let Some(viewport) = common.wp_viewport.as_ref() {
+            // Set inner size without the borders.
+            viewport.set_destination(w as i32, h as i32);
+        }
     }
 }
 
@@ -1045,22 +1054,71 @@ impl SctkState {
                         },
                 },
             Action::Popup(action) => match action {
-                platform_specific::wayland::popup::Action::Popup { mut popup, .. } => {
+                platform_specific::wayland::popup::Action::Popup { popup: settings } => {
+                    // first check existing popup
+                    if let Some(existing) = self.popups.iter().position(|p| p.data.id == settings.id 
+                    && (
+                        self.popups.iter().any(|parent| parent.popup.wl_surface() == p.data.parent.wl_surface() && parent.data.id == settings.parent) 
+                        || self.windows.iter().any(|w| w.id == settings.parent && *p.data.parent.wl_surface() == w.wl_surface(&self.connection)) 
+                        || self.layer_surfaces.iter().any(|l| l.id == settings.parent && p.data.parent.wl_surface() == l.surface.wl_surface()))
+                    ) {
+                        let existing = &mut self.popups[existing];
+                        let size = if settings.positioner.size.is_none() {
+                            log::info!("No configured popup size");
+                            (1, 1)
+                        } else {
+                            settings.positioner.size.unwrap()
+                        };
+                
+                        let Ok(positioner) = XdgPositioner::new(&self.xdg_shell_state)
+                            .map_err(PopupCreationError::PositionerCreationFailed) else {
+                                log::error!("Failed to create popup positioner");
+                                return Ok(());
+                            };
+                        positioner.set_anchor(settings.positioner.anchor);
+                        positioner.set_anchor_rect(
+                            settings.positioner.anchor_rect.x,
+                            settings.positioner.anchor_rect.y,
+                            settings.positioner.anchor_rect.width,
+                            settings.positioner.anchor_rect.height,
+                        );
+                        if let Ok(constraint_adjustment) =
+                            settings.positioner.constraint_adjustment.try_into()
+                        {
+                            positioner.set_constraint_adjustment(constraint_adjustment);
+                        }
+                        positioner.set_gravity(settings.positioner.gravity);
+                        positioner.set_offset(
+                            settings.positioner.offset.0,
+                            settings.positioner.offset.1,
+                        );
+                        if settings.positioner.reactive {
+                            positioner.set_reactive();
+                        }
+                        positioner.set_size(size.0 as i32, size.1 as i32);
+                        existing.data.positioner = Arc::new(positioner);
+                        existing.set_size(size.0, size.1, TOKEN_CTR.fetch_add(1, std::sync::atomic::Ordering::Relaxed));
+                        _ = send_event(&self.events_sender, &self.proxy,
+                            SctkEvent::PopupEvent { variant: crate::sctk_event::PopupEventVariant::Size(size.0, size.1), toplevel_id: existing.data.parent.wl_surface().clone(), parent_id: existing.data.parent.wl_surface().clone(), id: existing.popup.wl_surface().clone() });
+                        return Ok(());
+                    }
+                    
                     let parent_mismatch = self.popups.last().is_some_and(|p| {
-                        self.id_map.get(&p.popup.wl_surface().id()).map_or(true, |p| *p != popup.parent)
+                        self.id_map.get(&p.popup.wl_surface().id()).map_or(true, |p|{
+                             *p != settings.parent})
                     });
                     if !self.destroyed.is_empty() || parent_mismatch {
                         if parent_mismatch {
                             for i in 0..self.popups.len() {
                                 let id = self.id_map.get(&self.popups[i].popup.wl_surface().id());
                                 if let Some(id) = id {
-                                    if  *id != popup.parent {
+                                    if  *id != settings.parent {
                                         _ = self.handle_action(Action::Popup(platform_specific::wayland::popup::Action::Destroy{id: *id}));
                                     }
                                 }
                             }
                         }
-                        if self.pending_popup.replace((popup, 0)).is_none() {
+                        if self.pending_popup.replace((settings, 0)).is_none() {
 
                             let timer = cctk::sctk::reexports::calloop::timer::Timer::from_duration(Duration::from_millis(30));
                             let queue_handle = self.queue_handle.clone();
@@ -1100,7 +1158,7 @@ impl SctkState {
                         // log::error!("Invalid popup Id {:?}", popup.id);
                     } else {
                         self.pending_popup = None;
-                        match self.get_popup(popup) {
+                        match self.get_popup(settings) {
                             Ok((id, parent_id, toplevel_id, surface, common)) => {
                                 let wl_surface = surface.wl_surface().clone();
                                 receive_frame(&mut self.frame_status, &wl_surface);

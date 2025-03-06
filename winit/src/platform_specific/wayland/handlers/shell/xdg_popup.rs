@@ -6,6 +6,7 @@ use cctk::sctk::{
     delegate_xdg_popup, reexports::client::Proxy,
     shell::xdg::popup::PopupHandler,
 };
+use winit::dpi::LogicalSize;
 
 impl PopupHandler for SctkState {
     fn configure(
@@ -24,6 +25,9 @@ impl PopupHandler for SctkState {
         };
         let first = sctk_popup.last_configure.is_none();
         _ = sctk_popup.last_configure.replace(configure.clone());
+        let mut guard = sctk_popup.common.lock().unwrap();
+        guard.size =
+            LogicalSize::new(configure.width as u32, configure.height as u32);
 
         self.sctk_events.push(SctkEvent::PopupEvent {
             variant: PopupEventVariant::Configure(
