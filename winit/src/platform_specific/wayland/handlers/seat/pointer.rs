@@ -55,36 +55,6 @@ impl PointerHandler for SctkState {
                     continue;
                 }
 
-                // if self.windows.iter().any(|w| w.window.id() == id) {
-                //     if let Some((x, y, s)) =
-                //         self.subsurfaces.iter().find_map(|s| {
-                //             if e.surface != s.instance.parent {
-                //                 return None;
-                //             }
-
-                //             let bounds = s.instance.bounds?;
-                //             bounds
-                //                 .contains(Point::new(
-                //                     e.position.0 as f32,
-                //                     e.position.1 as f32,
-                //                 ))
-                //                 .then(|| {
-                //                     (
-                //                         bounds.x,
-                //                         bounds.y,
-                //                         s.instance.wl_surface.id().as_ptr()
-                //                             as u64,
-                //                     )
-                //                 })
-                //         })
-                //     {
-                //         // e.position.0 -= x as f64;
-                //         // e.position.1 -= y as f64;
-                //         id = winit::window::WindowId::from(s);
-                //     } else {
-                //         continue;
-                //     }
-                // }
                 let entry = self
                     .frame_status
                     .entry(e.surface.id())

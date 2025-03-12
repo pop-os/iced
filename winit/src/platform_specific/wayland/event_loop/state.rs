@@ -1517,6 +1517,13 @@ impl SctkState {
         {
             let parent = &self.popups[i];
             PopupParent::Popup(parent.popup.wl_surface().clone())
+        } else if let Some(i) = self
+            .lock_surfaces
+            .iter()
+            .position(|p| p.id == settings.parent)
+        {
+            let parent = &self.lock_surfaces[i];
+            PopupParent::Popup(parent.session_lock_surface.wl_surface().clone())
         } else {
             return Err(SubsurfaceCreationError::ParentMissing);
         };
