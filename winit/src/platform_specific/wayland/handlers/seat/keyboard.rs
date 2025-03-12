@@ -46,8 +46,6 @@ impl KeyboardHandler for SctkState {
             (i, is_active, seat)
         };
 
-        // TODO Ashley: thoroughly test this
-        // swap the active seat to be the current seat if the current "active" seat is not focused on the application anyway
         if !is_active && self.seats[0].kbd_focus.is_none() {
             is_active = true;
             self.seats.swap(0, i);
@@ -167,27 +165,6 @@ impl KeyboardHandler for SctkState {
         let kbd_id = keyboard.clone();
         _ = my_seat.last_kbd_press.replace((event.clone(), serial));
         if is_active {
-            // FIXME can't create winit key events because of private field
-            // if let Some(id) = id {
-            //     let physical_key = raw_keycode_to_physicalkey(event.raw_code);
-            //     let (logical_key, location) =
-            //         keysym_to_vkey_location(event.keysym);
-            //     self.sctk_events.push(SctkEvent::Winit(
-            //         id,
-            //         winit::event::WindowEvent::KeyboardInput {
-            //             device_id: Default::default(),
-            //             event: winit::event::KeyEvent {
-            //                 physical_key,
-            //                 logical_key,
-            //                 text: event.utf8.map(|s| s.into()),
-            //                 location,
-            //                 state: winit::event::ElementState::Pressed,
-            //                 repeat: false, // TODO we don't have this info...
-            //             },
-            //             is_synthetic: false,
-            //         },
-            //     ))
-            // }
             if let Some(surface) = my_seat.kbd_focus.clone() {
                 self.request_redraw(&surface);
                 let surfaces = self.subsurfaces.iter().filter_map(|s| {

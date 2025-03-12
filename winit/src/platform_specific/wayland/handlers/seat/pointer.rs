@@ -62,6 +62,7 @@ impl PointerHandler for SctkState {
                 if matches!(entry, FrameStatus::Received) {
                     *entry = FrameStatus::Ready;
                 }
+
                 if let PointerEventKind::Motion { time } = &e.kind {
                     self.sctk_events.push(SctkEvent::PointerEvent {
                         variant: PointerEvent {

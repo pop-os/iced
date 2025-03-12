@@ -10,7 +10,6 @@ use cctk::sctk::{
         SessionLockSurfaceConfigure,
     },
 };
-use winit::dpi::LogicalSize;
 
 impl SessionLockHandler for SctkState {
     fn locked(
@@ -47,12 +46,11 @@ impl SessionLockHandler for SctkState {
             Some(l) => l,
             None => return,
         };
+        lock_surface
+            .update_viewport(configure.new_size.0, configure.new_size.1);
+
         let first = lock_surface.last_configure.is_none();
         _ = lock_surface.last_configure.replace(configure.clone());
-        let mut common = lock_surface.common.lock().unwrap();
-        common.size =
-            LogicalSize::new(configure.new_size.0, configure.new_size.1);
-        drop(common);
 
         self.sctk_events.push(SctkEvent::SessionLockSurfaceCreated {
             queue_handle: self.queue_handle.clone(),

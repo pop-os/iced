@@ -14,6 +14,7 @@ use crate::{
         Event,
     },
     program::Control,
+    sctk_event::KeyboardEventVariant,
     subsurface_widget::SubsurfaceState,
     wayland::SubsurfaceInstance,
 };
@@ -280,11 +281,20 @@ pub struct SctkLockSurface {
     pub(crate) session_lock_surface: SessionLockSurface,
     pub(crate) last_configure: Option<SessionLockSurfaceConfigure>,
     pub(crate) wp_fractional_scale: Option<WpFractionalScaleV1>,
-    pub(crate) wp_viewport: Option<WpViewport>,
     pub(crate) common: Arc<Mutex<Common>>,
     pub(crate) output: WlOutput,
 }
+impl SctkLockSurface {
+    pub(crate) fn update_viewport(&mut self, w: u32, h: u32) {
+        let mut common = self.common.lock().unwrap();
 
+        common.size = LogicalSize::new(w, h);
+        if let Some(viewport) = common.wp_viewport.as_ref() {
+            // Set inner size without the borders.
+            viewport.set_destination(w as i32, h as i32);
+        }
+    }
+}
 #[derive(Debug)]
 pub struct SctkSubsurface {
     pub(crate) common: Arc<Mutex<Common>>,
@@ -938,14 +948,14 @@ impl SctkState {
                 self.fractional_scaling_manager.as_ref().map(|fsm| {
                     fsm.fractional_scaling(&wl_surface, &self.queue_handle)
                 });
-            let common =
-                Arc::new(Mutex::new(Common::from(LogicalSize::new(1, 1))));
+            let mut common = Common::from(LogicalSize::new(1, 1));
+            common.wp_viewport = wp_viewport;
+            let common = Arc::new(Mutex::new(common));
             self.lock_surfaces.push(SctkLockSurface {
                 id,
                 session_lock_surface: session_lock_surface.clone(),
                 last_configure: None,
                 wp_fractional_scale,
-                wp_viewport,
                 common: common.clone(),
                 output: output.clone(),
             });
@@ -996,19 +1006,17 @@ impl SctkState {
                         platform_specific::wayland::layer_surface::Action::Destroy(id) => {
                             if let Some(i) = self.layer_surfaces.iter().position(|l| l.id == id) {
                                 let l = self.layer_surfaces.remove(i);
-                                for subsurface_id in self
+                                
+                                let (removed, remaining): (Vec<_>, Vec<_>) =  self
                                     .subsurfaces
-                                    .iter()
-                                    .enumerate()
-                                    .filter_map(|(i, s)| {
-                                        (s.instance.parent == l.surface.wl_surface().id())
-                                        .then_some(i)
-                                    })
-                                    .collect::<Vec<_>>()
+                                    .drain(..)
+                                    .partition(|s| {
+                                        s.instance.parent == l.surface.wl_surface().id()
+                                    });
+                        
+                                self.subsurfaces = remaining;
+                                for s in removed
                                 {
-                                    let s = self
-                                        .subsurfaces
-                                        .remove(subsurface_id);
                                     crate::subsurface_widget::remove_iced_subsurface(
                                         &s.instance.wl_surface,
                                     );
@@ -1226,19 +1234,18 @@ impl SctkState {
                         if let Some(id) = self.id_map.remove(&popup.popup.wl_surface().id()) {
                             _ = self.destroyed.insert(id);
                         }
-                        for subsurface_id in self
+                        
+                        let (removed, remaining): (Vec<_>, Vec<_>) =  self
                             .subsurfaces
-                            .iter()
-                            .enumerate()
-                            .filter_map(|(i, s)| {
-                                (s.instance.parent == popup.popup.wl_surface().id())
-                                .then_some(i)
-                            })
-                            .collect::<Vec<_>>()
+                            .drain(..)
+                            .partition(|s| {
+                                s.instance.parent == popup.popup.wl_surface().id()
+                            });
+                        
+                        self.subsurfaces = remaining;
+                        for s in removed
                         {
-                            let s = self
-                                .subsurfaces
-                                .remove(subsurface_id);
+                            
                             crate::subsurface_widget::remove_iced_subsurface(
                                 &s.instance.wl_surface,
                             );
@@ -1350,19 +1357,17 @@ impl SctkState {
                         })
                     {
                         let surface = self.lock_surfaces.remove(i);
-                        for subsurface_id in self
+                        let (removed, remaining): (Vec<_>, Vec<_>) =  self
                             .subsurfaces
-                            .iter()
-                            .enumerate()
-                            .filter_map(|(i, s)| {
-                                (s.instance.parent == surface.session_lock_surface.wl_surface().id())
-                                .then_some(i)
-                            })
-                            .collect::<Vec<_>>()
+                            .drain(..)
+                            .partition(|s| {
+                                s.instance.parent == surface.session_lock_surface.wl_surface().id()
+                            });
+                        
+                        self.subsurfaces = remaining;
+                        for s in removed
                         {
-                            let s = self
-                                .subsurfaces
-                                .remove(subsurface_id);
+                            
                             crate::subsurface_widget::remove_iced_subsurface(
                                 &s.instance.wl_surface,
                             );
@@ -1527,10 +1532,19 @@ impl SctkState {
         } else {
             return Err(SubsurfaceCreationError::ParentMissing);
         };
+
         let wl_surface =
             self.compositor_state.create_surface(&self.queue_handle);
         _ = self.id_map.insert(wl_surface.id(), settings.id.clone());
 
+        for s in self.seats.iter_mut() {
+            if s.kbd_focus
+                .as_ref()
+                .is_some_and(|f| f == parent.wl_surface())
+            {
+                s.kbd_focus = Some(wl_surface.clone());
+            }
+        }
         let parent_wl_surface = parent.wl_surface();
         let wl_subsurface = subsurface_state.wl_subcompositor.get_subsurface(
             &wl_surface,
@@ -1599,6 +1613,19 @@ impl SctkState {
                 .as_ref()
                 .is_some_and(|s| s == parent_wl_surface)
             {
+                let id = winit::window::WindowId::from(
+                    wl_surface.id().as_ptr() as u64,
+                );
+                self.sctk_events.push(SctkEvent::Winit(
+                    id,
+                    winit::event::WindowEvent::Focused(true),
+                ));
+                self.sctk_events.push(SctkEvent::KeyboardEvent {
+                    variant: KeyboardEventVariant::Enter(wl_surface.clone()),
+                    kbd_id: focus.kbd.clone().unwrap(),
+                    seat_id: focus.seat.clone(),
+                    surface: wl_surface.clone(),
+                });
                 focus.kbd_focus = Some(wl_surface.clone());
             }
         }
