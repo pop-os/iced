@@ -3,8 +3,8 @@
 use std::sync::Mutex;
 use std::{any::Any, borrow::Cow};
 
-use crate::core::clipboard::{DndSource, DynIconSurface};
 use crate::core::clipboard::Kind;
+use crate::core::clipboard::{DndSource, DynIconSurface};
 use std::sync::Arc;
 use winit::dpi::LogicalSize;
 use winit::window::{Window, WindowId};

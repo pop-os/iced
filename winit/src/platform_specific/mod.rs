@@ -4,7 +4,10 @@
 use std::collections::HashMap;
 
 use iced_graphics::Compositor;
-use iced_runtime::{core::{window, Vector}, user_interface, Debug};
+use iced_runtime::{
+    core::{window, Vector},
+    user_interface, Debug,
+};
 use winit::raw_window_handle::HasWindowHandle;
 
 #[cfg(all(feature = "wayland", target_os = "linux"))]
@@ -29,6 +32,7 @@ pub enum SurfaceIdWrapper {
     Window(window::Id),
     Popup(window::Id),
     SessionLock(window::Id),
+    Subsurface(window::Id),
 }
 impl SurfaceIdWrapper {
     pub fn inner(&self) -> window::Id {
@@ -37,6 +41,7 @@ impl SurfaceIdWrapper {
             SurfaceIdWrapper::Window(id) => *id,
             SurfaceIdWrapper::Popup(id) => *id,
             SurfaceIdWrapper::SessionLock(id) => *id,
+            SurfaceIdWrapper::Subsurface(id) => *id,
         }
     }
 }
@@ -120,7 +125,9 @@ impl PlatformSpecific {
         }
     }
 
-    pub(crate) fn create_surface(&mut self) -> Option<Box<dyn HasWindowHandle + Send + Sync + 'static>> {
+    pub(crate) fn create_surface(
+        &mut self,
+    ) -> Option<Box<dyn HasWindowHandle + Send + Sync + 'static>> {
         #[cfg(all(feature = "wayland", target_os = "linux"))]
         {
             return self.wayland.create_surface();
@@ -128,10 +135,20 @@ impl PlatformSpecific {
         None
     }
 
-    pub(crate) fn update_surface_shm(&mut self, surface: &dyn HasWindowHandle, width: u32, height: u32, scale: f64, data: &[u8], offset: Vector) {
+    pub(crate) fn update_surface_shm(
+        &mut self,
+        surface: &dyn HasWindowHandle,
+        width: u32,
+        height: u32,
+        scale: f64,
+        data: &[u8],
+        offset: Vector,
+    ) {
         #[cfg(all(feature = "wayland", target_os = "linux"))]
         {
-            return self.wayland.update_surface_shm(surface, width, height, scale, data, offset);
+            return self.wayland.update_surface_shm(
+                surface, width, height, scale, data, offset,
+            );
         }
     }
 }
@@ -162,7 +179,7 @@ pub(crate) fn handle_event<'a, P, C>(
         (u64, iced_accessibility::accesskit_winit::Adapter),
     >,
 ) where
-    P: Program,
+    P: 'static + Program,
     C: Compositor<Renderer = P::Renderer>,
 {
     match e {

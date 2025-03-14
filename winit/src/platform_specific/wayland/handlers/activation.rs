@@ -1,9 +1,9 @@
-use iced_futures::futures::channel::oneshot::Sender;
 use cctk::sctk::{
     activation::{ActivationHandler, RequestData, RequestDataExt},
     delegate_activation,
     reexports::client::protocol::{wl_seat::WlSeat, wl_surface::WlSurface},
 };
+use iced_futures::futures::channel::oneshot::Sender;
 
 use crate::platform_specific::wayland::event_loop::state::SctkState;
 

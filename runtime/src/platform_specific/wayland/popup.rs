@@ -1,12 +1,15 @@
+use std::any::Any;
 use std::fmt;
 use std::hash::{Hash, Hasher};
+use std::sync::Arc;
 
-use iced_core::layout::Limits;
-use iced_core::window::Id;
-use iced_core::Rectangle;
 use cctk::sctk::reexports::protocols::xdg::shell::client::xdg_positioner::{
     Anchor, Gravity,
 };
+use iced_core::layout::Limits;
+use iced_core::window::Id;
+use iced_core::{Element, Rectangle};
+
 /// Popup creation details
 #[derive(Debug, Clone)]
 pub struct SctkPopupSettings {
@@ -20,6 +23,11 @@ pub struct SctkPopupSettings {
     pub parent_size: Option<(u32, u32)>,
     /// whether a grab should be requested for the popup after creation
     pub grab: bool,
+    /// whether a popup should close when its child popups close
+    pub close_with_children: bool,
+    /// input zone
+    /// None results in accepting all input
+    pub input_zone: Option<Rectangle>,
 }
 
 impl Hash for SctkPopupSettings {

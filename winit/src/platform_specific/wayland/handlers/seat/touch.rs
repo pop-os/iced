@@ -6,7 +6,6 @@ use crate::{
         event_loop::state::SctkState, sctk_event::SctkEvent,
     },
 };
-use iced_runtime::core::{touch, Point};
 use cctk::sctk::{
     delegate_touch,
     reexports::client::{
@@ -15,6 +14,7 @@ use cctk::sctk::{
     },
     seat::touch::TouchHandler,
 };
+use iced_runtime::core::{touch, Point};
 
 impl TouchHandler for SctkState {
     fn down(
