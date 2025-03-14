@@ -41,7 +41,7 @@ use cctk::{
     toplevel_management::ToplevelManagerState,
 };
 use raw_window_handle::HasDisplayHandle;
-use state::{FrameStatus, SctkWindow};
+use state::{FrameStatus, SctkWindow, send_event};
 #[cfg(feature = "a11y")]
 use std::sync::{Arc, Mutex};
 use std::{
@@ -50,7 +50,7 @@ use std::{
 };
 use tracing::error;
 use wayland_backend::client::Backend;
-use winit::event_loop::OwnedDisplayHandle;
+use winit::{dpi::LogicalSize, event_loop::OwnedDisplayHandle};
 
 use self::state::SctkState;
 
@@ -120,7 +120,36 @@ impl SctkEventLoop {
                                 id,
                             ) => {
                                 // TODO clean up popups matching the window.
-                                state.windows.retain(|window| id != window.id);
+                                if let Some(pos) = state
+                                    .windows
+                                    .iter()
+                                    .position(|window| id == window.id)
+                                {
+                                    let w = state.windows.remove(pos);
+                                    for subsurface_id in state
+                                        .subsurfaces
+                                        .iter()
+                                        .enumerate()
+                                        .filter_map(|(i, s)| {
+                                            (winit::window::WindowId::from_raw(
+                                                s.instance.parent.as_ptr()
+                                                    as usize,
+                                            ) == w.window.id())
+                                            .then_some(i)
+                                        })
+                                        .collect::<Vec<_>>()
+                                    {
+                                        let s = state
+                                            .subsurfaces
+                                            .remove(subsurface_id);
+                                        crate::subsurface_widget::remove_iced_subsurface(
+                                            &s.instance.wl_surface,
+                                        );
+                                        send_event(&state.events_sender, &state.proxy,
+                                            SctkEvent::SubsurfaceEvent( crate::sctk_event::SubsurfaceEventVariant::Destroyed(s.instance) )
+                                        );
+                                    }
+                                }
                             }
                             crate::platform_specific::Action::SetCursor(
                                 icon,
@@ -144,6 +173,57 @@ impl SctkEventLoop {
                             crate::platform_specific::Action::Dropped(id) => {
                                 _ = state.destroyed.remove(&id.inner());
                             }
+                            crate::platform_specific::Action::SubsurfaceResize(id, size) => {
+                                // reposition the surface
+                                if let Some(pos) = state
+                                    .subsurfaces
+                                    .iter()
+                                    .position(|window| id == window.id)
+                                {
+                                    let subsurface = &mut state.subsurfaces[pos];
+                                    let settings = &subsurface.settings;
+                                    let mut loc = settings.loc;
+                                    let guard = subsurface.common.lock().unwrap();
+                                    let size: LogicalSize<f32> = size.to_logical(guard.fractional_scale.unwrap_or(1.));
+                                    let half_w = size.width / 2.;
+                                    let half_h = size.height / 2.;
+                                    match settings.gravity {
+                                        wayland_protocols::xdg::shell::client::xdg_positioner::Gravity::None => {
+                                            // center on 
+                                            loc.x -= half_w;
+                                            loc.y -= half_h;
+                                        },
+                                        wayland_protocols::xdg::shell::client::xdg_positioner::Gravity::Top => {
+                                            loc.x -= half_w;
+                                            loc.y -= size.height;
+                                        },
+                                        wayland_protocols::xdg::shell::client::xdg_positioner::Gravity::Bottom => {
+                                            loc.x -= half_w;
+                                        },
+                                        wayland_protocols::xdg::shell::client::xdg_positioner::Gravity::Left => {
+                                            loc.y -= half_h;
+                                            loc.x -= size.width;
+                                        },
+                                        wayland_protocols::xdg::shell::client::xdg_positioner::Gravity::Right => {
+                                            loc.y -= half_h;
+                                        },
+                                        wayland_protocols::xdg::shell::client::xdg_positioner::Gravity::TopLeft => {
+                                            loc.y -= size.height;
+                                            loc.x -= size.width;
+                                        },
+                                        wayland_protocols::xdg::shell::client::xdg_positioner::Gravity::BottomLeft => {
+                                            loc.x -= size.width;
+                                        },
+                                        wayland_protocols::xdg::shell::client::xdg_positioner::Gravity::TopRight => {
+                                            loc.y -= size.height;
+                                        },
+                                        wayland_protocols::xdg::shell::client::xdg_positioner::Gravity::BottomRight => {},
+                                        _ => unimplemented!(),
+                                    };
+                                    subsurface.instance.wl_subsurface.set_position(loc.x as i32, loc.y as i32);
+
+                            }
+                                send_event(&state.events_sender, &state.proxy, SctkEvent::SubsurfaceEvent(crate::sctk_event::SubsurfaceEventVariant::Resized(id, size)))},
                         },
                         calloop::channel::Event::Closed => {
                             log::info!("Calloop channel closed.");
@@ -167,7 +247,7 @@ impl SctkEventLoop {
             let (viewporter_state, fractional_scaling_manager) =
                 match FractionalScalingManager::new(&globals, &qh) {
                     Ok(m) => {
-                        let viewporter_state =
+                        let viewporter_state: Option<ViewporterState> =
                             match ViewporterState::new(&globals, &qh) {
                                 Ok(s) => Some(s),
                                 Err(e) => {
@@ -227,6 +307,7 @@ impl SctkEventLoop {
                     layer_surfaces: Vec::new(),
                     popups: Vec::new(),
                     lock_surfaces: Vec::new(),
+                    subsurfaces: Vec::new(),
                     _kbd_focus: None,
                     touch_points: HashMap::new(),
                     sctk_events: Vec::new(),
@@ -243,6 +324,7 @@ impl SctkEventLoop {
                     activation_token_ctr: 0,
                     token_senders: HashMap::new(),
                     overlap_notifications: HashMap::new(),
+                    subsurface_state: None,
                 },
                 _features: Default::default(),
             };
@@ -280,20 +362,23 @@ impl SctkEventLoop {
             if let (Ok(wl_subcompositor), Ok(wp_viewporter)) =
                 (wl_subcompositor, wp_viewporter)
             {
+                let subsurface_state = SubsurfaceState {
+                    wl_compositor,
+                    wl_subcompositor,
+                    wp_viewporter,
+                    wl_shm,
+                    wp_dmabuf,
+                    wp_alpha_modifier,
+                    qh: state.state.queue_handle.clone(),
+                    buffers: HashMap::new(),
+                    unmapped_subsurfaces: Vec::new(),
+                    new_iced_subsurfaces: Vec::new(),
+                };
+                state.state.subsurface_state = Some(subsurface_state.clone());
                 state::send_event(
                     &state.state.events_sender,
                     &state.state.proxy,
-                    SctkEvent::Subcompositor(SubsurfaceState {
-                        wl_compositor,
-                        wl_subcompositor,
-                        wp_viewporter,
-                        wl_shm,
-                        wp_dmabuf,
-                        wp_alpha_modifier,
-                        qh: state.state.queue_handle.clone(),
-                        buffers: HashMap::new(),
-                        unmapped_subsurfaces: Vec::new(),
-                    }),
+                    SctkEvent::Subcompositor(subsurface_state),
                 );
             } else {
                 log::warn!("Subsurfaces not supported.")

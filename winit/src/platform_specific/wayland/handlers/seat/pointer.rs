@@ -11,6 +11,7 @@ use cctk::sctk::{
         CursorIcon, PointerEvent, PointerEventKind, PointerHandler,
     },
 };
+use iced_futures::core::Point;
 use winit::{
     dpi::PhysicalPosition,
     event::{
@@ -56,6 +57,7 @@ impl PointerHandler for SctkState {
                 if self.windows.iter().any(|w| w.window.id() == id) {
                     continue;
                 }
+
                 let entry = self
                     .frame_status
                     .entry(e.surface.id())
@@ -63,6 +65,7 @@ impl PointerHandler for SctkState {
                 if matches!(entry, FrameStatus::Received) {
                     *entry = FrameStatus::Ready;
                 }
+
                 if let PointerEventKind::Motion { time } = &e.kind {
                     self.sctk_events.push(SctkEvent::PointerEvent {
                         variant: PointerEvent {

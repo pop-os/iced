@@ -1,9 +1,9 @@
+use cctk::sctk::reexports::calloop;
 use iced_futures::futures::{
     channel::mpsc,
     task::{Context, Poll},
     Sink,
 };
-use cctk::sctk::reexports::calloop;
 use std::pin::Pin;
 
 /// An event loop proxy that implements `Sink`.

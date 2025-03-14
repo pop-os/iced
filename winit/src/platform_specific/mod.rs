@@ -45,6 +45,7 @@ pub enum SurfaceIdWrapper {
     Window(window::Id),
     Popup(window::Id),
     SessionLock(window::Id),
+    Subsurface(window::Id),
 }
 impl SurfaceIdWrapper {
     pub fn inner(&self) -> window::Id {
@@ -53,6 +54,7 @@ impl SurfaceIdWrapper {
             SurfaceIdWrapper::Window(id) => *id,
             SurfaceIdWrapper::Popup(id) => *id,
             SurfaceIdWrapper::SessionLock(id) => *id,
+            SurfaceIdWrapper::Subsurface(id) => *id,
         }
     }
 }

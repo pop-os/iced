@@ -25,6 +25,7 @@ use std::{collections::HashMap, sync::Arc};
 use subsurface_widget::{SubsurfaceInstance, SubsurfaceState};
 use wayland_backend::client::ObjectId;
 use wayland_client::{Connection, Proxy};
+use winit::dpi::Size;
 use winit::event_loop::OwnedDisplayHandle;
 
 pub(crate) enum Action {
@@ -34,6 +35,7 @@ pub(crate) enum Action {
     TrackWindow(Arc<dyn winit::window::Window>, window::Id),
     RemoveWindow(window::Id),
     Dropped(SurfaceIdWrapper),
+    SubsurfaceResize(window::Id, Size),
 }
 
 impl std::fmt::Debug for Action {
@@ -53,6 +55,11 @@ impl std::fmt::Debug for Action {
                 f.debug_tuple("RemoveWindow").field(arg0).finish()
             }
             Self::Dropped(_surface_id_wrapper) => write!(f, "Dropped"),
+            Self::SubsurfaceResize(id, size) => f
+                .debug_tuple("SubsurfaceResize")
+                .field(id)
+                .field(size)
+                .finish(),
         }
     }
 }

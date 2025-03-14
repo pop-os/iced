@@ -68,8 +68,10 @@ use cctk::{
             xdg::{popup::PopupConfigure, window::WindowConfigure},
         },
     },
+    wayland_client::protocol::wl_subsurface::WlSubsurface,
 };
 use std::{
+    any::Any,
     collections::HashMap,
     num::NonZeroU32,
     sync::{Arc, Mutex},
@@ -79,14 +81,18 @@ use wayland_protocols::{
     wp::viewporter::client::wp_viewport::WpViewport,
 };
 use winit::{
-    dpi::PhysicalSize, event::WindowEvent, event_loop::EventLoopProxy,
+    dpi::{self, PhysicalSize},
+    event::WindowEvent,
+    event_loop::EventLoopProxy,
     window::WindowId,
 };
 use xkeysym::Keysym;
 
 use super::{
+    SubsurfaceInstance,
     event_loop::state::{Common, CommonSurface, SctkState},
     keymap::raw_keycode_to_physicalkey,
+    subsurface_widget::remove_iced_subsurface,
     winit_window::SctkWinitWindow,
 };
 
@@ -159,6 +165,8 @@ pub enum SctkEvent {
         /// the id of this popup
         id: WlSurface,
     },
+
+    SubsurfaceEvent(SubsurfaceEventVariant),
 
     //
     // output events
@@ -271,6 +279,26 @@ pub enum PopupEventVariant {
     Size(u32, u32),
     /// Scale Factor
     ScaleFactorChanged(f64, Option<WpViewport>),
+}
+
+#[derive(Debug, Clone)]
+pub enum SubsurfaceEventVariant {
+    /// Popup Created
+    Created {
+        parent_id: window::Id,
+        parent: WlSurface,
+        surface: WlSurface,
+        qh: QueueHandle<SctkState>,
+        common_surface: CommonSurface,
+        surface_id: SurfaceId,
+        common: Arc<Mutex<Common>>,
+        display: WlDisplay,
+        z: u32,
+    },
+    /// Destroyed
+    Destroyed(SubsurfaceInstance),
+    /// Resized
+    Resized(SurfaceId, dpi::Size),
 }
 
 #[derive(Debug, Clone)]
@@ -485,6 +513,7 @@ impl SctkEvent {
                                     ),
                                 ),
                             ),
+                            SurfaceIdWrapper::Subsurface(id) => None,
                         })
                     {
                         events.push((
@@ -546,6 +575,7 @@ impl SctkEvent {
                                         ),
                                     ),
                                 ),
+                                SurfaceIdWrapper::Subsurface(_) => None,
                             }
                             .map(|e| (Some(id.inner()), e))
                         })
@@ -568,7 +598,6 @@ impl SctkEvent {
                     let physical_key = raw_keycode_to_physicalkey(ke.raw_code);
                     let physical_key =
                         crate::conversion::physical_key(physical_key);
-
                     events.push((
                         surface_ids.get(&surface.id()).map(|id| id.inner()),
                         iced_runtime::core::Event::Keyboard(
@@ -853,19 +882,19 @@ impl SctkEvent {
                             events.push((
                                 Some(id),
                                 iced_runtime::core::Event::Window(
-                                    window::Event::Resized(
-                                        w.state.logical_size(),
-                                    ),
+                                    window::Event::Opened {
+                                        size: w.state.logical_size(),
+                                        position: Default::default(),
+                                    },
                                 ),
                             ))
                         } else {
                             events.push((
                                 Some(id),
                                 iced_runtime::core::Event::Window(
-                                    window::Event::Opened {
-                                        size: w.state.logical_size(),
-                                        position: Default::default(),
-                                    },
+                                    window::Event::Resized(
+                                        w.state.logical_size(),
+                                    ),
                                 ),
                             ))
                         }
@@ -1068,17 +1097,30 @@ impl SctkEvent {
                             configure.width as f32,
                             configure.height as f32,
                         );
-                        if let Some(id) =
-                            surface_ids.get(&surface.id()).map(|id| id.inner())
+
+                        if let Some((id, w)) =
+                            surface_ids.get(&surface.id()).and_then(|id| {
+                                window_manager
+                                    .get_mut(id.inner())
+                                    .map(|v| (id.inner(), v))
+                            })
                         {
+                            let scale = w.state.scale_factor();
+                            let p_w = (configure.width.max(1) as f64 * scale)
+                                .ceil()
+                                as u32;
+                            let p_h = (configure.height.max(1) as f64 * scale)
+                                .ceil()
+                                as u32;
+
+                            w.state.update(
+                                program,
+                                w.raw.as_ref(),
+                                &WindowEvent::SurfaceResized(
+                                    PhysicalSize::new(p_w, p_h),
+                                ),
+                            );
                             if first {
-                                events.push((
-                                    Some(id),
-                                    iced_runtime::core::Event::Window(
-                                        window::Event::Resized(size),
-                                    ),
-                                ))
-                            } else {
                                 events.push((
                                     Some(id),
                                     iced_runtime::core::Event::Window(
@@ -1086,6 +1128,13 @@ impl SctkEvent {
                                             size: size,
                                             position: Default::default(),
                                         },
+                                    ),
+                                ))
+                            } else {
+                                events.push((
+                                    Some(id),
+                                    iced_runtime::core::Event::Window(
+                                        window::Event::Resized(size),
                                     ),
                                 ))
                             }
@@ -1247,17 +1296,26 @@ impl SctkEvent {
                     configure.new_size.0 as f32,
                     configure.new_size.1 as f32,
                 );
-                if let Some(id) =
-                    surface_ids.get(&surface.id()).map(|id| id.inner())
+                if let Some((id, w)) =
+                    surface_ids.get(&surface.id()).and_then(|id| {
+                        window_manager
+                            .get_mut(id.inner())
+                            .map(|v| (id.inner(), v))
+                    })
                 {
+                    let scale = w.state.scale_factor();
+                    let p_w = (configure.new_size.0.max(1) as f64 * scale)
+                        .round() as u32;
+                    let p_h = (configure.new_size.1.max(1) as f64 * scale)
+                        .round() as u32;
+                    w.state.update(
+                        program,
+                        w.raw.as_ref(),
+                        &WindowEvent::SurfaceResized(PhysicalSize::new(
+                            p_w, p_h,
+                        )),
+                    );
                     if first {
-                        events.push((
-                            Some(id),
-                            iced_runtime::core::Event::Window(
-                                window::Event::Resized(size),
-                            ),
-                        ))
-                    } else {
                         events.push((
                             Some(id),
                             iced_runtime::core::Event::Window(
@@ -1265,6 +1323,13 @@ impl SctkEvent {
                                     size: size,
                                     position: Default::default(),
                                 },
+                            ),
+                        ))
+                    } else {
+                        events.push((
+                            Some(id),
+                            iced_runtime::core::Event::Window(
+                                window::Event::Resized(size),
                             ),
                         ))
                     }
@@ -1375,6 +1440,237 @@ impl SctkEvent {
                     ))
                 }
             }
+            SctkEvent::SubsurfaceEvent(variant) => match variant {
+                SubsurfaceEventVariant::Created {
+                    parent_id,
+                    common_surface,
+                    common,
+                    z,
+                    parent,
+                    surface: _,
+                    qh,
+                    surface_id,
+                    display,
+                } => {
+                    let CommonSurface::Subsurface {
+                        wl_surface,
+                        wl_subsurface,
+                    } = &common_surface
+                    else {
+                        return;
+                    };
+                    if let Some(subsurface_state) = subsurface_state.as_mut() {
+                        subsurface_state.new_iced_subsurfaces.push((
+                            parent_id,
+                            parent.id(),
+                            surface_id,
+                            wl_subsurface.clone(),
+                            wl_surface.clone(),
+                            z,
+                        ));
+                    }
+
+                    let wrapper = SurfaceIdWrapper::Popup(surface_id);
+                    _ = surface_ids.insert(wl_surface.id(), wrapper.clone());
+                    let sctk_winit = SctkWinitWindow::new(
+                        sctk_tx.clone(),
+                        common,
+                        wrapper,
+                        common_surface,
+                        display,
+                        qh,
+                    );
+                    // #[cfg(feature = "a11y")]
+                    // {
+                    //     use crate::a11y::*;
+                    //     use iced_accessibility::accesskit::{
+                    //         ActivationHandler, NodeBuilder, NodeId, Role, Tree,
+                    //         TreeUpdate,
+                    //     };
+                    //     use iced_accessibility::accesskit_winit::Adapter;
+
+                    //     let node_id = iced_runtime::core::id::window_node_id();
+
+                    //     let activation_handler = WinitActivationHandler {
+                    //         proxy: control_sender.clone(),
+                    //         title: String::new(),
+                    //     };
+
+                    //     let action_handler = WinitActionHandler {
+                    //         id: surface_id,
+                    //         proxy: control_sender.clone(),
+                    //     };
+
+                    //     let deactivation_handler = WinitDeactivationHandler {
+                    //         proxy: control_sender.clone(),
+                    //     };
+                    //     _ = adapters.insert(
+                    //         surface_id,
+                    //         (
+                    //             node_id,
+                    //             Adapter::with_direct_handlers(
+                    //                 sctk_winit.as_ref(),
+                    //                 activation_handler,
+                    //                 action_handler,
+                    //                 deactivation_handler,
+                    //             ),
+                    //         ),
+                    //     );
+                    // }
+
+                    if clipboard.window_id().is_none() {
+                        *clipboard = Clipboard::connect(
+                            sctk_winit.clone(),
+                            crate::clipboard::ControlSender {
+                                sender: control_sender.clone(),
+                                proxy: proxy.clone(),
+                            },
+                        );
+                    }
+
+                    let window = window_manager.insert(
+                        surface_id,
+                        sctk_winit,
+                        program,
+                        compositor,
+                        false, // TODO do we want to get this value here?
+                        theme::Mode::None,
+                    );
+                    let logical_size = window.logical_size();
+
+                    let mut ui = crate::build_user_interface(
+                        program,
+                        user_interface::Cache::default(),
+                        &mut window.renderer,
+                        logical_size,
+                        surface_id,
+                        window.raw.clone(),
+                        window.prev_dnd_destination_rectangles_count,
+                        clipboard,
+                    );
+
+                    _ = ui.update(
+                            &vec![iced_runtime::core::Event::PlatformSpecific(
+                                iced_runtime::core::event::PlatformSpecific::Wayland(
+                                    iced_runtime::core::event::wayland::Event::RequestResize,
+                                ),
+                            )],
+                            window.state.cursor(),
+                            &mut window.renderer,
+                            clipboard,
+                            &mut Vec::new(),
+                        );
+
+                    if let Some(requested_size) =
+                        clipboard.requested_logical_size.lock().unwrap().take()
+                    {
+                        let requested_physical_size =
+                            winit::dpi::PhysicalSize::new(
+                                (requested_size.width as f64
+                                    * window.state.scale_factor())
+                                .ceil() as u32,
+                                (requested_size.height as f64
+                                    * window.state.scale_factor())
+                                .ceil() as u32,
+                            );
+                        let physical_size = window.state.physical_size();
+                        if requested_physical_size.width != physical_size.width
+                            || requested_physical_size.height
+                                != physical_size.height
+                        {
+                            // FIXME what to do when we are stuck in a configure event/resize request loop
+                            // We don't have control over how winit handles this.
+                            window.resize_enabled = true;
+
+                            let s = winit::dpi::Size::Physical(
+                                requested_physical_size,
+                            );
+                            _ = window.raw.request_surface_size(s);
+                            window.raw.set_min_surface_size(Some(s));
+                            window.raw.set_max_surface_size(Some(s));
+                            window.state.synchronize(
+                                &program,
+                                surface_id,
+                                window.raw.as_ref(),
+                            );
+                        }
+                    }
+                    events.push((
+                        Some(surface_id),
+                        iced_runtime::core::Event::PlatformSpecific(
+                            PlatformSpecific::Wayland(
+                                wayland::Event::Subsurface(
+                                    wayland::SubsurfaceEvent::Created,
+                                ),
+                            ),
+                        ),
+                    ));
+                    let _ = user_interfaces.insert(surface_id, ui);
+                }
+                SubsurfaceEventVariant::Destroyed(instance) => {
+                    remove_iced_subsurface(&instance.wl_surface);
+
+                    if let Some(id_wrapper) =
+                        surface_ids.remove(&instance.wl_surface.id())
+                    {
+                        _ = user_interfaces.remove(&id_wrapper.inner());
+
+                        if let Some(w) =
+                            window_manager.remove(id_wrapper.inner())
+                        {
+                            clipboard.register_dnd_destination(
+                                DndSurface(Arc::new(Box::new(w.raw.clone()))),
+                                Vec::new(),
+                            );
+                            if clipboard
+                                .window_id()
+                                .is_some_and(|id| w.raw.id() == id)
+                            {
+                                *clipboard = Clipboard::unconnected();
+                            }
+                        }
+                        events.push((
+                            Some(id_wrapper.inner()),
+                            iced_runtime::core::Event::PlatformSpecific(
+                                PlatformSpecific::Wayland(
+                                    wayland::Event::Subsurface(
+                                        wayland::SubsurfaceEvent::Destroyed,
+                                    ),
+                                ),
+                            ),
+                        ));
+                    }
+                    if let Some(subsurface_state) = subsurface_state.as_mut() {
+                        subsurface_state.unmapped_subsurfaces.push(instance);
+                    }
+                }
+                SubsurfaceEventVariant::Resized(id, size) => {
+                    if let Some((id, w)) =
+                        window_manager.get_mut(id).map(|v| (id, v))
+                    {
+                        let scale = w.state.scale_factor();
+                        let physical_size = size.to_physical(scale);
+                        w.state.update(
+                            program,
+                            w.raw.as_ref(),
+                            &WindowEvent::SurfaceResized(PhysicalSize::new(
+                                physical_size.width,
+                                physical_size.height,
+                            )),
+                        );
+
+                        events.push((
+                            Some(id),
+                            iced_runtime::core::Event::Window(
+                                window::Event::Opened {
+                                    size: w.state.logical_size(),
+                                    position: Default::default(),
+                                },
+                            ),
+                        ))
+                    }
+                }
+            },
         }
     }
 }

@@ -1,5 +1,6 @@
-use crate::platform_specific::wayland::{
-    handlers::SctkState, sctk_event::SctkEvent,
+use crate::{
+    event_loop::state::CommonSurface,
+    platform_specific::wayland::{handlers::SctkState, sctk_event::SctkEvent},
 };
 use cctk::sctk::{
     delegate_session_lock,
@@ -15,8 +16,9 @@ impl SessionLockHandler for SctkState {
         &mut self,
         _conn: &Connection,
         _qh: &QueueHandle<Self>,
-        _session_lock: SessionLock,
+        session_lock: SessionLock,
     ) {
+        self.session_lock = Some(session_lock);
         self.sctk_events.push(SctkEvent::SessionLocked);
     }
 
@@ -44,8 +46,21 @@ impl SessionLockHandler for SctkState {
             Some(l) => l,
             None => return,
         };
+        lock_surface
+            .update_viewport(configure.new_size.0, configure.new_size.1);
+
         let first = lock_surface.last_configure.is_none();
         _ = lock_surface.last_configure.replace(configure.clone());
+
+        self.sctk_events.push(SctkEvent::SessionLockSurfaceCreated {
+            queue_handle: self.queue_handle.clone(),
+            surface: CommonSurface::Lock(
+                lock_surface.session_lock_surface.clone(),
+            ),
+            native_id: lock_surface.id,
+            common: lock_surface.common.clone(),
+            display: self.connection.display(),
+        });
         self.sctk_events
             .push(SctkEvent::SessionLockSurfaceConfigure {
                 surface: session_lock_surface.wl_surface().clone(),

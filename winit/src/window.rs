@@ -14,7 +14,7 @@ use crate::core::text;
 use crate::core::theme;
 use crate::core::time::Instant;
 use crate::core::{
-    Color, InputMethod, Padding, Point, Rectangle, Size, Text, Vector,
+    Color, Element, InputMethod, Padding, Point, Rectangle, Size, Text, Vector,
 };
 use crate::graphics::Compositor;
 use crate::program::{self, Program};
@@ -26,13 +26,17 @@ use winit::monitor::MonitorHandle;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
+pub(crate) type ViewFn<M, T, R> = Arc<
+    Box<dyn Fn() -> Option<Element<'static, M, T, R>> + Send + Sync + 'static>,
+>;
+
 pub struct WindowManager<P, C>
 where
     P: Program,
     C: Compositor<Renderer = P::Renderer>,
     P::Theme: theme::Base,
 {
-    aliases: BTreeMap<winit::window::WindowId, Id>,
+    pub(crate) aliases: BTreeMap<winit::window::WindowId, Id>,
     entries: BTreeMap<Id, Window<P, C>>,
 }
 

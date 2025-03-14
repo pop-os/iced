@@ -5812,7 +5812,7 @@ dependencies = [
 name = "sctk_subsurface"
 version = "0.1.0"
 dependencies = [
- "calloop 0.12.4",
+ "calloop 0.13.0",
  "cosmic-client-toolkit",
  "env_logger",
  "futures-channel",
