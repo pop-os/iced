@@ -17,8 +17,16 @@ pub struct IconSurface<E> {
 pub type DynIconSurface = IconSurface<Box<dyn Any>>;
 
 impl<T: 'static, R: 'static> IconSurface<Element<'static, (), T, R>> {
-    pub fn new(element: Element<'static, (), T, R>, state: State, offset: Vector) -> Self {
-        Self { element, state, offset }
+    pub fn new(
+        element: Element<'static, (), T, R>,
+        state: State,
+        offset: Vector,
+    ) -> Self {
+        Self {
+            element,
+            state,
+            offset,
+        }
     }
 
     fn upcast(self) -> DynIconSurface {
@@ -34,9 +42,14 @@ impl DynIconSurface {
     /// Downcast `element` to concrete type `Element<(), T, R>`
     ///
     /// Panics if type doesn't match
-    pub fn downcast<T: 'static, R: 'static>(self) -> IconSurface<Element<'static, (), T, R>> {
+    pub fn downcast<T: 'static, R: 'static>(
+        self,
+    ) -> IconSurface<Element<'static, (), T, R>> {
         IconSurface {
-            element: *self.element.downcast().expect("drag-and-drop icon surface has invalid element type"),
+            element: *self
+                .element
+                .downcast()
+                .expect("drag-and-drop icon surface has invalid element type"),
             state: self.state,
             offset: self.offset,
         }

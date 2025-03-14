@@ -7,6 +7,7 @@ use crate::core::{
     ContentFit, Element, Length, Rectangle, Size, Vector,
 };
 use std::{
+    borrow::BorrowMut,
     cell::RefCell,
     collections::HashMap,
     fmt::Debug,
@@ -25,7 +26,6 @@ use cctk::sctk::{
     compositor::SurfaceData,
     error::GlobalError,
     globals::{GlobalData, ProvidesBoundGlobal},
-    shm::slot::SlotPool,
     reexports::client::{
         delegate_noop,
         protocol::{
@@ -40,6 +40,7 @@ use cctk::sctk::{
         },
         Connection, Dispatch, Proxy, QueueHandle,
     },
+    shm::slot::SlotPool,
 };
 use iced_futures::core::window;
 use wayland_backend::client::ObjectId;
@@ -56,6 +57,7 @@ use wayland_protocols::wp::{
         wp_viewport::WpViewport, wp_viewporter::WpViewporter,
     },
 };
+use winit::window::WindowId;
 
 use crate::platform_specific::{
     event_loop::state::SctkState, SurfaceIdWrapper,
@@ -253,7 +255,6 @@ impl PartialEq for SubsurfaceBuffer {
     }
 }
 
-
 impl Dispatch<WlShmPool, GlobalData> for SctkState {
     fn event(
         _: &mut SctkState,
@@ -301,8 +302,7 @@ impl Dispatch<WlBuffer, GlobalData> for SctkState {
         _: &QueueHandle<SctkState>,
     ) {
         match event {
-            wl_buffer::Event::Release => {
-            }
+            wl_buffer::Event::Release => {}
             _ => unreachable!(),
         }
     }
@@ -367,30 +367,56 @@ pub struct SubsurfaceState {
     pub wp_alpha_modifier: Option<WpAlphaModifierV1>,
     pub qh: QueueHandle<SctkState>,
     pub(crate) buffers: HashMap<WeakBufferSource, Vec<WlBuffer>>,
-    pub unmapped_subsurfaces: Vec<SubsurfaceInstance>,
+    pub(crate) unmapped_subsurfaces: Vec<SubsurfaceInstance>,
+    pub new_iced_subsurfaces: Vec<(
+        window::Id,
+        ObjectId,
+        window::Id,
+        WlSubsurface,
+        WlSurface,
+        u32,
+    )>,
 }
 
 impl SubsurfaceState {
     pub fn create_surface(&self) -> WlSurface {
-        self
-            .wl_compositor
+        self.wl_compositor
             .create_surface(&self.qh, SurfaceData::new(None, 1))
     }
 
-    pub fn update_surface_shm(&self, surface: &WlSurface, width: u32, height: u32, scale: f64, data: &[u8], offset: Vector) {
+    pub fn update_surface_shm(
+        &self,
+        surface: &WlSurface,
+        width: u32,
+        height: u32,
+        scale: f64,
+        data: &[u8],
+        offset: Vector,
+    ) {
         let wp_viewport = self.wp_viewporter.get_viewport(
             &surface,
             &self.qh,
             cctk::sctk::globals::GlobalData,
         );
         let shm = ShmGlobal(&self.wl_shm);
-        let mut pool = SlotPool::new(width as usize * height as usize * 4, &shm).unwrap();
-        let (buffer, canvas) = pool.create_buffer(width as i32, height as i32, width as i32 * 4, wl_shm::Format::Argb8888).unwrap();
+        let mut pool =
+            SlotPool::new(width as usize * height as usize * 4, &shm).unwrap();
+        let (buffer, canvas) = pool
+            .create_buffer(
+                width as i32,
+                height as i32,
+                width as i32 * 4,
+                wl_shm::Format::Argb8888,
+            )
+            .unwrap();
         canvas[0..width as usize * height as usize * 4].copy_from_slice(data);
         surface.damage_buffer(0, 0, width as i32, height as i32);
         buffer.attach_to(&surface);
         surface.offset(offset.x as i32, offset.y as i32);
-        wp_viewport.set_destination((width as f64 / scale) as i32, (height as f64 / scale) as i32);
+        wp_viewport.set_destination(
+            (width as f64 / scale) as i32,
+            (height as f64 / scale) as i32,
+        );
         surface.commit();
         wp_viewport.destroy();
     }
@@ -431,6 +457,8 @@ impl SubsurfaceState {
             wl_buffer: None,
             bounds: None,
             transform: wl_output::Transform::Normal,
+            z: 0,
+            parent: parent.id(),
         }
     }
 
@@ -446,6 +474,14 @@ impl SubsurfaceState {
         //
         // They should be safe to destroy by the next time `update_subsurfaces`
         // is run.
+        ICED_SUBSURFACES.with_borrow_mut(|surfaces| {
+            surfaces.retain(|s| {
+                !self
+                    .unmapped_subsurfaces
+                    .iter()
+                    .any(|unmapped| unmapped.wl_surface == s.4)
+            })
+        });
         self.unmapped_subsurfaces.clear();
 
         // Remove cached `wl_buffers` for any `BufferSource`s that no longer exist.
@@ -464,11 +500,61 @@ impl SubsurfaceState {
             subsurface.unmap();
             self.unmapped_subsurfaces.push(subsurface);
         }
+        let needs_sorting = subsurfaces.len() < view_subsurfaces.len()
+            || !self.new_iced_subsurfaces.is_empty();
+
         // Create new subsurfaces if there aren't enough.
         while subsurfaces.len() < view_subsurfaces.len() {
             subsurfaces.push(self.create_subsurface(parent));
         }
-        // Attach buffers to subsurfaces, set viewports, and commit.
+        if needs_sorting {
+            let mut sorted_subsurfaces: Vec<_> = view_subsurfaces
+                .iter()
+                .zip(subsurfaces.iter_mut())
+                .map(|(_, instance)| {
+                    (
+                        instance.parent.clone(),
+                        instance.wl_subsurface.clone(),
+                        instance.wl_surface.clone(),
+                        instance.z,
+                    )
+                })
+                .chain(self.new_iced_subsurfaces.clone().into_iter().map(
+                    |(_, parent, _, wl_subsurface, wl_surface, z)| {
+                        (parent.clone(), wl_subsurface, wl_surface, z)
+                    },
+                ))
+                .chain(ICED_SUBSURFACES.with(|surfaces| {
+                    let b = surfaces.borrow();
+                    let v: Vec<_> = b
+                        .iter()
+                        .map(move |s| {
+                            (s.1.clone(), s.3.clone(), s.4.clone(), s.5)
+                        })
+                        .collect();
+                    v.into_iter()
+                }))
+                .collect();
+
+            sorted_subsurfaces.sort_by(|a, b| a.3.cmp(&b.3));
+
+            // Attach buffers to subsurfaces, set viewports, and commit.
+            for i in 1..sorted_subsurfaces.len() {
+                let prev = &sorted_subsurfaces[0..i];
+                let subsurface = &sorted_subsurfaces[i];
+                for prev in prev.iter().rev() {
+                    if prev.0 != subsurface.0 {
+                        continue;
+                    }
+                    subsurface.1.place_above(&prev.2);
+                }
+            }
+        }
+        if !self.new_iced_subsurfaces.is_empty() {
+            ICED_SUBSURFACES.with(|surfaces| {
+                surfaces.borrow_mut().append(&mut self.new_iced_subsurfaces);
+            })
+        };
         for (subsurface_data, subsurface) in
             view_subsurfaces.iter().zip(subsurfaces.iter_mut())
         {
@@ -525,12 +611,14 @@ impl Drop for SubsurfaceState {
 #[derive(Clone, Debug)]
 pub(crate) struct SubsurfaceInstance {
     pub(crate) wl_surface: WlSurface,
-    wl_subsurface: WlSubsurface,
-    wp_viewport: WpViewport,
-    wp_alpha_modifier_surface: Option<WpAlphaModifierSurfaceV1>,
-    wl_buffer: Option<WlBuffer>,
-    bounds: Option<Rectangle<f32>>,
-    transform: wl_output::Transform,
+    pub(crate) wl_subsurface: WlSubsurface,
+    pub(crate) wp_viewport: WpViewport,
+    pub(crate) wp_alpha_modifier_surface: Option<WpAlphaModifierSurfaceV1>,
+    pub(crate) wl_buffer: Option<WlBuffer>,
+    pub(crate) bounds: Option<Rectangle<f32>>,
+    pub(crate) transform: wl_output::Transform,
+    pub(crate) z: u32,
+    pub parent: ObjectId,
 }
 
 impl SubsurfaceInstance {
@@ -606,6 +694,7 @@ impl SubsurfaceInstance {
         self.wl_buffer = Some(buffer);
         self.bounds = Some(info.bounds);
         self.transform = info.transform;
+        self.z = info.z;
     }
 
     pub fn unmap(&self) {
@@ -631,14 +720,43 @@ pub(crate) struct SubsurfaceInfo {
     pub bounds: Rectangle<f32>,
     pub alpha: f32,
     pub transform: wl_output::Transform,
+    pub z: u32,
 }
 
 thread_local! {
     static SUBSURFACES: RefCell<Vec<SubsurfaceInfo>> = RefCell::new(Vec::new());
+    static ICED_SUBSURFACES: RefCell<Vec<(window::Id, ObjectId, window::Id, WlSubsurface, WlSurface, u32)>> = RefCell::new(Vec::new());
 }
 
 pub(crate) fn take_subsurfaces() -> Vec<SubsurfaceInfo> {
     SUBSURFACES.with(|subsurfaces| mem::take(&mut *subsurfaces.borrow_mut()))
+}
+
+pub(crate) fn subsurface_ids(parent: WindowId) -> Vec<WindowId> {
+    ICED_SUBSURFACES.with(|subsurfaces| {
+        subsurfaces
+            .borrow_mut()
+            .iter()
+            .filter_map(|s| {
+                if winit::window::WindowId::from(s.1.as_ptr() as u64) == parent
+                {
+                    Some(
+                        winit::window::WindowId::from(s.4.id().as_ptr() as u64),
+                    )
+                } else {
+                    None
+                }
+            })
+            .collect()
+    })
+}
+
+pub(crate) fn remove_iced_subsurface(surface: &WlSurface) {
+    ICED_SUBSURFACES.with(|surfaces| {
+        surfaces
+            .borrow_mut()
+            .retain(|(_, _, _, _, s, _)| s != surface)
+    })
 }
 
 #[must_use]
@@ -649,6 +767,7 @@ pub struct Subsurface {
     content_fit: ContentFit,
     alpha: f32,
     transform: wl_output::Transform,
+    pub z: u32,
 }
 
 impl<Message, Theme, Renderer> Widget<Message, Theme, Renderer> for Subsurface
@@ -714,6 +833,7 @@ where
                 bounds: layout.bounds(),
                 alpha: self.alpha,
                 transform: self.transform,
+                z: self.z,
             })
         });
     }
@@ -729,6 +849,7 @@ impl Subsurface {
             content_fit: ContentFit::Contain,
             alpha: 1.,
             transform: wl_output::Transform::Normal,
+            z: 0,
         }
     }
 
@@ -749,6 +870,11 @@ impl Subsurface {
 
     pub fn alpha(mut self, alpha: f32) -> Self {
         self.alpha = alpha;
+        self
+    }
+
+    pub fn z(mut self, z: u32) -> Self {
+        self.z = z;
         self
     }
 

@@ -167,6 +167,7 @@ impl Window {
             scale_input: "1.0".to_string(),
             current_scale: 1.0,
             theme: Theme::ALL[count % Theme::ALL.len()].clone(),
+            input_id: text_input::Id::unique(),
         }
     }
 

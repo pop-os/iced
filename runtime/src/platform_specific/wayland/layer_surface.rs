@@ -1,10 +1,10 @@
 use std::fmt;
 
-use iced_core::layout::Limits;
 use cctk::sctk::{
     reexports::client::protocol::wl_output::WlOutput,
     shell::wlr_layer::{Anchor, KeyboardInteractivity, Layer},
 };
+use iced_core::layout::Limits;
 
 use iced_core::window::Id;
 

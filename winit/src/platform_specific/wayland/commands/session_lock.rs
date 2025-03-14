@@ -1,10 +1,10 @@
 use crate::core::window::Id as SurfaceId;
+use cctk::sctk::reexports::client::protocol::wl_output::WlOutput;
 use iced_runtime::{
     self,
     platform_specific::{self, wayland},
     task, Action, Task,
 };
-use cctk::sctk::reexports::client::protocol::wl_output::WlOutput;
 
 pub fn lock<Message>() -> Task<Message> {
     task::effect(Action::PlatformSpecific(
