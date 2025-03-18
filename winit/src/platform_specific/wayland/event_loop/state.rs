@@ -519,15 +519,19 @@ impl SctkState {
         let mut id = None;
 
         for subsurface in &self.subsurfaces {
-            if subsurface.instance.parent != surface.id() {
+            if subsurface.instance.wl_surface != *surface {
                 continue;
             }
+            id = Some(subsurface.id);
+            if legacy && subsurface.instance.wp_fractional_scale.is_some() {
+                return;
+            }
+            let mut common = subsurface.common.lock().unwrap();
+            common.fractional_scale = Some(scale_factor);
+            if legacy {
+                subsurface.instance.wl_surface.set_buffer_scale(scale_factor as _);
+            }
 
-            self.sctk_events.push(SctkEvent::SurfaceScaleFactorChanged(
-                scale_factor,
-                surface.clone(),
-                subsurface.id,
-            ));
         }
 
         if let Some(popup) = self
@@ -1576,6 +1580,10 @@ impl SctkState {
             &self.queue_handle,
             cctk::sctk::globals::GlobalData,
         );
+        let wp_fractional_scale =
+            self.fractional_scaling_manager.as_ref().map(|fsm| {
+                fsm.fractional_scaling(&wl_surface, &self.queue_handle)
+            });
 
         let wp_alpha_modifier_surface = subsurface_state
             .wp_alpha_modifier
@@ -1596,6 +1604,7 @@ impl SctkState {
             wl_subsurface: wl_subsurface.clone(),
             wp_viewport: wp_viewport.clone(),
             wp_alpha_modifier_surface: wp_alpha_modifier_surface,
+            wp_fractional_scale,
 
             wl_buffer: None,
             bounds: Some(bounds),
