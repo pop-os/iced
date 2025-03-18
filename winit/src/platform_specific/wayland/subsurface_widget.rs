@@ -49,6 +49,7 @@ use wayland_protocols::wp::{
         wp_alpha_modifier_surface_v1::WpAlphaModifierSurfaceV1,
         wp_alpha_modifier_v1::WpAlphaModifierV1,
     },
+    fractional_scale::v1::client::wp_fractional_scale_v1::WpFractionalScaleV1,
     linux_dmabuf::zv1::client::{
         zwp_linux_buffer_params_v1::{self, ZwpLinuxBufferParamsV1},
         zwp_linux_dmabuf_v1::{self, ZwpLinuxDmabufV1},
@@ -456,6 +457,7 @@ impl SubsurfaceState {
             wp_alpha_modifier_surface,
             wl_buffer: None,
             bounds: None,
+            wp_fractional_scale: None,
             transform: wl_output::Transform::Normal,
             z: 0,
             parent: parent.id(),
@@ -613,6 +615,7 @@ pub(crate) struct SubsurfaceInstance {
     pub(crate) wl_surface: WlSurface,
     pub(crate) wl_subsurface: WlSubsurface,
     pub(crate) wp_viewport: WpViewport,
+    pub(crate) wp_fractional_scale: Option<WpFractionalScaleV1>,
     pub(crate) wp_alpha_modifier_surface: Option<WpAlphaModifierSurfaceV1>,
     pub(crate) wl_buffer: Option<WlBuffer>,
     pub(crate) bounds: Option<Rectangle<f32>>,
