@@ -529,9 +529,11 @@ impl SctkState {
             let mut common = subsurface.common.lock().unwrap();
             common.fractional_scale = Some(scale_factor);
             if legacy {
-                subsurface.instance.wl_surface.set_buffer_scale(scale_factor as _);
+                subsurface
+                    .instance
+                    .wl_surface
+                    .set_buffer_scale(scale_factor as _);
             }
-
         }
 
         if let Some(popup) = self
@@ -1010,14 +1012,14 @@ impl SctkState {
                         platform_specific::wayland::layer_surface::Action::Destroy(id) => {
                             if let Some(i) = self.layer_surfaces.iter().position(|l| l.id == id) {
                                 let l = self.layer_surfaces.remove(i);
-                                
+
                                 let (removed, remaining): (Vec<_>, Vec<_>) =  self
                                     .subsurfaces
                                     .drain(..)
                                     .partition(|s| {
                                         s.instance.parent == l.surface.wl_surface().id()
                                     });
-                        
+
                                 self.subsurfaces = remaining;
                                 for s in removed
                                 {
@@ -1238,18 +1240,17 @@ impl SctkState {
                         if let Some(id) = self.id_map.remove(&popup.popup.wl_surface().id()) {
                             _ = self.destroyed.insert(id);
                         }
-                        
+
                         let (removed, remaining): (Vec<_>, Vec<_>) =  self
                             .subsurfaces
                             .drain(..)
                             .partition(|s| {
                                 s.instance.parent == popup.popup.wl_surface().id()
                             });
-                        
+
                         self.subsurfaces = remaining;
                         for s in removed
                         {
-                            
                             crate::subsurface_widget::remove_iced_subsurface(
                                 &s.instance.wl_surface,
                             );
@@ -1367,11 +1368,10 @@ impl SctkState {
                             .partition(|s| {
                                 s.instance.parent == surface.session_lock_surface.wl_surface().id()
                             });
-                        
+
                         self.subsurfaces = remaining;
                         for s in removed
                         {
-                            
                             crate::subsurface_widget::remove_iced_subsurface(
                                 &s.instance.wl_surface,
                             );
@@ -1580,10 +1580,10 @@ impl SctkState {
             &self.queue_handle,
             cctk::sctk::globals::GlobalData,
         );
-        let wp_fractional_scale =
-            self.fractional_scaling_manager.as_ref().map(|fsm| {
-                fsm.fractional_scaling(&wl_surface, &self.queue_handle)
-            });
+        let wp_fractional_scale = self
+            .fractional_scaling_manager
+            .as_ref()
+            .map(|fsm| fsm.fractional_scaling(&wl_surface, &self.queue_handle));
 
         let wp_alpha_modifier_surface = subsurface_state
             .wp_alpha_modifier
