@@ -374,9 +374,17 @@ where
                         .downcast_mut::<State<Link, Renderer::Paragraph>>();
 
                     if let Some(span) = state.paragraph.hit_span(position) {
-                        state.span_pressed = Some(span);
+                        if self
+                            .spans
+                            .as_ref()
+                            .as_ref()
+                            .get(span)
+                            .map_or(false, |span| span.link.is_some())
+                        {
+                            state.span_pressed = Some(span);
 
-                        return event::Status::Captured;
+                            return event::Status::Captured;
+                        }
                     }
                 }
             }
