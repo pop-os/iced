@@ -616,7 +616,11 @@ where
         operation.traverse(&mut |operation| {
             self.content.as_widget_mut().operate(
                 &mut tree.children[0],
-                layout.children().next().unwrap(),
+                layout
+                    .children()
+                    .next()
+                    .unwrap()
+                    .with_virtual_offset(translation + layout.virtual_offset()),
                 renderer,
                 operation,
             );
@@ -1278,7 +1282,9 @@ where
                             renderer,
                             theme,
                             defaults,
-                            content_layout,
+                            content_layout.with_virtual_offset(
+                                translation + layout.virtual_offset(),
+                            ),
                             cursor,
                             &Rectangle {
                                 y: visible_bounds.y + translation.y,
@@ -1382,7 +1388,7 @@ where
                 renderer,
                 theme,
                 defaults,
-                content_layout,
+                content_layout.with_virtual_offset(layout.virtual_offset()),
                 cursor,
                 &Rectangle {
                     x: visible_bounds.x + translation.x,
@@ -1432,7 +1438,7 @@ where
 
         self.content.as_widget().mouse_interaction(
             &tree.children[0],
-            content_layout,
+            content_layout.with_virtual_offset(layout.virtual_offset()),
             cursor,
             &Rectangle {
                 y: bounds.y + translation.y,
@@ -1460,7 +1466,11 @@ where
 
         let overlay = self.content.as_widget_mut().overlay(
             &mut tree.children[0],
-            layout.children().next().unwrap(),
+            layout
+                .children()
+                .next()
+                .unwrap()
+                .with_virtual_offset(translation + layout.virtual_offset()),
             renderer,
             &visible_bounds,
             translation - offset,
@@ -1503,15 +1513,9 @@ where
             A11yId, A11yNode, A11yTree,
             accesskit::{Node, NodeId, Rect, Role},
         };
-
-        let child_layout = layout.children().next().unwrap();
-        let child_tree = &state.children[0];
-        let child_tree = self.content.as_widget().a11y_nodes(
-            child_layout,
-            &child_tree,
-            cursor,
-        );
-
+        if !matches!(state.state, tree::State::Some(_)) {
+            return A11yTree::default();
+        }
         let window = layout.bounds();
         let is_hovered = cursor.is_over(window);
         let Rectangle {
@@ -1520,6 +1524,25 @@ where
             width,
             height,
         } = window;
+
+        let my_state = state.state.downcast_ref::<State>();
+        let content = layout.children().next().unwrap();
+        let content_bounds = content.bounds();
+
+        let translation = my_state.translation(
+            self.direction,
+            layout.bounds(),
+            content_bounds,
+        );
+
+        let child_layout = layout.children().next().unwrap();
+        let child_tree = &state.children[0];
+        let child_tree = self.content.as_widget().a11y_nodes(
+            child_layout
+                .with_virtual_offset(translation + layout.virtual_offset()),
+            &child_tree,
+            cursor,
+        );
         let bounds = Rect::new(
             x as f64,
             y as f64,
@@ -1646,9 +1669,15 @@ where
             layout.children().zip(tree.children.iter()).next()
         {
             let mut my_dnd_rectangles = DndDestinationRectangles::new();
+            let translation = my_state.translation(
+                self.direction,
+                layout.bounds(),
+                c_layout.bounds(),
+            );
             self.content.as_widget().drag_destinations(
                 c_state,
-                c_layout,
+                c_layout
+                    .with_virtual_offset(translation + layout.virtual_offset()),
                 renderer,
                 &mut my_dnd_rectangles,
             );

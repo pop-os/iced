@@ -331,7 +331,11 @@ where
         operation.traverse(&mut |operation| {
             self.content.as_widget_mut().operate(
                 &mut tree.children[0],
-                layout.children().next().unwrap(),
+                layout
+                    .children()
+                    .next()
+                    .unwrap()
+                    .with_virtual_offset(layout.virtual_offset()),
                 renderer,
                 operation,
             );
@@ -352,7 +356,11 @@ where
         self.content.as_widget_mut().update(
             &mut tree.children[0],
             event,
-            layout.children().next().unwrap(),
+            layout
+                .children()
+                .next()
+                .unwrap()
+                .with_virtual_offset(layout.virtual_offset()),
             cursor,
             renderer,
             clipboard,
@@ -472,7 +480,11 @@ where
         viewport: &Rectangle,
     ) {
         let bounds = layout.bounds();
-        let content_layout = layout.children().next().unwrap();
+        let content_layout = layout
+            .children()
+            .next()
+            .unwrap()
+            .with_virtual_offset(layout.virtual_offset());
         let style =
             theme.style(&self.class, self.status.unwrap_or(Status::Disabled));
 
@@ -543,7 +555,11 @@ where
     ) -> Option<overlay::Element<'b, Message, Theme, Renderer>> {
         self.content.as_widget_mut().overlay(
             &mut tree.children[0],
-            layout.children().next().unwrap(),
+            layout
+                .children()
+                .next()
+                .unwrap()
+                .with_virtual_offset(layout.virtual_offset()),
             renderer,
             viewport,
             translation,
@@ -565,10 +581,11 @@ where
 
         let child_layout = layout.children().next().unwrap();
         let child_tree = &state.children[0];
-        let child_tree =
-            self.content
-                .as_widget()
-                .a11y_nodes(child_layout, child_tree, p);
+        let child_tree = self.content.as_widget().a11y_nodes(
+            child_layout.with_virtual_offset(layout.virtual_offset()),
+            child_tree,
+            p,
+        );
 
         let Rectangle {
             x,

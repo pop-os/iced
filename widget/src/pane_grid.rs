@@ -480,8 +480,13 @@ where
                         .maximized()
                         .is_none_or(|maximized| **pane == maximized)
                 })
-                .for_each(|(((_, content), state), layout)| {
-                    content.operate(state, layout, renderer, operation);
+                .for_each(|(((_, content), state), c_layout)| {
+                    content.operate(
+                        state,
+                        c_layout.with_virtual_offset(layout.virtual_offset()),
+                        renderer,
+                        operation,
+                    );
                 });
         });
     }
@@ -700,9 +705,11 @@ where
                                 .maximized()
                                 .is_none_or(|maximized| **pane == maximized)
                         })
-                        .find_map(|((_pane, content), layout)| {
+                        .find_map(|((_pane, content), c_layout)| {
                             content.grid_interaction(
-                                layout,
+                                c_layout.with_virtual_offset(
+                                    layout.virtual_offset(),
+                                ),
                                 cursor,
                                 on_drag.is_some(),
                             )
@@ -747,10 +754,10 @@ where
                     .maximized()
                     .is_none_or(|maximized| *pane == maximized)
             })
-            .map(|(((_, content), tree), layout)| {
+            .map(|(((_, content), tree), c_layout)| {
                 content.mouse_interaction(
                     tree,
-                    layout,
+                    c_layout.with_virtual_offset(layout.virtual_offset()),
                     cursor,
                     viewport,
                     renderer,
@@ -874,7 +881,8 @@ where
                         renderer,
                         theme,
                         defaults,
-                        pane_layout,
+                        pane_layout
+                            .with_virtual_offset(layout.virtual_offset()),
                         pane_cursor,
                         viewport,
                     );
@@ -904,7 +912,8 @@ where
                         renderer,
                         theme,
                         defaults,
-                        pane_layout,
+                        pane_layout
+                            .with_virtual_offset(layout.virtual_offset()),
                         pane_cursor,
                         viewport,
                     );
@@ -1000,7 +1009,7 @@ where
             .zip(&mut self.contents)
             .zip(&mut tree.children)
             .zip(layout.children())
-            .filter_map(|(((pane, content), state), layout)| {
+            .filter_map(|(((pane, content), state), c_layout)| {
                 if self
                     .internal
                     .maximized()
@@ -1009,7 +1018,13 @@ where
                     return None;
                 }
 
-                content.overlay(state, layout, renderer, viewport, translation)
+                content.overlay(
+                    state,
+                    c_layout.with_virtual_offset(layout.virtual_offset()),
+                    renderer,
+                    viewport,
+                    translation,
+                )
             })
             .collect::<Vec<_>>();
 
@@ -1066,15 +1081,18 @@ fn click_pane<'a, Message, T>(
 {
     let mut clicked_region = contents
         .zip(layout.children())
-        .filter(|(_, layout)| layout.bounds().contains(cursor_position));
+        .filter(|(_, c_layout)| layout.bounds().contains(cursor_position));
 
-    if let Some(((pane, content), layout)) = clicked_region.next() {
+    if let Some(((pane, content), c_layout)) = clicked_region.next() {
         if let Some(on_click) = &on_click {
             shell.publish(on_click(pane));
         }
 
         if let Some(on_drag) = &on_drag
-            && content.can_be_dragged_at(layout, cursor_position)
+            && content.can_be_dragged_at(
+                c_layout.with_virtual_offset(layout.virtual_offset()),
+                cursor_position,
+            )
         {
             *action = state::Action::Dragging {
                 pane,

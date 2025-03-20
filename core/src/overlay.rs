@@ -120,10 +120,10 @@ where
         .iter_mut()
         .zip(&mut tree.children)
         .zip(layout.children())
-        .filter_map(|((child, state), layout)| {
+        .filter_map(|((child, state), c_layout)| {
             child.as_widget_mut().overlay(
                 state,
-                layout,
+                c_layout.with_virtual_offset(layout.virtual_offset()),
                 renderer,
                 viewport,
                 translation,

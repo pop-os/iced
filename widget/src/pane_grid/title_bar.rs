@@ -190,7 +190,8 @@ where
                         renderer,
                         theme,
                         &inherited_style,
-                        compact_layout,
+                        compact_layout
+                            .with_virtual_offset(layout.virtual_offset()),
                         cursor,
                         viewport,
                     );
@@ -202,7 +203,8 @@ where
                         renderer,
                         theme,
                         &inherited_style,
-                        controls_layout,
+                        controls_layout
+                            .with_virtual_offset(layout.virtual_offset()),
                         cursor,
                         viewport,
                     );
@@ -213,7 +215,8 @@ where
                     renderer,
                     theme,
                     &inherited_style,
-                    controls_layout,
+                    controls_layout
+                        .with_virtual_offset(layout.virtual_offset()),
                     cursor,
                     viewport,
                 );
@@ -226,7 +229,7 @@ where
                 renderer,
                 theme,
                 &inherited_style,
-                title_layout,
+                title_layout.with_virtual_offset(layout.virtual_offset()),
                 cursor,
                 viewport,
             );
@@ -394,7 +397,8 @@ where
 
                     compact.as_widget_mut().operate(
                         &mut tree.children[2],
-                        compact_layout,
+                        compact_layout
+                            .with_virtual_offset(layout.virtual_offset()),
                         renderer,
                         operation,
                     );
@@ -403,7 +407,8 @@ where
 
                     controls.full.as_widget_mut().operate(
                         &mut tree.children[1],
-                        controls_layout,
+                        controls_layout
+                            .with_virtual_offset(layout.virtual_offset()),
                         renderer,
                         operation,
                     );
@@ -411,7 +416,8 @@ where
             } else {
                 controls.full.as_widget_mut().operate(
                     &mut tree.children[1],
-                    controls_layout,
+                    controls_layout
+                        .with_virtual_offset(layout.virtual_offset()),
                     renderer,
                     operation,
                 );
@@ -458,7 +464,8 @@ where
                     compact.as_widget_mut().update(
                         &mut tree.children[2],
                         event,
-                        compact_layout,
+                        compact_layout
+                            .with_virtual_offset(layout.virtual_offset()),
                         cursor,
                         renderer,
                         clipboard,
@@ -471,7 +478,8 @@ where
                     controls.full.as_widget_mut().update(
                         &mut tree.children[1],
                         event,
-                        controls_layout,
+                        controls_layout
+                            .with_virtual_offset(layout.virtual_offset()),
                         cursor,
                         renderer,
                         clipboard,
@@ -483,7 +491,8 @@ where
                 controls.full.as_widget_mut().update(
                     &mut tree.children[1],
                     event,
-                    controls_layout,
+                    controls_layout
+                        .with_virtual_offset(layout.virtual_offset()),
                     cursor,
                     renderer,
                     clipboard,
@@ -497,7 +506,7 @@ where
             self.content.as_widget_mut().update(
                 &mut tree.children[0],
                 event,
-                title_layout,
+                title_layout.with_virtual_offset(layout.virtual_offset()),
                 cursor,
                 renderer,
                 clipboard,
@@ -523,7 +532,7 @@ where
 
         let title_interaction = self.content.as_widget().mouse_interaction(
             &tree.children[0],
-            title_layout,
+            title_layout.with_virtual_offset(layout.virtual_offset()),
             cursor,
             viewport,
             renderer,
@@ -534,7 +543,8 @@ where
             let controls_interaction =
                 controls.full.as_widget().mouse_interaction(
                     &tree.children[1],
-                    controls_layout,
+                    controls_layout
+                        .with_virtual_offset(layout.virtual_offset()),
                     cursor,
                     viewport,
                     renderer,
@@ -548,7 +558,8 @@ where
                     let compact_interaction =
                         compact.as_widget().mouse_interaction(
                             &tree.children[2],
-                            compact_layout,
+                            compact_layout
+                                .with_virtual_offset(layout.virtual_offset()),
                             cursor,
                             viewport,
                             renderer,
@@ -605,7 +616,9 @@ where
 
                             compact.as_widget_mut().overlay(
                                 compact_state,
-                                compact_layout,
+                                compact_layout.with_virtual_offset(
+                                    layout.virtual_offset(),
+                                ),
                                 renderer,
                                 viewport,
                                 translation,
@@ -613,7 +626,9 @@ where
                         } else {
                             controls.full.as_widget_mut().overlay(
                                 controls_state,
-                                controls_layout,
+                                controls_layout.with_virtual_offset(
+                                    layout.virtual_offset(),
+                                ),
                                 renderer,
                                 viewport,
                                 translation,
@@ -622,7 +637,8 @@ where
                     } else {
                         controls.full.as_widget_mut().overlay(
                             controls_state,
-                            controls_layout,
+                            controls_layout
+                                .with_virtual_offset(layout.virtual_offset()),
                             renderer,
                             viewport,
                             translation,
