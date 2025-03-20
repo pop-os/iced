@@ -388,8 +388,13 @@ where
                 .iter()
                 .zip(&mut tree.children)
                 .zip(layout.children())
-                .for_each(|(((_pane, content), state), layout)| {
-                    content.operate(state, layout, renderer, operation);
+                .for_each(|(((_pane, content), state), c_layout)| {
+                    content.operate(
+                        state,
+                        c_layout.with_virtual_offset(layout.virtual_offset()),
+                        renderer,
+                        operation,
+                    );
                 });
         });
     }
@@ -581,13 +586,13 @@ where
             .iter_mut()
             .zip(&mut tree.children)
             .zip(layout.children())
-            .map(|(((pane, content), tree), layout)| {
+            .map(|(((pane, content), tree), c_layout)| {
                 let is_picked = picked_pane == Some(pane);
 
                 content.on_event(
                     tree,
                     event.clone(),
-                    layout,
+                    c_layout.with_virtual_offset(layout.virtual_offset()),
                     cursor,
                     renderer,
                     clipboard,
@@ -650,10 +655,10 @@ where
             .iter()
             .zip(&tree.children)
             .zip(layout.children())
-            .map(|(((_pane, content), tree), layout)| {
+            .map(|(((_pane, content), tree), c_layout)| {
                 content.mouse_interaction(
                     tree,
-                    layout,
+                    c_layout.with_virtual_offset(layout.virtual_offset()),
                     cursor,
                     viewport,
                     renderer,
@@ -766,7 +771,8 @@ where
                         renderer,
                         theme,
                         defaults,
-                        pane_layout,
+                        pane_layout
+                            .with_virtual_offset(layout.virtual_offset()),
                         pane_cursor,
                         viewport,
                     );
@@ -797,7 +803,8 @@ where
                         renderer,
                         theme,
                         defaults,
-                        pane_layout,
+                        pane_layout
+                            .with_virtual_offset(layout.virtual_offset()),
                         pane_cursor,
                         viewport,
                     );
@@ -892,8 +899,13 @@ where
             .iter_mut()
             .zip(&mut tree.children)
             .zip(layout.children())
-            .filter_map(|(((_, content), state), layout)| {
-                content.overlay(state, layout, renderer, translation)
+            .filter_map(|(((_, content), state), c_layout)| {
+                content.overlay(
+                    state,
+                    c_layout.with_virtual_offset(layout.virtual_offset()),
+                    renderer,
+                    translation,
+                )
             })
             .collect::<Vec<_>>();
 
