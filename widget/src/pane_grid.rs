@@ -419,8 +419,13 @@ where
                         .maximized()
                         .map_or(true, |maximized| *pane == maximized)
                 })
-                .for_each(|(((_, content), state), layout)| {
-                    content.operate(state, layout, renderer, operation);
+                .for_each(|(((_, content), state), c_layout)| {
+                    content.operate(
+                        state,
+                        c_layout.with_virtual_offset(layout.virtual_offset()),
+                        renderer,
+                        operation,
+                    );
                 });
         });
     }
@@ -624,13 +629,13 @@ where
                     .maximized()
                     .map_or(true, |maximized| *pane == maximized)
             })
-            .map(|(((pane, content), tree), layout)| {
+            .map(|(((pane, content), tree), c_layout)| {
                 let is_picked = picked_pane == Some(pane);
 
                 content.on_event(
                     tree,
                     event.clone(),
-                    layout,
+                    c_layout.with_virtual_offset(layout.virtual_offset()),
                     cursor,
                     renderer,
                     clipboard,
@@ -700,10 +705,10 @@ where
                     .maximized()
                     .map_or(true, |maximized| *pane == maximized)
             })
-            .map(|(((_, content), tree), layout)| {
+            .map(|(((_, content), tree), c_layout)| {
                 content.mouse_interaction(
                     tree,
-                    layout,
+                    c_layout.with_virtual_offset(layout.virtual_offset()),
                     cursor,
                     viewport,
                     renderer,
@@ -820,7 +825,8 @@ where
                         renderer,
                         theme,
                         defaults,
-                        pane_layout,
+                        pane_layout
+                            .with_virtual_offset(layout.virtual_offset()),
                         pane_cursor,
                         viewport,
                     );
@@ -851,7 +857,8 @@ where
                         renderer,
                         theme,
                         defaults,
-                        pane_layout,
+                        pane_layout
+                            .with_virtual_offset(layout.virtual_offset()),
                         pane_cursor,
                         viewport,
                     );
@@ -948,7 +955,7 @@ where
             .zip(&mut self.contents)
             .zip(&mut tree.children)
             .zip(layout.children())
-            .filter_map(|(((pane, content), state), layout)| {
+            .filter_map(|(((pane, content), state), c_layout)| {
                 if self
                     .internal
                     .maximized()
@@ -957,7 +964,12 @@ where
                     return None;
                 }
 
-                content.overlay(state, layout, renderer, translation)
+                content.overlay(
+                    state,
+                    c_layout.with_virtual_offset(layout.virtual_offset()),
+                    renderer,
+                    translation,
+                )
             })
             .collect::<Vec<_>>();
 

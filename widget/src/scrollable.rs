@@ -549,7 +549,11 @@ where
         operation.container(Some(&self.id), bounds, &mut |operation| {
             self.content.as_widget().operate(
                 &mut tree.children[0],
-                layout.children().next().unwrap(),
+                layout
+                    .children()
+                    .next()
+                    .unwrap()
+                    .with_virtual_offset(translation + layout.virtual_offset()),
                 renderer,
                 operation,
             );
@@ -797,7 +801,8 @@ where
             self.content.as_widget_mut().on_event(
                 &mut tree.children[0],
                 c_event,
-                content,
+                content
+                    .with_virtual_offset(translation + layout.virtual_offset()),
                 cursor,
                 renderer,
                 clipboard,
@@ -1034,7 +1039,9 @@ where
                             renderer,
                             theme,
                             defaults,
-                            content_layout,
+                            content_layout.with_virtual_offset(
+                                translation + layout.virtual_offset(),
+                            ),
                             cursor,
                             &Rectangle {
                                 y: bounds.y + translation.y,
@@ -1189,7 +1196,8 @@ where
 
             self.content.as_widget().mouse_interaction(
                 &tree.children[0],
-                content_layout,
+                content_layout
+                    .with_virtual_offset(translation + layout.virtual_offset()),
                 cursor,
                 &Rectangle {
                     y: bounds.y + translation.y,
@@ -1220,7 +1228,11 @@ where
 
         self.content.as_widget_mut().overlay(
             &mut tree.children[0],
-            layout.children().next().unwrap(),
+            layout
+                .children()
+                .next()
+                .unwrap()
+                .with_virtual_offset(translation + layout.virtual_offset()),
             renderer,
             translation - offset,
         )
@@ -1237,15 +1249,9 @@ where
             accesskit::{NodeBuilder, NodeId, Rect, Role},
             A11yId, A11yNode, A11yTree,
         };
-
-        let child_layout = layout.children().next().unwrap();
-        let child_tree = &state.children[0];
-        let child_tree = self.content.as_widget().a11y_nodes(
-            child_layout,
-            &child_tree,
-            cursor,
-        );
-
+        if !matches!(state.state, tree::State::Some(_)) {
+            return A11yTree::default();
+        }
         let window = layout.bounds();
         let is_hovered = cursor.is_over(window);
         let Rectangle {
@@ -1254,6 +1260,25 @@ where
             width,
             height,
         } = window;
+
+        let my_state = state.state.downcast_ref::<State>();
+        let content = layout.children().next().unwrap();
+        let content_bounds = content.bounds();
+
+        let translation = my_state.translation(
+            self.direction,
+            layout.bounds(),
+            content_bounds,
+        );
+
+        let child_layout = layout.children().next().unwrap();
+        let child_tree = &state.children[0];
+        let child_tree = self.content.as_widget().a11y_nodes(
+            child_layout
+                .with_virtual_offset(translation + layout.virtual_offset()),
+            &child_tree,
+            cursor,
+        );
         let bounds = Rect::new(
             x as f64,
             y as f64,
@@ -1288,53 +1313,46 @@ where
             node.set_labelled_by(label.clone());
         }
 
-        let content = layout.children().next().unwrap();
-        let content_bounds = content.bounds();
-
         let mut scrollbar_node = NodeBuilder::new(Role::ScrollBar);
-        if matches!(state.state, tree::State::Some(_)) {
-            let state = state.state.downcast_ref::<State>();
-            let scrollbars = Scrollbars::new(
-                state,
-                self.direction,
-                content_bounds,
-                content_bounds,
+
+        let scrollbars = Scrollbars::new(
+            my_state,
+            self.direction,
+            content_bounds,
+            content_bounds,
+        );
+        for (window, content, offset, scrollbar) in scrollbars
+            .x
+            .iter()
+            .map(|s| (window.width, content_bounds.width, my_state.offset_x, s))
+            .chain(scrollbars.y.iter().map(|s| {
+                (window.height, content_bounds.height, my_state.offset_y, s)
+            }))
+        {
+            let scrollbar_bounds = scrollbar.total_bounds;
+            let is_hovered = cursor.is_over(scrollbar_bounds);
+            let Rectangle {
+                x,
+                y,
+                width,
+                height,
+            } = scrollbar_bounds;
+            let bounds = Rect::new(
+                x as f64,
+                y as f64,
+                (x + width) as f64,
+                (y + height) as f64,
             );
-            for (window, content, offset, scrollbar) in scrollbars
-                .x
-                .iter()
-                .map(|s| {
-                    (window.width, content_bounds.width, state.offset_x, s)
-                })
-                .chain(scrollbars.y.iter().map(|s| {
-                    (window.height, content_bounds.height, state.offset_y, s)
-                }))
-            {
-                let scrollbar_bounds = scrollbar.total_bounds;
-                let is_hovered = cursor.is_over(scrollbar_bounds);
-                let Rectangle {
-                    x,
-                    y,
-                    width,
-                    height,
-                } = scrollbar_bounds;
-                let bounds = Rect::new(
-                    x as f64,
-                    y as f64,
-                    (x + width) as f64,
-                    (y + height) as f64,
-                );
-                scrollbar_node.set_bounds(bounds);
-                if is_hovered {
-                    scrollbar_node.set_hovered();
-                }
-                scrollbar_node
-                    .set_controls(vec![A11yId::Widget(self.id.clone()).into()]);
-                scrollbar_node.set_numeric_value(
-                    100.0 * offset.absolute(window, content) as f64
-                        / scrollbar_bounds.height as f64,
-                );
+            scrollbar_node.set_bounds(bounds);
+            if is_hovered {
+                scrollbar_node.set_hovered();
             }
+            scrollbar_node
+                .set_controls(vec![A11yId::Widget(self.id.clone()).into()]);
+            scrollbar_node.set_numeric_value(
+                100.0 * offset.absolute(window, content) as f64
+                    / scrollbar_bounds.height as f64,
+            );
         }
 
         let child_tree = A11yTree::join(
@@ -1378,9 +1396,15 @@ where
             layout.children().zip(tree.children.iter()).next()
         {
             let mut my_dnd_rectangles = DndDestinationRectangles::new();
+            let translation = my_state.translation(
+                self.direction,
+                layout.bounds(),
+                c_layout.bounds(),
+            );
             self.content.as_widget().drag_destinations(
                 c_state,
-                c_layout,
+                c_layout
+                    .with_virtual_offset(translation + layout.virtual_offset()),
                 renderer,
                 &mut my_dnd_rectangles,
             );

@@ -122,10 +122,13 @@ where
         .iter_mut()
         .zip(&mut tree.children)
         .zip(layout.children())
-        .filter_map(|((child, state), layout)| {
-            child
-                .as_widget_mut()
-                .overlay(state, layout, renderer, translation)
+        .filter_map(|((child, state), c_layout)| {
+            child.as_widget_mut().overlay(
+                state,
+                c_layout.with_virtual_offset(layout.virtual_offset()),
+                renderer,
+                translation,
+            )
         })
         .collect::<Vec<_>>();
 
