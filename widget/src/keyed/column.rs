@@ -292,10 +292,13 @@ where
                 .iter()
                 .zip(&mut tree.children)
                 .zip(layout.children())
-                .for_each(|((child, state), layout)| {
-                    child
-                        .as_widget()
-                        .operate(state, layout, renderer, operation);
+                .for_each(|((child, state), c_layout)| {
+                    child.as_widget().operate(
+                        state,
+                        c_layout.with_virtual_offset(layout.virtual_offset()),
+                        renderer,
+                        operation,
+                    );
                 });
         });
     }
@@ -315,11 +318,11 @@ where
             .iter_mut()
             .zip(&mut tree.children)
             .zip(layout.children())
-            .map(|((child, state), layout)| {
+            .map(|((child, state), c_layout)| {
                 child.as_widget_mut().on_event(
                     state,
                     event.clone(),
-                    layout,
+                    c_layout.with_virtual_offset(layout.virtual_offset()),
                     cursor,
                     renderer,
                     clipboard,
@@ -342,9 +345,13 @@ where
             .iter()
             .zip(&tree.children)
             .zip(layout.children())
-            .map(|((child, state), layout)| {
+            .map(|((child, state), c_layout)| {
                 child.as_widget().mouse_interaction(
-                    state, layout, cursor, viewport, renderer,
+                    state,
+                    c_layout.with_virtual_offset(layout.virtual_offset()),
+                    cursor,
+                    viewport,
+                    renderer,
                 )
             })
             .max()
@@ -361,15 +368,21 @@ where
         cursor: mouse::Cursor,
         viewport: &Rectangle,
     ) {
-        for ((child, state), layout) in self
+        for ((child, state), c_layout) in self
             .children
             .iter()
             .zip(&tree.children)
             .zip(layout.children())
         {
-            child
-                .as_widget()
-                .draw(state, renderer, theme, style, layout, cursor, viewport);
+            child.as_widget().draw(
+                state,
+                renderer,
+                theme,
+                style,
+                c_layout.with_virtual_offset(layout.virtual_offset()),
+                cursor,
+                viewport,
+            );
         }
     }
 

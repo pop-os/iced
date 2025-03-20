@@ -12,6 +12,9 @@ use crate::{Length, Padding, Point, Rectangle, Size, Vector};
 /// The bounds of a [`Node`] and its children, using absolute coordinates.
 #[derive(Debug, Clone, Copy)]
 pub struct Layout<'a> {
+    /// The virtual offset of the layout.
+    /// May represent the scroll positions in pixels of a scrollable, for example.
+    virtual_offset: Vector,
     position: Point,
     node: &'a Node,
 }
@@ -28,14 +31,27 @@ impl<'a> Layout<'a> {
         let bounds = node.bounds();
 
         Self {
+            virtual_offset: Vector::new(0., 0.),
             position: Point::new(bounds.x, bounds.y) + offset,
             node,
         }
     }
 
+    /// Returns a new layout with the virtual offset
+    pub fn with_virtual_offset(mut self, virtual_offset: Vector) -> Self {
+        self.virtual_offset = virtual_offset;
+        self
+    }
+
     /// Returns the position of the [`Layout`].
     pub fn position(&self) -> Point {
         self.position
+    }
+
+    /// The virtual offset of the layout.
+    /// May represent the scroll positions in pixels of a scrollable, for example.
+    pub fn virtual_offset(&self) -> Vector {
+        self.virtual_offset
     }
 
     /// Returns the bounds of the [`Layout`].

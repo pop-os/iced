@@ -282,7 +282,11 @@ where
             &mut |operation| {
                 self.content.as_widget().operate(
                     tree,
-                    layout.children().next().unwrap(),
+                    layout
+                        .children()
+                        .next()
+                        .unwrap()
+                        .with_virtual_offset(layout.virtual_offset()),
                     renderer,
                     operation,
                 );
@@ -304,7 +308,11 @@ where
         self.content.as_widget_mut().on_event(
             tree,
             event,
-            layout.children().next().unwrap(),
+            layout
+                .children()
+                .next()
+                .unwrap()
+                .with_virtual_offset(layout.virtual_offset()),
             cursor,
             renderer,
             clipboard,
@@ -323,7 +331,11 @@ where
     ) -> mouse::Interaction {
         self.content.as_widget().mouse_interaction(
             tree,
-            layout.children().next().unwrap(),
+            layout
+                .children()
+                .next()
+                .unwrap()
+                .with_virtual_offset(layout.virtual_offset()),
             cursor,
             viewport,
             renderer,
@@ -359,7 +371,11 @@ where
                         .unwrap_or(renderer_style.text_color),
                     scale_factor: renderer_style.scale_factor,
                 },
-                layout.children().next().unwrap(),
+                layout
+                    .children()
+                    .next()
+                    .unwrap()
+                    .with_virtual_offset(layout.virtual_offset()),
                 cursor,
                 if self.clip {
                     &clipped_viewport
@@ -379,7 +395,11 @@ where
     ) -> Option<overlay::Element<'b, Message, Theme, Renderer>> {
         self.content.as_widget_mut().overlay(
             tree,
-            layout.children().next().unwrap(),
+            layout
+                .children()
+                .next()
+                .unwrap()
+                .with_virtual_offset(layout.virtual_offset()),
             renderer,
             translation,
         )
@@ -395,7 +415,11 @@ where
     ) -> iced_accessibility::A11yTree {
         let c_layout = layout.children().next().unwrap();
 
-        self.content.as_widget().a11y_nodes(c_layout, state, cursor)
+        self.content.as_widget().a11y_nodes(
+            c_layout.with_virtual_offset(layout.virtual_offset()),
+            state,
+            cursor,
+        )
     }
 
     fn drag_destinations(
@@ -408,7 +432,7 @@ where
         if let Some(l) = layout.children().next() {
             self.content.as_widget().drag_destinations(
                 state,
-                l,
+                l.with_virtual_offset(layout.virtual_offset()),
                 renderer,
                 dnd_rectangles,
             );
