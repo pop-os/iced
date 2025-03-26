@@ -512,12 +512,14 @@ impl SubsurfaceState {
             let mut sorted_subsurfaces: Vec<_> = view_subsurfaces
                 .iter()
                 .zip(subsurfaces.iter_mut())
-                .map(|(_, instance)| {
+                .map(|(subsurface_info, instance)| {
                     (
                         instance.parent.clone(),
                         instance.wl_subsurface.clone(),
                         instance.wl_surface.clone(),
-                        instance.z,
+                        // Use from `view_subsurfaces`; not updated in `subsurfaces`
+                        // until `attach_and_commit`
+                        subsurface_info.z,
                     )
                 })
                 .chain(self.new_iced_subsurfaces.clone().into_iter().map(
@@ -544,10 +546,10 @@ impl SubsurfaceState {
                 let prev = &sorted_subsurfaces[0..i];
                 let subsurface = &sorted_subsurfaces[i];
                 for prev in prev.iter().rev() {
-                    if prev.0 != subsurface.0 {
-                        continue;
+                    if prev.0 == subsurface.0 {
+                        subsurface.1.place_above(&prev.2);
+                        break;
                     }
-                    subsurface.1.place_above(&prev.2);
                 }
             }
         }
