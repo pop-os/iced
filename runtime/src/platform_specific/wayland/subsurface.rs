@@ -23,7 +23,7 @@ pub struct SctkSubsurfaceSettings {
     pub size: Option<Size>,
     // pub subsurface_view: Option<Arc<dyn Any + Send + Sync>>,
     /// Z
-    pub z: u32,
+    pub z: i32,
     /// Steal Keyboard focus from parent while open.
     /// Will not work on a regular window.
     pub steal_keyboard_focus: bool,
