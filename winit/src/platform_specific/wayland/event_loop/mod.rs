@@ -132,7 +132,7 @@ impl SctkEventLoop {
                                         .enumerate()
                                         .filter_map(|(i, s)| {
                                             (winit::window::WindowId::from_raw(
-                                                s.instance.parent.as_ptr()
+                                                s.instance.parent.id().as_ptr()
                                                     as usize,
                                             ) == w.window.id())
                                             .then_some(i)

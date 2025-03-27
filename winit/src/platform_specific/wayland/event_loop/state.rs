@@ -1016,7 +1016,7 @@ impl SctkState {
                                     .subsurfaces
                                     .drain(..)
                                     .partition(|s| {
-                                        s.instance.parent == l.surface.wl_surface().id()
+                                        s.instance.parent == *l.surface.wl_surface()
                                     });
 
                                 self.subsurfaces = remaining;
@@ -1244,7 +1244,7 @@ impl SctkState {
                             .subsurfaces
                             .drain(..)
                             .partition(|s| {
-                                s.instance.parent == popup.popup.wl_surface().id()
+                                s.instance.parent == *popup.popup.wl_surface()
                             });
 
                         self.subsurfaces = remaining;
@@ -1365,7 +1365,7 @@ impl SctkState {
                             .subsurfaces
                             .drain(..)
                             .partition(|s| {
-                                s.instance.parent == surface.session_lock_surface.wl_surface().id()
+                                s.instance.parent == *surface.session_lock_surface.wl_surface()
                             });
 
                         self.subsurfaces = remaining;
@@ -1443,7 +1443,7 @@ impl SctkState {
                     for (destroyed, parent) in destroyed {
                         if let Some((wl_surface, f)) = self.seats.iter_mut().find(|f| {
                             f.kbd_focus.as_ref().is_some_and(|f| *f == destroyed)
-                        }).and_then(|f| WlSurface::from_id(&self.connection, parent).ok().map(|wl| (wl, &mut f.kbd_focus))) {
+                        }).and_then(|f| Some((parent, &mut f.kbd_focus))) {
                             *f = Some(wl_surface);
                         }
                     }
@@ -1610,7 +1610,7 @@ impl SctkState {
             transform:
                 cctk::wayland_client::protocol::wl_output::Transform::Normal,
             z: settings.z,
-            parent: parent_wl_surface.id(),
+            parent: parent_wl_surface.clone(),
         };
         common.wp_viewport = Some(wp_viewport);
         let common = Arc::new(Mutex::new(common));
