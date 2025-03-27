@@ -374,7 +374,7 @@ pub struct SubsurfaceState {
         window::Id,
         WlSubsurface,
         WlSurface,
-        u32,
+        i32,
     )>,
 }
 
@@ -542,14 +542,25 @@ impl SubsurfaceState {
             sorted_subsurfaces.sort_by(|a, b| a.3.cmp(&b.3));
 
             // Attach buffers to subsurfaces, set viewports, and commit.
-            for i in 1..sorted_subsurfaces.len() {
-                let prev = &sorted_subsurfaces[0..i];
-                let subsurface = &sorted_subsurfaces[i];
-                for prev in prev.iter().rev() {
+            'outer: for (i, subsurface) in sorted_subsurfaces.iter().enumerate() {
+                for prev in sorted_subsurfaces[0..i].iter().rev() {
                     if prev.0 == subsurface.0 {
-                        subsurface.1.place_above(&prev.2);
-                        break;
+                        // Fist surface that has `z` greater than 0, so place above parent,
+                        // rather than previous subsurface.
+                        if prev.3 < 0 && subsurface.3 >= 0 {
+                            subsurface.1.place_above(&subsurface.0);
+                        } else {
+                            subsurface.1.place_above(&prev.2);
+                        }
+                        continue 'outer;
                     }
+                }
+                // No previous surface with same parent
+                if subsurface.3 < 0 {
+                    // Place below parent if z < 0
+                    subsurface.1.place_below(&subsurface.0);
+                } else {
+                    subsurface.1.place_above(&subsurface.0);
                 }
             }
         }
@@ -621,7 +632,7 @@ pub(crate) struct SubsurfaceInstance {
     pub(crate) wl_buffer: Option<WlBuffer>,
     pub(crate) bounds: Option<Rectangle<f32>>,
     pub(crate) transform: wl_output::Transform,
-    pub(crate) z: u32,
+    pub(crate) z: i32,
     pub parent: WlSurface,
 }
 
@@ -724,12 +735,12 @@ pub(crate) struct SubsurfaceInfo {
     pub bounds: Rectangle<f32>,
     pub alpha: f32,
     pub transform: wl_output::Transform,
-    pub z: u32,
+    pub z: i32,
 }
 
 thread_local! {
     static SUBSURFACES: RefCell<Vec<SubsurfaceInfo>> = RefCell::new(Vec::new());
-    static ICED_SUBSURFACES: RefCell<Vec<(window::Id, WlSurface, window::Id, WlSubsurface, WlSurface, u32)>> = RefCell::new(Vec::new());
+    static ICED_SUBSURFACES: RefCell<Vec<(window::Id, WlSurface, window::Id, WlSubsurface, WlSurface, i32)>> = RefCell::new(Vec::new());
 }
 
 pub(crate) fn take_subsurfaces() -> Vec<SubsurfaceInfo> {
@@ -771,7 +782,7 @@ pub struct Subsurface {
     content_fit: ContentFit,
     alpha: f32,
     transform: wl_output::Transform,
-    pub z: u32,
+    pub z: i32,
 }
 
 impl<Message, Theme, Renderer> Widget<Message, Theme, Renderer> for Subsurface
@@ -877,7 +888,8 @@ impl Subsurface {
         self
     }
 
-    pub fn z(mut self, z: u32) -> Self {
+    /// If `z` is less than 0, it will be below the main surface
+    pub fn z(mut self, z: i32) -> Self {
         self.z = z;
         self
     }
