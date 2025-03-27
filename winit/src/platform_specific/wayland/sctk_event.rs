@@ -293,7 +293,7 @@ pub enum SubsurfaceEventVariant {
         surface_id: SurfaceId,
         common: Arc<Mutex<Common>>,
         display: WlDisplay,
-        z: u32,
+        z: i32,
     },
     /// Destroyed
     Destroyed(SubsurfaceInstance),
