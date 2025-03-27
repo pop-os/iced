@@ -43,7 +43,6 @@ use cctk::sctk::{
     shm::slot::SlotPool,
 };
 use iced_futures::core::window;
-use wayland_backend::client::ObjectId;
 use wayland_protocols::wp::{
     alpha_modifier::v1::client::{
         wp_alpha_modifier_surface_v1::WpAlphaModifierSurfaceV1,
@@ -371,7 +370,7 @@ pub struct SubsurfaceState {
     pub(crate) unmapped_subsurfaces: Vec<SubsurfaceInstance>,
     pub new_iced_subsurfaces: Vec<(
         window::Id,
-        ObjectId,
+        WlSurface,
         window::Id,
         WlSubsurface,
         WlSurface,
@@ -460,7 +459,7 @@ impl SubsurfaceState {
             wp_fractional_scale: None,
             transform: wl_output::Transform::Normal,
             z: 0,
-            parent: parent.id(),
+            parent: parent.clone(),
         }
     }
 
@@ -623,7 +622,7 @@ pub(crate) struct SubsurfaceInstance {
     pub(crate) bounds: Option<Rectangle<f32>>,
     pub(crate) transform: wl_output::Transform,
     pub(crate) z: u32,
-    pub parent: ObjectId,
+    pub parent: WlSurface,
 }
 
 impl SubsurfaceInstance {
@@ -730,7 +729,7 @@ pub(crate) struct SubsurfaceInfo {
 
 thread_local! {
     static SUBSURFACES: RefCell<Vec<SubsurfaceInfo>> = RefCell::new(Vec::new());
-    static ICED_SUBSURFACES: RefCell<Vec<(window::Id, ObjectId, window::Id, WlSubsurface, WlSurface, u32)>> = RefCell::new(Vec::new());
+    static ICED_SUBSURFACES: RefCell<Vec<(window::Id, WlSurface, window::Id, WlSubsurface, WlSurface, u32)>> = RefCell::new(Vec::new());
 }
 
 pub(crate) fn take_subsurfaces() -> Vec<SubsurfaceInfo> {
@@ -743,7 +742,7 @@ pub(crate) fn subsurface_ids(parent: WindowId) -> Vec<WindowId> {
             .borrow_mut()
             .iter()
             .filter_map(|s| {
-                if winit::window::WindowId::from(s.1.as_ptr() as u64) == parent
+                if winit::window::WindowId::from(s.1.id().as_ptr() as u64) == parent
                 {
                     Some(
                         winit::window::WindowId::from(s.4.id().as_ptr() as u64),

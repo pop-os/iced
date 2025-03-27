@@ -1450,7 +1450,7 @@ impl SctkEvent {
                     if let Some(subsurface_state) = subsurface_state.as_mut() {
                         subsurface_state.new_iced_subsurfaces.push((
                             parent_id,
-                            parent.id(),
+                            parent,
                             surface_id,
                             wl_subsurface.clone(),
                             wl_surface.clone(),
