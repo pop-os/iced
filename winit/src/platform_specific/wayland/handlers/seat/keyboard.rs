@@ -34,7 +34,7 @@ impl KeyboardHandler for SctkState {
 
             let surface = if let Some(subsurface) =
                 self.subsurfaces.iter().find(|s| {
-                    s.steals_keyboard_focus && s.instance.parent == surface.id()
+                    s.steals_keyboard_focus && s.instance.parent == *surface
                 }) {
                 &subsurface.instance.wl_surface
             } else {
@@ -53,7 +53,7 @@ impl KeyboardHandler for SctkState {
         self.request_redraw(&surface);
 
         let surfaces = self.subsurfaces.iter().filter_map(|s| {
-            (s.instance.parent == surface.id()).then(|| &s.instance.wl_surface)
+            (s.instance.parent == *surface).then(|| &s.instance.wl_surface)
         });
         for surface in surfaces.chain(std::iter::once(surface)) {
             if is_active {
@@ -103,7 +103,7 @@ impl KeyboardHandler for SctkState {
             (is_active, seat, kbd)
         };
         let surfaces = self.subsurfaces.iter().filter_map(|s| {
-            (s.instance.parent == surface.id()).then(|| &s.instance.wl_surface)
+            (s.instance.parent == *surface).then(|| &s.instance.wl_surface)
         });
         for surface in surfaces.chain(std::iter::once(surface)) {
             if is_active {
@@ -168,7 +168,7 @@ impl KeyboardHandler for SctkState {
             if let Some(surface) = my_seat.kbd_focus.clone() {
                 self.request_redraw(&surface);
                 let surfaces = self.subsurfaces.iter().filter_map(|s| {
-                    (s.instance.parent == surface.id())
+                    (s.instance.parent == surface)
                         .then(|| &s.instance.wl_surface)
                 });
                 for surface in surfaces.chain(std::iter::once(&surface)) {
@@ -209,7 +209,7 @@ impl KeyboardHandler for SctkState {
             if let Some(surface) = my_seat.kbd_focus.clone() {
                 self.request_redraw(&surface);
                 let surfaces = self.subsurfaces.iter().filter_map(|s| {
-                    (s.instance.parent == surface.id())
+                    (s.instance.parent == surface)
                         .then(|| &s.instance.wl_surface)
                 });
                 for surface in surfaces.chain(std::iter::once(&surface)) {
@@ -251,7 +251,7 @@ impl KeyboardHandler for SctkState {
             if let Some(surface) = my_seat.kbd_focus.clone() {
                 self.request_redraw(&surface);
                 let surfaces = self.subsurfaces.iter().filter_map(|s| {
-                    (s.instance.parent == surface.id())
+                    (s.instance.parent == surface)
                         .then(|| &s.instance.wl_surface)
                 });
                 for surface in surfaces.chain(std::iter::once(&surface)) {
