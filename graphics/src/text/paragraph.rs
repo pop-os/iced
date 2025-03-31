@@ -85,7 +85,7 @@ impl core::text::Paragraph for Paragraph {
         buffer.set_text(
             font_system.raw(),
             text.content,
-            text::to_attributes(text.font),
+            &text::to_attributes(text.font),
             text::to_shaping(text.shaping),
         );
 
@@ -152,7 +152,7 @@ impl core::text::Paragraph for Paragraph {
 
                 (span.text.as_ref(), attrs.metadata(i))
             }),
-            text::to_attributes(text.font),
+            &text::to_attributes(text.font),
             text::to_shaping(text.shaping),
             Some(match text.horizontal_alignment {
                 alignment::Horizontal::Left => cosmic_text::Align::Left,
