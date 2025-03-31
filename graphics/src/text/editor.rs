@@ -586,7 +586,7 @@ impl editor::Editor for Editor {
                             ..if let Some(font) = format.font {
                                 text::to_attributes(font)
                             } else {
-                                attributes.clone() // NOTE(POP-OS): Added clone due to attrslist now requiring a ref
+                                attributes.clone()
                             }
                         },
                     );
