@@ -79,6 +79,7 @@ pub struct Image<'a, Handle = image::Handle> {
     opacity: f32,
     scale: f32,
     expand: bool,
+    _phantom_data: std::marker::PhantomData<&'a ()>,
 }
 
 impl<'a, Handle> Image<'a, Handle> {
@@ -103,6 +104,7 @@ impl<'a, Handle> Image<'a, Handle> {
             scale: 1.0,
             expand: false,
             border_radius: [0.0; 4].into(),
+            _phantom_data: std::marker::PhantomData,
         }
     }
 
