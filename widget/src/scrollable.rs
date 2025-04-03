@@ -249,6 +249,69 @@ where
         self
     }
 
+    /// Sets the scrollbar width of the [`Scrollbar`].
+    pub fn scrollbar_width(mut self, width: impl Into<Pixels>) -> Self {
+        let width = width.into().0.max(0.0);
+
+        match &mut self.direction {
+            Direction::Horizontal(scrollbar)
+            | Direction::Vertical(scrollbar) => {
+                scrollbar.width = width;
+            }
+            Direction::Both {
+                horizontal,
+                vertical,
+            } => {
+                horizontal.width = width;
+                vertical.width = width;
+            }
+        }
+
+        self
+    }
+
+    /// Sets the scroller width of the [`Scrollbar`].
+    pub fn scroller_width(mut self, width: impl Into<Pixels>) -> Self {
+        let width = width.into().0.max(0.0);
+
+        match &mut self.direction {
+            Direction::Horizontal(scrollbar)
+            | Direction::Vertical(scrollbar) => {
+                scrollbar.scroller_width = width;
+            }
+            Direction::Both {
+                horizontal,
+                vertical,
+            } => {
+                horizontal.scroller_width = width;
+                vertical.scroller_width = width;
+            }
+        }
+
+        self
+    }
+
+    /// Sets the padding at the start and end of the [`Scrollbar`].
+    pub fn scrollbar_padding(mut self, padding: impl Into<Pixels>) -> Self {
+        let padding = padding.into().0.max(0.0);
+
+        match &mut self.direction {
+            Direction::Horizontal(scrollbar)
+            | Direction::Vertical(scrollbar) => {
+                scrollbar.padding = padding;
+            }
+            Direction::Both {
+                horizontal,
+                vertical,
+            } => {
+                horizontal.padding = padding;
+                vertical.padding = padding;
+            }
+        }
+
+        self
+    }
+
     /// Sets the style of this [`Scrollable`].
     #[must_use]
     pub fn style(mut self, style: impl Fn(&Theme, Status) -> Style + 'a) -> Self
@@ -371,16 +434,18 @@ pub struct Scrollbar {
     scroller_width: f32,
     alignment: Anchor,
     spacing: Option<f32>,
+    padding: f32,
 }
 
 impl Default for Scrollbar {
     fn default() -> Self {
         Self {
-            width: 8.0,
+            width: 10.0,
             margin: 0.0,
-            scroller_width: 8.0,
+            scroller_width: 10.0,
             alignment: Anchor::Start,
             spacing: None,
+            padding: 0.0,
         }
     }
 }
@@ -422,6 +487,12 @@ impl Scrollbar {
     /// and will not float over the contents.
     pub fn spacing(mut self, spacing: impl Into<Pixels>) -> Self {
         self.spacing = Some(spacing.into().0);
+        self
+    }
+
+    /// Sets the padding at the start and end of the [`Scrollbar`].
+    pub fn padding(mut self, padding: impl Into<Pixels>) -> Self {
+        self.padding = padding.into().0.max(0.0);
         self
     }
 }
@@ -1822,6 +1893,7 @@ impl Scrollbars {
                 width,
                 margin,
                 scroller_width,
+                padding,
                 ..
             } = *vertical;
 
@@ -1836,9 +1908,10 @@ impl Scrollbars {
             // Total bounds of the scrollbar + margin + scroller width
             let total_scrollbar_bounds = Rectangle {
                 x: bounds.x + bounds.width - total_scrollbar_width,
-                y: bounds.y,
+                y: bounds.y + padding,
                 width: total_scrollbar_width,
-                height: (bounds.height - x_scrollbar_height).max(0.0),
+                height: (bounds.height - x_scrollbar_height - 2.0 * padding)
+                    .max(0.0),
             };
 
             // Bounds of just the scrollbar
@@ -1846,9 +1919,10 @@ impl Scrollbars {
                 x: bounds.x + bounds.width
                     - total_scrollbar_width / 2.0
                     - width / 2.0,
-                y: bounds.y,
+                y: bounds.y + padding,
                 width,
-                height: (bounds.height - x_scrollbar_height).max(0.0),
+                height: (bounds.height - x_scrollbar_height - 2.0 * padding)
+                    .max(0.0),
             };
 
             let ratio = bounds.height / content_bounds.height;
@@ -1892,6 +1966,7 @@ impl Scrollbars {
                 width,
                 margin,
                 scroller_width,
+                padding,
                 ..
             } = *horizontal;
 
@@ -1905,19 +1980,21 @@ impl Scrollbars {
 
             // Total bounds of the scrollbar + margin + scroller width
             let total_scrollbar_bounds = Rectangle {
-                x: bounds.x,
+                x: bounds.x + padding,
                 y: bounds.y + bounds.height - total_scrollbar_height,
-                width: (bounds.width - scrollbar_y_width).max(0.0),
+                width: (bounds.width - scrollbar_y_width - 2.0 * padding)
+                    .max(0.0),
                 height: total_scrollbar_height,
             };
 
             // Bounds of just the scrollbar
             let scrollbar_bounds = Rectangle {
-                x: bounds.x,
+                x: bounds.x + padding,
                 y: bounds.y + bounds.height
                     - total_scrollbar_height / 2.0
                     - width / 2.0,
-                width: (bounds.width - scrollbar_y_width).max(0.0),
+                width: (bounds.width - scrollbar_y_width - 2.0 * padding)
+                    .max(0.0),
                 height: width,
             };
 
