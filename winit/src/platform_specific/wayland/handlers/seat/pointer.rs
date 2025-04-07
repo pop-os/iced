@@ -63,6 +63,18 @@ impl PointerHandler for SctkState {
                     *entry = FrameStatus::Ready;
                 }
 
+                if let PointerEventKind::Enter { .. } = &e.kind {
+                    self.sctk_events.push(SctkEvent::PointerEvent {
+                        variant: PointerEvent {
+                            surface: e.surface.clone(),
+                            position: e.position,
+                            kind: e.kind.clone(),
+                        },
+                        ptr_id: pointer.clone(),
+                        seat_id: my_seat.seat.clone(),
+                    });
+                }
+
                 if let PointerEventKind::Motion { time } = &e.kind {
                     self.sctk_events.push(SctkEvent::PointerEvent {
                         variant: PointerEvent {
