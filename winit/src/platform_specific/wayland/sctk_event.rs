@@ -369,14 +369,16 @@ impl SctkEvent {
             SctkEvent::SeatEvent { .. } => Default::default(),
             SctkEvent::PointerEvent { variant, .. } => match variant.kind {
                 PointerEventKind::Enter { .. } => {
-                    events.push((
-                        surface_ids
-                            .get(&variant.surface.id())
-                            .map(|id| id.inner()),
-                        iced_runtime::core::Event::Mouse(
-                            mouse::Event::CursorEntered,
-                        ),
-                    ));
+                    let id = surface_ids
+                        .get(&variant.surface.id())
+                        .map(|id| id.inner());
+                    if let Some(w) =
+                        id.clone().and_then(|id| window_manager.get_mut(id))
+                    {
+                        w.state.set_logical_cursor_pos(
+                            (variant.position.0, variant.position.1).into(),
+                        )
+                    }
                 }
                 PointerEventKind::Leave { .. } => events.push((
                     surface_ids.get(&variant.surface.id()).map(|id| id.inner()),
