@@ -1507,6 +1507,8 @@ async fn run_instance<'a, P, C>(
                 if skip
                     && window_manager.iter_mut().all(|(_, w)| !w.resize_enabled)
                 {
+                    _ = control_sender
+                        .start_send(Control::ChangeFlow(ControlFlow::Wait));
                     continue;
                 }
 
@@ -1515,6 +1517,8 @@ async fn run_instance<'a, P, C>(
                 let mut resized = false;
                 for (id, window) in window_manager.iter_mut() {
                     if skip && !window.resize_enabled {
+                        _ = control_sender
+                            .start_send(Control::ChangeFlow(ControlFlow::Wait));
                         continue;
                     }
                     let mut window_events = vec![];
@@ -1583,6 +1587,8 @@ async fn run_instance<'a, P, C>(
                     if needs_redraw {
                         window.request_redraw();
                     } else {
+                        _ = control_sender
+                            .start_send(Control::ChangeFlow(ControlFlow::Wait));
                         continue;
                     }
 
@@ -1603,6 +1609,8 @@ async fn run_instance<'a, P, C>(
                 }
 
                 if !resized && skip {
+                    _ = control_sender
+                        .start_send(Control::ChangeFlow(ControlFlow::Wait));
                     continue;
                 }
 
@@ -1615,6 +1623,8 @@ async fn run_instance<'a, P, C>(
                                 | core::Event::Mouse(_)
                         )
                     {
+                        _ = control_sender
+                            .start_send(Control::ChangeFlow(ControlFlow::Wait));
                         continue;
                     }
                     runtime.broadcast(subscription::Event::Interaction {
