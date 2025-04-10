@@ -1295,6 +1295,8 @@ async fn run_instance<P>(
                 let skip = events.is_empty() && messages.is_empty();
 
                 if skip && window_manager.is_idle() {
+                    _ = control_sender
+                        .start_send(Control::ChangeFlow(ControlFlow::Wait));
                     continue;
                 }
 
@@ -1415,6 +1417,8 @@ async fn run_instance<P>(
                                 | core::Event::Mouse(_)
                         )
                     {
+                        _ = control_sender
+                            .start_send(Control::ChangeFlow(ControlFlow::Wait));
                         continue;
                     }
                     runtime.broadcast(subscription::Event::Interaction {
