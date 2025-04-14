@@ -68,11 +68,14 @@ impl Compositor {
 
         // HACK:
         //  1. If we specifically didn't select an nvidia gpu
-        //  2. and nobody set an adapter name,
-        //  3. and the user didn't request the high power pref
+        //  2. and the user didn't specifically request an nvidia gpu
+        //  3. and the user didn't set an adapter name,
+        //  4. and the user didn't request the high power pref
         // => don't load the nvidia icd, as it might power on the gpu in hybrid setups causing severe delays
         #[cfg(all(unix, not(target_os = "macos"), not(target_os = "redox")))]
         if !matches!(ids, Some((0x10de, _)))
+            && std::env::var_os("__NV_PRIME_RENDER_OFFLOAD")
+                .is_none_or(|var| var == "0")
             && std::env::var_os("WGPU_ADAPTER_NAME").is_none()
             && std::env::var("WGPU_POWER_PREF").as_deref() != Ok("high")
         {
