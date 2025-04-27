@@ -892,7 +892,7 @@ where
                 if let InputMethod::Open { position, .. } =
                     shell.input_method_mut()
                 {
-                    *position = *position + translation;
+                    *position = *position - translation;
                 }
             }
 
