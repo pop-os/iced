@@ -404,9 +404,6 @@ where
         else {
             return InputMethod::Disabled;
         };
-        let Some(preedit) = &state.is_ime_open else {
-            return InputMethod::Allowed;
-        };
 
         let secure_value = self.is_secure.then(|| value.secure());
         let value = secure_value.as_ref().unwrap_or(value);
@@ -431,14 +428,14 @@ where
         let x = (text_bounds.x + cursor_x).floor() - scroll_offset
             + alignment_offset;
 
-        InputMethod::Open {
+        InputMethod::Enabled {
             position: Point::new(x, text_bounds.y + text_bounds.height),
             purpose: if self.is_secure {
                 input_method::Purpose::Secure
             } else {
                 input_method::Purpose::Normal
             },
-            preedit: Some(preedit.as_ref()),
+            preedit: state.preedit.as_ref().map(input_method::Preedit::as_ref),
         }
     }
 
@@ -593,7 +590,7 @@ where
         let draw = |renderer: &mut Renderer, viewport| {
             let paragraph = if text.is_empty()
                 && state
-                    .is_ime_open
+                    .preedit
                     .as_ref()
                     .map(|preedit| preedit.content.is_empty())
                     .unwrap_or(true)
@@ -1191,7 +1188,7 @@ where
                 input_method::Event::Opened | input_method::Event::Closed => {
                     let state = state::<Renderer>(tree);
 
-                    state.is_ime_open =
+                    state.preedit =
                         matches!(event, input_method::Event::Opened).then(
                             || {
                                 let mut preedit = input_method::Preedit::new();
@@ -1206,7 +1203,7 @@ where
                     let state = state::<Renderer>(tree);
 
                     if state.is_focused.is_some() {
-                        state.is_ime_open = Some(input_method::Preedit {
+                        state.preedit = Some(input_method::Preedit {
                             content: content.to_owned(),
                             selection: selection.clone(),
                             text_size: self.size,
@@ -1438,7 +1435,7 @@ pub struct State<P: text::Paragraph> {
     placeholder: paragraph::Plain<P>,
     icon: paragraph::Plain<P>,
     is_focused: Option<Focus>,
-    is_ime_open: Option<input_method::Preedit>,
+    preedit: Option<input_method::Preedit>,
     is_dragging: bool,
     is_pasting: Option<Value>,
     last_click: Option<mouse::Click>,
