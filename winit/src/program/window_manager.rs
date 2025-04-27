@@ -236,11 +236,16 @@ where
                         let mut overlay =
                             self.preedit.take().unwrap_or_else(Preedit::new);
 
-                        let style = self.state.theme().default_style();
+                        let mut background_color =
+                            self.state.background_color();
+                        if background_color.a < 1.0 {
+                            let style = self.state.theme().default_style();
+                            background_color = style.background_color;
+                        }
                         overlay.update(
                             position,
                             &preedit,
-                            style.background_color,
+                            background_color,
                             &self.renderer,
                         );
 
@@ -280,11 +285,17 @@ where
 
     pub fn draw_preedit(&mut self) {
         if let Some(preedit) = &self.preedit {
-            let style = self.state.theme().default_style();
+            let mut text_color = self.state.text_color();
+            let mut background_color = self.state.background_color();
+            if background_color.a < 1.0 {
+                let style = self.state.theme().default_style();
+                text_color = style.text_color;
+                background_color = style.background_color;
+            }
             preedit.draw(
                 &mut self.renderer,
-                style.text_color,
-                style.background_color,
+                text_color,
+                background_color,
                 &Rectangle::new(
                     Point::ORIGIN,
                     self.state.viewport().logical_size(),
