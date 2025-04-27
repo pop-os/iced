@@ -237,13 +237,14 @@ where
             );
             self.raw.set_ime_purpose(conversion::ime_purpose(purpose));
             if let Some(preedit) = preedit {
+                let style = self.state.theme().default_style();
                 if preedit.content.is_empty() {
                     self.preedit = None;
                 } else if let Some(overlay) = &mut self.preedit {
                     overlay.update(
                         position,
                         &preedit,
-                        self.state.background_color(),
+                        style.background_color,
                         &self.renderer,
                     );
                 } else {
@@ -251,7 +252,7 @@ where
                     overlay.update(
                         position,
                         &preedit,
-                        self.state.background_color(),
+                        style.background_color,
                         &self.renderer,
                     );
                     self.preedit = Some(overlay);
@@ -264,10 +265,11 @@ where
 
     pub fn draw_preedit(&mut self) {
         if let Some(preedit) = &self.preedit {
+            let style = self.state.theme().default_style();
             preedit.draw(
                 &mut self.renderer,
-                self.state.text_color(),
-                self.state.background_color(),
+                style.text_color,
+                style.background_color,
                 &Rectangle::new(
                     Point::ORIGIN,
                     self.state.viewport().logical_size(),
