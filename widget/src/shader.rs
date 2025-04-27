@@ -102,6 +102,9 @@ where
 
         let custom_shader_event = match event {
             core::Event::Mouse(mouse_event) => Some(Event::Mouse(mouse_event)),
+            core::Event::InputMethod(input_method_event) => {
+                Some(Event::InputMethod(input_method_event))
+            }
             core::Event::Keyboard(keyboard_event) => {
                 Some(Event::Keyboard(keyboard_event))
             }

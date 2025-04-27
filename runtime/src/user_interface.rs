@@ -9,7 +9,9 @@ use crate::core::mouse;
 use crate::core::renderer;
 use crate::core::widget;
 use crate::core::window;
-use crate::core::{Clipboard, Element, Layout, Rectangle, Shell, Size, Vector};
+use crate::core::{
+    Clipboard, Element, InputMethod, Layout, Rectangle, Shell, Size, Vector,
+};
 use crate::overlay;
 
 /// A set of interactive graphical elements with a specific [`Layout`].
@@ -200,6 +202,7 @@ where
 
         let mut outdated = false;
         let mut redraw_request = None;
+        let mut input_method = InputMethod::None;
 
         let mut manual_overlay = ManuallyDrop::new(
             self.root
@@ -243,6 +246,7 @@ where
                     }
                     _ => {}
                 }
+                input_method.merge(shell.input_method());
 
                 if shell.is_layout_invalid() {
                     let _ = ManuallyDrop::into_inner(manual_overlay);
@@ -345,6 +349,7 @@ where
                     }
                     _ => {}
                 }
+                input_method.merge(shell.input_method());
 
                 shell.revalidate_layout(|| {
                     self.base = self.root.as_widget().layout(
@@ -368,7 +373,10 @@ where
             if outdated {
                 State::Outdated
             } else {
-                State::Updated { redraw_request }
+                State::Updated {
+                    redraw_request,
+                    input_method,
+                }
             },
             event_statuses,
         )
@@ -683,7 +691,7 @@ impl Default for Cache {
 }
 
 /// The resulting state after updating a [`UserInterface`].
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub enum State {
     /// The [`UserInterface`] is outdated and needs to be rebuilt.
     Outdated,
@@ -693,5 +701,7 @@ pub enum State {
     Updated {
         /// The [`window::RedrawRequest`] when a redraw should be performed.
         redraw_request: Option<window::RedrawRequest>,
+        /// The current [`InputMethod`] strategy of the user interface.
+        input_method: InputMethod,
     },
 }

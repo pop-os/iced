@@ -43,6 +43,7 @@ use editor::Editor;
 use crate::core::alignment;
 use crate::core::clipboard::{self, Clipboard};
 use crate::core::event::{self, Event};
+use crate::core::input_method;
 use crate::core::keyboard;
 use crate::core::keyboard::key;
 use crate::core::layout;
@@ -57,8 +58,8 @@ use crate::core::widget::operation::{self, Operation};
 use crate::core::widget::tree::{self, Tree};
 use crate::core::window;
 use crate::core::{
-    Background, Border, Color, Element, Layout, Length, Padding, Pixels, Point,
-    Rectangle, Shell, Size, Theme, Vector, Widget,
+    Background, Border, Color, Element, InputMethod, Layout, Length, Padding,
+    Pixels, Point, Rectangle, Shell, Size, Theme, Vector, Widget,
 };
 use crate::runtime::task::{self, Task};
 use crate::runtime::Action;
@@ -387,6 +388,57 @@ where
                 .move_to(Point::new(padding.left, padding.top));
 
             layout::Node::with_children(text_bounds.expand(padding), vec![text])
+        }
+    }
+
+    fn input_method<'b>(
+        &self,
+        state: &'b State<Renderer::Paragraph>,
+        layout: Layout<'_>,
+        value: &Value,
+    ) -> InputMethod<&'b str> {
+        let Some(Focus {
+            is_window_focused: true,
+            ..
+        }) = &state.is_focused
+        else {
+            return InputMethod::Disabled;
+        };
+        let Some(preedit) = &state.is_ime_open else {
+            return InputMethod::Allowed;
+        };
+
+        let secure_value = self.is_secure.then(|| value.secure());
+        let value = secure_value.as_ref().unwrap_or(value);
+
+        let text_bounds = layout.children().next().unwrap().bounds();
+
+        let caret_index = match state.cursor.state(value) {
+            cursor::State::Index(position) => position,
+            cursor::State::Selection { start, end } => start.min(end),
+        };
+
+        let text = state.value.raw();
+        let (cursor_x, scroll_offset) =
+            measure_cursor_and_scroll_offset(text, text_bounds, caret_index);
+
+        let alignment_offset = alignment_offset(
+            text_bounds.width,
+            text.min_width(),
+            self.alignment,
+        );
+
+        let x = (text_bounds.x + cursor_x).floor() - scroll_offset
+            + alignment_offset;
+
+        InputMethod::Open {
+            position: Point::new(x, text_bounds.y + text_bounds.height),
+            purpose: if self.is_secure {
+                input_method::Purpose::Secure
+            } else {
+                input_method::Purpose::Normal
+            },
+            preedit: Some(preedit.as_ref()),
         }
     }
 
@@ -1129,6 +1181,52 @@ where
 
                 state.keyboard_modifiers = modifiers;
             }
+            Event::InputMethod(event) => match event {
+                input_method::Event::Opened | input_method::Event::Closed => {
+                    let state = state::<Renderer>(tree);
+
+                    state.is_ime_open =
+                        matches!(event, input_method::Event::Opened)
+                            .then(input_method::Preedit::new);
+
+                    shell.request_redraw(window::RedrawRequest::NextFrame);
+                }
+                input_method::Event::Preedit(content, selection) => {
+                    let state = state::<Renderer>(tree);
+
+                    if state.is_focused.is_some() {
+                        state.is_ime_open = Some(input_method::Preedit {
+                            content: content.to_owned(),
+                            selection: selection.clone(),
+                        });
+
+                        shell.request_redraw(window::RedrawRequest::NextFrame);
+                    }
+                }
+                input_method::Event::Commit(text) => {
+                    let state = state::<Renderer>(tree);
+
+                    if let Some(focus) = &mut state.is_focused {
+                        let Some(on_input) = &self.on_input else {
+                            return event::Status::Ignored;
+                        };
+
+                        let mut editor =
+                            Editor::new(&mut self.value, &mut state.cursor);
+                        editor.paste(Value::new(text.as_str()));
+
+                        focus.updated_at = Instant::now();
+                        state.is_pasting = None;
+
+                        let message = (on_input)(editor.contents());
+                        shell.publish(message);
+
+                        update_cache(state, &self.value);
+
+                        return event::Status::Captured;
+                    }
+                }
+            },
             Event::Window(window::Event::Unfocused) => {
                 let state = state::<Renderer>(tree);
 
@@ -1161,6 +1259,12 @@ where
                             now + Duration::from_millis(
                                 millis_until_redraw as u64,
                             ),
+                        ));
+
+                        shell.request_input_method(&self.input_method(
+                            state,
+                            layout,
+                            &self.value,
                         ));
                     }
                 }
@@ -1322,6 +1426,7 @@ pub struct State<P: text::Paragraph> {
     placeholder: paragraph::Plain<P>,
     icon: paragraph::Plain<P>,
     is_focused: Option<Focus>,
+    is_ime_open: Option<input_method::Preedit>,
     is_dragging: bool,
     is_pasting: Option<Value>,
     last_click: Option<mouse::Click>,

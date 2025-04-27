@@ -2,6 +2,7 @@
 use dnd::DndEvent;
 use dnd::DndSurface;
 
+use crate::input_method;
 use crate::keyboard;
 use crate::mouse;
 use crate::touch;
@@ -28,6 +29,9 @@ pub enum Event {
 
     /// A touch event
     Touch(touch::Event),
+
+    /// An input method event
+    InputMethod(input_method::Event),
 
     #[cfg(feature = "a11y")]
     /// An Accesskit event for a specific Accesskit Node in an accessible widget

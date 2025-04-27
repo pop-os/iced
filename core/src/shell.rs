@@ -1,4 +1,5 @@
 use crate::window;
+use crate::InputMethod;
 
 /// A connection to the state of a shell.
 ///
@@ -10,6 +11,7 @@ use crate::window;
 pub struct Shell<'a, Message> {
     messages: &'a mut Vec<Message>,
     redraw_request: Option<window::RedrawRequest>,
+    input_method: InputMethod,
     is_layout_invalid: bool,
     are_widgets_invalid: bool,
 }
@@ -22,6 +24,7 @@ impl<'a, Message> Shell<'a, Message> {
             redraw_request: None,
             is_layout_invalid: false,
             are_widgets_invalid: false,
+            input_method: InputMethod::None,
         }
     }
 
@@ -51,6 +54,25 @@ impl<'a, Message> Shell<'a, Message> {
     /// Returns the request a redraw should happen, if any.
     pub fn redraw_request(&self) -> Option<window::RedrawRequest> {
         self.redraw_request
+    }
+
+    /// Requests the current [`InputMethod`] strategy.
+    ///
+    /// __Important__: This request will only be honored by the
+    /// [`Shell`] only during a [`window::Event::RedrawRequested`].
+    pub fn request_input_method<T: AsRef<str>>(
+        &mut self,
+        ime: &InputMethod<T>,
+    ) {
+        self.input_method.merge(ime);
+    }
+    /// Returns the current [`InputMethod`] strategy.
+    pub fn input_method(&self) -> &InputMethod {
+        &self.input_method
+    }
+    /// Returns the current [`InputMethod`] strategy.
+    pub fn input_method_mut(&mut self) -> &mut InputMethod {
+        &mut self.input_method
     }
 
     /// Returns whether the current layout is invalid or not.
@@ -104,5 +126,7 @@ impl<'a, Message> Shell<'a, Message> {
 
         self.are_widgets_invalid =
             self.are_widgets_invalid || other.are_widgets_invalid;
+
+        self.input_method.merge(&other.input_method);
     }
 }

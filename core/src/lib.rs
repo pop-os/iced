@@ -16,6 +16,7 @@ pub mod event;
 pub mod font;
 pub mod gradient;
 pub mod image;
+pub mod input_method;
 pub mod keyboard;
 pub mod layout;
 pub mod mouse;
@@ -64,6 +65,7 @@ pub use hasher::Hasher;
 #[cfg(feature = "a11y")]
 pub use iced_accessibility::id;
 pub use image::Image;
+pub use input_method::InputMethod;
 pub use layout::Layout;
 pub use length::Length;
 pub use overlay::Overlay;
