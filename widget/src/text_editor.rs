@@ -765,12 +765,19 @@ where
             }
             Update::InputMethod(update) => match update {
                 Ime::Toggle(is_open) => {
-                    state.preedit = is_open.then(input_method::Preedit::new);
+                    state.preedit = is_open.then(|| {
+                        let mut preedit = input_method::Preedit::new();
+                        preedit.text_size = self.text_size;
+                        preedit
+                    });
                     shell.request_redraw(window::RedrawRequest::NextFrame);
                 }
                 Ime::Preedit { content, selection } => {
-                    state.preedit =
-                        Some(input_method::Preedit { content, selection });
+                    state.preedit = Some(input_method::Preedit {
+                        content,
+                        selection,
+                        text_size: self.text_size,
+                    });
                     shell.request_redraw(window::RedrawRequest::NextFrame);
                 }
                 Ime::Commit(text) => {
