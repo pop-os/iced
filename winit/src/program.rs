@@ -1808,19 +1808,20 @@ async fn run_instance<'a, P, C>(
                     let _ = control_sender.start_send(Control::ChangeFlow(
                         match ui_state {
                             user_interface::State::Updated {
-                                redraw_request: Some(redraw_request),
+                                redraw_request,
                                 input_method,
                             } => {
                                 window.request_input_method(input_method);
                                 match redraw_request {
-                                    window::RedrawRequest::NextFrame => {
+                                    Some(window::RedrawRequest::NextFrame) => {
                                         window.request_redraw();
 
                                         ControlFlow::Wait
                                     }
-                                    window::RedrawRequest::At(at) => {
+                                    Some(window::RedrawRequest::At(at)) => {
                                         ControlFlow::WaitUntil(at)
                                     }
+                                    None => ControlFlow::Wait,
                                 }
                             }
                             _ => ControlFlow::Wait,
