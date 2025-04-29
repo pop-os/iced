@@ -379,6 +379,17 @@ impl SctkEvent {
                             (variant.position.0, variant.position.1).into(),
                         )
                     }
+                    events.push((
+                        id,
+                        iced_runtime::core::Event::Mouse(
+                            mouse::Event::CursorMoved {
+                                position: Point::new(
+                                    variant.position.0 as f32,
+                                    variant.position.1 as f32,
+                                ),
+                            },
+                        ),
+                    ));
                 }
                 PointerEventKind::Leave { .. } => events.push((
                     surface_ids.get(&variant.surface.id()).map(|id| id.inner()),
