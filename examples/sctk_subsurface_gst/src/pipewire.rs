@@ -68,7 +68,7 @@ fn pipewire_thread(
 ) {
     gst::init().unwrap();
 
-    let pipeline = gst::parse_launch(&format!(
+    let pipeline = gst::parse::launch(&format!(
         "filesrc name=filesrc !
          qtdemux !
          h264parse !
@@ -126,7 +126,7 @@ fn pipewire_thread(
                     let planes = (0..meta.n_planes())
                         .map(|plane_idx| {
                             let memory = buffer
-                                .memory(plane_idx)
+                                .memory(plane_idx as usize)
                                 .unwrap()
                                 .downcast_memory::<gst_allocators::DmaBufMemory>()
                                 .unwrap();
