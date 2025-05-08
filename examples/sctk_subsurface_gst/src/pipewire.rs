@@ -2,7 +2,7 @@ use drm_fourcc::{DrmFourcc, DrmModifier};
 use gst::glib::{self, translate::IntoGlib};
 use gst::prelude::*;
 use iced::futures::{executor::block_on, SinkExt};
-use iced_sctk::subsurface_widget::{
+use iced::platform_specific::shell::subsurface_widget::{
     BufferSource, Dmabuf, Plane, SubsurfaceBuffer,
 };
 use std::{ffi::c_void, os::unix::io::BorrowedFd, sync::Arc, thread};
@@ -53,10 +53,13 @@ pub enum Event {
 
 pub fn subscription(path: &str) -> iced::Subscription<Event> {
     let path = path.to_string();
-    iced::subscription::channel("pw", 16, |sender| async {
-        thread::spawn(move || pipewire_thread(&path, sender));
-        std::future::pending().await
-    })
+    iced::Subscription::run_with_id(
+        "pw",
+        iced::stream::channel(16, |sender| async {
+            thread::spawn(move || pipewire_thread(&path, sender));
+            std::future::pending().await
+        }),
+    )
 }
 
 fn pipewire_thread(
