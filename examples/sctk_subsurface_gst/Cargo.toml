@@ -15,8 +15,8 @@ iced_runtime = { path = "../../runtime" }
 env_logger = "0.10"
 futures-channel = "0.3.29"
 calloop = "0.12.3"
-gst = { package = "gstreamer", version = "0.21.3" }
-gst-app = { package = "gstreamer-app", version = "0.21.2" }
-gst-video = { package = "gstreamer-video", version = "0.21.2" }
-gst-allocators = { package = "gstreamer-allocators", version = "0.21.2" }
+gst = { package = "gstreamer", version = "0.23.0" }
+gst-app = { package = "gstreamer-app", version = "0.23.0" }
+gst-video = { package = "gstreamer-video", version = "0.23.0" }
+gst-allocators = { package = "gstreamer-allocators", version = "0.23.0" }
 drm-fourcc = "2.2.0"
