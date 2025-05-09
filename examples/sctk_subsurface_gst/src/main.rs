@@ -1,28 +1,32 @@
 // Shows a subsurface with a 1x1 px red buffer, stretch to window size
 
 use iced::{
-    wayland::InitialSurface, widget::text, window, Application, Command,
-    Element, Length, Subscription, Theme,
+    platform_specific::shell::subsurface_widget::{self, SubsurfaceBuffer},
+    widget::text,
+    window, Element, Length, Subscription, Task,
 };
-use iced_sctk::subsurface_widget::SubsurfaceBuffer;
 use std::{env, path::Path};
 
 mod pipewire;
 
-fn main() {
+fn main() -> iced::Result {
     let args = env::args();
     if args.len() != 2 {
         eprintln!("usage: sctk_subsurface_gst [h264 mp4 path]");
-        return;
+        return Ok(());
     }
     let path = args.skip(1).next().unwrap();
     if !Path::new(&path).exists() {
         eprintln!("File `{path}` not found.");
-        return;
+        return Ok(());
     }
-    let mut settings = iced::Settings::with_flags(path);
-    settings.initial_surface = InitialSurface::XdgWindow(Default::default());
-    SubsurfaceApp::run(settings).unwrap();
+    iced::daemon(
+        SubsurfaceApp::title,
+        SubsurfaceApp::update,
+        SubsurfaceApp::view,
+    )
+    .subscription(SubsurfaceApp::subscription)
+    .run_with(|| SubsurfaceApp::new(path))
 }
 
 #[derive(Debug, Clone, Default)]
@@ -36,19 +40,14 @@ pub enum Message {
     Pipewire(pipewire::Event),
 }
 
-impl Application for SubsurfaceApp {
-    type Executor = iced::executor::Default;
-    type Message = Message;
-    type Flags = String;
-    type Theme = Theme;
-
-    fn new(flags: String) -> (SubsurfaceApp, Command<Self::Message>) {
+impl SubsurfaceApp {
+    fn new(flags: String) -> (SubsurfaceApp, Task<Message>) {
         (
             SubsurfaceApp {
                 path: flags,
                 ..SubsurfaceApp::default()
             },
-            Command::none(),
+            Task::none(),
         )
     }
 
@@ -56,7 +55,7 @@ impl Application for SubsurfaceApp {
         String::from("SubsurfaceApp")
     }
 
-    fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
+    fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::Pipewire(evt) => match evt {
                 pipewire::Event::Frame(subsurface_buffer) => {
@@ -64,12 +63,12 @@ impl Application for SubsurfaceApp {
                 }
             },
         }
-        Command::none()
+        Task::none()
     }
 
-    fn view(&self, _id: window::Id) -> Element<Self::Message> {
+    fn view(&self, _id: window::Id) -> Element<Message> {
         if let Some(buffer) = &self.buffer {
-            iced_sctk::subsurface_widget::Subsurface::new(1, 1, buffer)
+            subsurface_widget::Subsurface::new(buffer.clone())
                 .width(Length::Fill)
                 .height(Length::Fill)
                 .into()
@@ -78,7 +77,7 @@ impl Application for SubsurfaceApp {
         }
     }
 
-    fn subscription(&self) -> Subscription<Self::Message> {
+    fn subscription(&self) -> Subscription<Message> {
         pipewire::subscription(&self.path).map(Message::Pipewire)
     }
 }
