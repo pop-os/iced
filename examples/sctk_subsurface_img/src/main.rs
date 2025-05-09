@@ -4,7 +4,7 @@ use iced::{
         self, Shmbuf, SubsurfaceBuffer,
     },
     window::{self, Id, Settings},
-    Element, Length, Subscription, Task,
+    Element, Subscription, Task,
 };
 use image::{ImageReader, Pixel};
 use rustix::{io::Errno, shm::ShmOFlags};
@@ -41,11 +41,13 @@ fn main() -> iced::Result {
 struct SubsurfaceApp {
     path: String,
     buffer: SubsurfaceBuffer,
+    use_subsurface: bool,
 }
 
 #[derive(Debug, Clone)]
 pub enum Message {
     Id(Id),
+    Toggle,
 }
 
 impl SubsurfaceApp {
@@ -71,7 +73,11 @@ impl SubsurfaceApp {
         let buffer = SubsurfaceBuffer::new(Arc::new(shmbuf.into())).0;
 
         (
-            SubsurfaceApp { path, buffer },
+            SubsurfaceApp {
+                path,
+                buffer,
+                use_subsurface: true,
+            },
             iced::window::open(Settings {
                 ..Default::default()
             })
@@ -87,23 +93,44 @@ impl SubsurfaceApp {
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::Id(_) => {}
+            Message::Toggle => {
+                self.use_subsurface = !self.use_subsurface;
+                if self.use_subsurface {
+                    println!("Using subsurface");
+                } else {
+                    println!("Using image widget");
+                }
+            }
         }
         Task::none()
     }
 
     fn view(&self, _id: window::Id) -> Element<Message> {
-        // TODO compare side-by-side with image widget; key bind to toggle?
-        let image = subsurface_widget::Subsurface::new(self.buffer.clone())
-            .content_fit(iced::ContentFit::None);
-        /*
-        let image = iced::widget::image::Image::new(&self.path)
-            .content_fit(iced::ContentFit::None);
-        */
+        let image: Element<_> = if self.use_subsurface {
+            subsurface_widget::Subsurface::new(self.buffer.clone())
+                .content_fit(iced::ContentFit::None)
+                .into()
+        } else {
+            iced::widget::image::Image::new(&self.path)
+                .content_fit(iced::ContentFit::None)
+                .into()
+        };
         iced::widget::scrollable(image).into()
     }
 
     fn subscription(&self) -> Subscription<Message> {
-        Subscription::none()
+        iced::event::listen_with(|evt, _status, _id| match evt {
+            iced::Event::Keyboard(iced::keyboard::Event::KeyReleased {
+                key,
+                ..
+            }) => match key {
+                iced::keyboard::Key::Named(
+                    iced::keyboard::key::Named::Space,
+                ) => Some(Message::Toggle),
+                _ => None,
+            },
+            _ => None,
+        })
     }
 }
 
