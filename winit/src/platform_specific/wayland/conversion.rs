@@ -64,10 +64,10 @@ pub fn modifiers_to_native(mods: Modifiers) -> keyboard::Modifiers {
     if mods.shift {
         native_mods = native_mods.union(keyboard::Modifiers::SHIFT);
     }
+    if mods.caps_lock {
+        native_mods = native_mods.union(keyboard::Modifiers::CAPS_LOCK);
+    }
     // TODO Ashley: missing modifiers as platform specific additions?
-    // if mods.caps_lock {
-    // native_mods = native_mods.union(keyboard::Modifier);
-    // }
     // if mods.num_lock {
     //     native_mods = native_mods.union(keyboard::Modifiers::);
     // }

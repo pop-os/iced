@@ -26,6 +26,8 @@ bitflags! {
         // const RLOGO = 0b001 << 9;
         /// No modifiers
         const NONE = 0;
+        /// The Caps Lock key
+        const CAPS_LOCK = 0b100 << 12;
     }
 }
 
