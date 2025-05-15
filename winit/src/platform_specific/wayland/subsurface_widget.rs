@@ -542,7 +542,8 @@ impl SubsurfaceState {
             sorted_subsurfaces.sort_by(|a, b| a.3.cmp(&b.3));
 
             // Attach buffers to subsurfaces, set viewports, and commit.
-            'outer: for (i, subsurface) in sorted_subsurfaces.iter().enumerate() {
+            'outer: for (i, subsurface) in sorted_subsurfaces.iter().enumerate()
+            {
                 for prev in sorted_subsurfaces[0..i].iter().rev() {
                     if prev.0 == subsurface.0 {
                         // Fist surface that has `z` greater than 0, so place above parent,
@@ -753,7 +754,8 @@ pub(crate) fn subsurface_ids(parent: WindowId) -> Vec<WindowId> {
             .borrow_mut()
             .iter()
             .filter_map(|s| {
-                if winit::window::WindowId::from(s.1.id().as_ptr() as u64) == parent
+                if winit::window::WindowId::from(s.1.id().as_ptr() as u64)
+                    == parent
                 {
                     Some(
                         winit::window::WindowId::from(s.4.id().as_ptr() as u64),
