@@ -78,6 +78,16 @@ impl PlatformSpecific {
         }
     }
 
+    pub(crate) fn retain_subsurfaces<F: Fn(window::Id) -> bool>(
+        &mut self,
+        keep: F,
+    ) {
+        #[cfg(all(feature = "wayland", target_os = "linux"))]
+        {
+            self.wayland.retain_subsurfaces(keep);
+        }
+    }
+
     pub(crate) fn clear_subsurface_list(&mut self) {
         #[cfg(all(feature = "wayland", target_os = "linux"))]
         {
