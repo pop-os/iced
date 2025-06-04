@@ -854,6 +854,7 @@ async fn run_instance<'a, P, C>(
     let mut dnd_surface: Option<
         Arc<Box<dyn HasWindowHandle + Send + Sync + 'static>>,
     > = None;
+    let mut dnd_surface_id: Option<window::Id> = None;
 
     debug.startup_finished();
     loop {
@@ -1020,6 +1021,7 @@ async fn run_instance<'a, P, C>(
                                 .update_subsurfaces(id, &surface);
                             let surface = Arc::new(surface);
                             dnd_surface = Some(surface.clone());
+                            dnd_surface_id = Some(id);
                             dnd_buffer = Some((
                                 viewport.physical_size(),
                                 state.scale_factor(),
@@ -1675,6 +1677,11 @@ async fn run_instance<'a, P, C>(
                         proxy.free_slots(actions);
                         actions = 0;
                     }
+
+                    platform_specific_handler.retain_subsurfaces(|id| {
+                        window_manager.get(id).is_some()
+                            || dnd_surface_id == Some(id)
+                    });
                 }
 
                 debug.draw_started();
@@ -1808,6 +1815,7 @@ async fn run_instance<'a, P, C>(
                             dnd::SourceEvent::Finished
                             | dnd::SourceEvent::Cancelled => {
                                 dnd_surface = None;
+                                dnd_surface_id = None;
                             }
                             _ => {}
                         }
