@@ -213,6 +213,13 @@ impl WaylandSpecific {
         };
     }
 
+    pub(crate) fn retain_subsurfaces<F: Fn(window::Id) -> bool>(
+        &mut self,
+        keep: F,
+    ) {
+        self.surface_subsurfaces.retain(|k, v| keep(*k))
+    }
+
     pub(crate) fn clear_subsurface_list(&mut self) {
         let _ = crate::subsurface_widget::take_subsurfaces();
     }
