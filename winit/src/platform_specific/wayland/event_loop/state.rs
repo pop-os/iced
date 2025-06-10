@@ -1133,19 +1133,25 @@ impl SctkState {
                             SctkEvent::PopupEvent { variant: crate::sctk_event::PopupEventVariant::Size(size.0, size.1), toplevel_id: existing.data.parent.wl_surface().clone(), parent_id: existing.data.parent.wl_surface().clone(), id: existing.popup.wl_surface().clone() });
                         return Ok(());
                     }
-                    let parent_mismatch = self.popups.iter().rev().find(|p| {
-                        self.id_map.get(&p.popup.wl_surface().id()).map_or(true, |p_id|{
-                             *p_id != settings.parent && p.data.grab && settings.grab})
-                    });
-                    if !self.destroyed.is_empty() || parent_mismatch.is_some() {
-                        if parent_mismatch.is_some() {
-                            for i in 0..self.popups.len() {
-                                let id = self.id_map.get(&self.popups[i].popup.wl_surface().id());
-                                if let Some(id) = id {
-                                    if  *id != settings.parent {
-                                        _ = self.handle_action(Action::Popup(platform_specific::wayland::popup::Action::Destroy{id: *id}));
-                                    }
+                    let mut found = false;
+                    let mut parent_mismatch = false;
+                    for p in &self.popups {
+                        found |= p.data.id == settings.parent;
+                        parent_mismatch |= found && p.data.id != settings.parent;
+                    }
+                    parent_mismatch |= !found;
+                    if !self.destroyed.is_empty() || parent_mismatch {
+                        if parent_mismatch {
+                            let mut found = false;
+                            for p in std::mem::take(&mut self.popups).into_iter().rev() {
+                                let id = p.data.id;
+                                self.popups.insert(0, p);
+
+                                found |= id == settings.parent;
+                                if !found  {
+                                    _ = self.handle_action(Action::Popup(platform_specific::wayland::popup::Action::Destroy{id}));
                                 }
+
                             }
                         }
                         if self.pending_popup.replace((settings, 0)).is_none() {
