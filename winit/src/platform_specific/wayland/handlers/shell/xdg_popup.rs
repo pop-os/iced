@@ -65,13 +65,14 @@ impl PopupHandler for SctkState {
                     break;
                 }
                 state::PopupParent::Popup(popup_to_destroy_first) => {
-                    let popup_to_destroy_first = self
-                        .popups
-                        .iter()
-                        .position(|p| {
+                    let Some(popup_to_destroy_first) =
+                        self.popups.iter().position(|p| {
                             p.popup.wl_surface() == &popup_to_destroy_first
                         })
-                        .unwrap();
+                    else {
+                        log::warn!("could not find popup to destroy first.");
+                        return;
+                    };
                     let popup_to_destroy_first =
                         self.popups.remove(popup_to_destroy_first);
                     to_destroy.push(popup_to_destroy_first);
