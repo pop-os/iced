@@ -97,7 +97,7 @@ impl PlatformSpecific {
                 Some(Connection::from_backend(backend))
             }
             Ok(_) => {
-                log::error!("Non-Wayland display handle");
+                log::warn!("Non-Wayland display handle");
                 None
             }
             Err(_) => {
@@ -136,7 +136,7 @@ impl PlatformSpecific {
         if let Some(tx) = self.wayland.sender.as_ref() {
             _ = tx.send(action);
         } else {
-            log::error!("Failed to process wayland Action.");
+            log::info!("Did not process wayland Action.");
         }
     }
 }
@@ -180,15 +180,15 @@ impl WaylandSpecific {
         match e {
             sctk_event => {
                 let Some(sender) = sender.as_ref() else {
-                    log::error!("Missing calloop sender");
+                    log::warn!("Missing calloop sender");
                     return Default::default();
                 };
                 let Some(event_sender) = winit_event_sender.as_ref() else {
-                    log::error!("Missing control sender");
+                    log::warn!("Missing control sender");
                     return Default::default();
                 };
                 let Some(proxy) = proxy.as_ref() else {
-                    log::error!("Missing event loop proxy");
+                    log::warn!("Missing event loop proxy");
                     return Default::default();
                 };
 
