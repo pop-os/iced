@@ -95,7 +95,7 @@ impl PlatformSpecific {
             use wayland_backend::client::ObjectId;
 
             let Some(conn) = self.wayland.conn() else {
-                log::error!("No Wayland conn");
+                log::info!("No Wayland conn");
                 return;
             };
 
