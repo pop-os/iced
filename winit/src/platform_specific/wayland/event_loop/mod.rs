@@ -52,6 +52,7 @@ use std::{
 };
 use tracing::error;
 use wayland_backend::client::Backend;
+use wayland_client::globals::GlobalError;
 use winit::{dpi::LogicalSize, event_loop::OwnedDisplayHandle};
 
 use self::state::SctkState;
@@ -67,6 +68,14 @@ pub struct SctkEventLoop {
     pub(crate) state: SctkState,
 }
 
+pub enum Error {
+    Connect(ConnectError),
+    Calloop(calloop::Error),
+    Global(GlobalError),
+    NoDisplayHandle,
+    NoWaylandDisplay,
+}
+
 impl SctkEventLoop {
     pub(crate) fn new(
         winit_event_sender: mpsc::UnboundedSender<Control>,
@@ -80,12 +89,13 @@ impl SctkEventLoop {
         let res = std::thread::spawn(move || {
             let Ok(dh) = display.display_handle() else {
                 log::error!("Failed to get display handle");
-                return Ok(());
+                return Err(Error::NoDisplayHandle);
             };
             let raw_window_handle::RawDisplayHandle::Wayland(wayland_dh) =
                 dh.as_raw()
             else {
-                panic!("Invalid wayland display handle.");
+                log::error!("Display handle is not Wayland");
+                return Err(Error::NoWaylandDisplay);
             };
 
             let backend = unsafe {
@@ -97,9 +107,9 @@ impl SctkEventLoop {
 
             let _display = connection.display();
             let (globals, event_queue) =
-                registry_queue_init(&connection).unwrap();
-            let event_loop =
-                calloop::EventLoop::<SctkState>::try_new().unwrap();
+                registry_queue_init(&connection).map_err(Error::Global)?;
+            let event_loop = calloop::EventLoop::<SctkState>::try_new()
+                .map_err(Error::Calloop)?;
             let loop_handle = event_loop.handle();
 
             let qh = event_queue.handle();
@@ -473,7 +483,13 @@ impl SctkEventLoop {
 
         if res.is_finished() {
             log::warn!("SCTK thread finished.");
-            res.join().map(|_: Result<(), ConnectError>| action_tx)
+            match res.join() {
+                Ok(_) => Ok(action_tx),
+                Err(e) => {
+                    log::error!("SCTK thread exited with error: {e:?}");
+                    return Err(e);
+                }
+            }
         } else {
             Ok(action_tx)
         }
