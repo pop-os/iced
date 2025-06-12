@@ -1,0 +1,21 @@
+[package]
+name = "sctk_subsurface_img"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+iced = { path = "../..", default-features = false, features = [
+    "tokio",
+    "wayland",
+    "winit",
+    "debug",
+    "tiny-skia",
+    "image",
+] }
+iced_runtime = { path = "../../runtime" }
+env_logger = "0.10"
+futures-channel = "0.3.29"
+calloop = "0.13"
+rustix = { version = "0.38.30", features = ["fs", "shm"] }
+cctk.workspace = true
+image = { workspace = true, features = ["png"] }
