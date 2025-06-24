@@ -144,6 +144,7 @@ impl Content {
                     let mut state = State {
                         leftover: String::new(),
                         references: self.state.references.clone(),
+                        #[cfg(feature = "highlighter")]
                         highlighter: None,
                     };
 
