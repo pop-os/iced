@@ -1613,7 +1613,8 @@ impl SctkState {
             wp_fractional_scale,
 
             wl_buffer: None,
-            bounds: Some(bounds),
+            source: None,
+            destination: Some(bounds),
             transform:
                 cctk::wayland_client::protocol::wl_output::Transform::Normal,
             z: settings.z,
