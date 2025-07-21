@@ -455,8 +455,7 @@ impl SubsurfaceState {
             wp_viewport,
             wp_alpha_modifier_surface,
             wl_buffer: None,
-            source: None,
-            destination: None,
+            bounds: None,
             wp_fractional_scale: None,
             transform: wl_output::Transform::Normal,
             z: 0,
@@ -632,8 +631,7 @@ pub(crate) struct SubsurfaceInstance {
     pub(crate) wp_fractional_scale: Option<WpFractionalScaleV1>,
     pub(crate) wp_alpha_modifier_surface: Option<WpAlphaModifierSurfaceV1>,
     pub(crate) wl_buffer: Option<WlBuffer>,
-    pub(crate) source: Option<Rectangle<f32>>,
-    pub(crate) destination: Option<Rectangle<f32>>,
+    pub(crate) bounds: Option<Rectangle<f32>>,
     pub(crate) transform: wl_output::Transform,
     pub(crate) z: i32,
     pub parent: WlSurface,
@@ -680,21 +678,14 @@ impl SubsurfaceInstance {
         };
 
         // XXX scale factor?
-        let source_changed = self.source != Some(info.source);
-        let destination_changed = self.destination != Some(info.destination);
+        let bounds_changed = self.bounds != Some(info.bounds);
         // wlroots seems to have issues changing buffer without running this
-        if source_changed || destination_changed || buffer_changed {
-            self.wp_viewport.set_source(
-                info.source.x.into(),
-                info.source.y.into(),
-                info.source.width.into(),
-                info.source.height.into(),
-            );
+        if bounds_changed || buffer_changed {
             self.wl_subsurface
-                .set_position(info.destination.x as i32, info.destination.y as i32);
+                .set_position(info.bounds.x as i32, info.bounds.y as i32);
             self.wp_viewport.set_destination(
-                info.destination.width as i32,
-                info.destination.height as i32,
+                info.bounds.width as i32,
+                info.bounds.height as i32,
             );
         }
         let transform_changed = self.transform != info.transform;
@@ -705,7 +696,7 @@ impl SubsurfaceInstance {
             self.wl_surface.attach(Some(&buffer), 0, 0);
             self.wl_surface.damage(0, 0, i32::MAX, i32::MAX);
         }
-        if buffer_changed || source_changed || destination_changed || transform_changed {
+        if buffer_changed || bounds_changed || transform_changed {
             _ = self.wl_surface.frame(&state.qh, self.wl_surface.clone());
             self.wl_surface.commit();
         }
@@ -717,8 +708,7 @@ impl SubsurfaceInstance {
         }
 
         self.wl_buffer = Some(buffer);
-        self.source = Some(info.source);
-        self.destination = Some(info.destination);
+        self.bounds = Some(info.bounds);
         self.transform = info.transform;
         self.z = info.z;
     }
@@ -743,8 +733,7 @@ impl Drop for SubsurfaceInstance {
 #[derive(Debug)]
 pub(crate) struct SubsurfaceInfo {
     pub buffer: SubsurfaceBuffer,
-    pub source: Rectangle<f32>,
-    pub destination: Rectangle<f32>,
+    pub bounds: Rectangle<f32>,
     pub alpha: f32,
     pub transform: wl_output::Transform,
     pub z: i32,
@@ -851,34 +840,14 @@ where
         _style: &renderer::Style,
         layout: Layout<'_>,
         _cursor: mouse::Cursor,
-        viewport: &Rectangle,
+        _viewport: &Rectangle,
     ) {
-        let buffer_size =
-            Size::new(self.buffer.width() as f32, self.buffer.height() as f32);
-        let full_size =
-            self.content_fit.fit(buffer_size, layout.bounds().size());
-
-        let source = Rectangle {
-            x: viewport.x,
-            y: viewport.y,
-            width: viewport.width.min(self.buffer.width() as f32),
-            height: viewport.height.min(self.buffer.height() as f32),
-        };
-
-        let destination = Rectangle {
-            x: layout.bounds().x,
-            y: layout.bounds().y,
-            width: layout.bounds().width.min(viewport.width),
-            height: layout.bounds().height.min(viewport.height),
-        };
-
         // Instead of using renderer, we need to add surface to a list that is
         // read by the iced-sctk shell.
         SUBSURFACES.with(|subsurfaces| {
             subsurfaces.borrow_mut().push(SubsurfaceInfo {
                 buffer: self.buffer.clone(),
-                source,
-                destination,
+                bounds: layout.bounds(),
                 alpha: self.alpha,
                 transform: self.transform,
                 z: self.z,
