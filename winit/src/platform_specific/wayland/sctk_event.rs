@@ -687,10 +687,23 @@ impl SctkEvent {
                 touch_id: _,
                 seat_id: _,
                 surface,
-            } => events.push((
-                surface_ids.get(&surface.id()).map(|id| id.inner()),
-                iced_runtime::core::Event::Touch(variant),
-            )),
+            } => {
+                let position = match variant {
+                    touch::Event::FingerPressed { position, .. } => position,
+                    touch::Event::FingerMoved { position, .. } => position,
+                    touch::Event::FingerLifted { position, .. } => position,
+                    touch::Event::FingerLost { position, .. } => position,
+                };
+                let id = surface_ids.get(&surface.id()).map(|id| id.inner());
+                if let Some(w) =
+                    id.clone().and_then(|id| window_manager.get_mut(id))
+                {
+                    w.state.set_logical_cursor_pos(
+                        (position.x, position.y).into(),
+                    );
+                }
+                events.push((id, iced_runtime::core::Event::Touch(variant)))
+            }
             SctkEvent::WindowEvent { .. } => {}
             SctkEvent::LayerSurfaceEvent {
                 variant,
