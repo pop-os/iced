@@ -679,7 +679,19 @@ impl SctkState {
         let wl_surface =
             self.compositor_state.create_surface(&self.queue_handle);
         _ = self.id_map.insert(wl_surface.id(), settings.id.clone());
-
+        if let Some(z) = settings.input_zone {
+            let region = self
+                .compositor_state
+                .wl_compositor()
+                .create_region(&self.queue_handle, ());
+            region.add(
+                z.x.round() as i32,
+                z.y.round() as i32,
+                z.width.round() as i32,
+                z.height.round() as i32,
+            );
+            wl_surface.set_input_region(Some(&region));
+        }
         let (toplevel, popup) = match &parent {
             PopupParent::LayerSurface(parent) => {
                 let Some(parent_layer_surface) = self
@@ -741,6 +753,14 @@ impl SctkState {
                 )
             }
         };
+
+        popup.xdg_surface().set_window_geometry(
+            0,
+            0,
+            size.0 as i32,
+            size.1 as i32,
+        );
+
         if grab {
             if let Some(s) = self.seats.first() {
                 let ptr_data = s
@@ -764,24 +784,7 @@ impl SctkState {
             }
         }
 
-        if let Some(z) = settings.input_zone {
-            let region = self
-                .compositor_state
-                .wl_compositor()
-                .create_region(&self.queue_handle, ());
-            region.add(
-                z.x.round() as i32,
-                z.y.round() as i32,
-                z.width.round() as i32,
-                z.height.round() as i32,
-            );
-        }
-        popup.xdg_surface().set_window_geometry(
-            0,
-            0,
-            size.0 as i32,
-            size.1 as i32,
-        );
+
         _ = wl_surface.frame(&self.queue_handle, wl_surface.clone());
         wl_surface.commit();
 
@@ -1483,7 +1486,7 @@ impl SctkState {
         let mut loc = settings.loc;
         match settings.gravity {
             wayland_protocols::xdg::shell::client::xdg_positioner::Gravity::None => {
-                // center on 
+                // center on
                 loc.x -= half_w;
                 loc.y -= half_h;
             },
