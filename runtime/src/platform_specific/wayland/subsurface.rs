@@ -57,6 +57,13 @@ pub enum Action {
         /// id of the subsurface
         id: Id,
     },
+    /// reposition the subsurface
+    Reposition {
+        /// id of the subsurface
+        id: Id,
+        x: i32,
+        y: i32,
+    },
 }
 
 impl fmt::Debug for Action {
@@ -71,6 +78,11 @@ impl fmt::Debug for Action {
                 f,
                 "Action::SubsurfaceAction::Destroy {{ id: {:?} }}",
                 id
+            ),
+            Action::Reposition { id, x, y } => write!(
+                f,
+                "Action::SubsurfaceAction::Reposition {{ id: {:?}, x: {:?}, y: {:?} }}",
+                id, x, y
             ),
         }
     }

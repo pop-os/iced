@@ -26,3 +26,15 @@ pub fn destroy_subsurface<Message>(id: SurfaceId) -> Task<Message> {
         )),
     ))
 }
+
+pub fn reposition_subsurface<Message>(
+    id: SurfaceId,
+    x: i32,
+    y: i32,
+) -> Task<Message> {
+    task::effect(Action::PlatformSpecific(
+        platform_specific::Action::Wayland(wayland::Action::Subsurface(
+            wayland::subsurface::Action::Reposition { id, x, y },
+        )),
+    ))
+}
