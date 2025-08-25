@@ -784,7 +784,6 @@ impl SctkState {
             }
         }
 
-
         _ = wl_surface.frame(&self.queue_handle, wl_surface.clone());
         wl_surface.commit();
 
@@ -1417,7 +1416,7 @@ impl SctkState {
                 }
             },
             Action::Subsurface(action) => match action {
-                platform_specific::wayland::subsurface::Action::Subsurface { subsurface: subsurface_settings } => {
+                subsurface::Action::Subsurface { subsurface: subsurface_settings } => {
                     let parent_id = subsurface_settings.parent;
                     if let Ok((_, parent, subsurface, common_surface, common)) = self.get_subsurface(subsurface_settings.clone()) {
                         // TODO Ashley: all surfaces should probably have an optional title for a11y if nothing else
@@ -1437,7 +1436,7 @@ impl SctkState {
                         );
                     }
                 },
-                platform_specific::wayland::subsurface::Action::Destroy { id } => {
+                subsurface::Action::Destroy { id } => {
                     let mut destroyed = vec![];
                     if let Some(subsurface) = self.subsurfaces.iter().position(|s| s.id == id) {
                         let subsurface = self.subsurfaces.remove(subsurface);
@@ -1455,6 +1454,12 @@ impl SctkState {
                         }).and_then(|f| Some((parent, &mut f.kbd_focus))) {
                             *f = Some(wl_surface);
                         }
+                    }
+                },
+                subsurface::Action::Reposition { id, x, y } => {
+                    if let Some(subsurface) = self.subsurfaces.iter().find(|s| s.id == id) {
+                        subsurface.instance.wl_subsurface.set_position(x, y);
+                        subsurface.instance.wl_surface.commit();
                     }
                 },
             },
