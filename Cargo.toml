@@ -197,7 +197,7 @@ pulldown-cmark = "0.12"
 qrcode = { version = "0.13", default-features = false }
 raw-window-handle = "0.6"
 rustc-hash = "2.0"
-cctk = { git = "https://github.com/pop-os/cosmic-protocols", package = "cosmic-client-toolkit", rev = "178eb0b" }
+cctk = { git = "https://github.com/pop-os/cosmic-protocols", package = "cosmic-client-toolkit", rev = "6254f50" }
 smol = "1.0"
 smol_str = "0.2"
 softbuffer = { git = "https://github.com/pop-os/softbuffer", tag = "cosmic-4.0" }

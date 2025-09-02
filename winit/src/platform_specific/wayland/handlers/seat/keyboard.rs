@@ -5,7 +5,7 @@ use crate::platform_specific::wayland::{
 use cctk::sctk::reexports::client::Proxy;
 use cctk::sctk::{
     delegate_keyboard,
-    seat::keyboard::{KeyboardHandler, Keysym},
+    seat::keyboard::{KeyboardHandler, Keysym, RawModifiers},
 };
 
 impl KeyboardHandler for SctkState {
@@ -183,6 +183,17 @@ impl KeyboardHandler for SctkState {
         }
     }
 
+    fn repeat_key(
+        &mut self,
+        _conn: &cctk::sctk::reexports::client::Connection,
+        _qh: &cctk::sctk::reexports::client::QueueHandle<Self>,
+        _keyboard: &cctk::sctk::reexports::client::protocol::wl_keyboard::WlKeyboard,
+        _serial: u32,
+        _event: cctk::sctk::seat::keyboard::KeyEvent,
+    ) {
+        // TODO
+    }
+
     fn release_key(
         &mut self,
         _conn: &cctk::sctk::reexports::client::Connection,
@@ -231,6 +242,7 @@ impl KeyboardHandler for SctkState {
         keyboard: &cctk::sctk::reexports::client::protocol::wl_keyboard::WlKeyboard,
         _serial: u32,
         modifiers: cctk::sctk::seat::keyboard::Modifiers,
+        _: RawModifiers,
         layout: u32,
     ) {
         let (is_active, my_seat) =
