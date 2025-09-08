@@ -84,8 +84,8 @@ pub enum Action {
     Drag(Point),
     /// Scroll the [`Editor`] a certain amount of lines.
     Scroll {
-        /// The amount of lines to scroll.
-        lines: i32,
+        /// The amount of pixels to scroll.
+        pixels: f32,
     },
 }
 

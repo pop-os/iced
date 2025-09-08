@@ -73,6 +73,7 @@ impl editor::Editor for Editor {
             text,
             &cosmic_text::Attrs::new(),
             cosmic_text::Shaping::Advanced,
+            None,
         );
 
         Editor(Some(Arc::new(Internal {
@@ -408,10 +409,10 @@ impl editor::Editor for Editor {
                     }
                 }
             }
-            Action::Scroll { lines } => {
+            Action::Scroll { pixels } => {
                 editor.action(
                     font_system.raw(),
-                    cosmic_text::Action::Scroll { lines },
+                    cosmic_text::Action::Scroll { pixels },
                 );
             }
         }

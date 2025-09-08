@@ -479,7 +479,6 @@ pub struct State<Highlighter: text::Highlighter> {
     focus: Option<Focus>,
     last_click: Option<mouse::Click>,
     drag_click: Option<mouse::click::Kind>,
-    partial_scroll: f32,
     highlighter: RefCell<Highlighter>,
     highlighter_settings: Highlighter::Settings,
     highlighter_format_address: usize,
@@ -553,7 +552,6 @@ where
             focus: None,
             last_click: None,
             drag_click: None,
-            partial_scroll: 0.0,
             highlighter: RefCell::new(Highlighter::new(
                 &self.highlighter_settings,
             )),
@@ -714,11 +712,9 @@ where
                     return event::Status::Ignored;
                 }
 
-                let lines = lines + state.partial_scroll;
-                state.partial_scroll = lines.fract();
-
                 shell.publish(on_edit(Action::Scroll {
-                    lines: lines as i32,
+                    //TODO: what is the correct multiplier here?
+                    pixels: lines * 4.0,
                 }));
             }
             Update::Binding(binding) => {

@@ -87,6 +87,11 @@ impl core::text::Paragraph for Paragraph {
             text.content,
             &text::to_attributes(text.font),
             text::to_shaping(text.shaping),
+            Some(match text.horizontal_alignment {
+                alignment::Horizontal::Left => cosmic_text::Align::Left,
+                alignment::Horizontal::Center => cosmic_text::Align::Center,
+                alignment::Horizontal::Right => cosmic_text::Align::Right,
+            }),
         );
 
         let min_bounds = text::measure(&buffer);

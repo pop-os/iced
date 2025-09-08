@@ -56,6 +56,7 @@ impl Cache {
                 key.content,
                 &text::to_attributes(key.font),
                 text::to_shaping(key.shaping),
+                None,
             );
 
             let bounds = text::measure(&buffer);
