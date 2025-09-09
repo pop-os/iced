@@ -31,6 +31,8 @@ pub enum Action {
     OverlapNotify(Id, bool),
     /// Subsurfaces
     Subsurface(subsurface::Action),
+    /// Keyboard inhibit shortcuts
+    InhibitShortcuts(bool),
 }
 
 impl Debug for Action {
@@ -51,6 +53,9 @@ impl Debug for Action {
             }
             Action::Subsurface(action) => {
                 f.debug_tuple("Subsurface").field(action).finish()
+            }
+            Action::InhibitShortcuts(v) => {
+                f.debug_tuple("InhibitShortcuts").field(v).finish()
             }
         }
     }

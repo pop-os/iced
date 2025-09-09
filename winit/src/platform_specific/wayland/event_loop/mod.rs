@@ -51,6 +51,7 @@ use std::{
 use tracing::error;
 use wayland_backend::client::Backend;
 use wayland_client::globals::GlobalError;
+use wayland_protocols::wp::keyboard_shortcuts_inhibit::zv1::client::zwp_keyboard_shortcuts_inhibit_manager_v1;
 use winit::{dpi::LogicalSize, event_loop::OwnedDisplayHandle};
 
 use self::state::SctkState;
@@ -309,11 +310,19 @@ impl SctkEventLoop {
                             &registry_state,
                             &qh,
                         ),
+                                            inhibitor_manager: registry_state.bind_one::<zwp_keyboard_shortcuts_inhibit_manager_v1::ZwpKeyboardShortcutsInhibitManagerV1, _, _>(
+                        &qh,
+                        1..=1,
+                        (),
+                    ).ok(),
                         registry_state,
 
                         queue_handle: qh,
                         loop_handle,
 
+
+                        inhibitor: None,
+                        inhibited: false,
                         _cursor_surface: None,
                         _multipool: None,
                         outputs: Vec::new(),
@@ -323,7 +332,6 @@ impl SctkEventLoop {
                         popups: Vec::new(),
                         lock_surfaces: Vec::new(),
                         subsurfaces: Vec::new(),
-                        _kbd_focus: None,
                         touch_points: HashMap::new(),
                         sctk_events: Vec::new(),
                         frame_status: HashMap::new(),

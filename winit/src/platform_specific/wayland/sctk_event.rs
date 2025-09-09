@@ -211,6 +211,7 @@ pub enum SctkEvent {
     SurfaceScaleFactorChanged(f64, WlSurface, window::Id),
     Winit(WindowId, WindowEvent),
     Subcompositor(SubsurfaceState),
+    ShortcutsInhibited(bool),
 }
 
 #[cfg(feature = "a11y")]
@@ -1697,6 +1698,14 @@ impl SctkEvent {
                     }
                 }
             },
+            SctkEvent::ShortcutsInhibited(v) => events.push((
+                None,
+                iced_runtime::core::Event::PlatformSpecific(
+                    PlatformSpecific::Wayland(
+                        wayland::Event::ShortcutsInhibited(v),
+                    ),
+                ),
+            )),
         }
     }
 }

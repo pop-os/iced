@@ -1,5 +1,7 @@
 // Borrowed from winit
+use iced_runtime::keyboard::{Key, Location, key::Named};
 use winit::keyboard::{KeyCode, NativeKeyCode, PhysicalKey};
+
 /// Map the raw X11-style keycode to the `KeyCode` enum.
 ///
 /// X11-style keycodes are offset by 8 from the keycodes the Linux kernel uses.
@@ -837,8 +839,6 @@ pub fn keysym_to_key(keysym: u32) -> Key {
         _ => return Key::Unidentified,
     })
 }
-
-use iced_runtime::keyboard::{Key, Location, key::Named};
 
 pub fn keysym_location(keysym: u32) -> Location {
     use xkbcommon_dl::keysyms;

@@ -94,8 +94,7 @@ use cctk::{cosmic_protocols::overlap_notify::v1::client::zcosmic_overlap_notific
 }, toplevel_info::ToplevelInfoState, toplevel_management::ToplevelManagerState};
 use wayland_protocols::{
     wp::{
-        fractional_scale::v1::client::wp_fractional_scale_v1::WpFractionalScaleV1,
-        viewporter::client::wp_viewport::WpViewport,
+        fractional_scale::v1::client::wp_fractional_scale_v1::WpFractionalScaleV1, keyboard_shortcuts_inhibit::zv1::client::{zwp_keyboard_shortcuts_inhibit_manager_v1, zwp_keyboard_shortcuts_inhibitor_v1}, viewporter::client::wp_viewport::WpViewport
     },
     xdg::shell::client::xdg_surface::XdgSurface,
 };
@@ -388,7 +387,6 @@ pub struct SctkState {
     pub(crate) popups: Vec<SctkPopup>,
     pub(crate) subsurfaces: Vec<SctkSubsurface>,
     pub(crate) lock_surfaces: Vec<SctkLockSurface>,
-    pub(crate) _kbd_focus: Option<WlSurface>,
     pub(crate) touch_points: HashMap<touch::Finger, (WlSurface, Point)>,
 
     /// Window updates, which are coming from SCTK or the compositor, which require
@@ -434,6 +432,10 @@ pub struct SctkState {
 
     pub(crate) activation_token_ctr: u32,
     pub(crate) token_senders: HashMap<u32, oneshot::Sender<Option<String>>>,
+
+    pub(crate) inhibitor: Option<zwp_keyboard_shortcuts_inhibitor_v1::ZwpKeyboardShortcutsInhibitorV1>,
+    pub(crate) inhibited: bool,
+    pub(crate) inhibitor_manager: Option<zwp_keyboard_shortcuts_inhibit_manager_v1::ZwpKeyboardShortcutsInhibitManagerV1>,
 }
 
 /// An error that occurred while running an application.
@@ -1463,6 +1465,17 @@ impl SctkState {
                     }
                 },
             },
+            Action::InhibitShortcuts(v) => {
+                if let Some(manager) = self.inhibitor_manager.as_ref() {
+                    if let Some(inhibit) = self.inhibitor.take() {
+                            inhibit.destroy();
+                    }
+                    if v {
+                        self.inhibitor = self.seats.iter().next()
+                        .and_then(|s| s.kbd_focus.as_ref().map(|surface| manager.inhibit_shortcuts(surface, &s.seat, &self.queue_handle, ())));
+                    }
+                }
+            }
         };
         Ok(())
     }
