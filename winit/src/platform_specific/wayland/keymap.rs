@@ -1,5 +1,7 @@
 // Borrowed from winit
+use iced_runtime::keyboard::{key::Named, Key, Location};
 use winit::keyboard::{KeyCode, NativeKeyCode, PhysicalKey};
+
 /// Map the raw X11-style keycode to the `KeyCode` enum.
 ///
 /// X11-style keycodes are offset by 8 from the keycodes the Linux kernel uses.
@@ -838,7 +840,197 @@ pub fn keysym_to_key(keysym: u32) -> Key {
     })
 }
 
-use iced_runtime::keyboard::{key::Named, Key, Location};
+pub fn key_to_keysym(
+    unmodified_key: Key,
+    location: Location,
+) -> Option<xkeysym::Keysym> {
+    use xkbcommon_dl::keysyms;
+
+    let raw = match unmodified_key {
+        Key::Named(named) => Some(match (named, location) {
+            (Named::Escape, _) => keysyms::Escape,
+            (Named::Backspace, _) => keysyms::BackSpace,
+            (Named::Tab, _) => keysyms::Tab,
+            (Named::Enter, _) => keysyms::Return,
+
+            (Named::Compose, _) => keysyms::Multi_key,
+
+            (Named::KanjiMode, _) => keysyms::Kanji,
+            (Named::Eisu, _) => keysyms::Eisu_toggle,
+            (Named::NonConvert, _) => keysyms::Muhenkan,
+            (Named::Convert, _) => keysyms::Henkan_Mode,
+            (Named::Romaji, _) => keysyms::Romaji,
+            (Named::Hiragana, _) => keysyms::Hiragana,
+            (Named::Katakana, _) => keysyms::Katakana,
+            (Named::HiraganaKatakana, _) => keysyms::Hiragana_Katakana,
+            (Named::Zenkaku, _) => keysyms::Zenkaku,
+            (Named::Hankaku, _) => keysyms::Hankaku,
+            (Named::ZenkakuHankaku, _) => keysyms::Zenkaku_Hankaku,
+            (Named::KanaMode, _) => keysyms::Kana_Lock,
+            (Named::Alphanumeric, _) => keysyms::Eisu_toggle,
+            (Named::CodeInput, _) => keysyms::Codeinput,
+            (Named::AllCandidates, _) => keysyms::MultipleCandidate,
+            (Named::PreviousCandidate, _) => keysyms::PreviousCandidate,
+            (Named::SingleCandidate, _) => keysyms::SingleCandidate,
+
+            (Named::ArrowUp, _) => keysyms::Up,
+            (Named::ArrowDown, _) => keysyms::Down,
+            (Named::ArrowLeft, _) => keysyms::Left,
+            (Named::ArrowRight, _) => keysyms::Right,
+            (Named::PageUp, _) => keysyms::Page_Up,
+            (Named::PageDown, _) => keysyms::Page_Down,
+            (Named::Home, _) => keysyms::Home,
+            (Named::End, _) => keysyms::End,
+            (Named::Insert, _) => keysyms::Insert,
+            (Named::Delete, _) => keysyms::Delete,
+
+            (Named::Undo, _) => keysyms::Undo,
+            (Named::Redo, _) => keysyms::Redo,
+            (Named::ContextMenu, _) => keysyms::Menu,
+            (Named::Find, _) => keysyms::Find,
+            (Named::Cancel, _) => keysyms::Cancel,
+            (Named::Help, _) => keysyms::Help,
+            (Named::Pause, _) => keysyms::Break,
+            (Named::ModeChange, _) => keysyms::Mode_switch,
+            (Named::NumLock, _) => keysyms::Num_Lock,
+            (Named::CapsLock, _) => keysyms::Caps_Lock,
+            (Named::ScrollLock, _) => keysyms::Scroll_Lock,
+            (Named::PrintScreen, _) => keysyms::Print,
+
+            (Named::F1, _) => keysyms::F1,
+            (Named::F2, _) => keysyms::F2,
+            (Named::F3, _) => keysyms::F3,
+            (Named::F4, _) => keysyms::F4,
+            (Named::F5, _) => keysyms::F5,
+            (Named::F6, _) => keysyms::F6,
+            (Named::F7, _) => keysyms::F7,
+            (Named::F8, _) => keysyms::F8,
+            (Named::F9, _) => keysyms::F9,
+            (Named::F10, _) => keysyms::F10,
+            (Named::F11, _) => keysyms::F11,
+            (Named::F12, _) => keysyms::F12,
+            (Named::F13, _) => keysyms::F13,
+            (Named::F14, _) => keysyms::F14,
+            (Named::F15, _) => keysyms::F15,
+            (Named::F16, _) => keysyms::F16,
+            (Named::F17, _) => keysyms::F17,
+            (Named::F18, _) => keysyms::F18,
+            (Named::F19, _) => keysyms::F19,
+            (Named::F20, _) => keysyms::F20,
+
+            (Named::Shift, _) => keysyms::Shift_L,
+            (Named::Control, _) => keysyms::Control_L,
+            (Named::Alt, _) => keysyms::Alt_L,
+            (Named::Super, _) => keysyms::Super_L,
+            (Named::Hyper, _) => keysyms::Hyper_L,
+            (Named::Meta, _) => keysyms::Meta_L,
+
+            (Named::AltGraph, _) => keysyms::ISO_Level3_Shift,
+            (Named::GroupNext, _) => keysyms::ISO_Next_Group,
+            (Named::GroupPrevious, _) => keysyms::ISO_Prev_Group,
+            (Named::GroupFirst, _) => keysyms::ISO_First_Group,
+            (Named::GroupLast, _) => keysyms::ISO_Last_Group,
+
+            (Named::EraseEof, _) => keysyms::_3270_EraseEOF,
+            (Named::Attn, _) => keysyms::_3270_Attn,
+            (Named::Play, _) => keysyms::_3270_Play,
+            (Named::ExSel, _) => keysyms::_3270_ExSelect,
+            (Named::CrSel, _) => keysyms::_3270_CursorSelect,
+
+            (Named::Space, _) => keysyms::space,
+
+            // XF86 multimedia / internet / power keys (subset shown)
+            (Named::BrightnessUp, _) => keysyms::XF86_MonBrightnessUp,
+            (Named::BrightnessDown, _) => keysyms::XF86_MonBrightnessDown,
+            (Named::Standby, _) => keysyms::XF86_Standby,
+            (Named::AudioVolumeDown, _) => keysyms::XF86_AudioLowerVolume,
+            (Named::AudioVolumeUp, _) => keysyms::XF86_AudioRaiseVolume,
+            (Named::MediaPlay, _) => keysyms::XF86_AudioPlay,
+            (Named::MediaStop, _) => keysyms::XF86_AudioStop,
+            (Named::MediaTrackPrevious, _) => keysyms::XF86_AudioPrev,
+            (Named::MediaTrackNext, _) => keysyms::XF86_AudioNext,
+            (Named::BrowserHome, _) => keysyms::XF86_HomePage,
+            (Named::LaunchMail, _) => keysyms::XF86_Mail,
+            (Named::BrowserSearch, _) => keysyms::XF86_Search,
+            (Named::MediaRecord, _) => keysyms::XF86_AudioRecord,
+            (Named::LaunchApplication2, _) => keysyms::XF86_Calculator,
+            (Named::LaunchCalendar, _) => keysyms::XF86_Calendar,
+            (Named::Power, _) => keysyms::XF86_PowerDown,
+            (Named::BrowserBack, _) => keysyms::XF86_Back,
+            (Named::BrowserForward, _) => keysyms::XF86_Forward,
+            (Named::BrowserRefresh, _) => keysyms::XF86_Refresh,
+            (Named::WakeUp, _) => keysyms::XF86_WakeUp,
+            (Named::Eject, _) => keysyms::XF86_Eject,
+            (Named::LaunchScreenSaver, _) => keysyms::XF86_ScreenSaver,
+            (Named::LaunchWebBrowser, _) => keysyms::XF86_WWW,
+            (Named::BrowserFavorites, _) => keysyms::XF86_Favorites,
+            (Named::MediaPause, _) => keysyms::XF86_AudioPause,
+            (Named::LaunchApplication1, _) => keysyms::XF86_MyComputer,
+            (Named::Close, _) => keysyms::XF86_Close,
+            (Named::Copy, _) => keysyms::XF86_Copy,
+            (Named::Cut, _) => keysyms::XF86_Cut,
+            (Named::LaunchSpreadsheet, _) => keysyms::XF86_Excel,
+            (Named::LogOff, _) => keysyms::XF86_LogOff,
+            (Named::New, _) => keysyms::XF86_New,
+            (Named::Open, _) => keysyms::XF86_Open,
+            (Named::Paste, _) => keysyms::XF86_Paste,
+            (Named::LaunchPhone, _) => keysyms::XF86_Phone,
+            (Named::MailReply, _) => keysyms::XF86_Reply,
+            (Named::Save, _) => keysyms::XF86_Save,
+            (Named::MailSend, _) => keysyms::XF86_Send,
+            (Named::SpellCheck, _) => keysyms::XF86_Spell,
+            (Named::SplitScreenToggle, _) => keysyms::XF86_SplitScreen,
+            (Named::LaunchMediaPlayer, _) => keysyms::XF86_Video,
+            (Named::LaunchWordProcessor, _) => keysyms::XF86_Word,
+            (Named::ZoomIn, _) => keysyms::XF86_ZoomIn,
+            (Named::ZoomOut, _) => keysyms::XF86_ZoomOut,
+            (Named::LaunchWebCam, _) => keysyms::XF86_WebCam,
+            (Named::MailForward, _) => keysyms::XF86_MailForward,
+            (Named::LaunchMusicPlayer, _) => keysyms::XF86_Music,
+            (Named::MediaFastForward, _) => keysyms::XF86_AudioForward,
+            (Named::RandomToggle, _) => keysyms::XF86_AudioRandomPlay,
+            (Named::Subtitle, _) => keysyms::XF86_Subtitle,
+            (Named::MediaAudioTrack, _) => keysyms::XF86_AudioCycleTrack,
+            (Named::Hibernate, _) => keysyms::XF86_Hibernate,
+            (Named::AudioVolumeMute, _) => keysyms::XF86_AudioMute,
+            (Named::VideoModeNext, _) => keysyms::XF86_Next_VMode,
+
+            _ => return None,
+        }),
+        Key::Character(c) if c.chars().count() == 1 => {
+            Some(match (c.chars().next(), location) {
+                (Some('0'), Location::Numpad) => keysyms::KP_0,
+                (Some('1'), Location::Numpad) => keysyms::KP_1,
+                (Some('2'), Location::Numpad) => keysyms::KP_2,
+                (Some('3'), Location::Numpad) => keysyms::KP_3,
+                (Some('4'), Location::Numpad) => keysyms::KP_4,
+                (Some('5'), Location::Numpad) => keysyms::KP_5,
+                (Some('6'), Location::Numpad) => keysyms::KP_6,
+                (Some('7'), Location::Numpad) => keysyms::KP_7,
+                (Some('8'), Location::Numpad) => keysyms::KP_8,
+                (Some('9'), Location::Numpad) => keysyms::KP_9,
+                (Some('.'), Location::Numpad) => keysyms::KP_Decimal,
+                (Some('+'), Location::Numpad) => keysyms::KP_Add,
+                (Some('-'), Location::Numpad) => keysyms::KP_Subtract,
+                (Some('*'), Location::Numpad) => keysyms::KP_Multiply,
+                (Some('/'), Location::Numpad) => keysyms::KP_Divide,
+                (Some('='), Location::Numpad) => keysyms::KP_Equal,
+
+                (Some(c), _) => unsafe {
+                    let keysym =
+                        xkbcommon::xkb::ffi::xkb_utf32_to_keysym(c as u32);
+                    if keysym == keysyms::NoSymbol {
+                        return None;
+                    }
+                    keysym
+                },
+                _ => return None,
+            })
+        }
+        _ => None,
+    };
+    raw.map(|k| xkeysym::Keysym::new(k))
+}
 
 pub fn keysym_location(keysym: u32) -> Location {
     use xkbcommon_dl::keysyms;
