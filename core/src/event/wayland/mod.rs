@@ -44,4 +44,6 @@ pub enum Event {
     RequestResize,
     /// Subsurface
     Subsurface(SubsurfaceEvent),
+    /// Keyboard inhibit shortcuts
+    ShortcutsInhibited(bool),
 }

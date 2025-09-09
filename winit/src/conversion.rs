@@ -11,7 +11,6 @@ use crate::core::mouse;
 use crate::core::touch;
 use crate::core::window;
 use crate::core::{Event, Point, Size};
-use iced_futures::core::event::PlatformSpecific;
 
 /// Converts some [`window::Settings`] into some `WindowAttributes` from `winit`.
 pub fn window_attributes(
@@ -312,9 +311,9 @@ pub fn window_event(
                 Size::new(size.width, size.height)
             });
 
-            Some(Event::PlatformSpecific(PlatformSpecific::Wayland(
+            Some(Event::PlatformSpecific(iced_futures::core::event::PlatformSpecific::Wayland(
                 iced_runtime::core::event::wayland::Event::Window(
-                    iced_runtime::core::event::wayland::WindowEvent::SuggestedBounds(size),
+                    iced_runtime::core::event::wayland::WindowEvent::SuggestedBounds(size)
                 ),
             )))
         }
@@ -1120,6 +1119,254 @@ pub fn key_code(
         KeyCode::F35 => keyboard::key::Code::F35,
         _ => None?,
     })
+}
+
+pub fn winit_key_code(
+    key_code: keyboard::key::Code,
+) -> Option<winit::keyboard::KeyCode> {
+    use winit::keyboard::KeyCode;
+
+    Some(match key_code {
+        keyboard::key::Code::Backquote => KeyCode::Backquote,
+        keyboard::key::Code::Backslash => KeyCode::Backslash,
+        keyboard::key::Code::BracketLeft => KeyCode::BracketLeft,
+        keyboard::key::Code::BracketRight => KeyCode::BracketRight,
+        keyboard::key::Code::Comma => KeyCode::Comma,
+        keyboard::key::Code::Digit0 => KeyCode::Digit0,
+        keyboard::key::Code::Digit1 => KeyCode::Digit1,
+        keyboard::key::Code::Digit2 => KeyCode::Digit2,
+        keyboard::key::Code::Digit3 => KeyCode::Digit3,
+        keyboard::key::Code::Digit4 => KeyCode::Digit4,
+        keyboard::key::Code::Digit5 => KeyCode::Digit5,
+        keyboard::key::Code::Digit6 => KeyCode::Digit6,
+        keyboard::key::Code::Digit7 => KeyCode::Digit7,
+        keyboard::key::Code::Digit8 => KeyCode::Digit8,
+        keyboard::key::Code::Digit9 => KeyCode::Digit9,
+        keyboard::key::Code::Equal => KeyCode::Equal,
+        keyboard::key::Code::IntlBackslash => KeyCode::IntlBackslash,
+        keyboard::key::Code::IntlRo => KeyCode::IntlRo,
+        keyboard::key::Code::IntlYen => KeyCode::IntlYen,
+        keyboard::key::Code::KeyA => KeyCode::KeyA,
+        keyboard::key::Code::KeyB => KeyCode::KeyB,
+        keyboard::key::Code::KeyC => KeyCode::KeyC,
+        keyboard::key::Code::KeyD => KeyCode::KeyD,
+        keyboard::key::Code::KeyE => KeyCode::KeyE,
+        keyboard::key::Code::KeyF => KeyCode::KeyF,
+        keyboard::key::Code::KeyG => KeyCode::KeyG,
+        keyboard::key::Code::KeyH => KeyCode::KeyH,
+        keyboard::key::Code::KeyI => KeyCode::KeyI,
+        keyboard::key::Code::KeyJ => KeyCode::KeyJ,
+        keyboard::key::Code::KeyK => KeyCode::KeyK,
+        keyboard::key::Code::KeyL => KeyCode::KeyL,
+        keyboard::key::Code::KeyM => KeyCode::KeyM,
+        keyboard::key::Code::KeyN => KeyCode::KeyN,
+        keyboard::key::Code::KeyO => KeyCode::KeyO,
+        keyboard::key::Code::KeyP => KeyCode::KeyP,
+        keyboard::key::Code::KeyQ => KeyCode::KeyQ,
+        keyboard::key::Code::KeyR => KeyCode::KeyR,
+        keyboard::key::Code::KeyS => KeyCode::KeyS,
+        keyboard::key::Code::KeyT => KeyCode::KeyT,
+        keyboard::key::Code::KeyU => KeyCode::KeyU,
+        keyboard::key::Code::KeyV => KeyCode::KeyV,
+        keyboard::key::Code::KeyW => KeyCode::KeyW,
+        keyboard::key::Code::KeyX => KeyCode::KeyX,
+        keyboard::key::Code::KeyY => KeyCode::KeyY,
+        keyboard::key::Code::KeyZ => KeyCode::KeyZ,
+        keyboard::key::Code::Minus => KeyCode::Minus,
+        keyboard::key::Code::Period => KeyCode::Period,
+        keyboard::key::Code::Quote => KeyCode::Quote,
+        keyboard::key::Code::Semicolon => KeyCode::Semicolon,
+        keyboard::key::Code::Slash => KeyCode::Slash,
+        keyboard::key::Code::AltLeft => KeyCode::AltLeft,
+        keyboard::key::Code::AltRight => KeyCode::AltRight,
+        keyboard::key::Code::Backspace => KeyCode::Backspace,
+        keyboard::key::Code::CapsLock => KeyCode::CapsLock,
+        keyboard::key::Code::ContextMenu => KeyCode::ContextMenu,
+        keyboard::key::Code::ControlLeft => KeyCode::ControlLeft,
+        keyboard::key::Code::ControlRight => KeyCode::ControlRight,
+        keyboard::key::Code::Enter => KeyCode::Enter,
+        keyboard::key::Code::SuperLeft => KeyCode::SuperLeft,
+        keyboard::key::Code::SuperRight => KeyCode::SuperRight,
+        keyboard::key::Code::ShiftLeft => KeyCode::ShiftLeft,
+        keyboard::key::Code::ShiftRight => KeyCode::ShiftRight,
+        keyboard::key::Code::Space => KeyCode::Space,
+        keyboard::key::Code::Tab => KeyCode::Tab,
+        keyboard::key::Code::Convert => KeyCode::Convert,
+        keyboard::key::Code::KanaMode => KeyCode::KanaMode,
+        keyboard::key::Code::Lang1 => KeyCode::Lang1,
+        keyboard::key::Code::Lang2 => KeyCode::Lang2,
+        keyboard::key::Code::Lang3 => KeyCode::Lang3,
+        keyboard::key::Code::Lang4 => KeyCode::Lang4,
+        keyboard::key::Code::Lang5 => KeyCode::Lang5,
+        keyboard::key::Code::NonConvert => KeyCode::NonConvert,
+        keyboard::key::Code::Delete => KeyCode::Delete,
+        keyboard::key::Code::End => KeyCode::End,
+        keyboard::key::Code::Help => KeyCode::Help,
+        keyboard::key::Code::Home => KeyCode::Home,
+        keyboard::key::Code::Insert => KeyCode::Insert,
+        keyboard::key::Code::PageDown => KeyCode::PageDown,
+        keyboard::key::Code::PageUp => KeyCode::PageUp,
+        keyboard::key::Code::ArrowDown => KeyCode::ArrowDown,
+        keyboard::key::Code::ArrowLeft => KeyCode::ArrowLeft,
+        keyboard::key::Code::ArrowRight => KeyCode::ArrowRight,
+        keyboard::key::Code::ArrowUp => KeyCode::ArrowUp,
+        keyboard::key::Code::NumLock => KeyCode::NumLock,
+        keyboard::key::Code::Numpad0 => KeyCode::Numpad0,
+        keyboard::key::Code::Numpad1 => KeyCode::Numpad1,
+        keyboard::key::Code::Numpad2 => KeyCode::Numpad2,
+        keyboard::key::Code::Numpad3 => KeyCode::Numpad3,
+        keyboard::key::Code::Numpad4 => KeyCode::Numpad4,
+        keyboard::key::Code::Numpad5 => KeyCode::Numpad5,
+        keyboard::key::Code::Numpad6 => KeyCode::Numpad6,
+        keyboard::key::Code::Numpad7 => KeyCode::Numpad7,
+        keyboard::key::Code::Numpad8 => KeyCode::Numpad8,
+        keyboard::key::Code::Numpad9 => KeyCode::Numpad9,
+        keyboard::key::Code::NumpadAdd => KeyCode::NumpadAdd,
+        keyboard::key::Code::NumpadBackspace => KeyCode::NumpadBackspace,
+        keyboard::key::Code::NumpadClear => KeyCode::NumpadClear,
+        keyboard::key::Code::NumpadClearEntry => KeyCode::NumpadClearEntry,
+        keyboard::key::Code::NumpadComma => KeyCode::NumpadComma,
+        keyboard::key::Code::NumpadDecimal => KeyCode::NumpadDecimal,
+        keyboard::key::Code::NumpadDivide => KeyCode::NumpadDivide,
+        keyboard::key::Code::NumpadEnter => KeyCode::NumpadEnter,
+        keyboard::key::Code::NumpadEqual => KeyCode::NumpadEqual,
+        keyboard::key::Code::NumpadHash => KeyCode::NumpadHash,
+        keyboard::key::Code::NumpadMemoryAdd => KeyCode::NumpadMemoryAdd,
+        keyboard::key::Code::NumpadMemoryClear => KeyCode::NumpadMemoryClear,
+        keyboard::key::Code::NumpadMemoryRecall => KeyCode::NumpadMemoryRecall,
+        keyboard::key::Code::NumpadMemoryStore => KeyCode::NumpadMemoryStore,
+        keyboard::key::Code::NumpadMemorySubtract => {
+            KeyCode::NumpadMemorySubtract
+        }
+        keyboard::key::Code::NumpadMultiply => KeyCode::NumpadMultiply,
+        keyboard::key::Code::NumpadParenLeft => KeyCode::NumpadParenLeft,
+        keyboard::key::Code::NumpadParenRight => KeyCode::NumpadParenRight,
+        keyboard::key::Code::NumpadStar => KeyCode::NumpadStar,
+        keyboard::key::Code::NumpadSubtract => KeyCode::NumpadSubtract,
+        keyboard::key::Code::Escape => KeyCode::Escape,
+        keyboard::key::Code::Fn => KeyCode::Fn,
+        keyboard::key::Code::FnLock => KeyCode::FnLock,
+        keyboard::key::Code::PrintScreen => KeyCode::PrintScreen,
+        keyboard::key::Code::ScrollLock => KeyCode::ScrollLock,
+        keyboard::key::Code::Pause => KeyCode::Pause,
+        keyboard::key::Code::BrowserBack => KeyCode::BrowserBack,
+        keyboard::key::Code::BrowserFavorites => KeyCode::BrowserFavorites,
+        keyboard::key::Code::BrowserForward => KeyCode::BrowserForward,
+        keyboard::key::Code::BrowserHome => KeyCode::BrowserHome,
+        keyboard::key::Code::BrowserRefresh => KeyCode::BrowserRefresh,
+        keyboard::key::Code::BrowserSearch => KeyCode::BrowserSearch,
+        keyboard::key::Code::BrowserStop => KeyCode::BrowserStop,
+        keyboard::key::Code::Eject => KeyCode::Eject,
+        keyboard::key::Code::LaunchApp1 => KeyCode::LaunchApp1,
+        keyboard::key::Code::LaunchApp2 => KeyCode::LaunchApp2,
+        keyboard::key::Code::LaunchMail => KeyCode::LaunchMail,
+        keyboard::key::Code::MediaPlayPause => KeyCode::MediaPlayPause,
+        keyboard::key::Code::MediaSelect => KeyCode::MediaSelect,
+        keyboard::key::Code::MediaStop => KeyCode::MediaStop,
+        keyboard::key::Code::MediaTrackNext => KeyCode::MediaTrackNext,
+        keyboard::key::Code::MediaTrackPrevious => KeyCode::MediaTrackPrevious,
+        keyboard::key::Code::Power => KeyCode::Power,
+        keyboard::key::Code::Sleep => KeyCode::Sleep,
+        keyboard::key::Code::AudioVolumeDown => KeyCode::AudioVolumeDown,
+        keyboard::key::Code::AudioVolumeMute => KeyCode::AudioVolumeMute,
+        keyboard::key::Code::AudioVolumeUp => KeyCode::AudioVolumeUp,
+        keyboard::key::Code::WakeUp => KeyCode::WakeUp,
+        keyboard::key::Code::Meta => KeyCode::Meta,
+        keyboard::key::Code::Hyper => KeyCode::Hyper,
+        keyboard::key::Code::Turbo => KeyCode::Turbo,
+        keyboard::key::Code::Abort => KeyCode::Abort,
+        keyboard::key::Code::Resume => KeyCode::Resume,
+        keyboard::key::Code::Suspend => KeyCode::Suspend,
+        keyboard::key::Code::Again => KeyCode::Again,
+        keyboard::key::Code::Copy => KeyCode::Copy,
+        keyboard::key::Code::Cut => KeyCode::Cut,
+        keyboard::key::Code::Find => KeyCode::Find,
+        keyboard::key::Code::Open => KeyCode::Open,
+        keyboard::key::Code::Paste => KeyCode::Paste,
+        keyboard::key::Code::Props => KeyCode::Props,
+        keyboard::key::Code::Select => KeyCode::Select,
+        keyboard::key::Code::Undo => KeyCode::Undo,
+        keyboard::key::Code::Hiragana => KeyCode::Hiragana,
+        keyboard::key::Code::Katakana => KeyCode::Katakana,
+        keyboard::key::Code::F1 => KeyCode::F1,
+        keyboard::key::Code::F2 => KeyCode::F2,
+        keyboard::key::Code::F3 => KeyCode::F3,
+        keyboard::key::Code::F4 => KeyCode::F4,
+        keyboard::key::Code::F5 => KeyCode::F5,
+        keyboard::key::Code::F6 => KeyCode::F6,
+        keyboard::key::Code::F7 => KeyCode::F7,
+        keyboard::key::Code::F8 => KeyCode::F8,
+        keyboard::key::Code::F9 => KeyCode::F9,
+        keyboard::key::Code::F10 => KeyCode::F10,
+        keyboard::key::Code::F11 => KeyCode::F11,
+        keyboard::key::Code::F12 => KeyCode::F12,
+        keyboard::key::Code::F13 => KeyCode::F13,
+        keyboard::key::Code::F14 => KeyCode::F14,
+        keyboard::key::Code::F15 => KeyCode::F15,
+        keyboard::key::Code::F16 => KeyCode::F16,
+        keyboard::key::Code::F17 => KeyCode::F17,
+        keyboard::key::Code::F18 => KeyCode::F18,
+        keyboard::key::Code::F19 => KeyCode::F19,
+        keyboard::key::Code::F20 => KeyCode::F20,
+        keyboard::key::Code::F21 => KeyCode::F21,
+        keyboard::key::Code::F22 => KeyCode::F22,
+        keyboard::key::Code::F23 => KeyCode::F23,
+        keyboard::key::Code::F24 => KeyCode::F24,
+        keyboard::key::Code::F25 => KeyCode::F25,
+        keyboard::key::Code::F26 => KeyCode::F26,
+        keyboard::key::Code::F27 => KeyCode::F27,
+        keyboard::key::Code::F28 => KeyCode::F28,
+        keyboard::key::Code::F29 => KeyCode::F29,
+        keyboard::key::Code::F30 => KeyCode::F30,
+        keyboard::key::Code::F31 => KeyCode::F31,
+        keyboard::key::Code::F32 => KeyCode::F32,
+        keyboard::key::Code::F33 => KeyCode::F33,
+        keyboard::key::Code::F34 => KeyCode::F34,
+        keyboard::key::Code::F35 => KeyCode::F35,
+        _ => None?,
+    })
+}
+
+#[cfg(feature = "wayland")]
+fn winit_native_key_code(
+    keycode: keyboard::key::NativeCode,
+) -> winit::keyboard::NativeKeyCode {
+    match keycode {
+        keyboard::key::NativeCode::Unidentified => {
+            winit::keyboard::NativeKeyCode::Unidentified
+        }
+        keyboard::key::NativeCode::Android(k) => {
+            winit::keyboard::NativeKeyCode::Android(k)
+        }
+        keyboard::key::NativeCode::MacOS(k) => {
+            winit::keyboard::NativeKeyCode::MacOS(k)
+        }
+        keyboard::key::NativeCode::Windows(k) => {
+            winit::keyboard::NativeKeyCode::Windows(k)
+        }
+        keyboard::key::NativeCode::Xkb(k) => {
+            winit::keyboard::NativeKeyCode::Xkb(k)
+        }
+    }
+}
+
+/// Reconstruct the raw keycode
+#[cfg(feature = "wayland")]
+pub fn physical_to_scancode(physical: keyboard::key::Physical) -> Option<u32> {
+    let Some(physical_key) = (match physical {
+        keyboard::key::Physical::Code(code) => {
+            winit_key_code(code).map(|k| winit::keyboard::PhysicalKey::Code(k))
+        }
+        keyboard::key::Physical::Unidentified(native_code) => {
+            Some(winit::keyboard::PhysicalKey::Unidentified(
+                winit_native_key_code(native_code),
+            ))
+        }
+    }) else {
+        return None;
+    };
+
+    crate::keymap::physicalkey_to_scancode(physical_key)
 }
 
 /// Converts a `NativeKeyCode` from [`winit`] to an [`iced`] native key code.
