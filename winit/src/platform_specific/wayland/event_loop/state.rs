@@ -1139,6 +1139,29 @@ impl SctkState {
 
                             }
                         },
+                        platform_specific::wayland::layer_surface::Action::InputZone { id, zone } => {
+                            if let Some(layer_surface) = self.layer_surfaces.iter_mut().find(|l| l.id == id) {
+                                if let Some(zone) = &zone {
+                                    let region = self
+                                        .compositor_state
+                                        .wl_compositor()
+                                        .create_region(&self.queue_handle, ());
+                                    for rect in zone {
+                                        region.add(
+                                            rect.x.round() as i32,
+                                            rect.y.round() as i32,
+                                            rect.width.round() as i32,
+                                            rect.height.round() as i32,
+                                        );
+                                    }
+                                    layer_surface.surface.set_input_region(Some(&region));
+                                    region.destroy();
+                                } else{
+                                    layer_surface.surface.set_input_region(None);
+                                }
+                                _ = self.to_commit.insert(id, layer_surface.surface.wl_surface().clone());
+                            }
+                        }
                         platform_specific::wayland::layer_surface::Action::Layer { id, layer } => {
                             if let Some(layer_surface) = self.layer_surfaces.iter_mut().find(|l| l.id == id) {
                                 layer_surface.layer = layer;
