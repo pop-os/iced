@@ -7,6 +7,7 @@ use cctk::sctk::{
 use iced_core::layout::Limits;
 
 use iced_core::window::Id;
+use iced_core::Rectangle;
 
 /// output for layer surface
 #[derive(Debug, Clone)]
@@ -47,8 +48,9 @@ pub struct SctkLayerSurfaceSettings {
     pub layer: Layer,
     /// keyboard interactivity
     pub keyboard_interactivity: KeyboardInteractivity,
-    /// pointer interactivity
-    pub pointer_interactivity: bool,
+    /// input zone
+    /// None results in accepting all input
+    pub input_zone: Option<Vec<Rectangle>>,
     /// anchor, if a surface is anchored to two opposite edges, it will be stretched to fit between those edges, regardless of the specified size in that dimension.
     pub anchor: Anchor,
     /// output
@@ -72,7 +74,7 @@ impl Default for SctkLayerSurfaceSettings {
             id: Id::unique(),
             layer: Layer::Top,
             keyboard_interactivity: Default::default(),
-            pointer_interactivity: true,
+            input_zone: None,
             anchor: Anchor::empty(),
             output: Default::default(),
             namespace: Default::default(),
