@@ -889,7 +889,7 @@ impl SctkState {
             id,
             layer,
             keyboard_interactivity,
-            pointer_interactivity,
+            input_zone,
             anchor,
             output,
             namespace,
@@ -944,11 +944,19 @@ impl SctkState {
         layer_surface
             .set_size(size.0.unwrap_or_default(), size.1.unwrap_or_default());
         layer_surface.set_exclusive_zone(exclusive_zone);
-        if !pointer_interactivity {
+        if let Some(zone) = &input_zone {
             let region = self
                 .compositor_state
                 .wl_compositor()
                 .create_region(&self.queue_handle, ());
+            for rect in zone {
+                region.add(
+                    rect.x.round() as i32,
+                    rect.y.round() as i32,
+                    rect.width.round() as i32,
+                    rect.height.round() as i32,
+                );
+            }
             layer_surface.set_input_region(Some(&region));
             region.destroy();
         }
