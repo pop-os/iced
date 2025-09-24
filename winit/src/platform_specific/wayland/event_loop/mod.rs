@@ -18,7 +18,9 @@ use crate::{
     subsurface_widget::SubsurfaceState,
 };
 
-use cctk::sctk::reexports::calloop_wayland_source::WaylandSource;
+use cctk::{
+    cosmic_protocols::corner_radius::v1::client::cosmic_corner_radius_manager_v1::CosmicCornerRadiusManagerV1, sctk::reexports::calloop_wayland_source::WaylandSource, toplevel_info::ToplevelInfoState
+};
 use cctk::{
     sctk::{
         activation::ActivationState,
@@ -37,7 +39,6 @@ use cctk::{
         shell::{WaylandSurface, wlr_layer::LayerShell, xdg::XdgShell},
         shm::Shm,
     },
-    toplevel_info::ToplevelInfoState,
     toplevel_management::ToplevelManagerState,
 };
 use raw_window_handle::HasDisplayHandle;
@@ -126,7 +127,10 @@ impl SctkEventLoop {
                                 window,
                                 id,
                             ) => {
-                                state.windows.push(SctkWindow { window, id });
+                                state.windows.push(SctkWindow { window, id, corner_radius: Default::default() });
+                                if let Some(v) = state.pending_corner_radius.remove(&id) {
+                                    _ = state.handle_action(iced_runtime::platform_specific::wayland::Action::RoundedCorners(id, Some(v)));
+                                }
                             }
                             crate::platform_specific::Action::RemoveWindow(
                                 id,
@@ -201,7 +205,7 @@ impl SctkEventLoop {
                                     let half_h = size.height / 2.;
                                     match settings.gravity {
                                         wayland_protocols::xdg::shell::client::xdg_positioner::Gravity::None => {
-                                            // center on 
+                                            // center on
                                             loc.x -= half_w;
                                             loc.y -= half_h;
                                         },
@@ -306,6 +310,11 @@ impl SctkEventLoop {
                             &registry_state,
                             &qh,
                         ),
+                        corner_radius_manager: registry_state.bind_one::<CosmicCornerRadiusManagerV1, _, _>(
+                        &qh,
+                        1..=1,
+                        (),
+                    ).ok(),
                         toplevel_manager: ToplevelManagerState::try_new(
                             &registry_state,
                             &qh,
@@ -348,6 +357,7 @@ impl SctkEventLoop {
                         token_senders: HashMap::new(),
                         overlap_notifications: HashMap::new(),
                         subsurface_state: None,
+                        pending_corner_radius: HashMap::new(),
                     },
                     _features: Default::default(),
                 };

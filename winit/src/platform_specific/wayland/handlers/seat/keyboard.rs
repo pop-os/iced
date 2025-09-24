@@ -2,11 +2,11 @@ use crate::platform_specific::wayland::{
     event_loop::state::SctkState,
     sctk_event::{KeyboardEventVariant, SctkEvent},
 };
-use cctk::sctk::reexports::client::Proxy;
 use cctk::sctk::{
     delegate_keyboard,
     seat::keyboard::{KeyboardHandler, Keysym},
 };
+use cctk::sctk::{reexports::client::Proxy, seat::keyboard::RawModifiers};
 
 impl KeyboardHandler for SctkState {
     fn enter(
@@ -232,7 +232,8 @@ impl KeyboardHandler for SctkState {
         keyboard: &cctk::sctk::reexports::client::protocol::wl_keyboard::WlKeyboard,
         _serial: u32,
         modifiers: cctk::sctk::seat::keyboard::Modifiers,
-        layout: u32,
+        _raw_modifiers: RawModifiers,
+        _layout: u32,
     ) {
         let (is_active, my_seat) =
             match self.seats.iter_mut().enumerate().find_map(|(i, s)| {
@@ -267,6 +268,17 @@ impl KeyboardHandler for SctkState {
                 }
             }
         }
+    }
+
+    fn repeat_key(
+        &mut self,
+        _conn: &wayland_client::Connection,
+        _qh: &wayland_client::QueueHandle<Self>,
+        _keyboard: &wayland_client::protocol::wl_keyboard::WlKeyboard,
+        _serial: u32,
+        _event: cctk::sctk::seat::keyboard::KeyEvent,
+    ) {
+        // TODO
     }
 }
 

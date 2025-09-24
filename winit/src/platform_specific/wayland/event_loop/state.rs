@@ -1,8 +1,5 @@
 use crate::{
     Control,
-    sctk_event::KeyboardEventVariant,
-    subsurface_widget::SubsurfaceState,
-    wayland::SubsurfaceInstance,
     handlers::{
         activation::IcedRequestData,
         overlap::{OverlapNotificationV1, OverlapNotifyV1},
@@ -17,6 +14,9 @@ use crate::{
             sctk_event::{LayerSurfaceEventVariant, SctkEvent},
         },
     },
+    sctk_event::KeyboardEventVariant,
+    subsurface_widget::SubsurfaceState,
+    wayland::SubsurfaceInstance,
 };
 use iced_futures::{
     core::{Rectangle, Size},
@@ -27,7 +27,7 @@ use std::{
     collections::{HashMap, HashSet},
     convert::Infallible,
     fmt::Debug,
-    sync::{atomic::AtomicU32, Arc, Mutex},
+    sync::{Arc, Mutex, atomic::AtomicU32},
     thread::panicking,
     time::Duration,
 };
@@ -37,66 +37,85 @@ use winit::{
     platform::wayland::WindowExtWayland,
 };
 
+use cctk::{
+    cosmic_protocols::{
+        corner_radius::v1::client::{
+            cosmic_corner_radius_manager_v1::CosmicCornerRadiusManagerV1,
+            cosmic_corner_radius_toplevel_v1::CosmicCornerRadiusToplevelV1,
+        },
+        overlap_notify::v1::client::zcosmic_overlap_notification_v1::ZcosmicOverlapNotificationV1,
+    },
+    sctk::{
+        activation::{ActivationState, RequestData},
+        compositor::CompositorState,
+        error::GlobalError,
+        globals::GlobalData,
+        output::OutputState,
+        reexports::{
+            calloop::{LoopHandle, timer::TimeoutAction},
+            client::{
+                Connection, Proxy, QueueHandle, delegate_noop,
+                protocol::{
+                    wl_keyboard::WlKeyboard,
+                    wl_output::WlOutput,
+                    wl_region::WlRegion,
+                    wl_seat::WlSeat,
+                    wl_subsurface::WlSubsurface,
+                    wl_surface::{self, WlSurface},
+                    wl_touch::WlTouch,
+                },
+            },
+        },
+        registry::RegistryState,
+        seat::{
+            SeatState,
+            keyboard::KeyEvent,
+            pointer::{CursorIcon, PointerData, ThemedPointer},
+            touch::TouchData,
+        },
+        session_lock::{
+            SessionLock, SessionLockState, SessionLockSurface,
+            SessionLockSurfaceConfigure,
+        },
+        shell::{
+            WaylandSurface,
+            wlr_layer::{
+                Anchor, KeyboardInteractivity, Layer, LayerShell, LayerSurface,
+                LayerSurfaceConfigure, SurfaceKind,
+            },
+            xdg::{
+                XdgPositioner, XdgShell,
+                popup::{Popup, PopupConfigure},
+            },
+        },
+        shm::{Shm, multi::MultiPool},
+    },
+    toplevel_info::ToplevelInfoState,
+    toplevel_management::ToplevelManagerState,
+};
 use iced_runtime::{
     core::{self, Point, touch},
     keyboard::Modifiers,
     platform_specific::{
         self,
         wayland::{
-            layer_surface::{IcedMargin, IcedOutput, SctkLayerSurfaceSettings}, popup::SctkPopupSettings, subsurface::{self, SctkSubsurfaceSettings}, Action
+            Action, CornerRadius,
+            layer_surface::{IcedMargin, IcedOutput, SctkLayerSurfaceSettings},
+            popup::SctkPopupSettings,
+            subsurface::{self, SctkSubsurfaceSettings},
         },
     },
 };
-use cctk::{cosmic_protocols::overlap_notify::v1::client::zcosmic_overlap_notification_v1::ZcosmicOverlapNotificationV1, sctk::{
-    activation::{ActivationState, RequestData},
-    compositor::CompositorState,
-    error::GlobalError,
-    globals::GlobalData,
-    output::OutputState,
-    reexports::{
-        calloop::{LoopHandle, timer::TimeoutAction},
-        client::{
-            Connection, Proxy, QueueHandle, delegate_noop,
-            protocol::{
-                wl_keyboard::WlKeyboard,
-                wl_output::WlOutput,
-                wl_region::WlRegion,
-                wl_seat::WlSeat,
-                wl_subsurface::WlSubsurface,
-                wl_surface::{self, WlSurface},
-                wl_touch::WlTouch,
-            },
-        },
-    },
-    registry::RegistryState,
-    seat::{
-        SeatState,
-        keyboard::KeyEvent,
-        pointer::{CursorIcon, PointerData, ThemedPointer},
-        touch::TouchData,
-    },
-    session_lock::{
-        SessionLock, SessionLockState, SessionLockSurface,
-        SessionLockSurfaceConfigure,
-    },
-    shell::{
-        WaylandSurface,
-        wlr_layer::{
-            Anchor, KeyboardInteractivity, Layer, LayerShell, LayerSurface,
-            LayerSurfaceConfigure, SurfaceKind,
-        },
-        xdg::{
-            XdgPositioner, XdgShell,
-            popup::{Popup, PopupConfigure},
-        },
-    },
-    shm::{multi::MultiPool, Shm},
-}, toplevel_info::ToplevelInfoState, toplevel_management::ToplevelManagerState};
 use wayland_protocols::{
     wp::{
-        fractional_scale::v1::client::wp_fractional_scale_v1::WpFractionalScaleV1, keyboard_shortcuts_inhibit::zv1::client::{zwp_keyboard_shortcuts_inhibit_manager_v1, zwp_keyboard_shortcuts_inhibitor_v1}, viewporter::client::wp_viewport::WpViewport
+        fractional_scale::v1::client::wp_fractional_scale_v1::WpFractionalScaleV1,
+        keyboard_shortcuts_inhibit::zv1::client::{
+            zwp_keyboard_shortcuts_inhibit_manager_v1,
+            zwp_keyboard_shortcuts_inhibitor_v1,
+        },
+        viewporter::client::wp_viewport::WpViewport,
     },
-    xdg::shell::client::xdg_surface::XdgSurface,
+    xdg::shell::client::{xdg_surface::XdgSurface, xdg_toplevel::XdgToplevel},
 };
 
 pub static TOKEN_CTR: AtomicU32 = AtomicU32::new(0);
@@ -311,9 +330,22 @@ pub struct SctkPopupData {
     pub(crate) grab: bool,
 }
 
+#[derive(Debug)]
+pub struct MyCosmicCornerRadiusToplevelV1(CosmicCornerRadiusToplevelV1);
+
+impl Drop for MyCosmicCornerRadiusToplevelV1 {
+    fn drop(&mut self) {
+        self.0.destroy();
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct SctkCornerRadius(Arc<MyCosmicCornerRadiusToplevelV1>);
+
 pub struct SctkWindow {
     pub(crate) window: Arc<dyn winit::window::Window>,
     pub(crate) id: core::window::Id,
+    pub(crate) corner_radius: Option<(SctkCornerRadius, CornerRadius)>,
 }
 
 impl SctkWindow {
@@ -347,6 +379,19 @@ impl SctkWindow {
         }
         .unwrap();
         XdgSurface::from_id(conn, id).unwrap()
+    }
+
+    pub fn xdg_toplevel(&self, conn: &Connection) -> XdgToplevel {
+        let window_handle = self.window.xdg_toplevel().unwrap();
+
+        let id = unsafe {
+            ObjectId::from_ptr(
+                XdgToplevel::interface(),
+                window_handle.as_ptr().cast(),
+            )
+        }
+        .unwrap();
+        XdgToplevel::from_id(conn, id).unwrap()
     }
 }
 
@@ -436,6 +481,9 @@ pub struct SctkState {
     pub(crate) inhibitor: Option<zwp_keyboard_shortcuts_inhibitor_v1::ZwpKeyboardShortcutsInhibitorV1>,
     pub(crate) inhibited: bool,
     pub(crate) inhibitor_manager: Option<zwp_keyboard_shortcuts_inhibit_manager_v1::ZwpKeyboardShortcutsInhibitManagerV1>,
+
+    pub(crate) corner_radius_manager: Option<CosmicCornerRadiusManagerV1>,
+    pub(crate) pending_corner_radius: HashMap<core::window::Id, CornerRadius>
 }
 
 /// An error that occurred while running an application.
@@ -722,6 +770,7 @@ impl SctkState {
                 else {
                     return Err(PopupCreationError::ParentMissing);
                 };
+
                 (
                     &parent_window.wl_surface(&self.connection),
                     Popup::from_surface(
@@ -1468,11 +1517,50 @@ impl SctkState {
             Action::InhibitShortcuts(v) => {
                 if let Some(manager) = self.inhibitor_manager.as_ref() {
                     if let Some(inhibit) = self.inhibitor.take() {
-                            inhibit.destroy();
+                        inhibit.destroy();
                     }
                     if v {
                         self.inhibitor = self.seats.iter().next()
                         .and_then(|s| s.kbd_focus.as_ref().map(|surface| manager.inhibit_shortcuts(surface, &s.seat, &self.queue_handle, ())));
+                    }
+                }
+            }
+            Action::RoundedCorners(id, v) => {
+                if let Some(manager) = self.corner_radius_manager.as_ref() {
+                    if let Some(w) = self.windows.iter_mut().find(|w| w.id == id) {
+                        if let Some(radii) = v {
+                            if let Some((protocol_object, corner_radii)) = w.corner_radius.as_mut() {
+                                if *corner_radii != radii {
+                                    protocol_object.0.0.set_radius(radii.top_left,
+                                    radii.top_right,
+                                    radii.bottom_right,
+                                    radii.bottom_left,);
+                                    *corner_radii = radii.clone();
+                                }
+                            } else {
+                                let toplevel = w.xdg_toplevel(&self.connection);
+
+                                let protocol_object = manager.get_corner_radius(&toplevel, &self.queue_handle, ());
+                                protocol_object.set_radius(
+                                    radii.top_left,
+                                    radii.top_right,
+                                    radii.bottom_right,
+                                    radii.bottom_left,
+                                );
+                                w.corner_radius = Some((SctkCornerRadius(Arc::new(MyCosmicCornerRadiusToplevelV1( protocol_object))), radii.clone()));
+                            }
+                        } else {
+                            if let Some(old) = w.corner_radius.take() {
+                                old.0.0.as_ref().0.unset_radius();
+                            }
+                            w.corner_radius = None;
+                        }
+                    } else {
+                        if let Some(v) = v{
+                            _ = self.pending_corner_radius.insert(id, v);
+                        } else {
+                            _ = self.pending_corner_radius.remove(&id);
+                        }
                     }
                 }
             }
