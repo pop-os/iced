@@ -33,6 +33,16 @@ pub enum Action {
     Subsurface(subsurface::Action),
     /// Keyboard inhibit shortcuts
     InhibitShortcuts(bool),
+    /// Rounded corners in logical space
+    RoundedCorners(iced_core::window::Id, Option<CornerRadius>),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct CornerRadius {
+    pub top_left: u32,
+    pub top_right: u32,
+    pub bottom_left: u32,
+    pub bottom_right: u32,
 }
 
 impl Debug for Action {
@@ -56,6 +66,9 @@ impl Debug for Action {
             }
             Action::InhibitShortcuts(v) => {
                 f.debug_tuple("InhibitShortcuts").field(v).finish()
+            }
+            Action::RoundedCorners(id, v) => {
+                f.debug_tuple("RoundedCorners").field(id).field(v).finish()
             }
         }
     }
