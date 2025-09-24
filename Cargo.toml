@@ -197,7 +197,7 @@ pulldown-cmark = "0.12"
 qrcode = { version = "0.13", default-features = false }
 raw-window-handle = "0.6"
 rustc-hash = "2.0"
-cctk = { git = "https://github.com/pop-os/cosmic-protocols", package = "cosmic-client-toolkit", rev = "6254f50" }
+cctk = { git = "https://github.com/pop-os/cosmic-protocols", package = "cosmic-client-toolkit", rev = "633beb0" }
 smol = "1.0"
 smol_str = "0.2"
 softbuffer = { git = "https://github.com/pop-os/softbuffer", tag = "cosmic-4.0" }
@@ -226,7 +226,7 @@ winapi = "0.3"
 window_clipboard = { git = "https://github.com/pop-os/window_clipboard.git", tag = "pop-0.13-2" }
 dnd = { git = "https://github.com/pop-os/window_clipboard.git", tag = "pop-0.13-2" }
 mime = { git = "https://github.com/pop-os/window_clipboard.git", tag = "pop-0.13-2" }
-winit = { git = "https://github.com/pop-os/winit.git", tag = "iced-xdg-surface-0.13" }
+winit = { git = "https://github.com/pop-os/winit.git", branch = "xdg-toplevel" }
 # winit = { path = "../../winit" }
 # winit = { git = "https://github.com/iced-rs/winit.git", rev = "254d6b3420ce4e674f516f7a2bd440665e05484d" }
 # winit = { git = "https://github.com/rust-windowing/winit.git", rev = "241b7a80bba96c91fa3901729cd5dec66abb9be4" }
