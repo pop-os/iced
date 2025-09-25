@@ -10,6 +10,8 @@ use window_manager::ViewFn;
 use winit::dpi::PhysicalSize;
 use winit::event::WindowEvent;
 use winit::event_loop::OwnedDisplayHandle;
+#[cfg(feature = "wayland")]
+use winit::platform::wayland::WindowExtWayland;
 
 use crate::conversion;
 use crate::core;
@@ -1496,6 +1498,7 @@ async fn run_instance<'a, P, C>(
                                 window_event,
                                 window.state.scale_factor(),
                                 window.state.modifiers(),
+                                window.raw.as_ref(),
                             ) {
                                 events.push((Some(id), event));
                             }
