@@ -1283,6 +1283,7 @@ async fn run_instance<P>(
                         event,
                         window.state.scale_factor(),
                         window.state.modifiers(),
+                        window.raw.as_ref(),
                     ) {
                         events.push((Some(id), event));
                     }

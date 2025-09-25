@@ -199,6 +199,7 @@ pub fn window_event(
     event: winit::event::WindowEvent,
     scale_factor: f64,
     modifiers: winit::keyboard::ModifiersState,
+    window: &dyn winit::window::Window,
 ) -> Option<Event> {
     use winit::event::Ime;
     use winit::event::WindowEvent;
@@ -436,7 +437,18 @@ pub fn window_event(
                 ),
             )))
         }
+        #[cfg(feature = "wayland")]
+        WindowEvent::WindowStateChanged => {
+            use cctk::sctk::reexports::csd_frame::WindowState;
+            use winit::platform::wayland::WindowExtWayland;
 
+            let s = window.window_state();
+            Some(Event::PlatformSpecific(iced_futures::core::event::PlatformSpecific::Wayland(
+                iced_runtime::core::event::wayland::Event::Window(
+                    iced_runtime::core::event::wayland::WindowEvent::WindowState(s.unwrap_or(WindowState::empty()))
+                ),
+            )))
+        }
         _ => None,
     }
 }
