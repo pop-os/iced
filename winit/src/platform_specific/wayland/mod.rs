@@ -33,6 +33,7 @@ pub(crate) enum Action {
     SetCursor(CursorIcon),
     RequestRedraw(ObjectId),
     TrackWindow(Arc<dyn winit::window::Window>, window::Id),
+    ResizeWindow(window::Id),
     RemoveWindow(window::Id),
     Dropped(SurfaceIdWrapper),
     SubsurfaceResize(window::Id, Size),
@@ -60,6 +61,9 @@ impl std::fmt::Debug for Action {
                 .field(id)
                 .field(size)
                 .finish(),
+            Self::ResizeWindow(arg0) => {
+                f.debug_tuple("ResizeWindow").field(arg0).finish()
+            }
         }
     }
 }

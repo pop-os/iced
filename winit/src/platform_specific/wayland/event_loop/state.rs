@@ -346,7 +346,7 @@ pub struct SctkCornerRadius(Arc<MyCosmicCornerRadiusToplevelV1>);
 pub struct SctkWindow {
     pub(crate) window: Arc<dyn winit::window::Window>,
     pub(crate) id: core::window::Id,
-    pub(crate) corner_radius: Option<(SctkCornerRadius, CornerRadius)>,
+    pub(crate) corner_radius: Option<(SctkCornerRadius, Option<CornerRadius>)>,
 }
 
 impl SctkWindow {
@@ -1531,32 +1531,44 @@ impl SctkState {
             Action::RoundedCorners(id, v) => {
                 if let Some(manager) = self.corner_radius_manager.as_ref() {
                     if let Some(w) = self.windows.iter_mut().find(|w| w.id == id) {
+                        let geo_size: LogicalSize<f64> = w.window.surface_size().cast::<f64>().to_logical(w.window.scale_factor());
+                        let half_min_dim = ((geo_size.width as u32).min(geo_size.height as u32) / 2);
+
                         if let Some(radii) = v {
+                            let adjusted_radii  = CornerRadius {
+                                top_left: radii.top_left.min(half_min_dim),
+                                top_right: radii.top_right.min(half_min_dim),
+                                bottom_right: radii.bottom_right.min(half_min_dim),
+                                bottom_left: radii.bottom_left.min(half_min_dim),
+                            };
                             if let Some((protocol_object, corner_radii)) = w.corner_radius.as_mut() {
-                                if *corner_radii != radii {
-                                    protocol_object.0.0.set_radius(radii.top_left,
-                                    radii.top_right,
-                                    radii.bottom_right,
-                                    radii.bottom_left,);
-                                    *corner_radii = radii.clone();
+                                if *corner_radii != Some(adjusted_radii) {
+                                    protocol_object.0.0.set_radius(
+                                        adjusted_radii.top_left,
+                                        adjusted_radii.top_right,
+                                        adjusted_radii.bottom_right,
+                                        adjusted_radii.bottom_left,
+                                    );
+                                    *corner_radii = Some(adjusted_radii.clone());
                                 }
                             } else {
                                 let toplevel = w.xdg_toplevel(&self.connection);
 
                                 let protocol_object = manager.get_corner_radius(&toplevel, &self.queue_handle, ());
+
                                 protocol_object.set_radius(
-                                    radii.top_left,
-                                    radii.top_right,
-                                    radii.bottom_right,
-                                    radii.bottom_left,
+                                    adjusted_radii.top_left,
+                                    adjusted_radii.top_right,
+                                    adjusted_radii.bottom_right,
+                                    adjusted_radii.bottom_left,
                                 );
-                                w.corner_radius = Some((SctkCornerRadius(Arc::new(MyCosmicCornerRadiusToplevelV1( protocol_object))), radii.clone()));
+                                w.corner_radius = Some((SctkCornerRadius(Arc::new(MyCosmicCornerRadiusToplevelV1( protocol_object))), Some(adjusted_radii.clone())));
                             }
                         } else {
-                            if let Some(old) = w.corner_radius.take() {
+                            if let Some(old) = w.corner_radius.as_mut() {
                                 old.0.0.as_ref().0.unset_radius();
+                                old.1 = None;
                             }
-                            w.corner_radius = None;
                         }
                     } else {
                         if let Some(v) = v{
