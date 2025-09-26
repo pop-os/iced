@@ -123,6 +123,14 @@ impl SctkEventLoop {
                                     log::warn!("{err:?}");
                                 }
                             }
+                            crate::platform_specific::Action::ResizeWindow(id) => {
+                                if let Some((_, v)) = state.windows.iter()
+                                    .find(|w| w.id == id)
+                                    .map(|w| w.corner_radius.as_ref())
+                                    .unwrap_or_default() {
+                                    _ = state.handle_action(iced_runtime::platform_specific::wayland::Action::RoundedCorners(id, *v));
+                                }
+                            }
                             crate::platform_specific::Action::TrackWindow(
                                 window,
                                 id,

@@ -1224,6 +1224,24 @@ async fn run_instance<'a, P, C>(
                             continue;
                         };
 
+                        // XX must force update to corner radius before the surface is committed.
+                        #[cfg(feature = "wayland")]
+                        if window.viewport_version
+                            != window.state.viewport_version()
+                            || window.size() != window.state.logical_size()
+                        {
+                            platform_specific_handler.send_wayland(
+                                platform_specific::Action::ResizeWindow(id),
+                            );
+                            window.redraw_requested = true;
+                            control_sender
+                                .start_send(Control::Winit(
+                                    window.raw.id(),
+                                    WindowEvent::RedrawRequested,
+                                ))
+                                .expect("Send redraw event");
+                        }
+
                         window.redraw_requested = false;
 
                         // TODO: Avoid redrawing all the time by forcing widgets to
