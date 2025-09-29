@@ -10,10 +10,10 @@ async-io = ["accesskit_winit?/async-io"]
 tokio = ["accesskit_winit?/tokio"]
 
 [dependencies]
-accesskit = { git = "https://github.com/wash2/accesskit", tag = "iced-xdg-surface-0.13" }
-accesskit_windows = { git = "https://github.com/wash2/accesskit", tag = "iced-xdg-surface-0.13", optional = true }
-accesskit_macos = { git = "https://github.com/wash2/accesskit", tag = "iced-xdg-surface-0.13", optional = true }
-accesskit_winit = { git = "https://github.com/wash2/accesskit", tag = "iced-xdg-surface-0.13", optional = true, default-features = false, features = [
+accesskit = { git = "https://github.com/wash2/accesskit", tag = "iced-xdg-surface-0.13-rc" }
+accesskit_windows = { git = "https://github.com/wash2/accesskit", tag = "iced-xdg-surface-0.13-rc", optional = true }
+accesskit_macos = { git = "https://github.com/wash2/accesskit", tag = "iced-xdg-surface-0.13-rc", optional = true }
+accesskit_winit = { git = "https://github.com/wash2/accesskit", tag = "iced-xdg-surface-0.13-rc", optional = true, default-features = false, features = [
     "rwh_06",
 ] }
 # accesskit = { path = "../../../../accesskit/common" }
