@@ -722,7 +722,7 @@ impl SctkState {
             settings.positioner.offset.0,
             settings.positioner.offset.1,
         );
-        if settings.positioner.reactive {
+        if positioner.version() >= 3 && settings.positioner.reactive {
             positioner.set_reactive();
         }
         positioner.set_size(size.0 as i32, size.1 as i32);
