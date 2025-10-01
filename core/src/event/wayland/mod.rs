@@ -31,7 +31,7 @@ pub enum Event {
     /// output event
     Output(OutputEvent, WlOutput),
     /// Overlap notify event
-    OverlapNotify(overlap_notify::OverlapNotifyEvent),
+    OverlapNotify(overlap_notify::OverlapNotifyEvent, WlSurface, Id),
     /// window event
     Window(WindowEvent),
     /// Seat Event

@@ -35,7 +35,7 @@ pub struct SctkSubsurfaceSettings {
 
     /// input zone
     /// None results in accepting all input
-    pub input_zone: Option<Rectangle>,
+    pub input_zone: Option<Vec<Rectangle>>,
 }
 
 impl Hash for SctkSubsurfaceSettings {
