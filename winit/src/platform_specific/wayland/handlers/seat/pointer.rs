@@ -147,9 +147,17 @@ impl PointerHandler for SctkState {
                                 horizontal,
                                 vertical,
                                 source,
-                            } => WindowEvent::MouseWheel {
-                                device_id: Default::default(),
-                                delta: if horizontal.discrete > 0 {
+                            } => {
+                                let delta = if horizontal.value120 != 0
+                                    || vertical.value120 != 0
+                                {
+                                    MouseScrollDelta::LineDelta(
+                                        -horizontal.value120 as f32 / 120.,
+                                        -vertical.value120 as f32 / 120.,
+                                    )
+                                } else if horizontal.discrete != 0
+                                    || vertical.discrete != 0
+                                {
                                     MouseScrollDelta::LineDelta(
                                         -horizontal.discrete as f32,
                                         -vertical.discrete as f32,
@@ -161,13 +169,18 @@ impl PointerHandler for SctkState {
                                             -vertical.absolute,
                                         ),
                                     )
-                                },
-                                phase: if horizontal.stop {
-                                    TouchPhase::Ended
-                                } else {
-                                    TouchPhase::Moved
-                                },
-                            },
+                                };
+
+                                WindowEvent::MouseWheel {
+                                    device_id: Default::default(),
+                                    delta,
+                                    phase: if horizontal.stop {
+                                        TouchPhase::Ended
+                                    } else {
+                                        TouchPhase::Moved
+                                    },
+                                }
+                            }
                         },
                     ));
                 }
