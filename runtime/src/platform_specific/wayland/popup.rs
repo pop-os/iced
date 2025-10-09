@@ -27,7 +27,7 @@ pub struct SctkPopupSettings {
     pub close_with_children: bool,
     /// input zone
     /// None results in accepting all input
-    pub input_zone: Option<Rectangle>,
+    pub input_zone: Option<Vec<Rectangle>>,
 }
 
 impl Hash for SctkPopupSettings {
