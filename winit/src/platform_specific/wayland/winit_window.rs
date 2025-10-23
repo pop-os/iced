@@ -110,6 +110,12 @@ impl winit::window::Window for SctkWinitWindow {
                 if logical_size.width == 0 || logical_size.height == 0 {
                     return None;
                 }
+                if guard.size.width == logical_size.width
+                    && guard.size.height == logical_size.height
+                {
+                    return None;
+                }
+
                 guard.size = logical_size;
                 guard.requested_size.0 = Some(guard.size.width);
                 guard.requested_size.1 = Some(guard.size.height);
@@ -147,6 +153,12 @@ impl winit::window::Window for SctkWinitWindow {
                 if logical_size.height > 0 {
                     guard.size.height = logical_size.height;
                 }
+                if guard.size.width == logical_size.width
+                    && guard.size.height == logical_size.height
+                {
+                    return None;
+                }
+
                 layer_surface.set_size(logical_size.width, logical_size.height);
                 if let Some(viewport) = guard.wp_viewport.as_ref() {
                     // Set inner size without the borders.
@@ -158,6 +170,11 @@ impl winit::window::Window for SctkWinitWindow {
             }
             CommonSurface::Lock(_) => {}
             CommonSurface::Subsurface { .. } => {
+                if guard.size.width == logical_size.width
+                    && guard.size.height == logical_size.height
+                {
+                    return None;
+                }
                 guard.requested_size = (
                     (logical_size.width > 0).then_some(logical_size.width),
                     (logical_size.height > 0).then_some(logical_size.height),
