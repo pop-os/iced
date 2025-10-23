@@ -274,6 +274,11 @@ pub struct SctkPopup {
 
 impl SctkPopup {
     pub(crate) fn set_size(&mut self, w: u32, h: u32, token: u32) {
+        let guard = self.common.lock().unwrap();
+        if guard.size.width == w && guard.size.height == h {
+            return;
+        }
+        drop(guard);
         // update geometry
         self.popup
             .xdg_surface()
@@ -286,6 +291,9 @@ impl SctkPopup {
 
     pub(crate) fn update_viewport(&mut self, w: u32, h: u32) {
         let common = self.common.lock().unwrap();
+        if common.size.width == w && common.size.height == h {
+            return;
+        }
         if let Some(viewport) = common.wp_viewport.as_ref() {
             // Set inner size without the borders.
             viewport.set_destination(w as i32, h as i32);
