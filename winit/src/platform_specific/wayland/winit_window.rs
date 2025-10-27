@@ -143,16 +143,16 @@ impl winit::window::Window for SctkWinitWindow {
                     (logical_size.width > 0).then_some(logical_size.width),
                     (logical_size.height > 0).then_some(logical_size.height),
                 );
+                if guard.size.width == logical_size.width
+                    && guard.size.height == logical_size.height
+                {
+                    return None;
+                }
                 if logical_size.width > 0 {
                     guard.size.width = logical_size.width;
                 }
                 if logical_size.height > 0 {
                     guard.size.height = logical_size.height;
-                }
-                if guard.size.width == logical_size.width
-                    && guard.size.height == logical_size.height
-                {
-                    return None;
                 }
 
                 layer_surface.set_size(logical_size.width, logical_size.height);
