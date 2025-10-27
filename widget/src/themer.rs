@@ -83,6 +83,10 @@ where
         self.content.as_widget().children()
     }
 
+    fn children_count(&self) -> usize {
+        self.content.as_widget().children_count()
+    }
+
     fn diff(&mut self, tree: &mut Tree) {
         self.content.as_widget_mut().diff(tree);
     }

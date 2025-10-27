@@ -129,6 +129,10 @@ where
         self.with_element(|element| vec![Tree::new(element.as_widget())])
     }
 
+    fn children_count(&self) -> usize {
+        1
+    }
+
     fn diff(&mut self, tree: &mut Tree) {
         let current = tree
             .state

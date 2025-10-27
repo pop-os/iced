@@ -393,6 +393,10 @@ where
             self.content.as_widget().children()
         }
 
+        fn children_count(&self) -> usize {
+            self.content.as_widget().children_count()
+        }
+
         fn diff(&mut self, tree: &mut Tree) {
             self.content.as_widget_mut().diff(tree);
         }
@@ -558,6 +562,10 @@ where
 
         fn children(&self) -> Vec<Tree> {
             vec![Tree::new(&self.base), Tree::new(&self.top)]
+        }
+
+        fn children_count(&self) -> usize {
+            2
         }
 
         fn diff(&mut self, tree: &mut Tree) {

@@ -273,8 +273,8 @@ where
         tree::State::new(state)
     }
 
-    fn children(&self) -> Vec<Tree> {
-        vec![]
+    fn children_count(&self) -> usize {
+        0
     }
 
     fn diff(&mut self, tree: &mut Tree) {
