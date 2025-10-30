@@ -310,6 +310,10 @@ where
         self.widget.children()
     }
 
+    fn children_count(&self) -> usize {
+        self.widget.children_count()
+    }
+
     fn diff(&mut self, tree: &mut Tree) {
         self.widget.diff(tree);
     }
@@ -481,6 +485,10 @@ where
 
     fn children(&self) -> Vec<Tree> {
         self.element.widget.children()
+    }
+
+    fn children_count(&self) -> usize {
+        self.element.widget.children_count()
     }
 
     fn diff(&mut self, tree: &mut Tree) {
