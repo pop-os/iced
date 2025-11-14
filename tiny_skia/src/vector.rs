@@ -175,12 +175,17 @@ impl Cache {
 
             // SVG rendering can panic on malformed or complex vectors.
             // We catch panics to prevent crashes and continue gracefully.
-            let render = panic::catch_unwind(panic::AssertUnwindSafe(|| {
-                resvg::render(tree, transform, &mut image.as_mut());
-            }));
+            let render_result =
+                panic::catch_unwind(panic::AssertUnwindSafe(|| {
+                    resvg::render(tree, transform, &mut image.as_mut());
+                }));
 
-            if let Err(error) = render {
-                log::warn!("SVG rendering for {handle:?} panicked: {error:?}");
+            if render_result.is_err() {
+                log::warn!(
+                    "SVG rendering panicked for handle ID: {}",
+                    handle.id()
+                );
+                return None;
             }
 
             if let Some([r, g, b, _]) = key.color {
