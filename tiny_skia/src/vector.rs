@@ -7,8 +7,8 @@ use tiny_skia::Transform;
 
 use std::cell::RefCell;
 use std::collections::hash_map;
-use std::fs;
 use std::sync::Arc;
+use std::{fs, panic};
 
 #[derive(Debug)]
 pub struct Pipeline {
@@ -169,7 +169,20 @@ impl Cache {
                 tiny_skia::Transform::default()
             };
 
-            resvg::render(tree, transform, &mut image.as_mut());
+            // SVG rendering can panic on malformed or complex vectors.
+            // We catch panics to prevent crashes and continue gracefully.
+            let render_result =
+                panic::catch_unwind(panic::AssertUnwindSafe(|| {
+                    resvg::render(tree, transform, &mut image.as_mut());
+                }));
+
+            if render_result.is_err() {
+                log::warn!(
+                    "SVG rendering panicked for handle ID: {}",
+                    handle.id()
+                );
+                return None;
+            }
 
             if let Some([r, g, b, _]) = key.color {
                 // Apply color filter
