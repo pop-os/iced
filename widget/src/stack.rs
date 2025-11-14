@@ -135,6 +135,10 @@ where
         self.children.iter().map(Tree::new).collect()
     }
 
+    fn children_count(&self) -> usize {
+        self.children.len()
+    }
+
     fn diff(&mut self, tree: &mut Tree) {
         tree.diff_children(&mut self.children);
     }

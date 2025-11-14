@@ -156,6 +156,10 @@ where
         ]
     }
 
+    fn children_count(&self) -> usize {
+        2
+    }
+
     fn state(&self) -> widget::tree::State {
         widget::tree::State::new(State::default())
     }
