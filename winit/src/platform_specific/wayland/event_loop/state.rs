@@ -1054,7 +1054,6 @@ impl SctkState {
                             if let Ok((id, surface, common)) = self.get_layer_surface(builder) {
                                 // TODO Ashley: all surfaces should probably have an optional title for a11y if nothing else
                                 let wl_surface = surface.wl_surface().clone();
-                                receive_frame(&mut self.frame_status, &wl_surface);
                                 send_event(&self.events_sender, &self.proxy,
                                     SctkEvent::LayerSurfaceEvent {
                                         variant: LayerSurfaceEventVariant::Created(self.queue_handle.clone(), surface, id, common, self.connection.display(), title),
