@@ -1,5 +1,5 @@
 use crate::platform_specific::wayland::{
-    event_loop::state::SctkState,
+    event_loop::state::{receive_frame, SctkState},
     sctk_event::{LayerSurfaceEventVariant, SctkEvent},
 };
 use cctk::sctk::{
@@ -42,7 +42,6 @@ impl LayerShellHandler for SctkState {
         mut configure: cctk::sctk::shell::wlr_layer::LayerSurfaceConfigure,
         _serial: u32,
     ) {
-        self.request_redraw(layer.wl_surface());
         let layer =
             match self.layer_surfaces.iter_mut().find(|s| {
                 s.surface.wl_surface().id() == layer.wl_surface().id()
@@ -50,6 +49,7 @@ impl LayerShellHandler for SctkState {
                 Some(l) => l,
                 None => return,
             };
+        let first = layer.last_configure.is_none();
         let common = layer.common.lock().unwrap();
         let requested_size = common.requested_size;
         drop(common);
@@ -65,18 +65,22 @@ impl LayerShellHandler for SctkState {
         };
 
         layer.update_viewport(configure.new_size.0, configure.new_size.1);
-        let first = layer.last_configure.is_none();
         _ = layer.last_configure.replace(configure.clone());
         let mut common = layer.common.lock().unwrap();
         common.size =
             LogicalSize::new(configure.new_size.0, configure.new_size.1);
+        drop(common);
+        let wl_surface = layer.surface.wl_surface().clone();
+        receive_frame(&mut self.frame_status, &wl_surface);
+        self.request_redraw(&wl_surface);
+
         self.sctk_events.push(SctkEvent::LayerSurfaceEvent {
             variant: LayerSurfaceEventVariant::Configure(
                 configure,
-                layer.surface.wl_surface().clone(),
+                wl_surface.clone(),
                 first,
             ),
-            id: layer.surface.wl_surface().clone(),
+            id: wl_surface,
         });
     }
 }
