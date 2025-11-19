@@ -55,6 +55,7 @@ use std::mem::ManuallyDrop;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::Duration;
+use log::trace;
 
 /// An interactive, native, cross-platform, multi-windowed application.
 ///
@@ -885,10 +886,20 @@ async fn run_instance<'a, P, C>(
                 {
                     let Some(window_id) = source_surface.and_then(|source| {
                         match source {
-                            core::clipboard::DndSource::Surface(s) => Some(s),
+                            core::clipboard::DndSource::Surface(s) => {
+                                log::trace!(
+                                    "start_dnd: using explicit surface {:?}",
+                                    s
+                                );
+                                Some(s)
+                            }
                             core::clipboard::DndSource::Widget(w) => {
+                                log::debug!(
+                                    "start_dnd: searching for widget {:?}",
+                                    w
+                                );
                                 // search windows for widget with operation
-                                user_interfaces.iter_mut().find_map(
+                                let result = user_interfaces.iter_mut().find_map(
                                     |(ui_id, ui)| {
                                         let Some(ui_renderer) = window_manager
                                             .get_mut(ui_id.clone())
@@ -920,6 +931,11 @@ async fn run_instance<'a, P, C>(
                                                 operation::Outcome::Some(
                                                     (),
                                                 ) => {
+                                                    log::debug!(
+                                                        "start_dnd: widget {:?} found in {:?}",
+                                                        w,
+                                                        ui_id
+                                                    );
                                                     return Some(ui_id.clone());
                                                 }
                                                 operation::Outcome::Chain(
@@ -932,11 +948,20 @@ async fn run_instance<'a, P, C>(
                                         }
                                         None
                                     },
-                                )
+                                );
+
+                                if result.is_none() {
+                                    log::warn!(
+                                        "start_dnd: widget {:?} not found; drag will fail",
+                                        w
+                                    );
+                                }
+
+                                result
                             }
                         }
                     }) else {
-                        eprintln!("No source surface");
+                        log::warn!("start_dnd: No source surface resolved");
                         continue;
                     };
 
@@ -1797,6 +1822,7 @@ async fn run_instance<'a, P, C>(
             }
 
             Event::Dnd(e) => {
+                trace!(target: "iced::winit::program", "Dnd event {:?}", e);
                 match &e {
                     dnd::DndEvent::Offer(_, dnd::OfferEvent::Leave) => {
                         events.push((cur_dnd_surface, core::Event::Dnd(e)));
