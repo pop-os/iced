@@ -5,6 +5,7 @@ use std::{any::Any, borrow::Cow};
 
 use crate::core::clipboard::Kind;
 use crate::core::clipboard::{DndSource, DynIconSurface};
+use log::trace;
 use std::sync::Arc;
 use winit::dpi::LogicalSize;
 use winit::window::{Window, WindowId};
@@ -271,6 +272,11 @@ impl crate::core::Clipboard for Clipboard {
                 sender,
                 ..
             } => {
+                log::debug!(
+                    "clipboard::start_dnd queued internal={} source={:?}",
+                    internal,
+                    source_surface
+                );
                 _ = sender
                     .sender
                     .unbounded_send(crate::program::Control::StartDnd);
@@ -293,6 +299,25 @@ impl crate::core::Clipboard for Clipboard {
     ) {
         match &self.state {
             State::Connected { clipboard, .. } => {
+                trace!(
+                    target: "iced::winit::clipboard",
+                    "register destination surface={:?} count={}",
+                    surface,
+                    rectangles.len()
+                );
+                for rect in &rectangles {
+                    trace!(
+                        target: "iced::winit::clipboard",
+                        "rect id={:?} bounds=({:.2},{:.2},{:.2},{:.2}) actions={:?} preferred={:?}",
+                        rect.id,
+                        rect.rectangle.x,
+                        rect.rectangle.y,
+                        rect.rectangle.width,
+                        rect.rectangle.height,
+                        rect.actions,
+                        rect.preferred
+                    );
+                }
                 _ = clipboard.register_dnd_destination(surface, rectangles)
             }
             State::Unavailable => {}
