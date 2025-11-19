@@ -224,6 +224,16 @@ impl DndDestinationRectangles {
 
     /// Pushes a new rectangle to the list of DnD destination rectangles.
     pub fn push(&mut self, rectangle: DndDestinationRectangle) {
+        log::debug!(
+            "clipboard: register dnd rectangle id={} rect=({}, {}, {}, {}) mimes={:?} actions={:?}",
+            rectangle.id,
+            rectangle.rectangle.x,
+            rectangle.rectangle.y,
+            rectangle.rectangle.width,
+            rectangle.rectangle.height,
+            rectangle.mime_types,
+            rectangle.actions
+        );
         self.rectangles.push(rectangle);
     }
 

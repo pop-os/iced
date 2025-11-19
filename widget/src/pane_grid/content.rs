@@ -6,7 +6,7 @@ use crate::core::renderer;
 use crate::core::widget::{self, Tree};
 use crate::core::{
     self, Clipboard, Element, Event, Layout, Point, Rectangle, Shell, Size,
-    Vector,
+    Vector, event,
 };
 use crate::pane_grid::{Draggable, TitleBar};
 
@@ -306,6 +306,51 @@ where
         }
 
         None
+    }
+
+    pub(crate) fn drag_destinations(
+        &self,
+        tree: &Tree,
+        layout: Layout<'_>,
+        renderer: &Renderer,
+        dnd_rectangles: &mut core::clipboard::DndDestinationRectangles,
+    ) {
+        let mut body_layout = layout;
+        if self.title_bar.is_some() {
+            let mut children = layout.children();
+            let title_bar_layout = children.next();
+            body_layout = children.next().unwrap_or(layout);
+            if let Some(title_bar_layout) = title_bar_layout {
+                log::trace!(
+                    target: "iced::widget::pane_grid::content",
+                    "title_bar bounds=({:.2},{:.2},{:.2},{:.2}) body_bounds=({:.2},{:.2},{:.2},{:.2})",
+                    title_bar_layout.bounds().x,
+                    title_bar_layout.bounds().y,
+                    title_bar_layout.bounds().width,
+                    title_bar_layout.bounds().height,
+                    body_layout.bounds().x,
+                    body_layout.bounds().y,
+                    body_layout.bounds().width,
+                    body_layout.bounds().height,
+                );
+            }
+        } else {
+            log::trace!(
+                target: "iced::widget::pane_grid::content",
+                "body_bounds=({:.2},{:.2},{:.2},{:.2})",
+                body_layout.bounds().x,
+                body_layout.bounds().y,
+                body_layout.bounds().width,
+                body_layout.bounds().height,
+            );
+        }
+
+        self.body.as_widget().drag_destinations(
+            &tree.children[0],
+            body_layout,
+            renderer,
+            dnd_rectangles,
+        );
     }
 
     pub(crate) fn mouse_interaction(

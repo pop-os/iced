@@ -242,9 +242,7 @@ impl winit::window::Window for SctkWinitWindow {
     }
 
     fn current_monitor(&self) -> Option<winit::monitor::MonitorHandle> {
-        tracing::warn!(
-            "current_monitor is not implemented for wayland windows."
-        );
+        log::warn!("current_monitor is not implemented for wayland windows.");
         None
     }
 
@@ -255,7 +253,7 @@ impl winit::window::Window for SctkWinitWindow {
     }
 
     fn has_focus(&self) -> bool {
-        tracing::warn!("has_focus is not implemented for wayland windows.");
+        log::warn!("has_focus is not implemented for wayland windows.");
         false
     }
 

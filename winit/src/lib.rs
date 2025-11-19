@@ -1491,6 +1491,9 @@ async fn run_instance<P>(
             Event::Exit => break,
             Event::Dnd(e) => {
                 use winit::raw_window_handle::HasWindowHandle;
+
+                log::trace!(target: "iced::winit::program", "Dnd event {:?}", e);
+
                 match &e {
                     dnd::DndEvent::Offer(_, dnd::OfferEvent::Leave) => {
                         events.push((cur_dnd_surface, core::Event::Dnd(e)));
@@ -1577,7 +1580,7 @@ async fn run_instance<P>(
                 let compositor = match compositor.as_mut() {
                     Some(c) => c,
                     None => {
-                        tracing::error!("No compositor for DnD");
+                        log::error!("No compositor for DnD");
                         continue;
                     }
                 };
@@ -1592,10 +1595,20 @@ async fn run_instance<P>(
                 {
                     let Some(window_id) = source_surface.and_then(|source| {
                         match source {
-                            core::clipboard::DndSource::Surface(s) => Some(s),
+                            core::clipboard::DndSource::Surface(s) => {
+                                log::trace!(
+                                    "start_dnd: using explicit surface {:?}",
+                                    s
+                                );
+                                Some(s)
+                            }
                             core::clipboard::DndSource::Widget(w) => {
+                                log::debug!(
+                                    "start_dnd: searching for widget {:?}",
+                                    w
+                                );
                                 // search windows for widget with operation
-                                user_interfaces.iter_mut().find_map(
+                                let result = user_interfaces.iter_mut().find_map(
                                     |(ui_id, ui)| {
                                         let Some(ui_renderer) = window_manager
                                             .get_mut(ui_id.clone())
@@ -1642,7 +1655,14 @@ async fn run_instance<P>(
                                         }
                                         None
                                     },
-                                )
+                                );
+                                if result.is_none() {
+                                    log::warn!(
+                                        "start_dnd: widget {:?} not found; drag will fail",
+                                        w
+                                    );
+                                }
+                                result
                             }
                         }
                     }) else {

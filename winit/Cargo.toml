@@ -50,7 +50,6 @@ iced_accessibility.features = ["accesskit_winit"]
 log.workspace = true
 rustc-hash.workspace = true
 thiserror.workspace = true
-tracing.workspace = true
 window_clipboard.workspace = true
 dnd.workspace = true
 winit.workspace = true

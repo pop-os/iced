@@ -90,6 +90,7 @@ use crate::core::{
     self, Background, Border, Clipboard, Color, Element, Event, Layout, Length,
     Pixels, Point, Rectangle, Shell, Size, Theme, Vector, Widget,
 };
+use log::trace;
 
 const DRAG_DEADBAND_DISTANCE: f32 = 10.0;
 const THICKNESS_RATIO: f32 = 25.0;
@@ -1029,6 +1030,35 @@ where
             .collect::<Vec<_>>();
 
         (!children.is_empty()).then(|| Group::with_children(children).overlay())
+    }
+
+    fn drag_destinations(
+        &self,
+        state: &Tree,
+        layout: Layout<'_>,
+        renderer: &Renderer,
+        dnd_rectangles: &mut crate::core::clipboard::DndDestinationRectangles,
+    ) {
+        self.contents
+            .iter()
+            .zip(state.children.iter())
+            .zip(layout.children())
+            .for_each(|((content, tree), child_layout)| {
+                trace!(
+                    target: "iced::widget::pane_grid",
+                    "pane drag layout bounds=({:.2},{:.2},{:.2},{:.2})",
+                    child_layout.bounds().x,
+                    child_layout.bounds().y,
+                    child_layout.bounds().width,
+                    child_layout.bounds().height
+                );
+                content.drag_destinations(
+                    tree,
+                    child_layout.with_virtual_offset(layout.virtual_offset()),
+                    renderer,
+                    dnd_rectangles,
+                );
+            });
     }
 }
 

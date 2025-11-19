@@ -1444,7 +1444,7 @@ impl SctkState {
                 platform_specific::wayland::session_lock::Action::LockSurface { id, output } => {
                     // Should we panic if the id does not match?
                     if self.lock_surfaces.iter().any(|s| s.output == output) {
-                        tracing::warn!("Cannot create multiple lock surfaces for a single output.");
+                        log::warn!("Cannot create multiple lock surfaces for a single output.");
                         return Ok(());
                     }
                     // TODO how to handle this when there's no lock?
@@ -1488,13 +1488,13 @@ impl SctkState {
             Action::OverlapNotify(id, enabled) => {
                 if let Some(layer_surface) = self.layer_surfaces.iter_mut().find(|l| l.id == id) {
                     let Some(overlap_notify_state) = self.overlap_notify.as_ref() else {
-                        tracing::error!("Overlap notify is not supported.");
+                        log::error!("Overlap notify is not supported.");
                         return Ok(());
                     };
                     let my_id = layer_surface.surface.wl_surface().id();
                     if enabled && !self.overlap_notifications.contains_key(&my_id) {
                         let SurfaceKind::Wlr(wlr) = &layer_surface.surface.kind() else {
-                            tracing::error!("Overlap notify is not supported for non wlr surface.");
+                            log::error!("Overlap notify is not supported for non wlr surface.");
                             return Ok(());
                         };
                         let notification = overlap_notify_state.notify.notify_on_overlap(wlr, &self.queue_handle, OverlapNotificationV1 { surface: layer_surface.surface.wl_surface().clone() });
@@ -1503,7 +1503,7 @@ impl SctkState {
                         _ = self.overlap_notifications.remove(&my_id);
                     }
                 } else {
-                    tracing::error!("Overlap notify subscription cannot be created for surface. No matching layer surface found.");
+                    log::error!("Overlap notify subscription cannot be created for surface. No matching layer surface found.");
                 }
             },
             Action::Subsurface(action) => match action {

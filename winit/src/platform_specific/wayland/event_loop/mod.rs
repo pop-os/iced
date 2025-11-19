@@ -49,7 +49,7 @@ use std::{
     collections::{HashMap, HashSet},
     fmt::Debug,
 };
-use tracing::error;
+use log::error;
 use wayland_backend::client::Backend;
 use wayland_client::globals::GlobalError;
 use wayland_protocols::wp::keyboard_shortcuts_inhibit::zv1::client::zwp_keyboard_shortcuts_inhibit_manager_v1;
