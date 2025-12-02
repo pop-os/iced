@@ -55,6 +55,7 @@ impl Text {
             cosmic_text::Wrap::None,
             None,
             8,
+            cosmic_text::Hinting::Disabled,
         );
 
         let translation_x = match self.horizontal_alignment {
