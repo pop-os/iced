@@ -319,6 +319,10 @@ where
             .collect()
     }
 
+    fn children_count(&self) -> usize {
+        self.contents.len()
+    }
+
     fn diff(&mut self, tree: &mut Tree) {
         match &mut self.contents {
             Contents::All(contents, _) => {
@@ -1221,6 +1225,13 @@ impl<'a, T> Contents<'a, T> {
             Contents::Maximized(pane, content, _) => {
                 Box::new(std::iter::once((*pane, content)))
             }
+        }
+    }
+
+    fn len(&self) -> usize {
+        match self {
+            Contents::All(contents, _) => contents.len(),
+            Contents::Maximized(_, _, _) => 1,
         }
     }
 

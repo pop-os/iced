@@ -202,9 +202,8 @@ impl Tree {
                     })
                 {
                     std::mem::swap(&mut self.state, &mut state);
-                    let widget_children = borrowed.children();
                     if !tag_match
-                        || self.children.len() != widget_children.len()
+                        || self.children.len() != borrowed.children_count()
                     {
                         self.children = borrowed.children();
                     } else {
@@ -250,7 +249,7 @@ impl Tree {
                 if let Some(id) = self.id.clone() {
                     borrowed.set_id(id);
                 }
-                if self.children.len() != borrowed.children().len() {
+                if self.children.len() != borrowed.children_count() {
                     self.children = borrowed.children();
                 }
             }

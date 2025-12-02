@@ -526,6 +526,10 @@ where
         vec![Tree::new(&self.content)]
     }
 
+    fn children_count(&self) -> usize {
+        1
+    }
+
     fn diff(&mut self, tree: &mut Tree) {
         tree.diff_children(std::slice::from_mut(&mut self.content));
     }
