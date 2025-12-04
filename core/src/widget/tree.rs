@@ -12,6 +12,12 @@ thread_local! {
 pub static NAMED: std::cell::RefCell<HashMap<Cow<'static, str>, (State, Vec<(usize, Tree)>)>> = std::cell::RefCell::new(HashMap::new());
 }
 
+impl Default for Tree {
+    fn default() -> Self {
+        Self::empty()
+    }
+}
+
 /// A persistent state widget tree.
 ///
 /// A [`Tree`] is normally associated with a specific widget in the widget tree.
@@ -58,75 +64,375 @@ impl Tree {
         }
     }
 
-    /// Takes all named widgets from the tree.
     pub fn take_all_named(
         &mut self,
     ) -> HashMap<Cow<'static, str>, (State, Vec<(usize, Tree)>)> {
+        #[derive(Debug, Clone)]
+        enum NodeParent {
+            Named(Cow<'static, str>),
+            Unnamed(u32),
+        }
+
+        enum Node<'a> {
+            Tree(&'a mut Tree),
+            Unnamed {
+                parent: NodeParent,
+                unnamed_id: u32,
+                child_index: Option<usize>,
+            },
+        }
+
+        // Helper: create an unnamed Node
+        fn make_unnamed_node(
+            parent: NodeParent,
+            child_index: Option<usize>,
+            tree: &mut Tree,
+            unnamed: &mut HashMap<u32, Tree>,
+            ctr: &mut u32,
+        ) -> Node<'static> {
+            _ = ctr.checked_add(1).unwrap();
+            let tree = mem::replace(
+                tree,
+                Tree {
+                    id: tree.id.clone(),
+                    tag: tree.tag,
+                    ..Tree::empty()
+                },
+            );
+            _ = unnamed.insert(*ctr, tree);
+            Node::Unnamed {
+                parent,
+                unnamed_id: *ctr,
+                child_index,
+            }
+        }
+
         let mut named = HashMap::new();
         struct Visit {
             parent: Cow<'static, str>,
             index: usize,
             visited: bool,
         }
+        let mut unnamed_id_ctr: u32 = 0;
+        let mut unnamed = HashMap::new();
         // tree traversal to find all named widgets
         // and keep their state and children
-        let mut stack = vec![(self, None)];
-        while let Some((tree, visit)) = stack.pop() {
-            if let Some(Id(Internal::Custom(_, n))) = tree.id.clone() {
-                let state = mem::replace(&mut tree.state, State::None);
-                let children_count = tree.children.len();
-                let children =
-                    tree.children.iter_mut().enumerate().rev().map(|(i, c)| {
-                        if matches!(c.id, Some(Id(Internal::Custom(_, _)))) {
-                            (c, None)
+        let mut stack: Vec<(Node, Option<Visit>)> =
+            vec![(Node::Tree(self), None)];
+        let mut canary: i32 = 0;
+        while let Some((node, visit)) = stack.pop() {
+            match node {
+                Node::Tree(tree) => {
+                    if let Some(Id(Internal::Custom(_, n))) = tree.id.as_ref() {
+                        let state = mem::replace(&mut tree.state, State::None);
+                        let children_count = tree.children.len();
+                        let children =
+                            tree.children.iter_mut().enumerate().rev().map(
+                                |(i, c)| {
+                                    if matches!(
+                                        c.id,
+                                        Some(Id(Internal::Custom(_, _)))
+                                    ) {
+                                        (Node::Tree(c), None)
+                                    } else {
+                                        (
+                                            Node::Tree(c),
+                                            Some(Visit {
+                                                index: i,
+                                                parent: n.clone(),
+                                                visited: false,
+                                            }),
+                                        )
+                                    }
+                                },
+                            );
+                        _ = named.insert(
+                            n.clone(),
+                            (state, Vec::with_capacity(children_count)),
+                        );
+                        stack.extend(children);
+                    } else if let Some(visit) = visit {
+                        if visit.visited {
+                            canary -= 1;
+                            named.get_mut(&visit.parent).unwrap().1.push((
+                                visit.index,
+                                mem::replace(
+                                    tree,
+                                    Tree {
+                                        id: tree.id.clone(),
+                                        tag: tree.tag,
+                                        ..Tree::empty()
+                                    },
+                                ),
+                            ));
                         } else {
-                            (
-                                c,
-                                Some(Visit {
-                                    index: i,
-                                    parent: n.clone(),
-                                    visited: false,
-                                }),
-                            )
-                        }
-                    });
-                _ = named.insert(
-                    n.clone(),
-                    (state, Vec::with_capacity(children_count)),
-                );
-                stack.extend(children);
-            } else if let Some(visit) = visit {
-                if visit.visited {
-                    named.get_mut(&visit.parent).unwrap().1.push((
-                        visit.index,
-                        mem::replace(
-                            tree,
-                            Tree {
-                                id: tree.id.clone(),
-                                tag: tree.tag,
-                                ..Tree::empty()
-                            },
-                        ),
-                    ));
-                } else {
-                    let ptr = tree as *mut Tree;
+                            canary += 1;
 
-                    stack.push((
-                        // TODO remove this unsafe block
-                        #[allow(unsafe_code)]
-                        // SAFETY: when the reference is finally accessed, all the children references will have been processed first.
-                        unsafe {
-                            ptr.as_mut().unwrap()
-                        },
-                        Some(Visit {
-                            visited: true,
-                            ..visit
-                        }),
-                    ));
-                    stack.extend(tree.children.iter_mut().map(|c| (c, None)));
+                            let node = make_unnamed_node(
+                                NodeParent::Named(visit.parent.clone()),
+                                None,
+                                tree,
+                                &mut unnamed,
+                                &mut unnamed_id_ctr,
+                            );
+                            stack.push((
+                                node,
+                                Some(Visit {
+                                    visited: true,
+                                    parent: visit.parent.clone(),
+                                    ..visit
+                                }),
+                            ));
+                            let unnamed_id = unnamed_id_ctr;
+                            stack.extend((0..tree.children.len()).map(|i| {
+                                (
+                                    Node::Unnamed {
+                                        parent: NodeParent::Unnamed(unnamed_id),
+                                        unnamed_id: unnamed_id_ctr,
+                                        child_index: Some(i),
+                                    },
+                                    None,
+                                )
+                            }));
+                        }
+                    } else {
+                        stack.extend(
+                            tree.children
+                                .iter_mut()
+                                .map(|s| (Node::Tree(s), None)),
+                        );
+                    }
                 }
-            } else {
-                stack.extend(tree.children.iter_mut().map(|s| (s, None)));
+                Node::Unnamed {
+                    parent,
+                    unnamed_id,
+                    child_index,
+                } => {
+                    if let Some(visit) = visit {
+                        if visit.visited {
+                            match parent {
+                                NodeParent::Named(name) => {
+                                    canary -= 1;
+                                    let tree =
+                                        unnamed.get_mut(&unnamed_id).unwrap();
+                                    let id = tree.id.clone();
+                                    let tag = tree.tag;
+                                    named.get_mut(&name).unwrap().1.push((
+                                        visit.index,
+                                        mem::replace(
+                                            tree,
+                                            Tree {
+                                                id,
+                                                tag,
+                                                ..Tree::empty()
+                                            },
+                                        ),
+                                    ));
+                                }
+                                NodeParent::Unnamed(parent_unnamed_id) => {
+                                    canary -= 1;
+
+                                    let mut tree =
+                                        unnamed.remove(&unnamed_id).unwrap();
+
+                                    let parent_tree = unnamed
+                                        .get_mut(&parent_unnamed_id)
+                                        .unwrap();
+                                    let id = tree.id.clone();
+                                    let tag = tree.tag;
+
+                                    parent_tree.children[visit.index] =
+                                        mem::replace(
+                                            &mut tree,
+                                            Tree {
+                                                id,
+                                                tag,
+                                                ..Tree::empty()
+                                            },
+                                        );
+                                    _ = unnamed.insert(unnamed_id, tree);
+                                }
+                            }
+                        } else if let Some(child_index) = child_index {
+                            // this is the first visit, of an unnamed child.
+                            // the tree is actually the parent tree. so we need to get it using the child index.
+                            // need to push children
+                            let mut tree = unnamed.remove(&unnamed_id).unwrap();
+
+                            let id = tree.children[child_index].id.clone();
+                            let tag = tree.children[child_index].tag;
+                            let mut my_tree = mem::replace(
+                                &mut tree.children[child_index],
+                                Tree {
+                                    id,
+                                    tag,
+                                    ..Tree::empty()
+                                },
+                            );
+                            // ???
+                            _ = unnamed.insert(unnamed_id, tree);
+                            // this child might be named, so we need to check that.
+                            if let Some(Id(Internal::Custom(_, ref name))) =
+                                my_tree.id
+                            {
+                                canary += 1;
+
+                                let state = mem::replace(
+                                    &mut my_tree.state,
+                                    State::None,
+                                );
+                                let children_count = my_tree.children.len();
+
+                                // handle the children now
+                                let children = my_tree
+                                    .children
+                                    .iter_mut()
+                                    .enumerate()
+                                    .rev()
+                                    .map(|(i, c)| {
+                                        canary += 1;
+
+                                        let node = make_unnamed_node(
+                                            NodeParent::Named(name.clone()),
+                                            None,
+                                            c,
+                                            &mut unnamed,
+                                            &mut unnamed_id_ctr,
+                                        );
+
+                                        if matches!(
+                                            c.id,
+                                            Some(Id(Internal::Custom(_, _)))
+                                        ) {
+                                            (node, None)
+                                        } else {
+                                            (
+                                                node,
+                                                Some(Visit {
+                                                    index: i,
+                                                    parent: name.clone(),
+                                                    visited: false,
+                                                }),
+                                            )
+                                        }
+                                    });
+                                stack.extend(children);
+
+                                _ = named.insert(
+                                    name.clone(),
+                                    (state, Vec::with_capacity(children_count)),
+                                );
+                            } else {
+                                canary += 1;
+
+                                // add a new counter and insert into unnamed
+                                // keep track of parent
+
+                                let node = make_unnamed_node(
+                                    NodeParent::Unnamed(unnamed_id),
+                                    None,
+                                    &mut my_tree,
+                                    &mut unnamed,
+                                    &mut unnamed_id_ctr,
+                                );
+                                stack.push((
+                                    node,
+                                    Some(Visit {
+                                        visited: true,
+                                        parent: visit.parent.clone(),
+                                        ..visit
+                                    }),
+                                ));
+                                let unnamed_id = unnamed_id_ctr;
+                                // push children
+                                stack.extend((0..my_tree.children.len()).map(
+                                    |i| {
+                                        canary += 1;
+                                        let node = make_unnamed_node(
+                                            NodeParent::Unnamed(unnamed_id),
+                                            Some(i),
+                                            &mut my_tree,
+                                            &mut unnamed,
+                                            &mut unnamed_id_ctr,
+                                        );
+                                        (node, None)
+                                    },
+                                ));
+                                _ = unnamed.insert(unnamed_id_ctr, my_tree);
+                            }
+                            panic!(
+                                "Invalid state in tree traversal: visit={:?}, child_index={:?}, parent={:?}, unnamed_id={:?}",
+                                visit.index, child_index, parent, unnamed_id
+                            );
+                        }
+                    } else {
+                        canary += 1;
+                        let parent_tree = unnamed.get_mut(&unnamed_id).unwrap();
+
+                        // must be from a named parent that is the child of an unnamed widget
+                        // so we just push all children
+                        let mut to_insert =
+                            Vec::with_capacity(parent_tree.children.len());
+                        stack.extend((0..parent_tree.children.len()).map(
+                            |i| {
+                                canary += 1;
+
+                                // increment unnamed_id counter
+                                unnamed_id_ctr =
+                                    unnamed_id_ctr.checked_add(1).unwrap();
+                                // take the child tree and insert to unnamed
+                                let my_tree = mem::replace(
+                                    &mut parent_tree.children[i],
+                                    Tree::empty(),
+                                );
+                                let child_unnamed_id = unnamed_id_ctr;
+                                _ = to_insert.push((child_unnamed_id, my_tree));
+                                (
+                                    Node::Unnamed {
+                                        parent: NodeParent::Unnamed(unnamed_id),
+                                        unnamed_id: child_unnamed_id,
+                                        child_index: Some(i),
+                                    },
+                                    None,
+                                )
+                            },
+                        ));
+
+                        // insert parent with a visit: true
+                        stack.push((
+                            Node::Unnamed {
+                                parent: parent.clone(),
+                                unnamed_id,
+                                child_index: None,
+                            },
+                            Some(Visit {
+                                visited: true,
+                                parent: match parent {
+                                    NodeParent::Unnamed(id) => {
+                                        if let Some(t) = unnamed.get(&id) {
+                                            if let Some(Id(Internal::Custom(
+                                                _,
+                                                ref name,
+                                            ))) = t.id
+                                            {
+                                                name.clone()
+                                            } else {
+                                                Cow::Borrowed("")
+                                            }
+                                        } else {
+                                            Cow::Borrowed("")
+                                        }
+                                    }
+                                    NodeParent::Named(name) => name.clone(),
+                                },
+                                index: 0,
+                            }),
+                        ));
+                        for (id, tree) in to_insert {
+                            _ = unnamed.insert(id, tree);
+                        }
+                    }
+                }
             }
         }
 
