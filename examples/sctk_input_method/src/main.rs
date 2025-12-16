@@ -24,7 +24,7 @@ use iced_core::{
     event::wayland::{
         InputMethodKeyboardEvent, KeyEvent, Modifiers, RawModifiers,
     },
-    keyboard::KeyCode,
+    keyboard::Key,
     window::Id,
 };
 use iced_style::application;
@@ -98,9 +98,9 @@ impl InputMethod {
 pub enum Message {
     Activate,
     Deactivate,
-    KeyPressed(KeyEvent, KeyCode, Modifiers),
-    KeyRepeat(KeyEvent, KeyCode, Modifiers),
-    KeyReleased(KeyEvent, KeyCode, Modifiers),
+    KeyPressed(KeyEvent, Key, Modifiers),
+    KeyRepeat(KeyEvent, Key, Modifiers),
+    KeyReleased(KeyEvent, Key, Modifiers),
     Modifiers(Modifiers, RawModifiers),
     UpdatePopup { index: usize },
     Done,
@@ -134,19 +134,23 @@ impl Application for InputMethod {
             Message::KeyPressed(_key, key_code, _modifiers) => {
                 if self.popup {
                     match key_code {
-                        KeyCode::Left => {
+                        Key::Named(
+                            iced_core::keyboard::key::Named::ArrowLeft,
+                        ) => {
                             if self.index > 0 {
                                 self.index -= 1;
                             }
                             Command::none()
                         }
-                        KeyCode::Right => {
+                        Key::Named(
+                            iced_core::keyboard::key::Named::ArrowRight,
+                        ) => {
                             if self.index < self.list.len() - 1 {
                                 self.index += 1;
                             }
                             Command::none()
                         }
-                        KeyCode::Enter => {
+                        Key::Named(iced_core::keyboard::key::Named::Enter) => {
                             self.commit_string(self.list[self.index])
                         }
                         _ => Command::none(),
@@ -174,13 +178,17 @@ impl Application for InputMethod {
                     }
                 } else {
                     match key_code {
-                        KeyCode::Left => {
+                        Key::Named(
+                            iced_core::keyboard::key::Named::ArrowLeft,
+                        ) => {
                             if self.index > 0 {
                                 self.index -= 1;
                             }
                             Command::none()
                         }
-                        KeyCode::Right => {
+                        Key::Named(
+                            iced_core::keyboard::key::Named::ArrowRight,
+                        ) => {
                             if self.index < self.list.len() - 1 {
                                 self.index += 1;
                             }
@@ -202,7 +210,9 @@ impl Application for InputMethod {
                     ])
                 } else {
                     match key_code {
-                        KeyCode::Enter => self.popup = false,
+                        Key::Named(iced_core::keyboard::key::Named::Enter) => {
+                            self.popup = false
+                        }
                         _ => {}
                     }
                     Command::none()
@@ -230,13 +240,16 @@ impl Application for InputMethod {
                         column(vec![
                             text((index + 1) % 10)
                                 .size(50)
-                                .style(Color::WHITE)
+                                .style(iced::theme::Text::Color(Color::WHITE))
                                 .into(),
-                            text(char).style(Color::WHITE).size(50).into(),
+                            text(char)
+                                .style(iced::theme::Text::Color(Color::WHITE))
+                                .size(50)
+                                .into(),
                         ])
                         .align_items(Alignment::Center)
                         .padding(5.0)
-                        .spacing(4.0)
+                        .spacing(4.0),
                     )
                     .set_indexes(index)
                     .selected(self.index)
@@ -244,7 +257,7 @@ impl Application for InputMethod {
                     .on_select(Message::UpdatePopup { index })
                     .into()
                 })
-                .collect())
+                .collect::<Vec<_>>())
             .padding(2.0),
         )
         .padding(5.0)
@@ -305,9 +318,11 @@ impl container::StyleSheet for CustomTheme {
 
     fn appearance(&self, _style: &Self::Style) -> container::Appearance {
         container::Appearance {
-            border_color: Color::from_rgb(1.0, 1.0, 1.0),
-            border_radius: 10.0.into(),
-            border_width: 3.0,
+            border: iced_core::Border {
+                color: Color::from_rgb(1.0, 1.0, 1.0),
+                width: 3.0,
+                radius: 10.0.into(),
+            },
             background: Some(Color::from_rgb(0.0, 0.0, 0.0).into()),
             ..container::Appearance::default()
         }

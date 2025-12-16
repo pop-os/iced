@@ -199,7 +199,10 @@ impl Pipeline {
                             buffer.as_ref(),
                             Rectangle::new(
                                 text.position,
-                                Size::new(width, height),
+                                Size::new(
+                                    width.unwrap_or(f32::MAX),
+                                    height.unwrap_or(f32::MAX),
+                                ),
                             ),
                             alignment::Horizontal::Left,
                             alignment::Vertical::Top,

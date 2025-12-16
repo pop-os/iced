@@ -18,14 +18,10 @@ use crate::{
 use crate::{
     commands::input_method::get_input_method_popup,
     sctk_event::{
-        InputMethodEventVariant, InputMethodKeyboardEventVariant, 
-        keysym_to_vkey_location   
+        keysym_to_vkey_location, InputMethodEventVariant,
+        InputMethodKeyboardEventVariant,
     },
 };
-#[cfg(feature = "input_method")]
-use iced_futures::core::event::{wayland, PlatformSpecific};
-#[cfg(feature = "input_method")]
-use iced_runtime::command::platform_specific::wayland::input_method_popup;
 use float_cmp::{approx_eq, F32Margin, F64Margin};
 use futures::{channel::mpsc, task, Future, FutureExt, StreamExt};
 #[cfg(feature = "a11y")]
@@ -33,6 +29,8 @@ use iced_accessibility::{
     accesskit::{NodeBuilder, NodeId},
     A11yId, A11yNode,
 };
+#[cfg(feature = "input_method")]
+use iced_futures::core::event::{wayland, PlatformSpecific};
 use iced_futures::{
     core::{
         event::{Event as CoreEvent, Status},
@@ -48,6 +46,8 @@ use iced_futures::{
     },
     Executor, Runtime, Subscription,
 };
+#[cfg(feature = "input_method")]
+use iced_runtime::command::platform_specific::wayland::input_method_popup;
 use tracing::error;
 
 use iced_futures::core::Clipboard as IcedClipboard;
@@ -271,8 +271,9 @@ where
         }
         settings::InitialSurface::None => init_command,
         #[cfg(feature = "input_method")]
-        settings::InitialSurface::InputMethodPopup(b) => 
-            Command::batch(vec![init_command, get_input_method_popup(b)]),
+        settings::InitialSurface::InputMethodPopup(b) => {
+            Command::batch(vec![init_command, get_input_method_popup(b)])
+        }
     };
     let wl_surface = event_loop
         .state
@@ -516,7 +517,7 @@ where
                         }
                     },
                     #[cfg(feature = "input_method")]
-                    SctkEvent::InputMethodEvent { variant } => 
+                    SctkEvent::InputMethodEvent { variant } =>
                     match variant {
                         InputMethodEventVariant::Activate => {
                             runtime.broadcast(
@@ -693,8 +694,8 @@ where
                             if let Some(id) = surface_ids.get(&id.id()) {
                                 if let Some(state) = states.get_mut(&id.inner()) {
                                     state.set_logical_size(
-                                        width as f64,
-                                        height as f64,
+                                        width as f32,
+                                        height as f32,
                                     );
                                 }
                                 if let Some((w, h, _, dirty)) = auto_size_surfaces.get_mut(id) {
@@ -2420,7 +2421,7 @@ where
                 proxy.send_event(Event::SessionLock(session_lock_action));
             }
             #[cfg(feature = "virtual_keyboard")]
-            command::Action::PlatformSpecific(platform_specific::Action::Wayland(platform_specific::wayland::Action::VirtualKeyboard(virtual_keyboard_action))) 
+            command::Action::PlatformSpecific(platform_specific::Action::Wayland(platform_specific::wayland::Action::VirtualKeyboard(virtual_keyboard_action)))
             => {
                 proxy.send_event(Event::VirtualKeyboard(virtual_keyboard_action))
             }

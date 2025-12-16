@@ -4,7 +4,6 @@ use crate::font;
 use crate::system;
 use crate::window;
 
-use dnd::DndAction;
 use iced_futures::MaybeSend;
 
 use std::borrow::Cow;
@@ -83,8 +82,6 @@ impl<T> Action<T> {
                 Action::PlatformSpecific(action.map(f))
             }
             Self::Dnd(a) => Action::Dnd(a.map(f)),
-            Action::LoadFont { bytes, tagger } => todo!(),
-            Action::PlatformSpecific(_) => todo!(),
         }
     }
 }
@@ -106,7 +103,7 @@ impl<T> fmt::Debug for Action<T> {
             Self::PlatformSpecific(action) => {
                 write!(f, "Action::PlatformSpecific({:?})", action)
             }
-            Self::Dnd(action) => write!(f, "Action::Dnd"),
+            Self::Dnd(_action) => write!(f, "Action::Dnd"),
         }
     }
 }

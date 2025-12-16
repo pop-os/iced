@@ -172,8 +172,8 @@ impl editor::Editor for Editor {
                         .get(cursor.line)
                         .expect("Cursor line should be present");
 
-                    let layout = line
-                        .layout_opt()
+                    let layout_opt = line.layout_opt();
+                    let layout = layout_opt
                         .as_ref()
                         .expect("Line layout should be cached");
 
@@ -562,8 +562,8 @@ impl editor::Editor for Editor {
             internal.editor.with_buffer_mut(|buffer| {
                 buffer.set_size(
                     font_system.raw(),
-                    new_bounds.width,
-                    new_bounds.height,
+                    Some(new_bounds.width),
+                    Some(new_bounds.height),
                 )
             });
 
@@ -597,7 +597,14 @@ impl editor::Editor for Editor {
 
         let last_visible_line = internal.editor.with_buffer(|buffer| {
             let scroll = buffer.scroll();
-            let mut window = scroll.layout + buffer.visible_lines();
+            let line_height = buffer.metrics().line_height;
+            let visible_lines = buffer
+                .size()
+                .1
+                .map(|height| (height / line_height).ceil() as i32)
+                .unwrap_or(i32::MAX);
+            let mut window =
+                (scroll.vertical / line_height) as i32 + visible_lines;
 
             buffer
                 .lines
@@ -745,10 +752,8 @@ fn highlight_line(
     from: usize,
     to: usize,
 ) -> impl Iterator<Item = (f32, f32)> + '_ {
-    let layout = line
-        .layout_opt()
-        .as_ref()
-        .expect("Line layout should be cached");
+    let layout_opt = line.layout_opt();
+    let layout = layout_opt.as_ref().expect("Line layout should be cached");
 
     layout.iter().map(move |visual_line| {
         let start = visual_line
@@ -805,7 +810,8 @@ fn visual_lines_offset(line: usize, buffer: &cosmic_text::Buffer) -> i32 {
         })
         .sum();
 
-    visual_lines_before_start as i32 - scroll.layout
+    let line_height = buffer.metrics().line_height;
+    visual_lines_before_start as i32 - (scroll.vertical / line_height) as i32
 }
 
 fn motion_to_action(motion: Motion) -> cosmic_text::Action {

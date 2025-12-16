@@ -101,8 +101,9 @@ pub fn measure(buffer: &cosmic_text::Buffer) -> Size {
     let (max_width, max_height) = buffer.size();
 
     Size::new(
-        width.min(max_width),
-        (total_lines as f32 * buffer.metrics().line_height).min(max_height),
+        width.min(max_width.unwrap_or(f32::MAX)),
+        (total_lines as f32 * buffer.metrics().line_height)
+            .min(max_height.unwrap_or(f32::MAX)),
     )
 }
 

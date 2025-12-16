@@ -1,5 +1,5 @@
 //! Change the apperance of a button.
-use iced_core::{Background, BorderRadius, Color};
+use iced_core::{Background, Border, Color};
 use iced_style::Theme;
 
 /// The appearance of a button.
@@ -7,12 +7,8 @@ use iced_style::Theme;
 pub struct Appearance {
     /// The [`Background`] of the button.
     pub background: Option<Background>,
-    /// The border radius of the button.
-    pub border_radius: BorderRadius,
-    /// The border width of the button.
-    pub border_width: f32,
-    /// The border [`Color`] of the button.
-    pub border_color: Color,
+    /// The border of the button.
+    pub border: Border,
     /// The icon [`Color`] of the button.
     pub icon_color: Option<Color>,
     /// The text [`Color`] of the button.
@@ -23,9 +19,7 @@ impl std::default::Default for Appearance {
     fn default() -> Self {
         Self {
             background: None,
-            border_radius: 0.0.into(),
-            border_width: 0.0,
-            border_color: Color::TRANSPARENT,
+            border: Border::default(),
             icon_color: None,
             text_color: Color::WHITE,
         }
@@ -56,7 +50,9 @@ pub enum SelectionField {
 
 impl SelectionField {
     /// Creates a custom [`Button`] style variant.
-    pub fn custom(style_sheet: impl StyleSheet<Style = Theme> + 'static) -> Self {
+    pub fn custom(
+        style_sheet: impl StyleSheet<Style = Theme> + 'static,
+    ) -> Self {
         Self::Custom(Box::new(style_sheet))
     }
 }
@@ -70,10 +66,14 @@ impl StyleSheet for Theme {
 
     fn selected(&self, _style: &Self::Style) -> Appearance {
         Appearance {
-            background: Some(Background::Color(Color::from_rgba(0.0, 0.07, 0.42, 1.0))),
-            border_radius: 5.5.into(),
-            border_width: 1.0,
-            border_color: Color::WHITE,
+            background: Some(Background::Color(Color::from_rgba(
+                0.0, 0.07, 0.42, 1.0,
+            ))),
+            border: Border {
+                color: Color::WHITE,
+                width: 1.0,
+                radius: 5.5.into(),
+            },
             icon_color: None,
             text_color: Color::WHITE,
         }
