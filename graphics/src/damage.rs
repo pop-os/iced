@@ -49,9 +49,7 @@ pub fn group(mut damage: Vec<Rectangle>, bounds: Rectangle) -> Vec<Rectangle> {
 
     const AREA_THRESHOLD: f32 = 20_000.0;
 
-    // Keep unstable sort here because `distance` uses `hypot` which has
-    // non-deterministic precision.
-    damage.sort_unstable_by(|a, b| {
+    damage.sort_by(|a, b| {
         a.center()
             .distance(Point::ORIGIN)
             .total_cmp(&b.center().distance(Point::ORIGIN))
