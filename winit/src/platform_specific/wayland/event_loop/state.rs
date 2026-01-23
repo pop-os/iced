@@ -2,6 +2,7 @@ use crate::{
     handlers::{
         activation::IcedRequestData,
         overlap::{OverlapNotificationV1, OverlapNotifyV1},
+        text_input::{Preedit, TextInputManager},
     },
     platform_specific::{
         wayland::{
@@ -114,6 +115,7 @@ use wayland_protocols::{
             zwp_keyboard_shortcuts_inhibit_manager_v1,
             zwp_keyboard_shortcuts_inhibitor_v1,
         },
+        text_input::zv3::client::zwp_text_input_v3::ZwpTextInputV3,
         viewporter::client::wp_viewport::WpViewport,
     },
     xdg::shell::client::{xdg_surface::XdgSurface, xdg_toplevel::XdgToplevel},
@@ -494,7 +496,12 @@ pub struct SctkState {
     pub(crate) inhibitor_manager: Option<zwp_keyboard_shortcuts_inhibit_manager_v1::ZwpKeyboardShortcutsInhibitManagerV1>,
 
     pub(crate) corner_radius_manager: Option<CosmicCornerRadiusManagerV1>,
-    pub(crate) pending_corner_radius: HashMap<core::window::Id, CornerRadius>
+    pub(crate) pending_corner_radius: HashMap<core::window::Id, CornerRadius>,
+
+    pub(crate) text_input_manager: Option<TextInputManager>,
+    pub(crate) text_input: Option<Arc<ZwpTextInputV3>>,
+    pub(crate) preedit: Option<Preedit>,
+    pub(crate) pending_commit: Option<String>,
 }
 
 /// An error that occurred while running an application.
