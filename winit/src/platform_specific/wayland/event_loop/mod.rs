@@ -7,7 +7,7 @@ use crate::platform_specific::SurfaceIdWrapper;
 use crate::{
     Control,
     futures::futures::channel::mpsc,
-    handlers::overlap::OverlapNotifyV1,
+    handlers::{overlap::OverlapNotifyV1, text_input::TextInputManager},
     platform_specific::wayland::{
         handlers::{
             wp_fractional_scaling::FractionalScalingManager,
@@ -52,8 +52,8 @@ use std::{
 use log::error;
 use wayland_backend::client::Backend;
 use wayland_client::globals::GlobalError;
-use wayland_protocols::wp::keyboard_shortcuts_inhibit::zv1::client::zwp_keyboard_shortcuts_inhibit_manager_v1;
-use winit::{dpi::LogicalSize, event_loop::OwnedDisplayHandle};
+use wayland_protocols::wp::{keyboard_shortcuts_inhibit::zv1::client::zwp_keyboard_shortcuts_inhibit_manager_v1, text_input::zv3::client::zwp_text_input_v3::{ContentHint, ContentPurpose}};
+use winit::{dpi::LogicalSize, event_loop::OwnedDisplayHandle, window::ImePurpose};
 
 use self::state::SctkState;
 
@@ -197,6 +197,33 @@ impl SctkEventLoop {
                             crate::platform_specific::Action::Dropped(id) => {
                                 _ = state.destroyed.remove(&id.inner());
                             }
+                            crate::platform_specific::Action::SetImeAllowed(allowed) => {
+                                if let Some(text_input) = state.text_input.as_ref() {
+                                    if allowed {
+                                        text_input.enable();
+                                    } else {
+                                        text_input.disable();
+                                    }
+                                    text_input.commit();
+                                }
+                            }
+                            crate::platform_specific::Action::SetImeCursorArea(x, y, width, height) => {
+                                if let Some(text_input) = state.text_input.as_ref() {
+                                    text_input.set_cursor_rectangle(x, y, width, height);
+                                    text_input.commit();
+                                }
+                            }
+                            crate::platform_specific::Action::SetImePurpose(purpose) => {
+                                if let Some(text_input) = state.text_input.as_ref() {
+                                    let (hint, purpose) = match purpose {
+                                        ImePurpose::Password => (ContentHint::SensitiveData, ContentPurpose::Password),
+                                        ImePurpose::Terminal => (ContentHint::None, ContentPurpose::Terminal),
+                                        _ => (ContentHint::None, ContentPurpose::Normal),
+                                    };
+                                    text_input.set_content_type(hint, purpose);
+                                    text_input.commit();
+                                }
+                            }
                             crate::platform_specific::Action::SubsurfaceResize(id, size) => {
                                 // reposition the surface
                                 if let Some(pos) = state
@@ -332,6 +359,7 @@ impl SctkEventLoop {
                         1..=1,
                         (),
                     ).ok(),
+                        text_input_manager: TextInputManager::try_new(&registry_state, &qh),
                         registry_state,
 
                         queue_handle: qh,
@@ -366,6 +394,9 @@ impl SctkEventLoop {
                         overlap_notifications: HashMap::new(),
                         subsurface_state: None,
                         pending_corner_radius: HashMap::new(),
+                        text_input: None,
+                        preedit: None,
+                        pending_commit: None,
                     },
                     _features: Default::default(),
                 };
