@@ -7,6 +7,6 @@ publish = false
 
 [dependencies]
 iced.workspace = true
-iced.features = ["canvas", "tokio", "debug"]
+iced.features = ["canvas", "tokio", "debug", "winit", "wayland"]
 chrono = "0.4"
 tracing-subscriber = "0.3"
