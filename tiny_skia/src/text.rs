@@ -316,14 +316,17 @@ impl GlyphCache {
 
                     for _y in 0..image.placement.height {
                         for _x in 0..image.placement.width {
+                            // Apply gamma correction to coverage to compensate for
+                            // blending in sRGB space. Without this, light text on
+                            // dark backgrounds appears too thin/washed out.
+                            // The 1.8 gamma is the Adobe/FreeType recommended value.
+                            let coverage = image.data[i] as f32 / 255.0;
+                            let adjusted = coverage.powf(1.0 / 1.8);
+                            let alpha = (adjusted * 255.0).round() as u8;
+
                             buffer[i] = bytemuck::cast(
-                                tiny_skia::ColorU8::from_rgba(
-                                    b,
-                                    g,
-                                    r,
-                                    image.data[i],
-                                )
-                                .premultiply(),
+                                tiny_skia::ColorU8::from_rgba(b, g, r, alpha)
+                                    .premultiply(),
                             );
 
                             i += 1;
