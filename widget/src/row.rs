@@ -144,6 +144,18 @@ where
         self
     }
 
+    /// Maybe adds an [`Element`] to the [`Row`].
+    pub fn push_maybe(
+        self,
+        child: Option<impl Into<Element<'a, Message, Theme, Renderer>>>,
+    ) -> Self {
+        if let Some(child) = child {
+            self.push(child)
+        } else {
+            self
+        }
+    }
+
     /// Extends the [`Row`] with the given children.
     pub fn extend(
         self,
@@ -240,9 +252,12 @@ where
                 .zip(&mut tree.children)
                 .zip(layout.children())
                 .for_each(|((child, state), c_layout)| {
-                    child
-                        .as_widget_mut()
-                        .operate(state, c_layout.with_virtual_offset(layout.virtual_offset()), renderer, operation);
+                    child.as_widget_mut().operate(
+                        state,
+                        c_layout.with_virtual_offset(layout.virtual_offset()),
+                        renderer,
+                        operation,
+                    );
                 });
         });
     }
@@ -265,7 +280,13 @@ where
             .zip(layout.children())
         {
             child.as_widget_mut().update(
-                tree, event, c_layout.with_virtual_offset(layout.virtual_offset()), cursor, renderer, clipboard, shell,
+                tree,
+                event,
+                c_layout.with_virtual_offset(layout.virtual_offset()),
+                cursor,
+                renderer,
+                clipboard,
+                shell,
                 viewport,
             );
         }
@@ -284,9 +305,13 @@ where
             .zip(&tree.children)
             .zip(layout.children())
             .map(|((child, tree), c_layout)| {
-                child
-                    .as_widget()
-                    .mouse_interaction(tree, c_layout.with_virtual_offset(layout.virtual_offset()), cursor, viewport, renderer)
+                child.as_widget().mouse_interaction(
+                    tree,
+                    c_layout.with_virtual_offset(layout.virtual_offset()),
+                    cursor,
+                    viewport,
+                    renderer,
+                )
             })
             .max()
             .unwrap_or_default()
@@ -317,7 +342,13 @@ where
                 .filter(|(_, layout)| layout.bounds().intersects(viewport))
             {
                 child.as_widget().draw(
-                    tree, renderer, theme, style, c_layout.with_virtual_offset(layout.virtual_offset()), cursor, viewport,
+                    tree,
+                    renderer,
+                    theme,
+                    style,
+                    c_layout.with_virtual_offset(layout.virtual_offset()),
+                    cursor,
+                    viewport,
                 );
             }
         }

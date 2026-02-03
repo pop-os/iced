@@ -24,6 +24,18 @@ impl Background {
     }
 }
 
+impl From<palette::Srgba<f32>> for Background {
+    fn from(color: palette::Srgba<f32>) -> Self {
+        Background::Color(Color::from(color))
+    }
+}
+
+impl From<palette::Srgba<u8>> for Background {
+    fn from(color: palette::Srgba<u8>) -> Self {
+        Background::Color(Color::from(color))
+    }
+}
+
 impl From<Color> for Background {
     fn from(color: Color) -> Self {
         Background::Color(color)

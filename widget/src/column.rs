@@ -153,6 +153,18 @@ where
         self
     }
 
+    /// Maybe adds an [`Element`] to the [`Column`].
+    pub fn push_maybe(
+        self,
+        child: Option<impl Into<Element<'a, Message, Theme, Renderer>>>,
+    ) -> Self {
+        if let Some(child) = child {
+            self.push(child)
+        } else {
+            self
+        }
+    }
+
     /// Extends the [`Column`] with the given children.
     pub fn extend(
         self,

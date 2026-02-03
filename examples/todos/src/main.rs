@@ -452,7 +452,7 @@ fn empty_message(message: &str) -> Element<'_, Message> {
             .align_x(Center)
             .style(subtle),
     )
-    .height(200)
+    .height(200u16)
     .into()
 }
 
@@ -461,7 +461,7 @@ fn empty_message(message: &str) -> Element<'_, Message> {
 fn icon(unicode: char) -> Text<'static> {
     text(unicode.to_string())
         .font(Font::with_name("Iced-Todos-Icons"))
-        .width(20)
+        .width(20u16)
         .align_x(Center)
         .shaping(text::Shaping::Basic)
 }

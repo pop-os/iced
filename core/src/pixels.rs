@@ -26,6 +26,18 @@ impl From<u32> for Pixels {
     }
 }
 
+impl From<u16> for Pixels {
+    fn from(amount: u16) -> Self {
+        Self(amount as f32)
+    }
+}
+
+impl From<i32> for Pixels {
+    fn from(amount: i32) -> Self {
+        Self(amount as f32)
+    }
+}
+
 impl From<Pixels> for f32 {
     fn from(pixels: Pixels) -> Self {
         pixels.0

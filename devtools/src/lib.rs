@@ -445,7 +445,7 @@ where
 {
     let controls = row![
         button(text("Cancel").center().width(Fill))
-            .width(100)
+            .width(100u16)
             .on_press(Message::CancelSetup)
             .style(button::danger),
         space::horizontal(),
@@ -457,7 +457,7 @@ where
             .center()
             .width(Fill)
         )
-        .width(100)
+        .width(100u16)
         .on_press(Message::InstallComet)
         .style(button::success),
     ];
@@ -544,7 +544,7 @@ where
             )
             .spacing(10)
             .width(Fill)
-            .height(300)
+            .height(300u16)
             .anchor_bottom(),
         )
         .padding(10)

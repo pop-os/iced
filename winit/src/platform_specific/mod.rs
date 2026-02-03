@@ -10,7 +10,7 @@ use iced_runtime::{
     core::{Vector, window},
     platform_specific, user_interface,
 };
-use raw_window_handle::HasWindowHandle;
+use winit::raw_window_handle::HasWindowHandle;
 
 #[cfg(all(feature = "wayland", target_os = "linux"))]
 pub mod wayland;

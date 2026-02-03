@@ -269,6 +269,47 @@ impl std::fmt::Display for Color {
     }
 }
 
+impl From<palette::Srgb<u8>> for Color {
+    fn from(srgb: palette::Srgb<u8>) -> Self {
+        Color::from_rgb8(srgb.red, srgb.green, srgb.blue)
+    }
+}
+
+impl From<palette::Srgba<u8>> for Color {
+    fn from(srgba: palette::Srgba<u8>) -> Self {
+        Color::from_rgba8(
+            srgba.red,
+            srgba.green,
+            srgba.blue,
+            srgba.alpha as f32 / 255.0,
+        )
+    }
+}
+
+impl From<palette::Srgb<f32>> for Color {
+    fn from(srgb: palette::Srgb<f32>) -> Self {
+        Color::from_rgb(srgb.red, srgb.green, srgb.blue)
+    }
+}
+
+impl From<palette::Srgba<f32>> for Color {
+    fn from(srgba: palette::Srgba<f32>) -> Self {
+        Color::from_rgba(srgba.red, srgba.green, srgba.blue, srgba.alpha)
+    }
+}
+
+impl From<Color> for palette::Srgb<f32> {
+    fn from(color: Color) -> Self {
+        palette::Srgb::new(color.r, color.g, color.b)
+    }
+}
+
+impl From<Color> for palette::Srgba<f32> {
+    fn from(color: Color) -> Self {
+        palette::Srgba::new(color.r, color.g, color.b, color.a)
+    }
+}
+
 /// Creates a [`Color`] with shorter and cleaner syntax.
 ///
 /// # Examples

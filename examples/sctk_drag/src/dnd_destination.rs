@@ -3,20 +3,20 @@ use std::{
     sync::atomic::{AtomicU64, Ordering},
 };
 
+use iced::{Element, id::Id};
 use iced::{
+    Event, Length, Rectangle,
     clipboard::{
         dnd::{self, DndAction, DndDestinationRectangle, DndEvent, OfferEvent},
         mime::AllowedMimeTypes,
     },
     event,
     id::Internal,
-    mouse, overlay, Event, Length, Rectangle,
+    mouse, overlay,
 };
-use iced::{id::Id, Element};
 use iced_core::{
-    self, layout,
-    widget::{tree, Tree},
-    Clipboard, Layout, Shell, Widget,
+    self, Clipboard, Layout, Shell, Widget, layout,
+    widget::{Tree, tree},
 };
 
 pub fn dnd_destination<'a, Message: 'static>(
@@ -318,7 +318,7 @@ impl<'a, Message: 'static> Widget<Message, iced::Theme, iced::Renderer>
     }
 
     #[allow(clippy::too_many_lines)]
-    fn on_event(
+    fn update(
         &mut self,
         tree: &mut Tree,
         event: Event,
@@ -340,7 +340,8 @@ impl<'a, Message: 'static> Widget<Message, iced::Theme, iced::Renderer>
             viewport,
         );
         if matches!(s, event::Status::Captured) {
-            return event::Status::Captured;
+            shell.capture_event();
+return;
         }
 
         let state = tree.state.downcast_mut::<State<()>>();
@@ -381,7 +382,8 @@ impl<'a, Message: 'static> Widget<Message, iced::Theme, iced::Renderer>
                         viewport,
                     );
                 }
-                return event::Status::Captured;
+                shell.capture_event();
+return;
             }
             Event::Dnd(DndEvent::Offer(id, OfferEvent::Leave))
                 if id == Some(my_id) =>
@@ -404,7 +406,8 @@ impl<'a, Message: 'static> Widget<Message, iced::Theme, iced::Renderer>
                         viewport,
                     );
                 }
-                return event::Status::Captured;
+                shell.capture_event();
+return;
             }
             Event::Dnd(DndEvent::Offer(id, OfferEvent::Motion { x, y }))
                 if id == Some(my_id) =>
@@ -437,7 +440,8 @@ impl<'a, Message: 'static> Widget<Message, iced::Theme, iced::Renderer>
                         viewport,
                     );
                 }
-                return event::Status::Captured;
+                shell.capture_event();
+return;
             }
             Event::Dnd(DndEvent::Offer(id, OfferEvent::LeaveDestination))
                 if id == Some(my_id) =>
@@ -447,7 +451,8 @@ impl<'a, Message: 'static> Widget<Message, iced::Theme, iced::Renderer>
                 ) {
                     shell.publish(msg);
                 }
-                return event::Status::Captured;
+                shell.capture_event();
+return;
             }
             Event::Dnd(DndEvent::Offer(id, OfferEvent::Drop))
                 if id == Some(my_id) =>
@@ -457,7 +462,8 @@ impl<'a, Message: 'static> Widget<Message, iced::Theme, iced::Renderer>
                 ) {
                     shell.publish(msg);
                 }
-                return event::Status::Captured;
+                shell.capture_event();
+return;
             }
             Event::Dnd(DndEvent::Offer(
                 id,
@@ -471,7 +477,8 @@ impl<'a, Message: 'static> Widget<Message, iced::Theme, iced::Renderer>
                 ) {
                     shell.publish(msg);
                 }
-                return event::Status::Captured;
+                shell.capture_event();
+return;
             }
             Event::Dnd(DndEvent::Offer(
                 id,
@@ -489,7 +496,8 @@ impl<'a, Message: 'static> Widget<Message, iced::Theme, iced::Renderer>
                     shell.publish(msg);
                     return ret;
                 }
-                return event::Status::Captured;
+                shell.capture_event();
+return;
             }
             _ => {}
         }

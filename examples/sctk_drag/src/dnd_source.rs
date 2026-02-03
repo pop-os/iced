@@ -1,16 +1,16 @@
 use std::any::Any;
 
+use iced::Element;
 use iced::id::Id;
 use iced::widget::container;
-use iced::Element;
 use iced::{
+    Event, Length, Point, Rectangle,
     clipboard::dnd::{DndAction, DndEvent, SourceEvent},
-    event, mouse, overlay, Event, Length, Point, Rectangle,
+    event, mouse, overlay,
 };
 use iced_core::{
-    layout, renderer,
-    widget::{tree, Tree},
-    Clipboard, Shell,
+    Clipboard, Shell, layout, renderer,
+    widget::{Tree, tree},
 };
 use iced_core::{Layout, Widget};
 
@@ -37,11 +37,11 @@ pub struct DndSource<'a, Message, AppMessage, D> {
 }
 
 impl<
-        'a,
-        Message: 'static,
-        AppMessage: 'static,
-        D: iced::clipboard::mime::AsMimeTypes + std::marker::Send + 'static,
-    > DndSource<'a, Message, AppMessage, D>
+    'a,
+    Message: 'static,
+    AppMessage: 'static,
+    D: iced::clipboard::mime::AsMimeTypes + std::marker::Send + 'static,
+> DndSource<'a, Message, AppMessage, D>
 {
     pub fn new(child: impl Into<Element<'a, Message>>) -> Self {
         Self {
@@ -119,11 +119,11 @@ impl<
 }
 
 impl<
-        'a,
-        Message: 'static,
-        AppMessage: 'static,
-        D: iced::clipboard::mime::AsMimeTypes + std::marker::Send + 'static,
-    > Widget<Message, iced::Theme, iced::Renderer>
+    'a,
+    Message: 'static,
+    AppMessage: 'static,
+    D: iced::clipboard::mime::AsMimeTypes + std::marker::Send + 'static,
+> Widget<Message, iced::Theme, iced::Renderer>
     for DndSource<'a, Message, AppMessage, D>
 {
     fn children(&self) -> Vec<Tree> {
@@ -184,7 +184,7 @@ impl<
         );
     }
 
-    fn on_event(
+    fn update(
         &mut self,
         tree: &mut Tree,
         event: Event,
@@ -218,14 +218,16 @@ impl<
 
                         state.left_pressed_position = Some(position);
                         // dbg!(&state, &self.id);
-                        return event::Status::Captured;
+                        shell.capture_event();
+return;
                     }
                 }
                 mouse::Event::ButtonReleased(mouse::Button::Left)
                     if state.left_pressed_position.is_some() =>
                 {
                     state.left_pressed_position = None;
-                    return event::Status::Captured;
+                    shell.capture_event();
+return;
                 }
                 mouse::Event::CursorMoved { .. } => {
                     if let Some(position) = cursor.position() {
@@ -258,7 +260,8 @@ impl<
                         } else if cursor.is_over(layout.bounds()) {
                             state.hovered = true;
                         }
-                        return event::Status::Captured;
+                        shell.capture_event();
+return;
                     }
                 }
                 _ => return ret,
@@ -268,7 +271,8 @@ impl<
             )) => {
                 if state.is_dragging {
                     state.is_dragging = false;
-                    return event::Status::Captured;
+                    shell.capture_event();
+return;
                 }
                 return ret;
             }
@@ -355,11 +359,11 @@ impl<
 }
 
 impl<
-        'a,
-        Message: 'static,
-        AppMessage: 'static,
-        D: iced::clipboard::mime::AsMimeTypes + std::marker::Send + 'static,
-    > From<DndSource<'a, Message, AppMessage, D>> for Element<'a, Message>
+    'a,
+    Message: 'static,
+    AppMessage: 'static,
+    D: iced::clipboard::mime::AsMimeTypes + std::marker::Send + 'static,
+> From<DndSource<'a, Message, AppMessage, D>> for Element<'a, Message>
 {
     fn from(e: DndSource<'a, Message, AppMessage, D>) -> Element<'a, Message> {
         Element::new(e)

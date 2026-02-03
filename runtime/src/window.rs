@@ -12,7 +12,7 @@ use crate::task::{self, Task};
 
 pub use raw_window_handle;
 
-use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
+use raw_window_handle::{HasDisplayHandle, HasWindowHandle, WindowHandle};
 
 /// An operation to be performed on some window.
 pub enum Action {
@@ -89,6 +89,9 @@ pub enum Action {
     /// - **X11:** Not implemented.
     /// - **Web:** Unsupported.
     ToggleDecorations(Id),
+
+    /// Runs the closure with the native window handle of the window with the given [`Id`].
+    RunWithHandle(Id, Box<dyn FnOnce(WindowHandle<'_>) + Send>),
 
     /// Request user attention to the window, this has no effect if the application
     /// is already focused. How requesting for user attention manifests is platform dependent,
@@ -497,6 +500,26 @@ where
 {
     task::oneshot(move |channel| {
         crate::Action::Window(Action::Run(
+            id,
+            Box::new(move |handle| {
+                let _ = channel.send(f(handle));
+            }),
+        ))
+    })
+}
+
+/// Runs the given callback with the native window handle for the window with the given id.
+///
+/// Note that if the window closes before this call is processed the callback will not be run.
+pub fn run_with_handle<T>(
+    id: Id,
+    f: impl FnOnce(WindowHandle<'_>) -> T + Send + 'static,
+) -> Task<T>
+where
+    T: Send + 'static,
+{
+    task::oneshot(move |channel| {
+        crate::Action::Window(Action::RunWithHandle(
             id,
             Box::new(move |handle| {
                 let _ = channel.send(f(handle));

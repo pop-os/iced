@@ -24,10 +24,10 @@ pub use iced_program as program;
 pub use program::core;
 pub use program::graphics;
 pub use program::runtime;
-use raw_window_handle::HasWindowHandle;
 pub use runtime::futures;
 use window_clipboard::mime::ClipboardStoreData;
 pub use winit;
+use winit::raw_window_handle::HasWindowHandle;
 
 #[cfg(feature = "a11y")]
 pub mod a11y;
@@ -2269,6 +2269,16 @@ where
             window::Action::DisableBlur(id) => {
                 if let Some(window) = window_manager.get_mut(id) {
                     window.raw.set_blur(false);
+                }
+            }
+            window::Action::RunWithHandle(id, f) => {
+                use window::raw_window_handle::HasWindowHandle;
+
+                if let Some(handle) = window_manager
+                    .get_mut(id)
+                    .and_then(|window| window.raw.window_handle().ok())
+                {
+                    f(handle);
                 }
             }
         },
