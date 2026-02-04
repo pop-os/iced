@@ -353,7 +353,7 @@ impl SctkEvent {
         >,
         surface_ids: &mut HashMap<ObjectId, SurfaceIdWrapper>,
         sctk_tx: &channel::Sender<super::Action>,
-        control_sender: &mpsc::UnboundedSender<Control>,
+        control_sender: &mut mpsc::UnboundedSender<Control>,
         proxy: &EventLoopProxy,
         user_interfaces: &mut UserInterfaces<'a, P>,
         events: &mut Vec<(Option<window::Id>, iced_runtime::core::Event)>,
@@ -759,45 +759,13 @@ impl SctkEvent {
                         display,
                         queue_handle,
                     );
-                    // TODO must move this to the winit handler, where we have access to the event loop
-                    // #[cfg(feature = "a11y")]
-                    // {
-                    //     use crate::a11y::*;
-                    //     use iced_accessibility::accesskit::{
-                    //         ActivationHandler, Node, NodeId, Role, Tree,
-                    //         TreeUpdate,
-                    //     };
-                    //     use iced_accessibility::accesskit_winit::Adapter;
-
-                    //     let node_id = iced_runtime::core::id::window_node_id();
-
-                    //     let activation_handler = WinitActivationHandler {
-                    //         proxy: control_sender.clone(),
-                    //         title: String::new(),
-                    //     };
-
-                    //     let action_handler = WinitActionHandler {
-                    //         id: surface_id,
-                    //         proxy: control_sender.clone(),
-                    //     };
-
-                    //     let deactivation_handler = WinitDeactivationHandler {
-                    //         proxy: control_sender.clone(),
-                    //     };
-                    //     _ = adapters.insert(
-                    //         surface_id,
-                    //         (
-                    //             node_id,
-                    //             Adapter::with_direct_handlers(
-                    //                 event_loop,
-                    //                 sctk_winit.as_ref(),
-                    //                 activation_handler,
-                    //                 action_handler,
-                    //                 deactivation_handler,
-                    //             ),
-                    //         ),
-                    //     );
-                    // }
+                    #[cfg(feature = "a11y")]
+                    control_sender
+                        .start_send(Control::InitAdapter(
+                            surface_id,
+                            sctk_winit.clone(),
+                        ))
+                        .expect("Send control message");
 
                     let window = window_manager.insert(
                         surface_id,
@@ -991,47 +959,13 @@ impl SctkEvent {
                             display,
                             queue_handle,
                         );
-                        // TODO must move this to the winit handler, where we have access to the event loop
-                        // #[cfg(feature = "a11y")]
-                        // {
-                        //     use crate::a11y::*;
-                        //     use iced_accessibility::accesskit::{
-                        //         ActivationHandler, Node, NodeId, Role, Tree,
-                        //         TreeUpdate,
-                        //     };
-                        //     use iced_accessibility::accesskit_winit::Adapter;
-
-                        //     let node_id =
-                        //         iced_runtime::core::id::window_node_id();
-
-                        //     let activation_handler = WinitActivationHandler {
-                        //         proxy: control_sender.clone(),
-                        //         title: String::new(),
-                        //     };
-
-                        //     let action_handler = WinitActionHandler {
-                        //         id: surface_id,
-                        //         proxy: control_sender.clone(),
-                        //     };
-
-                        //     let deactivation_handler =
-                        //         WinitDeactivationHandler {
-                        //             proxy: control_sender.clone(),
-                        //         };
-                        //     _ = adapters.insert(
-                        //         surface_id,
-                        //         (
-                        //             node_id,
-                        //             Adapter::with_direct_handlers(
-                        //                 event_loop,
-                        //                 sctk_winit.as_ref(),
-                        //                 activation_handler,
-                        //                 action_handler,
-                        //                 deactivation_handler,
-                        //             ),
-                        //         ),
-                        //     );
-                        // }
+                        #[cfg(feature = "a11y")]
+                        control_sender
+                            .start_send(Control::InitAdapter(
+                                surface_id,
+                                sctk_winit.clone(),
+                            ))
+                            .expect("Send control message");
 
                         if clipboard.window_id().is_none() {
                             *clipboard = Clipboard::connect(
@@ -1239,45 +1173,13 @@ impl SctkEvent {
                     display,
                     queue_handle,
                 );
-                // TODO must move this to the winit handler, where we have access to the event loop
-                // #[cfg(feature = "a11y")]
-                // {
-                //     use crate::a11y::*;
-                //     use iced_accessibility::accesskit::{
-                //         ActivationHandler, Node, NodeId, Role, Tree, TreeUpdate,
-                //     };
-                //     use iced_accessibility::accesskit_winit::Adapter;
-
-                //     let node_id = iced_runtime::core::id::window_node_id();
-
-                //     let activation_handler = WinitActivationHandler {
-                //         proxy: control_sender.clone(),
-                //         // TODO lock screen title
-                //         title: String::new(),
-                //     };
-
-                //     let action_handler = WinitActionHandler {
-                //         id: surface_id,
-                //         proxy: control_sender.clone(),
-                //     };
-
-                //     let deactivation_handler = WinitDeactivationHandler {
-                //         proxy: control_sender.clone(),
-                //     };
-                //     _ = adapters.insert(
-                //         surface_id,
-                //         (
-                //             node_id,
-                //             Adapter::with_direct_handlers(
-                //                 event_loop,
-                //                 sctk_winit.as_ref(),
-                //                 activation_handler,
-                //                 action_handler,
-                //                 deactivation_handler,
-                //             ),
-                //         ),
-                //     );
-                // }
+                #[cfg(feature = "a11y")]
+                control_sender
+                    .start_send(Control::InitAdapter(
+                        surface_id,
+                        sctk_winit.clone(),
+                    ))
+                    .expect("Send control message");
 
                 if clipboard.window_id().is_none() {
                     *clipboard = Clipboard::connect(
@@ -1515,43 +1417,13 @@ impl SctkEvent {
                         display,
                         qh,
                     );
-                    // #[cfg(feature = "a11y")]
-                    // {
-                    //     use crate::a11y::*;
-                    //     use iced_accessibility::accesskit::{
-                    //         ActivationHandler, NodeBuilder, NodeId, Role, Tree,
-                    //         TreeUpdate,
-                    //     };
-                    //     use iced_accessibility::accesskit_winit::Adapter;
-
-                    //     let node_id = iced_runtime::core::id::window_node_id();
-
-                    //     let activation_handler = WinitActivationHandler {
-                    //         proxy: control_sender.clone(),
-                    //         title: String::new(),
-                    //     };
-
-                    //     let action_handler = WinitActionHandler {
-                    //         id: surface_id,
-                    //         proxy: control_sender.clone(),
-                    //     };
-
-                    //     let deactivation_handler = WinitDeactivationHandler {
-                    //         proxy: control_sender.clone(),
-                    //     };
-                    //     _ = adapters.insert(
-                    //         surface_id,
-                    //         (
-                    //             node_id,
-                    //             Adapter::with_direct_handlers(
-                    //                 sctk_winit.as_ref(),
-                    //                 activation_handler,
-                    //                 action_handler,
-                    //                 deactivation_handler,
-                    //             ),
-                    //         ),
-                    //     );
-                    // }
+                    #[cfg(feature = "a11y")]
+                    control_sender
+                        .start_send(Control::InitAdapter(
+                            surface_id,
+                            sctk_winit.clone(),
+                        ))
+                        .expect("Send control message");
 
                     if clipboard.window_id().is_none() {
                         *clipboard = Clipboard::connect(

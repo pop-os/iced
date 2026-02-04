@@ -187,7 +187,7 @@ impl WaylandSpecific {
                     log::warn!("Missing calloop sender");
                     return Default::default();
                 };
-                let Some(event_sender) = winit_event_sender.as_ref() else {
+                let Some(event_sender) = winit_event_sender.as_mut() else {
                     log::warn!("Missing control sender");
                     return Default::default();
                 };

@@ -15,5 +15,4 @@ iced = { path = "../..", default-features = false, features = [
     "debug",
 ] }
 env_logger = "0.10"
-# sctk = { package = "smithay-client-toolkit", path = "../../../fork/client-toolkit/" }
 cctk.workspace = true

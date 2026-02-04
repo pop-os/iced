@@ -170,7 +170,6 @@ where
         sender: oneshot::Sender<()>,
         fonts: Vec<Cow<'static, [u8]>>,
         graphics_settings: graphics::Settings,
-        control_sender: mpsc::UnboundedSender<Control>,
         is_wayland: bool,
     }
     struct Runner<Message: 'static, F> {
@@ -182,6 +181,7 @@ where
         receiver: mpsc::UnboundedReceiver<Control>,
         error: Option<Error>,
         system_theme: Option<oneshot::Sender<theme::Mode>>,
+        control_sender: mpsc::UnboundedSender<Control>,
 
         #[cfg(target_arch = "wasm32")]
         is_booted: std::rc::Rc<std::cell::RefCell<bool>>,
@@ -196,12 +196,12 @@ where
             sender: boot_sender,
             fonts: settings.fonts,
             graphics_settings,
-            control_sender,
             is_wayland,
         }),
         id: settings.id,
         sender: event_sender,
         receiver: control_receiver,
+        control_sender: control_sender.clone(),
         error: None,
         system_theme: Some(system_theme_sender),
 
@@ -284,7 +284,6 @@ where
                 sender,
                 fonts,
                 graphics_settings,
-                control_sender,
                 is_wayland,
             }) = self.boot.take()
             else {
@@ -533,6 +532,53 @@ where
                                     .start_send(Event::StartDnd)
                                     .expect("Send event");
                             }
+                            Control::InitAdapter(id, window) => {
+                                #[cfg(feature = "a11y")]
+                                {
+                                    use crate::a11y::*;
+                                    use iced_accessibility::accesskit::{
+                                        ActivationHandler, Node, NodeId, Role,
+                                        Tree, TreeUpdate,
+                                    };
+                                    use iced_accessibility::accesskit_winit::Adapter;
+
+                                    let node_id =
+                                        iced_runtime::core::id::window_node_id(
+                                        );
+
+                                    let activation_handler =
+                                        WinitActivationHandler {
+                                            proxy: self.control_sender.clone(),
+                                            title: String::new(),
+                                        };
+
+                                    let action_handler = WinitActionHandler {
+                                        id,
+                                        proxy: self.control_sender.clone(),
+                                    };
+
+                                    let deactivation_handler =
+                                        WinitDeactivationHandler {
+                                            proxy: self.control_sender.clone(),
+                                        };
+
+                                    self.sender
+                                        .start_send(Event::A11yAdapter(
+                                            id,
+                                            (
+                                                node_id,
+                                                Adapter::with_direct_handlers(
+                                                    event_loop,
+                                                    window.as_ref(),
+                                                    activation_handler,
+                                                    action_handler,
+                                                    deactivation_handler,
+                                                ),
+                                            ),
+                                        ))
+                                        .expect("send event");
+                                }
+                            }
                         },
                         _ => {
                             break;
@@ -561,7 +607,6 @@ where
     }
 }
 
-#[derive(Debug)]
 enum Event<Message: 'static> {
     WindowCreated {
         id: window::Id,
@@ -576,6 +621,11 @@ enum Event<Message: 'static> {
     Accessibility(window::Id, iced_accessibility::accesskit::ActionRequest),
     #[cfg(feature = "a11y")]
     AccessibilityEnabled(bool),
+    #[cfg(feature = "a11y")]
+    A11yAdapter(
+        window::Id,
+        (u64, iced_accessibility::accesskit_winit::Adapter),
+    ),
     Winit(winit::window::WindowId, winit::event::WindowEvent),
     AboutToWait,
     UserEvent(Action<Message>),
@@ -584,7 +634,6 @@ enum Event<Message: 'static> {
     StartDnd,
 }
 
-#[derive(Debug)]
 enum Control {
     ChangeFlow(winit::event_loop::ControlFlow),
     Exit,
@@ -603,6 +652,8 @@ enum Control {
     Accessibility(window::Id, iced_accessibility::accesskit::ActionRequest),
     #[cfg(feature = "a11y")]
     AccessibilityEnabled(bool),
+    #[cfg(feature = "a11y")]
+    InitAdapter(window::Id, Arc<dyn winit::window::Window>),
     PlatformSpecific(crate::platform_specific::Event),
     AboutToWait,
     Winit(winit::window::WindowId, winit::event::WindowEvent),
@@ -665,50 +716,6 @@ async fn run_instance<P>(
 
     #[cfg(feature = "a11y")]
     let (mut adapters, mut a11y_enabled) = (Default::default(), false);
-    // let (mut adapters, mut a11y_enabled) = if let Some((main_id, title, raw)) =
-    //     window_manager.ids().next().and_then(|id| {
-    //         window_manager
-    //             .get(id)
-    //             .map(|w| (id, w.state.title.clone(), w.raw.clone()))
-    //     }) {
-    //     let node_id = core::id::window_node_id();
-    //     use crate::a11y::*;
-    //     use iced_accessibility::accesskit::{
-    //         ActivationHandler, Node, NodeId, Role, Tree, TreeUpdate,
-    //     };
-    //     use iced_accessibility::accesskit_winit::Adapter;
-
-    //     let activation_handler = WinitActivationHandler {
-    //         proxy: control_sender.clone(),
-    //         title: title.clone(),
-    //     };
-
-    //     let action_handler = WinitActionHandler {
-    //         id: main_id,
-    //         proxy: control_sender.clone(),
-    //     };
-
-    //     let deactivation_handler = WinitDeactivationHandler {
-    //         proxy: control_sender.clone(),
-    //     };
-    //     (
-    //         HashMap::from([(
-    //             main_id,
-    //             (
-    //                 node_id,
-    //                 Adapter::with_direct_handlers(
-    //                     raw.as_ref(),
-    //                     activation_handler,
-    //                     action_handler,
-    //                     deactivation_handler,
-    //                 ),
-    //             ),
-    //         )]),
-    //         false,
-    //     )
-    // } else {
-    //     (Default::default(), false)
-    // };
 
     #[cfg(all(feature = "linux-theme-detection", target_os = "linux"))]
     let mut system_theme = {
@@ -765,6 +772,10 @@ async fn run_instance<P>(
                 make_visible,
                 on_open,
             } => {
+                #[cfg(feature = "a11y")]
+                control_sender
+                    .start_send(Control::InitAdapter(id, window.clone()))
+                    .expect("Send control message");
                 if compositor.is_none() {
                     let (compositor_sender, compositor_receiver) =
                         oneshot::channel();
@@ -1794,6 +1805,10 @@ async fn run_instance<P>(
                         );
                     }
                 }
+            }
+            #[cfg(feature = "a11y")]
+            Event::A11yAdapter(id, adapter) => {
+                _ = adapters.insert(id, adapter);
             }
             _ => {}
         }

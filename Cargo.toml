@@ -28,7 +28,7 @@ wgpu-bare = ["iced_renderer/wgpu-bare", "iced_widget/wgpu"]
 # Enables the `tiny-skia` software renderer
 
 
-default = ["tiny-skia", "tokio", "wayland", "x11"]
+default = ["a11y", "tiny-skia", "tokio", "wayland", "x11"]
 # Enable the `tiny-skia` software renderer backend
 tiny-skia = ["iced_renderer/tiny-skia"]
 # Enables the `image` widget
@@ -245,7 +245,6 @@ cosmic-text = { git = "https://github.com/pop-os/cosmic-text.git" }
 dark-light = "1.0"
 cryoglyph = { package = "cryoglyph", git = "https://github.com/pop-os/glyphon.git", branch = "iced-0.14" }
 resvg = "0.45"
-# glyphon = { package = "iced_glyphon", path = "../../../glyphon" }
 web-sys = "0.3.69"
 guillotiere = "0.6"
 half = "2.2"
@@ -308,16 +307,9 @@ winapi = "0.3"
 window_clipboard = { git = "https://github.com/pop-os/window_clipboard.git", tag = "pop-0.13-2" }
 dnd = { git = "https://github.com/pop-os/window_clipboard.git", tag = "pop-0.13-2" }
 mime = { git = "https://github.com/pop-os/window_clipboard.git", tag = "pop-0.13-2" }
-# window_clipboard = { path = "../../window_clipboard", tag = "pop-0.13-2" }
-# dnd = { path = "../../window_clipboard/dnd", tag = "pop-0.13" }
-# mime = { path = "../../window_clipboard/mime", tag = "pop-0.13" }
-# winit = { git = "https://github.com/pop-os/winit.git", tag = "iced-xdg-surface-0.13" }
-winit = { path = "../../winit/winit" }
-winit-core = { path = "../../winit/winit-core" }
+winit = { git = "https://github.com/pop-os/winit.git", branch = "iced-0.14-rebase" }
+winit-core = { git = "https://github.com/pop-os/winit.git", branch = "iced-0.14-rebase" }
 cursor-icon = "1.1.0"
-# winit = { git = "https://github.com/iced-rs/winit.git", rev = "254d6b3420ce4e674f516f7a2bd440665e05484d" }
-# winit = { git = "https://github.com/rust-windowing/winit.git", rev = "241b7a80bba96c91fa3901729cd5dec66abb9be4" }
-# winit = { path = "../../../winit" }
 
 
 [workspace.lints.rust]
@@ -345,6 +337,3 @@ useless_conversion = "deny"
 [workspace.lints.rustdoc]
 broken_intra_doc_links = "forbid"
 
-# [patch."https://github.com/rust-windowing/winit.git"]
-# winit = { git = "https://github.com/rust-windowing/winit.git", rev = "241b7a80bba96c91fa3901729cd5dec66abb9be4" }
-# winit = { path = "../../../winit" }
