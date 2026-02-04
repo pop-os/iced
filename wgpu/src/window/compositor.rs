@@ -1,4 +1,6 @@
 //! Connect a window with a renderer.
+use wgpu::Backends;
+
 use crate::core::Color;
 use crate::graphics::color;
 use crate::graphics::compositor;
@@ -53,7 +55,7 @@ impl Compositor {
     /// Requests a new [`Compositor`] with the given [`Settings`].
     ///
     /// Returns `None` if no compatible graphics adapter could be found.
-    pub async fn request<W: compositor::Window>(
+    pub async fn request<W: compositor::Window + Clone>(
         settings: Settings,
         compatible_window: Option<W>,
         shell: Shell,
@@ -82,10 +84,13 @@ impl Compositor {
             }
         }
 
+        // XXX: try getting non-gl adapter first
+        // Otherwise it will panic when it drops the available adapters!
+        let non_gl_backends = settings.backends.difference(Backends::GL);
         // only load the instance after setting environment variables, this initializes the vulkan loader
-        let instance = wgpu::util::new_instance_with_webgpu_detection(
+        let mut instance = wgpu::util::new_instance_with_webgpu_detection(
             &wgpu::InstanceDescriptor {
-                backends: settings.backends,
+                backends: non_gl_backends,
                 flags: if cfg!(feature = "strict-assertions") {
                     wgpu::InstanceFlags::debugging()
                 } else {
@@ -113,10 +118,11 @@ impl Compositor {
         // }
 
         #[allow(unsafe_code)]
-        let compatible_surface = compatible_window
+        let mut compatible_surface = compatible_window
+            .clone()
             .and_then(|window| instance.create_surface(window).ok());
 
-        let adapter_options = wgpu::RequestAdapterOptions {
+        let mut adapter_options = wgpu::RequestAdapterOptions {
             power_preference: wgpu::PowerPreference::from_env()
                 .unwrap_or(wgpu::PowerPreference::HighPerformance),
             compatible_surface: compatible_surface.as_ref(),
@@ -131,50 +137,13 @@ impl Compositor {
                 not(target_os = "redox")
             ))]
             if let Some((vendor_id, device_id)) = ids {
-                let a = instance
-                    .request_adapter(&adapter_options)
-                    .await
-                    .map_err(|_error| {
-                        Error::NoAdapterFound(format!("{adapter_options:?}"))
-                    })?;
-                let info = a.get_info();
-                adapter = if info.device == device_id as u32
-                    && info.vendor == vendor_id as u32
-                {
-                    Some(a)
-                } else {
-                    instance
-                        .enumerate_adapters(settings.backends)
-                        .into_iter()
-                        .filter(|adapter| {
-                            let info = adapter.get_info();
-                            info.device == device_id as u32
-                                && info.vendor == vendor_id as u32
-                        })
-                        .find(|adapter| {
-                            if let Some(surface) = compatible_surface.as_ref() {
-                                adapter.is_surface_supported(surface)
-                            } else {
-                                true
-                            }
-                        })
-                };
-            }
-        } else if let Ok(name) = std::env::var("WGPU_ADAPTER_NAME") {
-            let a = instance.request_adapter(&adapter_options).await.map_err(
-                |_error| Error::NoAdapterFound(format!("{adapter_options:?}")),
-            )?;
-            let info = a.get_info();
-            adapter = if info.name == name
-            {
-                Some(a)
-            } else {
-                instance
+                adapter = instance
                     .enumerate_adapters(settings.backends)
                     .into_iter()
                     .filter(|adapter| {
                         let info = adapter.get_info();
-                        info.name == name
+                        info.device == device_id as u32
+                            && info.vendor == vendor_id as u32
                     })
                     .find(|adapter| {
                         if let Some(surface) = compatible_surface.as_ref() {
@@ -182,30 +151,69 @@ impl Compositor {
                         } else {
                             true
                         }
-                    })
-            };
+                    });
+            }
+        } else if let Ok(name) = std::env::var("WGPU_ADAPTER_NAME") {
+            adapter = instance
+                .enumerate_adapters(settings.backends)
+                .into_iter()
+                .filter(|adapter| {
+                    let info = adapter.get_info();
+                    info.name == name
+                })
+                .find(|adapter| {
+                    if let Some(surface) = compatible_surface.as_ref() {
+                        adapter.is_surface_supported(surface)
+                    } else {
+                        true
+                    }
+                });
         }
-        dbg!(&adapter);
+
         let adapter = match adapter {
             Some(adapter) => adapter,
-            None => instance.request_adapter(&adapter_options).await.map_err(
-                |_| Error::NoAdapterFound(format!("{:?}", adapter_options)),
-            )?,
+            None => {
+                // fall back to allowing GL backend if enabled
+                instance = wgpu::util::new_instance_with_webgpu_detection(
+                    &wgpu::InstanceDescriptor {
+                        backends: settings.backends,
+                        flags: if cfg!(feature = "strict-assertions") {
+                            wgpu::InstanceFlags::debugging()
+                        } else {
+                            wgpu::InstanceFlags::empty()
+                        },
+                        ..Default::default()
+                    },
+                )
+                .await;
+                compatible_surface = compatible_window
+                    .and_then(|window| instance.create_surface(window).ok());
+                adapter_options = wgpu::RequestAdapterOptions {
+                    power_preference: wgpu::PowerPreference::from_env()
+                        .unwrap_or(wgpu::PowerPreference::HighPerformance),
+                    compatible_surface: compatible_surface.as_ref(),
+                    force_fallback_adapter: false,
+                };
+                instance.request_adapter(&adapter_options).await.map_err(
+                    |_| Error::NoAdapterFound(format!("{:?}", adapter_options)),
+                )?
+            }
         };
         log::info!("Selected: {:#?}", adapter.get_info());
 
         let (format, alpha_mode) = compatible_surface
             .as_ref()
-            .and_then(|surface| {
+            .and_then(|surface: &wgpu::Surface<'_>| {
                 let capabilities = surface.get_capabilities(&adapter);
 
                 let formats = capabilities.formats.iter().copied();
 
                 log::info!("Available formats: {formats:#?}");
 
-                let mut formats = formats.filter(|format| {
-                    format.required_features() == wgpu::Features::empty()
-                });
+                let mut formats =
+                    formats.filter(|format: &wgpu::TextureFormat| {
+                        format.required_features() == wgpu::Features::empty()
+                    });
 
                 let format = if color::GAMMA_CORRECTION {
                     formats.find(wgpu::TextureFormat::is_srgb)
@@ -305,7 +313,7 @@ impl Compositor {
 }
 
 /// Creates a [`Compositor`] with the given [`Settings`] and window.
-pub async fn new<W: compositor::Window>(
+pub async fn new<W: compositor::Window + Clone>(
     settings: Settings,
     compatible_window: W,
     shell: Shell,
@@ -363,7 +371,7 @@ impl graphics::Compositor for Compositor {
     async fn with_backend(
         settings: graphics::Settings,
         _display: impl compositor::Display,
-        compatible_window: impl compositor::Window,
+        compatible_window: impl compositor::Window + Clone,
         shell: Shell,
         backend: Option<&str>,
     ) -> Result<Self, graphics::Error> {
