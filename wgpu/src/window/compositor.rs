@@ -98,21 +98,19 @@ impl Compositor {
 
         log::info!("{settings:#?}");
 
-        let available_adapters = instance.enumerate_adapters(settings.backends);
-
         unsafe {
             std::env::remove_var("VK_LOADER_DRIVERS_DISABLE");
         }
 
-        #[cfg(not(target_arch = "wasm32"))]
-        if log::max_level() >= log::LevelFilter::Info {
-            let available_adapters: Vec<_> = instance
-                .enumerate_adapters(settings.backends)
-                .iter()
-                .map(wgpu::Adapter::get_info)
-                .collect();
-            log::info!("Available adapters: {available_adapters:#?}");
-        }
+        // #[cfg(not(target_arch = "wasm32"))]
+        // if log::max_level() >= log::LevelFilter::Info {
+        //     let available_adapters: Vec<_> = instance
+        //         .enumerate_adapters(settings.backends)
+        //         .iter()
+        //         .map(wgpu::Adapter::get_info)
+        //         .collect();
+        //     log::info!("Available adapters: {available_adapters:#?}");
+        // }
 
         #[allow(unsafe_code)]
         let compatible_surface = compatible_window
@@ -133,12 +131,50 @@ impl Compositor {
                 not(target_os = "redox")
             ))]
             if let Some((vendor_id, device_id)) = ids {
-                adapter = available_adapters
+                let a = instance
+                    .request_adapter(&adapter_options)
+                    .await
+                    .map_err(|_error| {
+                        Error::NoAdapterFound(format!("{adapter_options:?}"))
+                    })?;
+                let info = a.get_info();
+                adapter = if info.device == device_id as u32
+                    && info.vendor == vendor_id as u32
+                {
+                    Some(a)
+                } else {
+                    instance
+                        .enumerate_adapters(settings.backends)
+                        .into_iter()
+                        .filter(|adapter| {
+                            let info = adapter.get_info();
+                            info.device == device_id as u32
+                                && info.vendor == vendor_id as u32
+                        })
+                        .find(|adapter| {
+                            if let Some(surface) = compatible_surface.as_ref() {
+                                adapter.is_surface_supported(surface)
+                            } else {
+                                true
+                            }
+                        })
+                };
+            }
+        } else if let Ok(name) = std::env::var("WGPU_ADAPTER_NAME") {
+            let a = instance.request_adapter(&adapter_options).await.map_err(
+                |_error| Error::NoAdapterFound(format!("{adapter_options:?}")),
+            )?;
+            let info = a.get_info();
+            adapter = if info.name == name
+            {
+                Some(a)
+            } else {
+                instance
+                    .enumerate_adapters(settings.backends)
                     .into_iter()
                     .filter(|adapter| {
                         let info = adapter.get_info();
-                        info.device == device_id as u32
-                            && info.vendor == vendor_id as u32
+                        info.name == name
                     })
                     .find(|adapter| {
                         if let Some(surface) = compatible_surface.as_ref() {
@@ -146,24 +182,10 @@ impl Compositor {
                         } else {
                             true
                         }
-                    });
-            }
-        } else if let Ok(name) = std::env::var("WGPU_ADAPTER_NAME") {
-            adapter = available_adapters
-                .into_iter()
-                .filter(|adapter| {
-                    let info = adapter.get_info();
-                    info.name == name
-                })
-                .find(|adapter| {
-                    if let Some(surface) = compatible_surface.as_ref() {
-                        adapter.is_surface_supported(surface)
-                    } else {
-                        true
-                    }
-                });
+                    })
+            };
         }
-
+        dbg!(&adapter);
         let adapter = match adapter {
             Some(adapter) => adapter,
             None => instance.request_adapter(&adapter_options).await.map_err(
