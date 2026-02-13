@@ -887,6 +887,14 @@ impl SctkEvent {
                                 .map(|v| (id.inner(), v))
                         })
                     {
+                        // Ensure the first configure always enables rendering.
+                        // Without this, if autosize doesn't request a resize
+                        // (content fits the initial size), resize_enabled stays
+                        // false and program.rs skips all rendering for this window.
+                        if first {
+                            w.resize_enabled = true;
+                        }
+
                         let scale = w.state.scale_factor();
                         let p_w = (configure.new_size.0.max(1) as f64 * scale)
                             .ceil() as u32;
