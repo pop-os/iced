@@ -887,6 +887,10 @@ impl SctkEvent {
                                 .map(|v| (id.inner(), v))
                         })
                     {
+                        if first {
+                            w.resize_enabled = true;
+                        }
+
                         let scale = w.state.scale_factor();
                         let p_w = (configure.new_size.0.max(1) as f64 * scale)
                             .ceil() as u32;
