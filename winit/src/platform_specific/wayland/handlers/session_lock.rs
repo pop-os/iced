@@ -1,6 +1,10 @@
 use crate::{
     event_loop::state::CommonSurface,
-    platform_specific::wayland::{handlers::SctkState, sctk_event::SctkEvent},
+    platform_specific::wayland::{
+        event_loop::state::receive_frame,
+        handlers::SctkState,
+        sctk_event::SctkEvent,
+    },
 };
 use cctk::sctk::{
     delegate_session_lock,
@@ -67,6 +71,10 @@ impl SessionLockHandler for SctkState {
                 configure,
                 first,
             });
+
+        let wl_surface = session_lock_surface.wl_surface().clone();
+        receive_frame(&mut self.frame_status, &wl_surface);
+        self.request_redraw(&wl_surface);
     }
 }
 
