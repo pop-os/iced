@@ -317,6 +317,10 @@ mod toast {
                 .collect()
         }
 
+        fn children_count(&self) -> usize {
+            self.toasts.len() + 1
+        }
+
         fn diff(&mut self, tree: &mut Tree) {
             let instants = tree.state.downcast_mut::<Vec<Option<Instant>>>();
 

@@ -273,6 +273,10 @@ impl<'a, Message: 'static> Widget<Message, iced::Theme, iced::Renderer>
         vec![Tree::new(&self.container)]
     }
 
+    fn children_count(&self) -> usize {
+        1
+    }
+
     fn tag(&self) -> iced_core::widget::tree::Tag {
         tree::Tag::of::<State<()>>()
     }

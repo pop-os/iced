@@ -203,6 +203,10 @@ where
         self.children.iter().map(Tree::new).collect()
     }
 
+    fn children_count(&self) -> usize {
+        self.children.len()
+    }
+
     fn diff(&mut self, tree: &mut Tree) {
         tree.diff_children(&mut self.children);
     }
@@ -447,6 +451,10 @@ where
 {
     fn children(&self) -> Vec<Tree> {
         self.row.children()
+    }
+
+    fn children_count(&self) -> usize {
+        self.row.children_count()
     }
 
     fn diff(&mut self, tree: &mut Tree) {

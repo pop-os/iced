@@ -509,6 +509,10 @@ where
         vec![widget::Tree::new(&self.text_input as &dyn Widget<_, _, _>)]
     }
 
+    fn children_count(&self) -> usize {
+        1
+    }
+
     fn on_event(
         &mut self,
         tree: &mut widget::Tree,
