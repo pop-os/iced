@@ -171,6 +171,7 @@ pub struct PickList<
     text_line_height: text::LineHeight,
     text_shaping: text::Shaping,
     text_wrap: text::Wrapping,
+    text_ellipsize: text::Ellipsize,
     font: Option<Renderer::Font>,
     handle: Handle<Renderer::Font>,
     class: <Theme as Catalog>::Class<'a>,
@@ -209,6 +210,7 @@ where
             text_line_height: text::LineHeight::default(),
             text_shaping: text::Shaping::Advanced,
             text_wrap: text::Wrapping::default(),
+            text_ellipsize: text::Ellipsize::default(),
             font: None,
             handle: Handle::default(),
             class: <Theme as Catalog>::default(),
@@ -392,6 +394,7 @@ where
             align_y: alignment::Vertical::Center,
             shaping: self.text_shaping,
             wrapping: self.text_wrap,
+            ellipsize: self.text_ellipsize,
         };
 
         for (option, paragraph) in options.iter().zip(state.options.iter_mut())
@@ -614,6 +617,7 @@ where
                 text::LineHeight::default(),
                 text::Shaping::Basic,
                 text::Wrapping::default(),
+                text::Ellipsize::default(),
             )),
             Handle::Static(Icon {
                 font,
@@ -622,9 +626,16 @@ where
                 line_height,
                 shaping,
                 wrap,
-            }) => {
-                Some((*font, *code_point, *size, *line_height, *shaping, *wrap))
-            }
+                ellipsize,
+            }) => Some((
+                *font,
+                *code_point,
+                *size,
+                *line_height,
+                *shaping,
+                *wrap,
+                *ellipsize,
+            )),
             Handle::Dynamic { open, closed } => {
                 if state.is_open {
                     Some((
@@ -634,6 +645,7 @@ where
                         open.line_height,
                         open.shaping,
                         open.wrap,
+                        open.ellipsize,
                     ))
                 } else {
                     Some((
@@ -643,14 +655,22 @@ where
                         closed.line_height,
                         closed.shaping,
                         closed.wrap,
+                        closed.ellipsize,
                     ))
                 }
             }
             Handle::None => None,
         };
 
-        if let Some((font, code_point, size, line_height, shaping, wrap)) =
-            handle
+        if let Some((
+            font,
+            code_point,
+            size,
+            line_height,
+            shaping,
+            wrap,
+            ellipsize,
+        )) = handle
         {
             let size = size.unwrap_or_else(|| renderer.default_size());
 
@@ -668,6 +688,7 @@ where
                     align_y: alignment::Vertical::Center,
                     shaping,
                     wrapping: wrap,
+                    ellipsize: ellipsize,
                 },
                 Point::new(
                     bounds.x + bounds.width - self.padding.right,
@@ -698,6 +719,7 @@ where
                     align_y: alignment::Vertical::Center,
                     shaping: self.text_shaping,
                     wrapping: self.text_wrap,
+                    ellipsize: self.text_ellipsize,
                 },
                 Point::new(bounds.x + self.padding.left, bounds.center_y()),
                 if selected.is_some() {
@@ -851,6 +873,8 @@ pub struct Icon<Font> {
     pub shaping: text::Shaping,
     /// The wrap mode of the icon.
     pub wrap: text::Wrapping,
+    /// The ellipsize mode of the icon.
+    pub ellipsize: text::Ellipsize,
 }
 
 /// The possible status of a [`PickList`].

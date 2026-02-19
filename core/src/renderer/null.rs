@@ -157,6 +157,18 @@ impl text::Paragraph for () {
     fn span_bounds(&self, _index: usize) -> Vec<Rectangle> {
         vec![]
     }
+
+    fn min_width(&self) -> f32 {
+        self.min_bounds().width
+    }
+
+    fn min_height(&self) -> f32 {
+        self.min_bounds().height
+    }
+
+    fn ellipsize(&self) -> text::Ellipsize {
+        text::Ellipsize::default()
+    }
 }
 
 impl text::Editor for () {

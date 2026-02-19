@@ -112,6 +112,7 @@ pub struct Toggler<
     text_alignment: text::Alignment,
     text_shaping: text::Shaping,
     text_wrapping: text::Wrapping,
+    text_ellipsize: text::Ellipsize,
     spacing: f32,
     font: Option<Renderer::Font>,
     class: Theme::Class<'a>,
@@ -150,6 +151,7 @@ where
             text_line_height: text::LineHeight::default(),
             text_alignment: text::Alignment::Default,
             text_wrapping: text::Wrapping::default(),
+            text_ellipsize: text::Ellipsize::default(),
             spacing: Self::DEFAULT_SIZE / 2.0,
             text_shaping: text::Shaping::Advanced,
             font: None,
@@ -234,6 +236,12 @@ where
     /// Sets the [`text::Wrapping`] strategy of the [`Toggler`].
     pub fn text_wrapping(mut self, wrapping: text::Wrapping) -> Self {
         self.text_wrapping = wrapping;
+        self
+    }
+
+    /// Sets the [`text::Ellipsize`] strategy of the [`Toggler`].
+    pub fn text_ellipsize(mut self, ellipsize: text::Ellipsize) -> Self {
+        self.text_ellipsize = ellipsize;
         self
     }
 
@@ -362,6 +370,7 @@ where
                             align_y: alignment::Vertical::Top,
                             shaping: self.text_shaping,
                             wrapping: self.text_wrapping,
+                            ellipsize: self.text_ellipsize,
                         },
                     )
                 } else {

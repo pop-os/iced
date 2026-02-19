@@ -1,4 +1,6 @@
 //! Draw paragraphs.
+use iced_core::text::Ellipsize;
+
 use crate::core;
 use crate::core::alignment;
 use crate::core::text::{
@@ -24,6 +26,7 @@ struct Internal {
     align_y: alignment::Vertical,
     bounds: Size,
     min_bounds: Size,
+    ellipsize: Ellipsize,
     version: text::Version,
 }
 
@@ -83,6 +86,10 @@ impl core::text::Paragraph for Paragraph {
         );
 
         buffer.set_wrap(font_system.raw(), text::to_wrap(text.wrapping));
+        buffer.set_ellipsize(
+            font_system.raw(),
+            text::to_ellipsize(text.ellipsize),
+        );
 
         buffer.set_text(
             font_system.raw(),
@@ -101,6 +108,7 @@ impl core::text::Paragraph for Paragraph {
             align_x: text.align_x,
             align_y: text.align_y,
             shaping: text.shaping,
+            ellipsize: text.ellipsize,
             wrapping: text.wrapping,
             bounds: text.bounds,
             min_bounds,
@@ -177,6 +185,7 @@ impl core::text::Paragraph for Paragraph {
             align_x: text.align_x,
             align_y: text.align_y,
             shaping: text.shaping,
+            ellipsize: text.ellipsize,
             wrapping: text.wrapping,
             bounds: text.bounds,
             min_bounds,
@@ -394,6 +403,10 @@ impl core::text::Paragraph for Paragraph {
             glyph.y - glyph.y_offset * glyph.font_size,
         ))
     }
+
+    fn ellipsize(&self) -> Ellipsize {
+        self.0.ellipsize
+    }
 }
 
 impl Default for Paragraph {
@@ -438,6 +451,7 @@ impl Default for Internal {
             }),
             font: Font::default(),
             shaping: Shaping::default(),
+            ellipsize: Ellipsize::default(),
             wrapping: Wrapping::default(),
             align_x: Alignment::Default,
             align_y: alignment::Vertical::Top,

@@ -4,7 +4,8 @@ use crate::core::mouse;
 use crate::core::renderer;
 use crate::core::text::{Paragraph, Span};
 use crate::core::widget::text::{
-    self, Alignment, Catalog, LineHeight, Shaping, Style, StyleFn, Wrapping,
+    self, Alignment, Catalog, Ellipsize, LineHeight, Shaping, Style, StyleFn,
+    Wrapping,
 };
 use crate::core::widget::tree::{self, Tree};
 use crate::core::{
@@ -33,6 +34,7 @@ pub struct Rich<
     align_x: Alignment,
     align_y: alignment::Vertical,
     wrapping: Wrapping,
+    ellipsize: Ellipsize,
     class: Theme::Class<'a>,
     hovered_link: Option<usize>,
     on_link_click: Option<Box<dyn Fn(Link) -> Message + 'a>>,
@@ -58,6 +60,7 @@ where
             align_x: Alignment::Default,
             align_y: alignment::Vertical::Top,
             wrapping: Wrapping::default(),
+            ellipsize: Ellipsize::default(),
             class: Theme::default(),
             hovered_link: None,
             on_link_click: None,
@@ -142,6 +145,12 @@ where
         on_link_click: impl Fn(Link) -> Message + 'a,
     ) -> Self {
         self.on_link_click = Some(Box::new(on_link_click));
+        self
+    }
+
+    /// Sets the [`Ellipsize`] strategy of the [`Rich`] text.
+    pub fn ellipsize(mut self, ellipsize: Ellipsize) -> Self {
+        self.ellipsize = ellipsize;
         self
     }
 
@@ -247,6 +256,7 @@ where
             self.align_x,
             self.align_y,
             self.wrapping,
+            self.ellipsize,
         )
     }
 
@@ -476,6 +486,7 @@ fn layout<Link, Renderer>(
     align_x: Alignment,
     align_y: alignment::Vertical,
     wrapping: Wrapping,
+    ellipsize: Ellipsize,
 ) -> layout::Node
 where
     Link: Clone,
@@ -497,6 +508,7 @@ where
             align_y,
             shaping: Shaping::Advanced,
             wrapping,
+            ellipsize,
         };
 
         if state.spans != spans {
@@ -514,6 +526,7 @@ where
                 align_y,
                 shaping: Shaping::Advanced,
                 wrapping,
+                ellipsize,
             }) {
                 core::text::Difference::None => {}
                 core::text::Difference::Bounds => {

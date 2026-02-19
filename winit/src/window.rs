@@ -434,6 +434,7 @@ where
                 align_y: alignment::Vertical::Top,
                 shaping: text::Shaping::Advanced,
                 wrapping: text::Wrapping::None,
+                ellipsize: text::Ellipsize::default(),
             });
 
             self.spans.clear();

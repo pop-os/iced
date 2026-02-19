@@ -5,6 +5,8 @@ use crate::text::{
 };
 use crate::{Pixels, Point, Rectangle, Size};
 
+use super::Ellipsize;
+
 /// A text paragraph.
 pub trait Paragraph: Sized + Default {
     /// The font of this [`Paragraph`].
@@ -78,6 +80,10 @@ pub trait Paragraph: Sized + Default {
     fn min_height(&self) -> f32 {
         self.min_bounds().height
     }
+
+
+    /// Returns the [`Ellipsize`] strategy of the [`Paragraph`]>
+    fn ellipsize(&self) -> Ellipsize;
 }
 
 /// A [`Paragraph`] of plain text.
@@ -169,6 +175,7 @@ impl<P: Paragraph> Plain<P> {
             align_y: self.raw.align_y(),
             shaping: self.raw.shaping(),
             wrapping: self.raw.wrapping(),
+            ellipsize: self.raw.ellipsize()
         }
     }
 }

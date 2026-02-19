@@ -144,6 +144,7 @@ where
     text_line_height: text::LineHeight,
     text_shaping: text::Shaping,
     text_wrapping: text::Wrapping,
+    text_ellipsize: text::Ellipsize,
     font: Option<Renderer::Font>,
     class: Theme::Class<'a>,
     last_status: Option<Status>,
@@ -190,6 +191,7 @@ where
             text_line_height: text::LineHeight::default(),
             text_shaping: text::Shaping::Advanced,
             text_wrapping: text::Wrapping::default(),
+            text_ellipsize: text::Ellipsize::default(),
             font: None,
             class: Theme::default(),
             last_status: None,
@@ -238,6 +240,12 @@ where
     /// Sets the [`text::Wrapping`] strategy of the [`Radio`] button.
     pub fn text_wrapping(mut self, wrapping: text::Wrapping) -> Self {
         self.text_wrapping = wrapping;
+        self
+    }
+
+    /// Sets the [`text::Ellipsize`] strategy of the [`Radio`] button.
+    pub fn text_ellipsize(mut self, ellipsize: text::Ellipsize) -> Self {
+        self.text_ellipsize = ellipsize;
         self
     }
 
@@ -318,6 +326,7 @@ where
                         align_y: alignment::Vertical::Top,
                         shaping: self.text_shaping,
                         wrapping: self.text_wrapping,
+                        ellipsize: self.text_ellipsize,
                     },
                 )
             },

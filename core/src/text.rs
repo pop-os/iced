@@ -44,6 +44,9 @@ pub struct Text<Content = String, Font = crate::Font> {
 
     /// The [`Wrapping`] strategy of the [`Text`].
     pub wrapping: Wrapping,
+
+    /// The  [`Ellipsize`] strategy of the [`Text`].
+    pub ellipsize: Ellipsize,
 }
 
 impl<Content, Font> Text<Content, Font>
@@ -63,6 +66,7 @@ where
             align_y: self.align_y,
             shaping: self.shaping,
             wrapping: self.wrapping,
+            ellipsize: self.ellipsize,
         }
     }
 }
@@ -190,6 +194,31 @@ pub enum Wrapping {
     Glyph,
     /// Wraps at the word level, or fallback to glyph level if a word can't fit on a line by itself.
     WordOrGlyph,
+}
+
+/// The ellipsizing strategy of some text.
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub enum Ellipsize {
+    /// No ellipsizing.
+    ///
+    /// This is the default.
+    #[default]
+    None,
+    /// Ellipsize at the start of the text.
+    Start(EllipsizeHeightLimit),
+    /// Ellipsize in the middle of the text.
+    Middle(EllipsizeHeightLimit),
+    /// Ellipsize at the end of the text.
+    End(EllipsizeHeightLimit),
+}
+
+/// The ellipsizing strategy of some text when it exceeds a certain height.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum EllipsizeHeightLimit {
+    /// The number of lines after which ellipsizing should occur.
+    Lines(usize),
+    /// The height limit in pixels
+    Height(f32),
 }
 
 /// The height of a line of text in a paragraph.

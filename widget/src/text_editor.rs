@@ -41,7 +41,7 @@ use crate::core::mouse;
 use crate::core::renderer;
 use crate::core::text::editor::Editor as _;
 use crate::core::text::highlighter::{self, Highlighter};
-use crate::core::text::{self, LineHeight, Text, Wrapping};
+use crate::core::text::{self, Ellipsize, LineHeight, Text, Wrapping};
 use crate::core::theme;
 use crate::core::time::{Duration, Instant};
 use crate::core::widget::operation;
@@ -129,6 +129,7 @@ pub struct TextEditor<
     max_height: f32,
     padding: Padding,
     wrapping: Wrapping,
+    ellipsize: text::Ellipsize,
     class: Theme::Class<'a>,
     key_binding: Option<Box<dyn Fn(KeyPress) -> Option<Binding<Message>> + 'a>>,
     on_edit: Option<Box<dyn Fn(Action) -> Message + 'a>>,
@@ -162,6 +163,7 @@ where
             padding: Padding::new(5.0),
             wrapping: Wrapping::default(),
             class: <Theme as Catalog>::default(),
+            ellipsize: Ellipsize::default(),
             key_binding: None,
             on_edit: None,
             highlighter_settings: (),
@@ -308,6 +310,7 @@ where
             max_height: self.max_height,
             padding: self.padding,
             wrapping: self.wrapping,
+            ellipsize: self.ellipsize,
             class: self.class,
             key_binding: self.key_binding,
             on_edit: self.on_edit,
@@ -1011,6 +1014,7 @@ where
                         align_y: alignment::Vertical::Top,
                         shaping: text::Shaping::Advanced,
                         wrapping: self.wrapping,
+                        ellipsize: self.ellipsize,
                     },
                     text_bounds.position(),
                     style.placeholder,

@@ -355,6 +355,37 @@ pub fn to_wrap(wrapping: Wrapping) -> cosmic_text::Wrap {
     }
 }
 
+/// Converts some [`Ellipsize`] strategy to a [`cosmic_text::Ellipsize`] strategy.
+pub fn to_ellipsize(
+    ellipsize: crate::core::text::Ellipsize,
+) -> cosmic_text::Ellipsize {
+    match ellipsize {
+        crate::core::text::Ellipsize::None => cosmic_text::Ellipsize::None,
+        crate::core::text::Ellipsize::Start(limit) => {
+            cosmic_text::Ellipsize::Start(to_ellipsize_height_limit(limit))
+        }
+        crate::core::text::Ellipsize::Middle(limit) => {
+            cosmic_text::Ellipsize::Middle(to_ellipsize_height_limit(limit))
+        }
+        crate::core::text::Ellipsize::End(limit) => {
+            cosmic_text::Ellipsize::End(to_ellipsize_height_limit(limit))
+        }
+    }
+}
+
+pub fn to_ellipsize_height_limit(
+    limit: crate::core::text::EllipsizeHeightLimit,
+) -> cosmic_text::EllipsizeHeightLimit {
+    match limit {
+        crate::core::text::EllipsizeHeightLimit::Lines(lines) => {
+            cosmic_text::EllipsizeHeightLimit::Lines(lines)
+        }
+        crate::core::text::EllipsizeHeightLimit::Height(height) => {
+            cosmic_text::EllipsizeHeightLimit::Height(height)
+        }
+    }
+}
+
 /// Converts some [`Color`] to a [`cosmic_text::Color`].
 pub fn to_color(color: Color) -> cosmic_text::Color {
     let [r, g, b, a] = color.into_rgba8();
