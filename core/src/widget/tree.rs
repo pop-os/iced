@@ -147,7 +147,6 @@ impl Tree {
 
         None
     }
-
     /// Reconciliates the current tree with the provided [`Widget`].
     ///
     /// If the tag of the [`Widget`] matches the tag of the [`Tree`], then the
@@ -166,9 +165,10 @@ impl Tree {
             new.borrow_mut();
 
         let mut tag_match = self.tag == borrowed.tag();
+
         if tag_match {
             if let Some(Id(Internal::Custom(_, n))) = borrowed.id() {
-                let mut named = NAMED
+                if let Some((mut state, children)) = NAMED
                     .with(|named| named.borrow_mut().remove(&n))
                     .or_else(|| {
                         //check self.id
@@ -199,14 +199,14 @@ impl Tree {
                         } else {
                             None
                         }
-                    });
-                if let Some((mut state, children)) = named {
+                    })
+                {
                     std::mem::swap(&mut self.state, &mut state);
                     let widget_children = borrowed.children();
                     if !tag_match
                         || self.children.len() != widget_children.len()
                     {
-                        self.children = borrowed.children();
+                        self.children = widget_children;
                     } else {
                         for (old_i, mut old) in children {
                             let Some(my_state) = self.children.get_mut(old_i)
@@ -244,8 +244,10 @@ impl Tree {
                 if let Some(id) = self.id.clone() {
                     borrowed.set_id(id);
                 }
-                if self.children.len() != borrowed.children().len() {
-                    self.children = borrowed.children();
+                let borrowed_children = borrowed.children();
+
+                if self.children.len() != borrowed_children.len() {
+                    self.children = borrowed_children;
                 }
             }
         }

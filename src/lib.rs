@@ -492,17 +492,17 @@ pub use iced_widget::core;
 #[cfg(feature = "winit")]
 use iced_winit as shell;
 
-#[cfg(not(any(
-    target_arch = "wasm32",
-    feature = "thread-pool",
-    feature = "tokio",
-    feature = "smol"
-)))]
-compile_error!(
-    "No futures executor has been enabled! You must enable an \
-    executor feature.\n\
-    Available options: thread-pool, tokio, or smol."
-);
+// #[cfg(not(any(
+//     target_arch = "wasm32",
+//     feature = "thread-pool",
+//     feature = "tokio",
+//     feature = "smol"
+// )))]
+// compile_error!(
+//     "No futures executor has been enabled! You must enable an \
+//     executor feature.\n\
+//     Available options: thread-pool, tokio, or smol."
+// );
 
 // #[cfg(all(
 //     target_family = "unix",
@@ -515,7 +515,6 @@ compile_error!(
 //     display server feature.\n\
 //     Available options: x11, wayland."
 // );
-
 #[cfg(feature = "highlighter")]
 pub use iced_highlighter as highlighter;
 

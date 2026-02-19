@@ -7,6 +7,7 @@ use cctk::sctk::reexports::{
 
 use iced::platform_specific::shell::commands::subsurface::get_subsurface;
 use iced::{
+    Element, Length, Subscription, Task,
     event::wayland::Event as WaylandEvent,
     platform_specific::{
         runtime::wayland::subsurface::SctkSubsurfaceSettings,
@@ -14,7 +15,6 @@ use iced::{
     },
     widget::{button, column, text, text_input},
     window::{self, Id, Settings},
-    Element, Length, Subscription, Task,
 };
 use std::sync::{Arc, Mutex};
 
@@ -70,20 +70,17 @@ impl SubsurfaceApp {
 
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
-            Message::WaylandEvent(evt) => {
-                dbg!(&evt);
-                match evt {
-                    WaylandEvent::Output(_evt, output) => {
-                        if self.connection.is_none() {
-                            if let Some(backend) = output.backend().upgrade() {
-                                self.connection =
-                                    Some(Connection::from_backend(backend));
-                            }
+            Message::WaylandEvent(evt) => match evt {
+                WaylandEvent::Output(_evt, output) => {
+                    if self.connection.is_none() {
+                        if let Some(backend) = output.backend().upgrade() {
+                            self.connection =
+                                Some(Connection::from_backend(backend));
                         }
                     }
-                    _ => {}
                 }
-            }
+                _ => {}
+            },
             Message::Wayland(evt) => match evt {
                 wayland::Event::RedBuffer(buffer) => {
                     self.red_buffer = Some(buffer);

@@ -1,7 +1,7 @@
 //! Wayland specific shell
 //!
 
-use std::collections::HashMap;
+use std::{borrow::Cow, collections::HashMap, sync::Arc};
 
 #[cfg(all(feature = "wayland", target_os = "linux"))]
 use cctk::sctk::reexports::client::Connection;
@@ -20,7 +20,7 @@ pub use wayland::*;
 #[cfg(all(feature = "wayland", target_os = "linux"))]
 use wayland_backend::client::Backend;
 
-use crate::{Program, WindowManager};
+use crate::{CreateCompositor, Program, WindowManager};
 
 pub type UserInterfaces<'a, P> = HashMap<
     window::Id,
@@ -176,12 +176,14 @@ impl PlatformSpecific {
     }
 }
 
-pub(crate) fn handle_event<'a, P>(
+pub(crate) async fn handle_event<'a, 'b, P>(
     e: Event,
     events: &mut Vec<(Option<window::Id>, iced_runtime::core::Event)>,
     platform_specific: &mut PlatformSpecific,
     program: &'a crate::program::Instance<P>,
-    compositor: &mut <<P as Program>::Renderer as compositor::Default>::Compositor,
+    compositor: &mut Option<
+        <<P as Program>::Renderer as compositor::Default>::Compositor,
+    >,
     window_manager: &mut WindowManager<
         P,
         <<P as Program>::Renderer as compositor::Default>::Compositor,
@@ -192,23 +194,28 @@ pub(crate) fn handle_event<'a, P>(
         window::Id,
         (u64, iced_accessibility::accesskit_winit::Adapter),
     >,
+    create_compositor: CreateCompositor<'b, P>,
 ) where
     P: Program,
 {
     match e {
         #[cfg(all(feature = "wayland", target_os = "linux"))]
         Event::Wayland(e) => {
-            platform_specific.wayland.handle_event(
-                e,
-                events,
-                program,
-                compositor,
-                window_manager,
-                user_interfaces,
-                clipboard,
-                #[cfg(feature = "a11y")]
-                adapters,
-            );
+            platform_specific
+                .wayland
+                .handle_event(
+                    e,
+                    events,
+                    program,
+                    compositor,
+                    window_manager,
+                    user_interfaces,
+                    clipboard,
+                    #[cfg(feature = "a11y")]
+                    adapters,
+                    create_compositor,
+                )
+                .await;
         }
     }
 }

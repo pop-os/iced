@@ -1232,7 +1232,6 @@ impl SctkState {
                         found |= p.data.id == settings.parent;
                         parent_mismatch |= found && p.data.id != settings.parent;
                     }
-                    parent_mismatch |= !found;
                     if !self.destroyed.is_empty() || parent_mismatch {
                         if parent_mismatch {
                             let mut found = false;

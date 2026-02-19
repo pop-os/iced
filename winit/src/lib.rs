@@ -27,6 +27,7 @@ pub use program::runtime;
 pub use runtime::futures;
 use window_clipboard::mime::ClipboardStoreData;
 pub use winit;
+use winit::event::WindowEvent;
 use winit::raw_window_handle::HasWindowHandle;
 
 #[cfg(feature = "a11y")]
@@ -76,6 +77,7 @@ use window::WindowManager;
 use rustc_hash::FxHashMap;
 use std::borrow::Cow;
 use std::mem::ManuallyDrop;
+use std::ops::ControlFlow;
 use std::slice;
 use std::sync::Arc;
 
@@ -130,7 +132,13 @@ where
     let task = if let Some(window_settings) = window_settings {
         let mut task = Some(task);
 
-        let (_id, open) = runtime::window::open(window_settings);
+        let open = iced_runtime::task::oneshot(|channel| {
+            iced_runtime::Action::Window(iced_runtime::window::Action::Open(
+                window::Id::RESERVED,
+                window_settings,
+                channel,
+            ))
+        });
 
         open.then(move |_| task.take().unwrap_or_else(Task::none))
     } else {
@@ -532,52 +540,49 @@ where
                                     .start_send(Event::StartDnd)
                                     .expect("Send event");
                             }
+                            #[cfg(feature = "a11y")]
                             Control::InitAdapter(id, window) => {
-                                #[cfg(feature = "a11y")]
-                                {
-                                    use crate::a11y::*;
-                                    use iced_accessibility::accesskit::{
-                                        ActivationHandler, Node, NodeId, Role,
-                                        Tree, TreeUpdate,
+                                use crate::a11y::*;
+                                use iced_accessibility::accesskit::{
+                                    ActivationHandler, Node, NodeId, Role,
+                                    Tree, TreeUpdate,
+                                };
+                                use iced_accessibility::accesskit_winit::Adapter;
+
+                                let node_id =
+                                    iced_runtime::core::id::window_node_id();
+
+                                let activation_handler =
+                                    WinitActivationHandler {
+                                        proxy: self.control_sender.clone(),
+                                        title: String::new(),
                                     };
-                                    use iced_accessibility::accesskit_winit::Adapter;
 
-                                    let node_id =
-                                        iced_runtime::core::id::window_node_id(
-                                        );
+                                let action_handler = WinitActionHandler {
+                                    id,
+                                    proxy: self.control_sender.clone(),
+                                };
 
-                                    let activation_handler =
-                                        WinitActivationHandler {
-                                            proxy: self.control_sender.clone(),
-                                            title: String::new(),
-                                        };
-
-                                    let action_handler = WinitActionHandler {
-                                        id,
+                                let deactivation_handler =
+                                    WinitDeactivationHandler {
                                         proxy: self.control_sender.clone(),
                                     };
 
-                                    let deactivation_handler =
-                                        WinitDeactivationHandler {
-                                            proxy: self.control_sender.clone(),
-                                        };
-
-                                    self.sender
-                                        .start_send(Event::A11yAdapter(
-                                            id,
-                                            (
-                                                node_id,
-                                                Adapter::with_direct_handlers(
-                                                    event_loop,
-                                                    window.as_ref(),
-                                                    activation_handler,
-                                                    action_handler,
-                                                    deactivation_handler,
-                                                ),
+                                self.sender
+                                    .start_send(Event::A11yAdapter(
+                                        id,
+                                        (
+                                            node_id,
+                                            Adapter::with_direct_handlers(
+                                                event_loop,
+                                                window.as_ref(),
+                                                activation_handler,
+                                                action_handler,
+                                                deactivation_handler,
                                             ),
-                                        ))
-                                        .expect("send event");
-                                }
+                                        ),
+                                    ))
+                                    .expect("send event");
                             }
                         },
                         _ => {
@@ -776,69 +781,32 @@ async fn run_instance<P>(
                 control_sender
                     .start_send(Control::InitAdapter(id, window.clone()))
                     .expect("Send control message");
-                if compositor.is_none() {
-                    let (compositor_sender, compositor_receiver) =
-                        oneshot::channel();
-
-                    let create_compositor = {
-                        let window = window.clone();
-                        let display_handle = display_handle.clone();
-                        let proxy = proxy.clone();
-                        let default_fonts = default_fonts.clone();
-
-                        async move {
-                            let shell = Shell::new(proxy.clone());
-
-                            let mut compositor =
-                                <P::Renderer as compositor::Default>::Compositor::new(
-                                    graphics_settings,
-                                    display_handle,
-                                    window,
-                                    shell,
-                                ).await;
-
-                            if let Ok(compositor) = &mut compositor {
-                                for font in default_fonts {
-                                    compositor.load_font(font.clone());
-                                }
-                            }
-
-                            compositor_sender
-                                .send(compositor)
-                                .ok()
-                                .expect("Send compositor");
-
-                            // HACK! Send a proxy event on completion to trigger
-                            // a runtime re-poll
-                            // TODO: Send compositor through proxy (?)
-                            {
-                                let (sender, _receiver) = oneshot::channel();
-
-                                proxy.send_action(Action::Window(
-                                    runtime::window::Action::GetLatest(sender),
-                                ));
-                            }
-                        }
-                    };
-
-                    #[cfg(target_arch = "wasm32")]
-                    wasm_bindgen_futures::spawn_local(create_compositor);
-
-                    #[cfg(not(target_arch = "wasm32"))]
-                    runtime.block_on(create_compositor);
-
-                    match compositor_receiver
-                        .await
-                        .expect("Wait for compositor")
-                    {
-                        Ok(new_compositor) => {
-                            compositor = Some(new_compositor);
-                        }
-                        Err(error) => {
-                            let _ = control_sender
-                                .start_send(Control::Crash(error.into()));
-                            continue;
-                        }
+                #[cfg(feature = "wayland")]
+                platform_specific_handler.send_wayland(
+                    platform_specific::Action::TrackWindow(window.clone(), id),
+                );
+                match create_compositor::<P>(
+                    window.clone(),
+                    CreateCompositor {
+                        proxy: &proxy,
+                        runtime: &mut runtime,
+                        display_handle: &display_handle,
+                        graphics_settings: &graphics_settings,
+                        default_fonts: &default_fonts,
+                    },
+                )
+                .await
+                {
+                    Ok(comp) => {
+                        compositor = Some(comp);
+                    }
+                    Err(error) => {
+                        control_sender
+                            .start_send(Control::Crash(
+                                Error::GraphicsCreationFailed(error),
+                            ))
+                            .expect("Send control message");
+                        continue;
                     }
                 }
 
@@ -982,6 +950,22 @@ async fn run_instance<P>(
                 else {
                     continue;
                 };
+                // XX must force update to corner radius before the surface is committed.
+                #[cfg(feature = "wayland")]
+                if window.surface_version != window.state.surface_version()
+                    || window.logical_size() != window.state.logical_size()
+                {
+                    platform_specific_handler.send_wayland(
+                        platform_specific::Action::ResizeWindow(id),
+                    );
+                    window.redraw_requested = true;
+                    control_sender
+                        .start_send(Control::Winit(
+                            window.raw.id(),
+                            WindowEvent::RedrawRequested,
+                        ))
+                        .expect("Send redraw event");
+                }
                 window.redraw_requested = false;
 
                 let physical_size = window.state.physical_size();
@@ -1330,7 +1314,6 @@ async fn run_instance<P>(
                             true
                         }
                     });
-
                     let no_window_events = window_events.is_empty();
                     #[cfg(feature = "wayland")]
                     window_events.push(core::Event::PlatformSpecific(
@@ -1376,6 +1359,14 @@ async fn run_instance<P>(
                             _ = window.raw.request_surface_size(s);
                             window.raw.set_min_surface_size(Some(s));
                             window.raw.set_max_surface_size(Some(s));
+
+                            window.state.update(
+                                &program,
+                                window.raw.as_ref(),
+                                &WindowEvent::SurfaceResized(
+                                    requested_physical_size,
+                                ),
+                            );
                             window.state.synchronize(
                                 &program,
                                 id,
@@ -1499,7 +1490,9 @@ async fn run_instance<P>(
                         .start_send(Control::ChangeFlow(ControlFlow::Wait));
                 }
             }
-            Event::Exit => break,
+            Event::Exit => {
+                break;
+            }
             Event::Dnd(e) => {
                 use winit::raw_window_handle::HasWindowHandle;
 
@@ -1569,23 +1562,26 @@ async fn run_instance<P>(
                 a11y_enabled = enabled;
             }
             Event::PlatformSpecific(e) => {
-                if let Some(c) = compositor.as_mut() {
-                    crate::platform_specific::handle_event(
-                        e,
-                        &mut events,
-                        &mut platform_specific_handler,
-                        &program,
-                        c,
-                        &mut window_manager,
-                        &mut user_interfaces,
-                        &mut clipboard,
-                        #[cfg(feature = "a11y")]
-                        &mut adapters,
-                    );
-                } else {
-                    // TODO should we break?
-                    break;
-                }
+                crate::platform_specific::handle_event(
+                    e,
+                    &mut events,
+                    &mut platform_specific_handler,
+                    &program,
+                    &mut compositor,
+                    &mut window_manager,
+                    &mut user_interfaces,
+                    &mut clipboard,
+                    #[cfg(feature = "a11y")]
+                    &mut adapters,
+                    CreateCompositor {
+                        proxy: &proxy,
+                        display_handle: &display_handle,
+                        graphics_settings: &graphics_settings,
+                        default_fonts: &default_fonts,
+                        runtime: &mut runtime,
+                    },
+                )
+                .await;
             }
             Event::StartDnd => {
                 let compositor = match compositor.as_mut() {
@@ -1614,12 +1610,15 @@ async fn run_instance<P>(
                                 Some(s)
                             }
                             core::clipboard::DndSource::Widget(w) => {
-                                log::debug!(
+                                log::trace!(
                                     "start_dnd: searching for widget {:?}",
                                     w
                                 );
-                                // search windows for widget with operation
-                                let result = user_interfaces.iter_mut().find_map(
+                                // if user intefaces is just 1 len, use the single id instead of wasting time searching
+                                let result = if user_interfaces.len() ==1 {
+                                    user_interfaces.keys().next().cloned()
+                                } else {
+                                    user_interfaces.iter_mut().find_map(
                                     |(ui_id, ui)| {
                                         let Some(ui_renderer) = window_manager
                                             .get_mut(ui_id.clone())
@@ -1666,7 +1665,11 @@ async fn run_instance<P>(
                                         }
                                         None
                                     },
-                                );
+                                )
+                                };
+
+                                // search windows for widget with operation
+                                 
                                 if result.is_none() {
                                     log::warn!(
                                         "start_dnd: widget {:?} not found; drag will fail",
@@ -1817,6 +1820,88 @@ async fn run_instance<P>(
     let _ = ManuallyDrop::into_inner(user_interfaces);
 }
 
+struct CreateCompositor<'a, P: Program> {
+    proxy: &'a Proxy<<P as Program>::Message>,
+    display_handle: &'a winit::event_loop::OwnedDisplayHandle,
+    graphics_settings: &'a iced_graphics::Settings,
+    default_fonts: &'a [Cow<'static, [u8]>],
+    runtime: &'a mut Runtime<
+        <P as Program>::Executor,
+        Proxy<<P as Program>::Message>,
+        Action<<P as Program>::Message>,
+    >,
+}
+
+async fn create_compositor<'a, P>(
+    window: Arc<dyn winit::window::Window + 'static>,
+    CreateCompositor {
+        proxy,
+        display_handle,
+        graphics_settings,
+        default_fonts,
+        runtime,
+    }: CreateCompositor<'a, P>,
+) -> Result<
+    <<P as Program>::Renderer as compositor::Default>::Compositor,
+    iced_graphics::Error,
+>
+where
+    P: Program,
+{
+    let (compositor_sender, compositor_receiver) = oneshot::channel();
+
+    let create_compositor = {
+        let display_handle = display_handle.clone();
+        let proxy = proxy.clone();
+        let graphics_settings = (*graphics_settings).clone();
+        let window = window.clone();
+        let default_fonts = default_fonts.to_vec();
+
+        async move {
+            let shell = Shell::new(proxy.clone());
+
+            let mut compositor =
+                <P::Renderer as compositor::Default>::Compositor::new(
+                    graphics_settings,
+                    display_handle,
+                    window,
+                    shell,
+                )
+                .await;
+
+            if let Ok(compositor) = &mut compositor {
+                for font in default_fonts {
+                    compositor.load_font(font.clone());
+                }
+            }
+
+            compositor_sender
+                .send(compositor)
+                .ok()
+                .expect("Send compositor");
+
+            // HACK! Send a proxy event on completion to trigger
+            // a runtime re-poll
+            // TODO: Send compositor through proxy (?)
+            {
+                let (sender, _receiver) = oneshot::channel();
+
+                proxy.send_action(Action::Window(
+                    runtime::window::Action::GetLatest(sender),
+                ));
+            }
+        }
+    };
+
+    #[cfg(target_arch = "wasm32")]
+    wasm_bindgen_futures::spawn_local(create_compositor);
+
+    #[cfg(not(target_arch = "wasm32"))]
+    runtime.block_on(create_compositor);
+
+    compositor_receiver.await.expect("Wait for compositor")
+}
+
 /// Builds a window's [`UserInterface`] for the [`Program`].
 fn build_user_interface<'a, P: Program>(
     program: &'a program::Instance<P>,
@@ -1965,7 +2050,9 @@ where
                 let _ = ui_caches.remove(&id);
                 let _ = interfaces.remove(&id);
                 let proxy = clipboard.proxy();
-
+                #[cfg(feature = "wayland")]
+                platform_specific
+                    .send_wayland(platform_specific::Action::RemoveWindow(id));
                 if let Some(window) = window_manager.remove(id) {
                     if clipboard.window_id() == Some(window.raw.id()) {
                         *clipboard = window_manager

@@ -1,5 +1,5 @@
 use crate::{
-    Clipboard, Control, Program,
+    Clipboard, Control, CreateCompositor, Error, Program, create_compositor,
     platform_specific::{
         SurfaceIdWrapper, UserInterfaces,
         wayland::{
@@ -342,11 +342,13 @@ pub struct SurfaceCompositorUpdate {
 }
 
 impl SctkEvent {
-    pub(crate) fn process<'a, P>(
+    pub(crate) async fn process<'a, 'b, P>(
         self,
         modifiers: &mut Modifiers,
         program: &'a crate::program::Instance<P>,
-        compositor: &mut <<P as Program>::Renderer as compositor::Default>::Compositor,
+        compositor: &mut Option<
+            <<P as Program>::Renderer as compositor::Default>::Compositor,
+        >,
         window_manager: &mut crate::WindowManager<
             P,
             <<P as Program>::Renderer as compositor::Default>::Compositor,
@@ -363,6 +365,7 @@ impl SctkEvent {
             window::Id,
             (u64, iced_accessibility::accesskit_winit::Adapter),
         >,
+        create_compositor_data: CreateCompositor<'b, P>,
     ) where
         P: Program,
     {
@@ -766,7 +769,25 @@ impl SctkEvent {
                             sctk_winit.clone(),
                         ))
                         .expect("Send control message");
-
+                    if compositor.is_none() {
+                        match create_compositor(
+                            sctk_winit.clone(),
+                            create_compositor_data,
+                        )
+                        .await
+                        {
+                            Ok(c) => *compositor = Some(c),
+                            Err(error) => {
+                                control_sender
+                                    .start_send(Control::Crash(
+                                        Error::GraphicsCreationFailed(error),
+                                    ))
+                                    .expect("Send control message");
+                                return;
+                            }
+                        };
+                    }
+                    let compositor = compositor.as_mut().unwrap();
                     let window = window_manager.insert(
                         surface_id,
                         sctk_winit,
@@ -976,6 +997,10 @@ impl SctkEvent {
                                 },
                             );
                         }
+                        let Some(compositor) = compositor.as_mut() else {
+                            log::error!("compositor missing");
+                            return;
+                        };
 
                         let window = window_manager.insert(
                             surface_id,
@@ -1190,6 +1215,25 @@ impl SctkEvent {
                         },
                     );
                 }
+                if compositor.is_none() {
+                    match create_compositor(
+                        sctk_winit.clone(),
+                        create_compositor_data,
+                    )
+                    .await
+                    {
+                        Ok(c) => *compositor = Some(c),
+                        Err(error) => {
+                            control_sender
+                                .start_send(Control::Crash(
+                                    Error::GraphicsCreationFailed(error),
+                                ))
+                                .expect("Send control message");
+                            return;
+                        }
+                    };
+                }
+                let compositor = compositor.as_mut().unwrap();
 
                 let window = window_manager.insert(
                     surface_id,
@@ -1201,20 +1245,70 @@ impl SctkEvent {
                 );
                 _ = surface_ids.insert(object_id, wrapper.clone());
                 let logical_size = window.logical_size();
-                todo!()
-                // let _ = user_interfaces.insert(
-                //     surface_id,
-                //     crate::build_user_interface(
-                //         program,
-                //         user_interface::Cache::default(),
-                //         &mut window.renderer,
-                //         logical_size,
-                //         surface_id,
-                //         window.raw.clone(),
-                //         window.prev_dnd_destination_rectangles_count,
-                //         clipboard,
-                //     ),
-                // );
+                let mut ui = crate::build_user_interface(
+                    program,
+                    user_interface::Cache::default(),
+                    &mut window.renderer,
+                    logical_size,
+                    surface_id,
+                    window.raw.clone(),
+                    window.prev_dnd_destination_rectangles_count,
+                    clipboard,
+                );
+
+                _ = ui.update(
+                            &vec![iced_runtime::core::Event::PlatformSpecific(
+                                iced_runtime::core::event::PlatformSpecific::Wayland(
+                                    iced_runtime::core::event::wayland::Event::RequestResize,
+                                ),
+                            )],
+                            window.state.cursor(),
+                            &mut window.renderer,
+                            clipboard,
+                            &mut Vec::new(),
+                        );
+
+                if let Some(requested_size) =
+                    clipboard.requested_logical_size.lock().unwrap().take()
+                {
+                    let requested_physical_size = winit::dpi::PhysicalSize::new(
+                        (requested_size.width as f64
+                            * window.state.scale_factor())
+                        .ceil() as u32,
+                        (requested_size.height as f64
+                            * window.state.scale_factor())
+                        .ceil() as u32,
+                    );
+                    let physical_size = window.state.physical_size();
+                    if requested_physical_size.width != physical_size.width
+                        || requested_physical_size.height
+                            != physical_size.height
+                    {
+                        // FIXME what to do when we are stuck in a configure event/resize request loop
+                        // We don't have control over how winit handles this.
+                        window.resize_enabled = true;
+
+                        let s =
+                            winit::dpi::Size::Physical(requested_physical_size);
+                        _ = window.raw.request_surface_size(s);
+                        window.raw.set_min_surface_size(Some(s));
+                        window.raw.set_max_surface_size(Some(s));
+                        window.state.synchronize(
+                            &program,
+                            surface_id,
+                            window.raw.as_ref(),
+                        );
+                    }
+                }
+                events.push((
+                    Some(surface_id),
+                    iced_runtime::core::Event::PlatformSpecific(
+                        PlatformSpecific::Wayland(wayland::Event::Subsurface(
+                            wayland::SubsurfaceEvent::Created,
+                        )),
+                    ),
+                ));
+                _ = user_interfaces.insert(surface_id, ui);
             }
             SctkEvent::SessionLockSurfaceConfigure {
                 surface,
@@ -1434,6 +1528,10 @@ impl SctkEvent {
                             },
                         );
                     }
+                    let Some(compositor) = compositor.as_mut() else {
+                        log::error!("compositor missing");
+                        return;
+                    };
 
                     let window = window_manager.insert(
                         surface_id,

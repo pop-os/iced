@@ -400,13 +400,13 @@ where
             retain
         });
 
-        // let ids = self.contents.iter().map(|_| None).collect(); // TODO
-        // tree.diff_children_custom(
-        //     &mut self.contents,
-        //     ids,
-        //     |state, (_, content): (_, _)| content.diff(state),
-        //     |(_, content): (_, _)| content.state(),
-        // );
+        let ids = self.contents.iter().map(|_| None).collect(); // TODO
+        tree.diff_children_custom(
+            &mut self.contents,
+            ids,
+            |state, content: _| content.diff(state),
+            |content: _| content.state(),
+        );
 
         let Memory { order, .. } = tree.state.downcast_mut();
         order.clone_from(&self.panes);

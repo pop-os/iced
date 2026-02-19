@@ -158,7 +158,7 @@ struct State {
     // TODO: Support on_enter and on_exit
     drag_initiated: Option<Point>,
     is_out_of_bounds: bool,
-    last_click: Option<Click>,
+    last_press: Option<Click>,
 }
 impl Default for State {
     fn default() -> Self {
@@ -166,7 +166,7 @@ impl Default for State {
             is_hovered: Default::default(),
             drag_initiated: None,
             is_out_of_bounds: true,
-            last_click: None,
+            last_press: None,
             cursor_position: None,
             bounds: Rectangle::default(),
             previous_click: None,
@@ -456,44 +456,46 @@ fn update<Message: Clone, Theme, Renderer>(
         return;
     }
 
-    if let Some(message) = widget.on_double_press.as_ref() {
-        if let Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)) =
-            event
-        {
-            if let Some(cursor_position) = cursor.position() {
-                let click = mouse::Click::new(
-                    cursor_position,
-                    mouse::Button::Left,
-                    state.last_click,
-                );
-                state.last_click = Some(click);
-                if let mouse::click::Kind::Double = click.kind() {
-                    state.drag_initiated = None;
-                    shell.publish(message.clone());
-                    shell.capture_event();
-
-                    return;
-                }
-            }
-        }
-    }
-
     if let Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left))
     | Event::Touch(touch::Event::FingerPressed { .. }) = event
     {
-        let mut captured = false;
+        if let Some(position) = cursor_position {
+            let new_click = mouse::Click::new(
+                position,
+                mouse::Button::Left,
+                state.last_press,
+            );
+            if new_click.kind() == mouse::click::Kind::Double
+                && let Some(double_press) = widget.on_double_press.as_ref()
+            {
+                shell.publish(double_press.clone());
+            } else if let Some(on_press_message) = widget.on_press.as_ref() {
+                shell.publish(on_press_message.clone());
+            }
 
-        if let Some(position) = cursor_position
-            && let Some(message) = widget.on_double_click.as_ref()
-        {
+            state.last_press = Some(new_click);
+
+            // Even if this is not a double click, but the press is nevertheless
+            // processed by us and should not be popup to parent widgets.
+            shell.capture_event();
+        }
+    }
+
+    if let Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left))
+    | Event::Touch(touch::Event::FingerLifted { .. }) = event
+    {
+        if let Some(position) = cursor_position {
             let new_click = mouse::Click::new(
                 position,
                 mouse::Button::Left,
                 state.previous_click,
             );
-
-            if new_click.kind() == mouse::click::Kind::Double {
-                shell.publish(message.clone());
+            if new_click.kind() == mouse::click::Kind::Double
+                && let Some(double_press) = widget.on_double_click.as_ref()
+            {
+                shell.publish(double_press.clone());
+            } else if let Some(on_press_message) = widget.on_release.as_ref() {
+                shell.publish(on_press_message.clone());
             }
 
             state.previous_click = Some(new_click);
@@ -505,15 +507,6 @@ fn update<Message: Clone, Theme, Renderer>(
     }
 
     match event {
-        Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left))
-        | Event::Touch(touch::Event::FingerLifted { .. }) => {
-            state.drag_initiated = None;
-            if let Some(message) = widget.on_release.as_ref() {
-                shell.publish(message.clone());
-            }
-            shell.capture_event();
-            return;
-        }
         Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Right)) => {
             if let Some(message) = widget.on_right_release.as_ref() {
                 shell.publish(message.clone());

@@ -8,7 +8,7 @@ pub mod subsurface_widget;
 pub mod winit_window;
 
 use super::{PlatformSpecific, SurfaceIdWrapper};
-use crate::{Control, Program, WindowManager};
+use crate::{Control, CreateCompositor, Program, WindowManager};
 
 use crate::platform_specific::UserInterfaces;
 use cctk::sctk::reexports::calloop;
@@ -150,12 +150,14 @@ impl WaylandSpecific {
         self.conn.as_ref()
     }
 
-    pub(crate) fn handle_event<'a, P>(
+    pub(crate) async fn handle_event<'a, 'b, P>(
         &mut self,
         e: SctkEvent,
         events: &mut Vec<(Option<window::Id>, iced_runtime::core::Event)>,
         program: &'a crate::program::Instance<P>,
-        compositor: &mut <<P as Program>::Renderer as compositor::Default>::Compositor,
+        compositor: &mut Option<
+            <<P as Program>::Renderer as compositor::Default>::Compositor,
+        >,
         window_manager: &mut WindowManager<
             P,
             <<P as Program>::Renderer as compositor::Default>::Compositor,
@@ -166,6 +168,7 @@ impl WaylandSpecific {
             window::Id,
             (u64, iced_accessibility::accesskit_winit::Adapter),
         >,
+        create_compositor: CreateCompositor<'b, P>,
     ) where
         P: Program,
     {
@@ -196,22 +199,25 @@ impl WaylandSpecific {
                     return Default::default();
                 };
 
-                sctk_event.process(
-                    modifiers,
-                    program,
-                    compositor,
-                    window_manager,
-                    surface_ids,
-                    sender,
-                    event_sender,
-                    proxy,
-                    user_interfaces,
-                    events,
-                    clipboard,
-                    subsurface_state,
-                    #[cfg(feature = "a11y")]
-                    adapters,
-                );
+                sctk_event
+                    .process(
+                        modifiers,
+                        program,
+                        compositor,
+                        window_manager,
+                        surface_ids,
+                        sender,
+                        event_sender,
+                        proxy,
+                        user_interfaces,
+                        events,
+                        clipboard,
+                        subsurface_state,
+                        #[cfg(feature = "a11y")]
+                        adapters,
+                        create_compositor,
+                    )
+                    .await;
             }
         };
     }

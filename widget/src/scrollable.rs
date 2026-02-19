@@ -1188,7 +1188,6 @@ where
                         if delta.y.abs() < AUTOSCROLL_DEADZONE {
                             delta.y = 0.0;
                         }
-
                         if delta.x != 0.0 || delta.y != 0.0 {
                             let time_delta =
                                 if let Some(last_frame) = last_frame {
@@ -2007,7 +2006,6 @@ fn notify_viewport<Message>(
     }
 
     state.last_notified = Some(viewport);
-
     if let Some(on_scroll) = on_scroll {
         shell.publish(on_scroll(viewport));
     }

@@ -21,6 +21,7 @@ checksum = "366ffbaa4442f4684d91e2cd7c5ea7c4ed8add41959a31447066e279e432b618"
 [[package]]
 name = "accesskit"
 version = "0.22.0"
+source = "git+https://github.com/wash2/accesskit?branch=iced-0.14#1f893441ec3dc5923f5430c02bba762f5444bbea"
 dependencies = [
  "uuid",
 ]
@@ -28,6 +29,7 @@ dependencies = [
 [[package]]
 name = "accesskit_atspi_common"
 version = "0.15.0"
+source = "git+https://github.com/wash2/accesskit?branch=iced-0.14#1f893441ec3dc5923f5430c02bba762f5444bbea"
 dependencies = [
  "accesskit",
  "accesskit_consumer",
@@ -39,6 +41,7 @@ dependencies = [
 [[package]]
 name = "accesskit_consumer"
 version = "0.32.0"
+source = "git+https://github.com/wash2/accesskit?branch=iced-0.14#1f893441ec3dc5923f5430c02bba762f5444bbea"
 dependencies = [
  "accesskit",
  "hashbrown 0.16.1",
@@ -47,6 +50,7 @@ dependencies = [
 [[package]]
 name = "accesskit_macos"
 version = "0.23.0"
+source = "git+https://github.com/wash2/accesskit?branch=iced-0.14#1f893441ec3dc5923f5430c02bba762f5444bbea"
 dependencies = [
  "accesskit",
  "accesskit_consumer",
@@ -59,6 +63,7 @@ dependencies = [
 [[package]]
 name = "accesskit_unix"
 version = "0.18.0"
+source = "git+https://github.com/wash2/accesskit?branch=iced-0.14#1f893441ec3dc5923f5430c02bba762f5444bbea"
 dependencies = [
  "accesskit",
  "accesskit_atspi_common",
@@ -77,6 +82,7 @@ dependencies = [
 [[package]]
 name = "accesskit_windows"
 version = "0.30.0"
+source = "git+https://github.com/wash2/accesskit?branch=iced-0.14#1f893441ec3dc5923f5430c02bba762f5444bbea"
 dependencies = [
  "accesskit",
  "accesskit_consumer",
@@ -89,6 +95,7 @@ dependencies = [
 [[package]]
 name = "accesskit_winit"
 version = "0.30.0"
+source = "git+https://github.com/wash2/accesskit?branch=iced-0.14#1f893441ec3dc5923f5430c02bba762f5444bbea"
 dependencies = [
  "accesskit",
  "accesskit_macos",
@@ -1637,6 +1644,7 @@ dependencies = [
 [[package]]
 name = "dpi"
 version = "0.1.2"
+source = "git+https://github.com/pop-os/winit.git?branch=iced-0.14-rebase#a610ac9c7a72b39ff102ed4d946291618dc725b6"
 
 [[package]]
 name = "drm"
@@ -8434,6 +8442,7 @@ checksum = "d6bbff5f0aada427a1e5a6da5f1f98158182f26556f345ac9e04d36d0ebed650"
 [[package]]
 name = "winit"
 version = "0.31.0-beta.2"
+source = "git+https://github.com/pop-os/winit.git?branch=iced-0.14-rebase#a610ac9c7a72b39ff102ed4d946291618dc725b6"
 dependencies = [
  "bitflags 2.10.0",
  "cfg_aliases",
@@ -8459,6 +8468,7 @@ dependencies = [
 [[package]]
 name = "winit-android"
 version = "0.31.0-beta.2"
+source = "git+https://github.com/pop-os/winit.git?branch=iced-0.14-rebase#a610ac9c7a72b39ff102ed4d946291618dc725b6"
 dependencies = [
  "android-activity",
  "bitflags 2.10.0",
@@ -8473,6 +8483,7 @@ dependencies = [
 [[package]]
 name = "winit-appkit"
 version = "0.31.0-beta.2"
+source = "git+https://github.com/pop-os/winit.git?branch=iced-0.14-rebase#a610ac9c7a72b39ff102ed4d946291618dc725b6"
 dependencies = [
  "bitflags 2.10.0",
  "block2 0.6.2",
@@ -8494,6 +8505,7 @@ dependencies = [
 [[package]]
 name = "winit-common"
 version = "0.31.0-beta.2"
+source = "git+https://github.com/pop-os/winit.git?branch=iced-0.14-rebase#a610ac9c7a72b39ff102ed4d946291618dc725b6"
 dependencies = [
  "memmap2 0.9.9",
  "objc2 0.6.3",
@@ -8508,6 +8520,7 @@ dependencies = [
 [[package]]
 name = "winit-core"
 version = "0.31.0-beta.2"
+source = "git+https://github.com/pop-os/winit.git?branch=iced-0.14-rebase#a610ac9c7a72b39ff102ed4d946291618dc725b6"
 dependencies = [
  "bitflags 2.10.0",
  "cursor-icon",
@@ -8521,6 +8534,7 @@ dependencies = [
 [[package]]
 name = "winit-orbital"
 version = "0.31.0-beta.2"
+source = "git+https://github.com/pop-os/winit.git?branch=iced-0.14-rebase#a610ac9c7a72b39ff102ed4d946291618dc725b6"
 dependencies = [
  "bitflags 2.10.0",
  "dpi",
@@ -8536,6 +8550,7 @@ dependencies = [
 [[package]]
 name = "winit-uikit"
 version = "0.31.0-beta.2"
+source = "git+https://github.com/pop-os/winit.git?branch=iced-0.14-rebase#a610ac9c7a72b39ff102ed4d946291618dc725b6"
 dependencies = [
  "bitflags 2.10.0",
  "block2 0.6.2",
@@ -8555,6 +8570,7 @@ dependencies = [
 [[package]]
 name = "winit-wayland"
 version = "0.31.0-beta.2"
+source = "git+https://github.com/pop-os/winit.git?branch=iced-0.14-rebase#a610ac9c7a72b39ff102ed4d946291618dc725b6"
 dependencies = [
  "ahash",
  "bitflags 2.10.0",
@@ -8580,6 +8596,7 @@ dependencies = [
 [[package]]
 name = "winit-web"
 version = "0.31.0-beta.2"
+source = "git+https://github.com/pop-os/winit.git?branch=iced-0.14-rebase#a610ac9c7a72b39ff102ed4d946291618dc725b6"
 dependencies = [
  "atomic-waker",
  "bitflags 2.10.0",
@@ -8601,6 +8618,7 @@ dependencies = [
 [[package]]
 name = "winit-win32"
 version = "0.31.0-beta.2"
+source = "git+https://github.com/pop-os/winit.git?branch=iced-0.14-rebase#a610ac9c7a72b39ff102ed4d946291618dc725b6"
 dependencies = [
  "bitflags 2.10.0",
  "cursor-icon",
@@ -8616,6 +8634,7 @@ dependencies = [
 [[package]]
 name = "winit-x11"
 version = "0.31.0-beta.2"
+source = "git+https://github.com/pop-os/winit.git?branch=iced-0.14-rebase#a610ac9c7a72b39ff102ed4d946291618dc725b6"
 dependencies = [
  "bitflags 2.10.0",
  "bytemuck",

@@ -36,7 +36,6 @@ system = ["sysinfo"]
 program = []
 wayland-dlopen = ["winit/wayland-dlopen"]
 wayland-csd-adwaita = ["winit/wayland-csd-adwaita"]
-multi-window = ["iced_runtime/multi-window"]
 a11y = ["iced_accessibility", "iced_runtime/a11y"]
 
 

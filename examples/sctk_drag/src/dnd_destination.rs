@@ -341,7 +341,7 @@ impl<'a, Message: 'static> Widget<Message, iced::Theme, iced::Renderer>
         );
         if matches!(s, event::Status::Captured) {
             shell.capture_event();
-return;
+            return;
         }
 
         let state = tree.state.downcast_mut::<State<()>>();
@@ -383,7 +383,7 @@ return;
                     );
                 }
                 shell.capture_event();
-return;
+                return;
             }
             Event::Dnd(DndEvent::Offer(id, OfferEvent::Leave))
                 if id == Some(my_id) =>
@@ -407,7 +407,7 @@ return;
                     );
                 }
                 shell.capture_event();
-return;
+                return;
             }
             Event::Dnd(DndEvent::Offer(id, OfferEvent::Motion { x, y }))
                 if id == Some(my_id) =>
@@ -441,7 +441,7 @@ return;
                     );
                 }
                 shell.capture_event();
-return;
+                return;
             }
             Event::Dnd(DndEvent::Offer(id, OfferEvent::LeaveDestination))
                 if id == Some(my_id) =>
@@ -452,7 +452,7 @@ return;
                     shell.publish(msg);
                 }
                 shell.capture_event();
-return;
+                return;
             }
             Event::Dnd(DndEvent::Offer(id, OfferEvent::Drop))
                 if id == Some(my_id) =>
@@ -463,7 +463,7 @@ return;
                     shell.publish(msg);
                 }
                 shell.capture_event();
-return;
+                return;
             }
             Event::Dnd(DndEvent::Offer(
                 id,
@@ -478,13 +478,12 @@ return;
                     shell.publish(msg);
                 }
                 shell.capture_event();
-return;
+                return;
             }
             Event::Dnd(DndEvent::Offer(
                 id,
                 OfferEvent::Data { data, mime_type },
             )) if id == Some(my_id) => {
-                dbg!("got data");
                 if let (Some(msg), ret) = state.on_data_received(
                     mime_type,
                     data,
@@ -497,7 +496,7 @@ return;
                     return ret;
                 }
                 shell.capture_event();
-return;
+                return;
             }
             _ => {}
         }
@@ -705,7 +704,6 @@ impl<T> State<T> {
             impl Fn(String, Vec<u8>, DndAction, f64, f64) -> Message,
         >,
     ) -> (Option<Message>, event::Status) {
-        dbg!("data received");
         let Some(dnd) = self.drag_offer.as_ref() else {
             self.drag_offer = None;
             return (None, event::Status::Ignored);

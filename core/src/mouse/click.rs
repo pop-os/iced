@@ -46,7 +46,6 @@ impl Click {
         previous: Option<Click>,
     ) -> Click {
         let time = Instant::now();
-
         let kind = if let Some(previous) = previous {
             if previous.is_consecutive(position, time)
                 && button == previous.button

@@ -78,6 +78,12 @@ impl From<f32> for Length {
     }
 }
 
+impl From<i32> for Length {
+    fn from(amount: i32) -> Self {
+        Length::Fixed(amount as f32)
+    }
+}
+
 impl From<u16> for Length {
     fn from(amount: u16) -> Self {
         Length::Fixed(amount as f32)

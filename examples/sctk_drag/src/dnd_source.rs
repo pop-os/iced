@@ -217,9 +217,8 @@ impl<
                         }
 
                         state.left_pressed_position = Some(position);
-                        // dbg!(&state, &self.id);
                         shell.capture_event();
-return;
+                        return;
                     }
                 }
                 mouse::Event::ButtonReleased(mouse::Button::Left)
@@ -227,7 +226,7 @@ return;
                 {
                     state.left_pressed_position = None;
                     shell.capture_event();
-return;
+                    return;
                 }
                 mouse::Event::CursorMoved { .. } => {
                     if let Some(position) = cursor.position() {
@@ -240,7 +239,6 @@ return;
                             if let Some(left_pressed_position) =
                                 state.left_pressed_position
                             {
-                                // dbg!(&state);
                                 if position.distance(left_pressed_position)
                                     > self.drag_threshold
                                 {
@@ -261,7 +259,7 @@ return;
                             state.hovered = true;
                         }
                         shell.capture_event();
-return;
+                        return;
                     }
                 }
                 _ => return ret,
@@ -272,7 +270,7 @@ return;
                 if state.is_dragging {
                     state.is_dragging = false;
                     shell.capture_event();
-return;
+                    return;
                 }
                 return ret;
             }

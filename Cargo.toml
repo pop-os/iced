@@ -90,9 +90,6 @@ advanced = [
     "iced_core/advanced",
     "iced_widget/advanced",
 ] # Enables the advanced module
-multi-window = [
-    "iced_winit?/multi-window",
-] # Enables experimental multi-window support.
 basic-shaping = ["iced_core/basic-shaping"]
 # Enables advanced text shaping by default
 advanced-shaping = ["iced_core/advanced-shaping"]
@@ -336,4 +333,3 @@ useless_conversion = "deny"
 
 [workspace.lints.rustdoc]
 broken_intra_doc_links = "forbid"
-

@@ -11,6 +11,5 @@ iced = { path = "../..", default-features = false, features = [
     "tokio",
     "debug",
     "winit",
-    "multi-window",
     "tiny-skia",
 ] }

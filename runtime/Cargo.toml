@@ -16,7 +16,6 @@ workspace = true
 [features]
 debug = []
 selector = ["dep:iced_selector"]
-multi-window = []
 a11y = ["iced_accessibility", "iced_core/a11y"]
 wayland = ["iced_core/wayland", "cctk"]
 

@@ -72,8 +72,10 @@ where
         );
         let renderer = compositor.create_renderer();
 
+        self.aliases.retain(|w, i| *w != window.id() && *i != id);
         let _ = self.aliases.insert(window.id(), id);
 
+        self.entries.retain(|old, _| id != *old);
         let _ = self.entries.insert(
             id,
             Window {
