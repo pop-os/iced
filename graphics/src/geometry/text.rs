@@ -53,6 +53,7 @@ impl Text {
             self.size.0,
             None,
             cosmic_text::Wrap::None,
+            cosmic_text::Ellipsize::None,
             None,
             8,
             cosmic_text::Hinting::Disabled,
