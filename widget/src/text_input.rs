@@ -321,6 +321,7 @@ where
             vertical_alignment: alignment::Vertical::Center,
             shaping: text::Shaping::Advanced,
             wrapping: text::Wrapping::default(),
+            ellipsize: text::Ellipsize::default(),
         };
 
         state.placeholder.update(placeholder_text);
@@ -346,6 +347,7 @@ where
                 vertical_alignment: alignment::Vertical::Center,
                 shaping: text::Shaping::Advanced,
                 wrapping: text::Wrapping::default(),
+                ellipsize: text::Ellipsize::default(),
             };
 
             state.icon.update(icon_text);
@@ -1522,6 +1524,7 @@ fn replace_paragraph<Renderer>(
         vertical_alignment: alignment::Vertical::Top,
         shaping: text::Shaping::Advanced,
         wrapping: text::Wrapping::default(),
+        ellipsize: text::Ellipsize::default(),
     });
 }
 

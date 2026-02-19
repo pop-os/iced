@@ -81,6 +81,10 @@ impl core::text::Paragraph for Paragraph {
         );
 
         buffer.set_wrap(font_system.raw(), text::to_wrap(text.wrapping));
+        buffer.set_ellipsize(
+            font_system.raw(),
+            text::to_ellipsize(text.ellipsize),
+        );
 
         buffer.set_text(
             font_system.raw(),
