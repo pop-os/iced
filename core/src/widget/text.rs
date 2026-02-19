@@ -32,7 +32,7 @@ use crate::{
     Widget,
 };
 
-pub use text::{LineHeight, Shaping, Wrapping};
+pub use text::{Ellipsize, LineHeight, Shaping, Wrapping};
 
 /// A bunch of text.
 ///
@@ -73,6 +73,7 @@ where
     font: Option<Renderer::Font>,
     shaping: Shaping,
     wrapping: Wrapping,
+    ellipsize: Ellipsize,
     class: Theme::Class<'a>,
 }
 
@@ -95,6 +96,7 @@ where
             vertical_alignment: alignment::Vertical::Top,
             shaping: Shaping::default(),
             wrapping: Wrapping::default(),
+            ellipsize: Ellipsize::default(),
             class: Theme::default(),
         }
     }
@@ -164,6 +166,12 @@ where
     /// Sets the [`Wrapping`] strategy of the [`Text`].
     pub fn wrapping(mut self, wrapping: Wrapping) -> Self {
         self.wrapping = wrapping;
+        self
+    }
+
+    // Sets the [`Ellipsize`] strategy of the [`Text`].
+    pub fn ellipsize(mut self, ellipsize: Ellipsize) -> Self {
+        self.ellipsize = ellipsize;
         self
     }
 
@@ -251,6 +259,7 @@ where
             self.vertical_alignment,
             self.shaping,
             self.wrapping,
+            self.ellipsize,
         )
     }
 
@@ -330,6 +339,7 @@ pub fn layout<Renderer>(
     vertical_alignment: alignment::Vertical,
     shaping: Shaping,
     wrapping: Wrapping,
+    ellipsize: Ellipsize,
 ) -> layout::Node
 where
     Renderer: text::Renderer,
@@ -352,6 +362,7 @@ where
             vertical_alignment,
             shaping,
             wrapping,
+            ellipsize,
         });
 
         paragraph.min_bounds()

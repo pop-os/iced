@@ -108,6 +108,7 @@ pub struct Checkbox<
     text_line_height: text::LineHeight,
     text_shaping: text::Shaping,
     text_wrapping: text::Wrapping,
+    text_ellipsize: text::Ellipsize,
     font: Option<Renderer::Font>,
     icon: Icon<Renderer::Font>,
     class: Theme::Class<'a>,
@@ -147,6 +148,7 @@ where
             text_line_height: text::LineHeight::default(),
             text_shaping: text::Shaping::default(),
             text_wrapping: text::Wrapping::default(),
+            text_ellipsize: text::Ellipsize::default(),
             font: None,
             icon: Icon {
                 font: Renderer::ICON_FONT,
@@ -340,6 +342,7 @@ where
                     alignment::Vertical::Top,
                     self.text_shaping,
                     self.text_wrapping,
+                    self.text_ellipsize,
                 )
             },
         )
@@ -450,6 +453,7 @@ where
                         vertical_alignment: alignment::Vertical::Center,
                         shaping: *shaping,
                         wrapping: text::Wrapping::default(),
+                        ellipsize: text::Ellipsize::default(),
                     },
                     bounds.center(),
                     style.icon_color,
