@@ -26,7 +26,7 @@ use wayland_backend::client::ObjectId;
 use wayland_client::{Connection, Proxy};
 use winit::dpi::Size;
 use winit::event_loop::OwnedDisplayHandle;
-use winit::window::CursorIcon;
+use winit::window::{CursorIcon, ImePurpose};
 
 pub(crate) enum Action {
     Action(iced_runtime::platform_specific::wayland::Action),
@@ -37,6 +37,9 @@ pub(crate) enum Action {
     RemoveWindow(window::Id),
     Dropped(SurfaceIdWrapper),
     SubsurfaceResize(window::Id, Size),
+    SetImeAllowed(bool),
+    SetImeCursorArea(i32, i32, i32, i32),
+    SetImePurpose(ImePurpose),
 }
 
 impl std::fmt::Debug for Action {
@@ -63,6 +66,19 @@ impl std::fmt::Debug for Action {
                 .finish(),
             Self::ResizeWindow(arg0) => {
                 f.debug_tuple("ResizeWindow").field(arg0).finish()
+            }
+            Self::SetImeAllowed(allowed) => {
+                f.debug_tuple("SetImeAllowed").field(allowed).finish()
+            }
+            Self::SetImeCursorArea(x, y, width, height) => f
+                .debug_tuple("SetImeCursorArea")
+                .field(x)
+                .field(y)
+                .field(width)
+                .field(height)
+                .finish(),
+            Self::SetImePurpose(purpose) => {
+                f.debug_tuple("SetImePurpose").field(purpose).finish()
             }
         }
     }

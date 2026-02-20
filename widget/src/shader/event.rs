@@ -1,4 +1,5 @@
 //! Handle events of a custom shader widget.
+use crate::core::input_method;
 use crate::core::keyboard;
 use crate::core::mouse;
 use crate::core::time::Instant;
@@ -16,6 +17,9 @@ pub enum Event {
 
     /// A touch event.
     Touch(touch::Event),
+
+    /// A touch event.
+    InputMethod(input_method::Event),
 
     /// A keyboard event.
     Keyboard(keyboard::Event),

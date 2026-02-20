@@ -6,6 +6,7 @@ use std::hash::DefaultHasher;
 use std::hash::Hash;
 use std::hash::Hasher;
 
+use crate::core::input_method;
 use crate::core::keyboard;
 use crate::core::mouse;
 use crate::core::touch;
@@ -141,6 +142,7 @@ pub fn window_event(
     modifiers: winit::keyboard::ModifiersState,
     window: &dyn winit::window::Window,
 ) -> Option<Event> {
+    use winit::event::Ime;
     use winit::event::WindowEvent;
 
     match event {
@@ -282,6 +284,15 @@ pub fn window_event(
                 self::modifiers(new_modifiers.state()),
             )))
         }
+        WindowEvent::Ime(event) => Some(Event::InputMethod(match event {
+            Ime::Enabled => input_method::Event::Opened,
+            Ime::Preedit(content, size) => input_method::Event::Preedit(
+                content,
+                size.map(|(start, end)| (start..end)),
+            ),
+            Ime::Commit(content) => input_method::Event::Commit(content),
+            Ime::Disabled => input_method::Event::Closed,
+        })),
         WindowEvent::Focused(focused) => Some(Event::Window(if focused {
             window::Event::Focused
         } else {
@@ -1426,6 +1437,17 @@ pub fn icon(icon: window::Icon) -> Option<winit::window::Icon> {
     let (pixels, size) = icon.into_raw();
 
     winit::window::Icon::from_rgba(pixels, size.width, size.height).ok()
+}
+
+/// Convertions some [`input_method::Purpose`] to its `winit` counterpart.
+pub fn ime_purpose(
+    purpose: input_method::Purpose,
+) -> winit::window::ImePurpose {
+    match purpose {
+        input_method::Purpose::Normal => winit::window::ImePurpose::Normal,
+        input_method::Purpose::Secure => winit::window::ImePurpose::Password,
+        input_method::Purpose::Terminal => winit::window::ImePurpose::Terminal,
+    }
 }
 
 // See: https://en.wikipedia.org/wiki/Private_Use_Areas

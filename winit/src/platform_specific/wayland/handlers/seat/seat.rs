@@ -8,6 +8,7 @@ use cctk::sctk::{
     seat::{pointer::ThemeSpec, SeatHandler},
 };
 use iced_runtime::keyboard::Modifiers;
+use std::sync::Arc;
 
 impl SeatHandler for SctkState {
     fn seat_state(&mut self) -> &mut cctk::sctk::seat::SeatState {
@@ -141,6 +142,16 @@ impl SeatHandler for SctkState {
             }
             _ => unimplemented!(),
         }
+
+        if let Some(text_input_manager) = self
+            .text_input
+            .is_none()
+            .then_some(self.text_input_manager.as_ref())
+            .flatten()
+        {
+            self.text_input =
+                Some(Arc::new((text_input_manager).get_text_input(&seat, &qh)));
+        }
     }
 
     fn remove_capability(
@@ -192,6 +203,10 @@ impl SeatHandler for SctkState {
                 }
             }
             _ => unimplemented!(),
+        }
+
+        if let Some(text_input) = self.text_input.take() {
+            text_input.destroy();
         }
     }
 

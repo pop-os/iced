@@ -260,15 +260,24 @@ impl winit::window::Window for SctkWinitWindow {
         position: winit::dpi::Position,
         size: winit::dpi::Size,
     ) {
-        todo!()
+        let guard = self.common.lock().unwrap();
+        let scale_factor = guard.fractional_scale.unwrap_or(1.);
+        let position = position.to_logical(scale_factor);
+        let size = size.to_logical(scale_factor);
+        _ = self.tx.send(Action::SetImeCursorArea(
+            position.x,
+            position.y,
+            size.width,
+            size.height,
+        ));
     }
 
     fn set_ime_allowed(&self, allowed: bool) {
-        todo!()
+        _ = self.tx.send(Action::SetImeAllowed(allowed));
     }
 
     fn set_ime_purpose(&self, purpose: winit::window::ImePurpose) {
-        todo!()
+        _ = self.tx.send(Action::SetImePurpose(purpose));
     }
 
     fn set_blur(&self, blur: bool) {

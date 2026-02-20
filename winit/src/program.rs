@@ -1339,22 +1339,28 @@ async fn run_instance<'a, P, C>(
                             .start_send(Control::ChangeFlow(match ui_state {
                                 user_interface::State::Updated {
                                     redraw_request: Some(redraw_request),
-                                } => match redraw_request {
-                                    window::RedrawRequest::NextFrame => {
-                                        window.request_redraw();
+                                    input_method,
+                                } => {
+                                    window.request_input_method(input_method);
+                                    match redraw_request {
+                                        window::RedrawRequest::NextFrame => {
+                                            window.request_redraw();
 
-                                        ControlFlow::Wait
+                                            ControlFlow::Wait
+                                        }
+                                        window::RedrawRequest::At(at) => {
+                                            ControlFlow::WaitUntil(at)
+                                        }
                                     }
-                                    window::RedrawRequest::At(at) => {
-                                        ControlFlow::WaitUntil(at)
-                                    }
-                                },
+                                }
                                 _ => ControlFlow::Wait,
                             }))
                             .is_err()
                         {
                             panic!("send error");
                         }
+
+                        window.draw_preedit();
 
                         let physical_size = window.state.physical_size();
                         if physical_size.width == 0 || physical_size.height == 0
@@ -1802,20 +1808,27 @@ async fn run_instance<'a, P, C>(
                     let _ = control_sender.start_send(Control::ChangeFlow(
                         match ui_state {
                             user_interface::State::Updated {
-                                redraw_request: Some(redraw_request),
-                            } => match redraw_request {
-                                window::RedrawRequest::NextFrame => {
-                                    window.request_redraw();
+                                redraw_request,
+                                input_method,
+                            } => {
+                                window.request_input_method(input_method);
+                                match redraw_request {
+                                    Some(window::RedrawRequest::NextFrame) => {
+                                        window.request_redraw();
 
-                                    ControlFlow::Wait
+                                        ControlFlow::Wait
+                                    }
+                                    Some(window::RedrawRequest::At(at)) => {
+                                        ControlFlow::WaitUntil(at)
+                                    }
+                                    None => ControlFlow::Wait,
                                 }
-                                window::RedrawRequest::At(at) => {
-                                    ControlFlow::WaitUntil(at)
-                                }
-                            },
+                            }
                             _ => ControlFlow::Wait,
                         },
                     ));
+
+                    window.draw_preedit();
                 }
 
                 debug.draw_finished();
