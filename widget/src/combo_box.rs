@@ -548,6 +548,7 @@ where
             &mut local_shell,
             viewport,
         );
+        shell.request_input_method(local_shell.input_method());
 
         // Then finally react to them here
         for message in local_messages {
@@ -724,6 +725,8 @@ where
                 published_message_to_shell = true;
 
                 // Unfocus the input
+                let mut local_messages = Vec::new();
+                let mut local_shell = Shell::new(&mut local_messages);
                 let _ = self.text_input.on_event(
                     &mut tree.children[0],
                     Event::Mouse(mouse::Event::ButtonPressed(
@@ -733,9 +736,10 @@ where
                     mouse::Cursor::Unavailable,
                     renderer,
                     clipboard,
-                    &mut Shell::new(&mut vec![]),
+                    &mut local_shell,
                     viewport,
                 );
+                shell.request_input_method(local_shell.input_method());
             }
         });
 
