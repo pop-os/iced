@@ -132,19 +132,20 @@ impl Compositor {
                 not(target_os = "redox")
             ))]
             if let Some((vendor_id, device_id)) = ids {
+                // Trust the compositor's DMA-BUF device preference
+                // without probing the surface.  On Wayland the surface
+                // may not be fully committed at this point, causing
+                // VK_ERROR_SURFACE_LOST_KHR in the capability query
+                // which falsely rejects the correct GPU.  The DMA-BUF
+                // feedback already guarantees this device can render for
+                // the compositor, and the surface will be (re-)created
+                // on the chosen adapter later anyway.
                 adapter = available_adapters
                     .into_iter()
-                    .filter(|adapter| {
+                    .find(|adapter| {
                         let info = adapter.get_info();
                         info.device == device_id as u32
                             && info.vendor == vendor_id as u32
-                    })
-                    .find(|adapter| {
-                        if let Some(surface) = compatible_surface.as_ref() {
-                            adapter.is_surface_supported(surface)
-                        } else {
-                            true
-                        }
                     });
             }
         } else if let Ok(name) = std::env::var("WGPU_ADAPTER_NAME") {
@@ -165,9 +166,56 @@ impl Compositor {
 
         let adapter = match adapter {
             Some(adapter) => adapter,
-            None => instance.request_adapter(&adapter_options).await.ok_or(
-                Error::NoAdapterFound(format!("{:?}", adapter_options)),
-            )?,
+            None => {
+                let surface_pick =
+                    instance.request_adapter(&adapter_options).await;
+                let is_cpu = surface_pick
+                    .as_ref()
+                    .is_some_and(|a| a.get_info().device_type == wgpu::DeviceType::Cpu);
+
+                if surface_pick.is_none() || is_cpu {
+                    // Either no adapter was found, or only a CPU software
+                    // rasterizer (e.g. llvmpipe) survived the surface
+                    // compatibility filter.
+                    //
+                    // On Wayland the surface may not be fully committed
+                    // yet (common for layer-shell panel applets), causing
+                    // real GPUs to fail VK_ERROR_SURFACE_LOST_KHR while
+                    // software rasterizers pass.  Retry without the
+                    // surface constraint so a real GPU is preferred.
+                    //
+                    // If the surface-less retry also yields nothing, fall
+                    // back to whatever the original attempt returned
+                    // (possibly the CPU adapter) so we are never worse
+                    // off than before.
+                    log::warn!(
+                        "adapter selection: surface-compatible pick is \
+                         {pick}; retrying without surface constraint",
+                        pick = match surface_pick.as_ref() {
+                            Some(a) => a.get_info().name,
+                            None => "None".to_owned(),
+                        },
+                    );
+                    let fallback_options = wgpu::RequestAdapterOptions {
+                        compatible_surface: None,
+                        ..adapter_options
+                    };
+                    instance
+                        .request_adapter(&fallback_options)
+                        .await
+                        .or(surface_pick)
+                        .ok_or(Error::NoAdapterFound(format!(
+                            "{:?}",
+                            fallback_options
+                        )))?
+                } else {
+                    // A real (non-CPU) GPU was found -- use it.
+                    // Safety: `is_cpu` is only true when `surface_pick`
+                    // is `Some`, and we took the other branch for `None`,
+                    // so this is guaranteed to be `Some` here.
+                    surface_pick.expect("guaranteed Some: is_none() was false")
+                }
+            }
         };
         log::info!("Selected: {:#?}", adapter.get_info());
 
