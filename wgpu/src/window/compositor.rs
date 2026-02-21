@@ -132,19 +132,20 @@ impl Compositor {
                 not(target_os = "redox")
             ))]
             if let Some((vendor_id, device_id)) = ids {
+                // Trust the compositor's DMA-BUF device preference
+                // without probing the surface.  On Wayland the surface
+                // may not be fully committed at this point, causing
+                // VK_ERROR_SURFACE_LOST_KHR in the capability query
+                // which falsely rejects the correct GPU.  The DMA-BUF
+                // feedback already guarantees this device can render for
+                // the compositor, and the surface will be (re-)created
+                // on the chosen adapter later anyway.
                 adapter = available_adapters
                     .into_iter()
-                    .filter(|adapter| {
+                    .find(|adapter| {
                         let info = adapter.get_info();
                         info.device == device_id as u32
                             && info.vendor == vendor_id as u32
-                    })
-                    .find(|adapter| {
-                        if let Some(surface) = compatible_surface.as_ref() {
-                            adapter.is_surface_supported(surface)
-                        } else {
-                            true
-                        }
                     });
             }
         } else if let Ok(name) = std::env::var("WGPU_ADAPTER_NAME") {
