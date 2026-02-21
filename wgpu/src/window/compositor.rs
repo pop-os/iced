@@ -166,9 +166,56 @@ impl Compositor {
 
         let adapter = match adapter {
             Some(adapter) => adapter,
-            None => instance.request_adapter(&adapter_options).await.ok_or(
-                Error::NoAdapterFound(format!("{:?}", adapter_options)),
-            )?,
+            None => {
+                let surface_pick =
+                    instance.request_adapter(&adapter_options).await;
+                let is_cpu = surface_pick
+                    .as_ref()
+                    .is_some_and(|a| a.get_info().device_type == wgpu::DeviceType::Cpu);
+
+                if surface_pick.is_none() || is_cpu {
+                    // Either no adapter was found, or only a CPU software
+                    // rasterizer (e.g. llvmpipe) survived the surface
+                    // compatibility filter.
+                    //
+                    // On Wayland the surface may not be fully committed
+                    // yet (common for layer-shell panel applets), causing
+                    // real GPUs to fail VK_ERROR_SURFACE_LOST_KHR while
+                    // software rasterizers pass.  Retry without the
+                    // surface constraint so a real GPU is preferred.
+                    //
+                    // If the surface-less retry also yields nothing, fall
+                    // back to whatever the original attempt returned
+                    // (possibly the CPU adapter) so we are never worse
+                    // off than before.
+                    log::warn!(
+                        "adapter selection: surface-compatible pick is \
+                         {pick}; retrying without surface constraint",
+                        pick = match surface_pick.as_ref() {
+                            Some(a) => a.get_info().name,
+                            None => "None".to_owned(),
+                        },
+                    );
+                    let fallback_options = wgpu::RequestAdapterOptions {
+                        compatible_surface: None,
+                        ..adapter_options
+                    };
+                    instance
+                        .request_adapter(&fallback_options)
+                        .await
+                        .or(surface_pick)
+                        .ok_or(Error::NoAdapterFound(format!(
+                            "{:?}",
+                            fallback_options
+                        )))?
+                } else {
+                    // A real (non-CPU) GPU was found -- use it.
+                    // Safety: `is_cpu` is only true when `surface_pick`
+                    // is `Some`, and we took the other branch for `None`,
+                    // so this is guaranteed to be `Some` here.
+                    surface_pick.expect("guaranteed Some: is_none() was false")
+                }
+            }
         };
         log::info!("Selected: {:#?}", adapter.get_info());
 
