@@ -7,7 +7,9 @@ use tiny_skia::Transform;
 
 use std::cell::RefCell;
 use std::collections::hash_map;
+use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::{Duration, Instant, SystemTime};
 use std::{fs, panic};
 
 #[derive(Debug)]
@@ -64,9 +66,18 @@ impl Pipeline {
     }
 }
 
+/// Tracks source file info for mtime-based cache invalidation of path-based SVGs.
+#[derive(Debug)]
+struct SvgFileInfo {
+    path: PathBuf,
+    mtime: SystemTime,
+    last_checked: Instant,
+}
+
 #[derive(Default)]
 struct Cache {
     trees: FxHashMap<u64, Option<resvg::usvg::Tree>>,
+    svg_files: FxHashMap<u64, SvgFileInfo>,
     tree_hits: FxHashSet<u64>,
     rasters: FxHashMap<RasterKey, tiny_skia::Pixmap>,
     raster_hits: FxHashSet<RasterKey>,
@@ -83,6 +94,14 @@ struct RasterKey {
 impl Cache {
     fn load(&mut self, handle: &Handle) -> Option<&usvg::Tree> {
         let id = handle.id();
+
+        // Check if a cached path-based SVG has changed on disk
+        if self.trees.contains_key(&id) {
+            if self.check_svg_file_changed(id) {
+                let _ = self.trees.remove(&id);
+                self.rasters.retain(|k, _| k.id != id);
+            }
+        }
 
         // TODO: Reuse `cosmic-text` font database
         if self.fontdb.is_none() {
@@ -104,6 +123,16 @@ impl Cache {
         if let hash_map::Entry::Vacant(entry) = self.trees.entry(id) {
             let svg = match handle.data() {
                 Data::Path(path) => {
+                    // Record file info for mtime-based freshness checks
+                    if let Ok(meta) = fs::metadata(path) {
+                        if let Ok(mtime) = meta.modified() {
+                            let _ = self.svg_files.insert(id, SvgFileInfo {
+                                path: path.clone(),
+                                mtime,
+                                last_checked: Instant::now(),
+                            });
+                        }
+                    }
                     fs::read_to_string(path).ok().and_then(|contents| {
                         usvg::Tree::from_str(&contents, &options).ok()
                     })
@@ -118,6 +147,30 @@ impl Cache {
 
         let _ = self.tree_hits.insert(id);
         self.trees.get(&id).unwrap().as_ref()
+    }
+
+    /// Check if a cached path-based SVG's source file has changed.
+    /// Rate-limited to one stat() per SVG every 2 seconds.
+    fn check_svg_file_changed(&mut self, id: u64) -> bool {
+        let Some(info) = self.svg_files.get_mut(&id) else {
+            return false;
+        };
+        if info.last_checked.elapsed() < Duration::from_secs(2) {
+            return false;
+        }
+        info.last_checked = Instant::now();
+        let Ok(meta) = fs::metadata(&info.path) else {
+            return false;
+        };
+        let Ok(mtime) = meta.modified() else {
+            return false;
+        };
+        if mtime != info.mtime {
+            info.mtime = mtime;
+            true
+        } else {
+            false
+        }
     }
 
     fn viewport_dimensions(&mut self, handle: &Handle) -> Option<Size<u32>> {
@@ -137,8 +190,16 @@ impl Cache {
             return None;
         }
 
+        let id = handle.id();
+
+        // If SVG file changed, invalidate both tree and raster caches
+        if self.check_svg_file_changed(id) {
+            let _ = self.trees.remove(&id);
+            self.rasters.retain(|k, _| k.id != id);
+        }
+
         let key = RasterKey {
-            id: handle.id(),
+            id,
             color: color.map(Color::into_rgba8),
             size,
         };
@@ -219,6 +280,7 @@ impl Cache {
 
     fn trim(&mut self) {
         self.trees.retain(|key, _| self.tree_hits.contains(key));
+        self.svg_files.retain(|key, _| self.tree_hits.contains(key));
         self.rasters.retain(|key, _| self.raster_hits.contains(key));
 
         self.tree_hits.clear();
