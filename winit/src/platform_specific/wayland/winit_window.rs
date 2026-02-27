@@ -67,7 +67,11 @@ impl winit::window::Window for SctkWinitWindow {
     }
 
     fn request_redraw(&self) {
+        if let CommonSurface::Subsurface { parent, .. } = &self.surface {
+            _ = self.tx.send(Action::RequestRedraw(parent.id()));
+        }
         let surface = self.surface.wl_surface();
+
         _ = self.tx.send(Action::RequestRedraw(surface.id()));
     }
 

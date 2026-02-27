@@ -70,6 +70,7 @@ use crate::runtime::image;
 use crate::runtime::system;
 use crate::runtime::user_interface::{self, UserInterface};
 use crate::runtime::{Action, Task};
+use crate::subsurface_widget::is_subsurface;
 
 use program::Program;
 use window::WindowManager;
@@ -77,7 +78,6 @@ use window::WindowManager;
 use rustc_hash::FxHashMap;
 use std::borrow::Cow;
 use std::mem::ManuallyDrop;
-use std::ops::ControlFlow;
 use std::slice;
 use std::sync::Arc;
 
@@ -253,6 +253,29 @@ where
                 winit::event::WindowEvent::SurfaceResized(_)
                     | winit::event::WindowEvent::Moved(_)
             );
+
+            #[cfg(feature = "wayland")]
+            {
+                if matches!(event, WindowEvent::RedrawRequested) {
+                    for id in
+                        crate::subsurface_widget::subsurface_ids(window_id)
+                    {
+                        _ = self.sender.start_send(Event::Winit(
+                            id,
+                            WindowEvent::RedrawRequested,
+                        ));
+                    }
+                } else if matches!(event, WindowEvent::CloseRequested) {
+                    for id in
+                        crate::subsurface_widget::subsurface_ids(window_id)
+                    {
+                        _ = self.sender.start_send(Event::Winit(
+                            id,
+                            WindowEvent::CloseRequested,
+                        ));
+                    }
+                }
+            }
 
             self.process_event(
                 event_loop,
@@ -531,6 +554,32 @@ where
                                     .expect("Send event");
                             }
                             Control::Winit(id, e) => {
+                                #[cfg(feature = "wayland")]
+                                {
+                                    if matches!(e, WindowEvent::RedrawRequested)
+                                    {                    
+                                        
+                                        for id in crate::subsurface_widget::subsurface_ids(id) {
+                                            _ = self.sender
+                                                .unbounded_send(Event::Winit(
+                                                id,
+                                                WindowEvent::RedrawRequested,
+                                            ));
+                                        }
+                                    } else if matches!(
+                                        e,
+                                        WindowEvent::CloseRequested
+                                    ) {
+                                        for id in crate::subsurface_widget::subsurface_ids(id) {
+                                            _ = self.sender
+                                                .start_send(Event::Winit(
+                                                id,
+                                                WindowEvent::CloseRequested,
+                                            ));
+                                        }
+                                    }
+                                }
+                                
                                 self.sender
                                     .start_send(Event::Winit(id, e))
                                     .expect("Send event");
@@ -759,8 +808,8 @@ async fn run_instance<P>(
 
     'next_event: loop {
         // Empty the queue if possible
-        let event = if let Ok(event) = event_receiver.try_next() {
-            event
+        let event = if let Ok(event) = event_receiver.try_recv() {
+            Some(event)
         } else {
             event_receiver.next().await
         };
@@ -950,13 +999,16 @@ async fn run_instance<P>(
                 else {
                     continue;
                 };
+                window.redraw_requested = false;
+
                 if !window.state.ready {
                     continue;
                 } 
                 // XX must force update to corner radius before the surface is committed.
                 #[cfg(feature = "wayland")]
-                if window.surface_version != window.state.surface_version()
+                if (window.surface_version != window.state.surface_version()
                     || window.logical_size() != window.state.logical_size()
+                    ) && !is_subsurface(window_id)
                 {
                     platform_specific_handler.send_wayland(
                         platform_specific::Action::ResizeWindow(id),
@@ -1295,8 +1347,6 @@ async fn run_instance<P>(
                 let skip = events.is_empty() && messages.is_empty();
 
                 if skip && window_manager.is_idle() {
-                    _ = control_sender
-                        .start_send(Control::ChangeFlow(ControlFlow::Wait));
                     continue;
                 }
 
@@ -1416,18 +1466,6 @@ async fn run_instance<P>(
                 }
 
                 for (id, event) in events.drain(..) {
-                    if id.is_none()
-                        && matches!(
-                            event,
-                            core::Event::Keyboard(_)
-                                | core::Event::Touch(_)
-                                | core::Event::Mouse(_)
-                        )
-                    {
-                        _ = control_sender
-                            .start_send(Control::ChangeFlow(ControlFlow::Wait));
-                        continue;
-                    }
                     runtime.broadcast(subscription::Event::Interaction {
                         window: id.unwrap_or(window::Id::NONE),
                         event,
@@ -1484,6 +1522,14 @@ async fn run_instance<P>(
                     }
                 }
 
+                for (_id, window) in window_manager.iter_mut() {
+                    if let Some(redraw_at) = window.redraw_at
+                        && redraw_at <= Instant::now()
+                    {
+                        window.raw.request_redraw();
+                        window.redraw_at = None;
+                    }
+                }
                 if let Some(redraw_at) = window_manager.redraw_at() {
                     let _ = control_sender.start_send(Control::ChangeFlow(
                         ControlFlow::WaitUntil(redraw_at),

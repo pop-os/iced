@@ -1498,6 +1498,7 @@ impl SctkEvent {
                     display,
                 } => {
                     let CommonSurface::Subsurface {
+                        parent: _,
                         wl_surface,
                         wl_subsurface,
                     } = &common_surface
@@ -1515,7 +1516,7 @@ impl SctkEvent {
                         ));
                     }
 
-                    let wrapper = SurfaceIdWrapper::Popup(surface_id);
+                    let wrapper = SurfaceIdWrapper::Subsurface(surface_id);
                     _ = surface_ids.insert(wl_surface.id(), wrapper.clone());
                     let sctk_winit = SctkWinitWindow::new(
                         sctk_tx.clone(),
@@ -1542,10 +1543,25 @@ impl SctkEvent {
                             },
                         );
                     }
-                    let Some(compositor) = compositor.as_mut() else {
-                        log::error!("compositor missing");
-                        return;
-                    };
+                    if compositor.is_none() {
+                        match create_compositor(
+                            sctk_winit.clone(),
+                            create_compositor_data,
+                        )
+                        .await
+                        {
+                            Ok(c) => *compositor = Some(c),
+                            Err(error) => {
+                                control_sender
+                                    .start_send(Control::Crash(
+                                        Error::GraphicsCreationFailed(error),
+                                    ))
+                                    .expect("Send control message");
+                                return;
+                            }
+                        };
+                    }
+                    let compositor = compositor.as_mut().unwrap();
 
                     let window = window_manager.insert(
                         surface_id,

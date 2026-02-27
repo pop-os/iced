@@ -747,6 +747,14 @@ pub(crate) fn take_subsurfaces() -> Vec<SubsurfaceInfo> {
     SUBSURFACES.with(|subsurfaces| mem::take(&mut *subsurfaces.borrow_mut()))
 }
 
+pub(crate) fn is_subsurface(id: WindowId) -> bool {
+    ICED_SUBSURFACES.with(|subsurfaces| {
+        subsurfaces.borrow_mut().iter().any(|s| {
+            winit::window::WindowId::from_raw(s.4.id().as_ptr() as usize) == id
+        })
+    })
+}
+
 pub(crate) fn subsurface_ids(parent: WindowId) -> Vec<WindowId> {
     ICED_SUBSURFACES.with(|subsurfaces| {
         subsurfaces

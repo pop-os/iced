@@ -3,8 +3,8 @@ use cctk::sctk::{
     compositor::CompositorHandler,
     delegate_compositor,
     reexports::client::{
+        Connection, QueueHandle,
         protocol::{wl_output, wl_surface},
-        Connection, Proxy, QueueHandle,
     },
 };
 

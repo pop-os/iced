@@ -186,7 +186,6 @@ pub fn present(
         })
         .unwrap_or_else(|| vec![Rectangle::with_size(viewport.logical_size())]);
 
-    /// XXX winit shell does not handle skipped present well.
     if damage.is_empty() {
         if let Some(last_layers) = last_layers {
             surface.layer_stack.push_front(last_layers.clone());

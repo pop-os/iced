@@ -206,6 +206,7 @@ pub enum CommonSurface {
     Layer(LayerSurface),
     Lock(SessionLockSurface),
     Subsurface {
+        parent: WlSurface,
         wl_surface: WlSurface,
         wl_subsurface: WlSubsurface,
     },
@@ -1821,6 +1822,7 @@ impl SctkState {
             parent.wl_surface().clone(),
             wl_surface.clone(),
             CommonSurface::Subsurface {
+                parent: parent.wl_surface().clone(),
                 wl_surface,
                 wl_subsurface,
             },
