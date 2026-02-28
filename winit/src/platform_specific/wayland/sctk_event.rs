@@ -1080,10 +1080,6 @@ impl SctkEvent {
                         let _ = user_interfaces.insert(surface_id, ui);
                     }
                     PopupEventVariant::Configure(configure, surface, first) => {
-                        let size = Size::new(
-                            configure.width as f32,
-                            configure.height as f32,
-                        );
                         if let Some((id, w)) =
                             surface_ids.get(&surface.id()).and_then(|id| {
                                 window_manager
@@ -1101,14 +1097,22 @@ impl SctkEvent {
                                     .expect("Send control message");
                                 proxy.wake_up();
                             }
-
-                            let scale = w.state.scale_factor();
-                            let p_w = (configure.width.max(1) as f64 * scale)
-                                .ceil()
-                                as u32;
-                            let p_h = (configure.height.max(1) as f64 * scale)
-                                .ceil()
-                                as u32;
+                            let physical = w.raw.surface_size();
+                            let (p_w, p_h) = if physical.width > 0
+                                && physical.height > 0
+                            {
+                                (physical.width, physical.height)
+                            } else {
+                                // Fallback if backend has not reported an updated
+                                // surface size yet for this configure.
+                                let scale = w.state.scale_factor();
+                                (
+                                    (configure.width.max(1) as f64 * scale)
+                                        .ceil() as u32,
+                                    (configure.height.max(1) as f64 * scale)
+                                        .ceil() as u32,
+                                )
+                            };
 
                             w.state.update(
                                 program,
@@ -1117,6 +1121,7 @@ impl SctkEvent {
                                     PhysicalSize::new(p_w, p_h),
                                 ),
                             );
+                            let size = w.state.logical_size();
                             if first {
                                 events.push((
                                     Some(id),
