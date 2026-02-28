@@ -598,7 +598,7 @@ impl Engine {
                 self.raster_pipeline.draw(
                     &image.handle,
                     image.filter_method,
-                    *bounds,
+                    physical_bounds,
                     image.opacity,
                     _pixels,
                     transform,
@@ -629,7 +629,7 @@ impl Engine {
                 self.vector_pipeline.draw(
                     &svg.handle,
                     svg.color,
-                    *bounds,
+                    physical_bounds,
                     svg.opacity,
                     _pixels,
                     transform,
