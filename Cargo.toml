@@ -240,7 +240,7 @@ bytes = "1.6"
 cosmic-text = { git = "https://github.com/pop-os/cosmic-text.git" }
 # cosmic-text = "0.10"
 dark-light = "1.0"
-cryoglyph = { package = "cryoglyph", git = "https://github.com/pop-os/glyphon.git", branch = "iced-0.14" }
+cryoglyph = { package = "cryoglyph", git = "https://github.com/pop-os/glyphon.git", tag = "cosmic-0.14" }
 resvg = "0.45"
 web-sys = "0.3.69"
 guillotiere = "0.6"
@@ -301,11 +301,11 @@ wayland-client = { version = "0.31.5" }
 winapi = "0.3"
 # window_clipboard = "0.4.1"
 
-window_clipboard = { git = "https://github.com/pop-os/window_clipboard.git", tag = "pop-0.13-2" }
-dnd = { git = "https://github.com/pop-os/window_clipboard.git", tag = "pop-0.13-2" }
-mime = { git = "https://github.com/pop-os/window_clipboard.git", tag = "pop-0.13-2" }
-winit = { git = "https://github.com/pop-os/winit.git", branch = "iced-0.14-rebase" }
-winit-core = { git = "https://github.com/pop-os/winit.git", branch = "iced-0.14-rebase" }
+window_clipboard = { git = "https://github.com/pop-os/window_clipboard.git", tag = "sctk-0.20" }
+dnd = { git = "https://github.com/pop-os/window_clipboard.git", tag = "sctk-0.20" }
+mime = { git = "https://github.com/pop-os/window_clipboard.git", tag = "sctk-0.20" }
+winit = { git = "https://github.com/pop-os/winit.git", tag = "cosmic-0.14" }
+winit-core = { git = "https://github.com/pop-os/winit.git", tag = "cosmic-0.14" }
 cursor-icon = "1.1.0"
 
 
