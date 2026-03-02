@@ -94,6 +94,13 @@ where
         Vec::new()
     }
 
+    /// Returns the number of children of the [`Widget`].
+    ///
+    /// This must be equal to what would be returned by calling `len()` on [`Widget::children()`].
+    fn children_count(&self) -> usize {
+        self.children().len()
+    }
+
     /// Reconciliates the [`Widget`] with the provided [`Tree`].
     fn diff(&mut self, _tree: &mut Tree) {}
 
