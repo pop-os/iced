@@ -70,7 +70,6 @@ use crate::runtime::image;
 use crate::runtime::system;
 use crate::runtime::user_interface::{self, UserInterface};
 use crate::runtime::{Action, Task};
-use crate::subsurface_widget::is_subsurface;
 
 use program::Program;
 use window::WindowManager;
@@ -1008,7 +1007,7 @@ async fn run_instance<P>(
                 #[cfg(feature = "wayland")]
                 if (window.surface_version != window.state.surface_version()
                     || window.logical_size() != window.state.logical_size()
-                    ) && !is_subsurface(window_id)
+                    ) && !crate::subsurface_widget::is_subsurface(window_id)
                 {
                     platform_specific_handler.send_wayland(
                         platform_specific::Action::ResizeWindow(id),
