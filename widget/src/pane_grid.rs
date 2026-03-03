@@ -1111,7 +1111,7 @@ fn click_pane<'a, Message, T>(
 {
     let mut clicked_region = contents
         .zip(layout.children())
-        .filter(|(_, c_layout)| layout.bounds().contains(cursor_position));
+        .filter(|(_, c_layout)| c_layout.bounds().contains(cursor_position));
 
     if let Some(((pane, content), c_layout)) = clicked_region.next() {
         if let Some(on_click) = &on_click {
