@@ -795,6 +795,7 @@ impl SctkEvent {
                         compositor,
                         false, // TODO do we want to get this value here?
                         theme::Mode::None, // TODO do we really need to track the system theme here?
+                        0,
                     );
                     _ = surface_ids.insert(object_id, wrapper.clone());
                     let logical_size = window.logical_size();
@@ -1009,6 +1010,7 @@ impl SctkEvent {
                             compositor,
                             false, // TODO do we want to get this value here?
                             theme::Mode::None, // TODO do we really need to track the system theme here?
+                            0,
                         );
                         window.state.ready = false;
                         let logical_size = window.logical_size();
@@ -1098,21 +1100,22 @@ impl SctkEvent {
                                 proxy.wake_up();
                             }
                             let physical = w.raw.surface_size();
-                            let (p_w, p_h) = if physical.width > 0
-                                && physical.height > 0
-                            {
-                                (physical.width, physical.height)
-                            } else {
-                                // Fallback if backend has not reported an updated
-                                // surface size yet for this configure.
-                                let scale = w.state.scale_factor();
-                                (
-                                    (configure.width.max(1) as f64 * scale)
-                                        .ceil() as u32,
-                                    (configure.height.max(1) as f64 * scale)
-                                        .ceil() as u32,
-                                )
-                            };
+                            let (p_w, p_h) =
+                                if physical.width > 0 && physical.height > 0 {
+                                    (physical.width, physical.height)
+                                } else {
+                                    // Fallback if backend has not reported an updated
+                                    // surface size yet for this configure.
+                                    let scale = w.state.scale_factor();
+                                    (
+                                        (configure.width.max(1) as f64 * scale)
+                                            .ceil()
+                                            as u32,
+                                        (configure.height.max(1) as f64 * scale)
+                                            .ceil()
+                                            as u32,
+                                    )
+                                };
 
                             w.state.update(
                                 program,
@@ -1261,6 +1264,7 @@ impl SctkEvent {
                     compositor,
                     false, // TODO do we want to get this value here?
                     theme::Mode::None, // TODO do we really need to track the system theme here?
+                    0,
                 );
                 _ = surface_ids.insert(object_id, wrapper.clone());
                 let logical_size = window.logical_size();
@@ -1575,6 +1579,7 @@ impl SctkEvent {
                         compositor,
                         false, // TODO do we want to get this value here?
                         theme::Mode::None,
+                        0,
                     );
                     let logical_size = window.logical_size();
 

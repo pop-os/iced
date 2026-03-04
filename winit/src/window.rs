@@ -61,6 +61,7 @@ where
         compositor: &mut C,
         exit_on_close_request: bool,
         system_theme: theme::Mode,
+        resize_border: u32,
     ) -> &mut Window<P, C> {
         let state = State::new(program, id, system_theme, window.as_ref());
         let surface_size = state.physical_size();
@@ -79,6 +80,10 @@ where
         let _ = self.entries.insert(
             id,
             Window {
+                drag_resize_window_func: super::drag_resize::event_func(
+                    window.as_ref(),
+                    resize_border as f64 * window.scale_factor(),
+                ),
                 raw: window,
                 state,
                 exit_on_close_request,
@@ -89,7 +94,6 @@ where
                 redraw_at: None,
                 preedit: None,
                 ime_state: None,
-                drag_resize_window_func: None,
                 prev_dnd_destination_rectangles_count: 0,
                 viewport_version: 0,
                 redraw_requested: false,

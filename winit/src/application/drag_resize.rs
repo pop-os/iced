@@ -1,4 +1,5 @@
-use winit::window::{CursorIcon, ResizeDirection};
+use cursor_icon::CursorIcon;
+use winit::window::ResizeDirection;
 
 #[cfg(any(
     all(
@@ -44,8 +45,9 @@ pub fn event_func(
                   -> bool {
                 // Keep track of border resize state and set cursor icon when in range
                 match window_event {
-                    winit::event::WindowEvent::CursorMoved {
-                        position, ..
+                    winit::event::WindowEvent::PointerMoved {
+                        position,
+                        ..
                     } => {
                         if !window.is_decorated() {
                             let location = cursor_resize_direction(
@@ -63,9 +65,16 @@ pub fn event_func(
                             }
                         }
                     }
-                    winit::event::WindowEvent::MouseInput {
+                    winit::event::WindowEvent::PointerButton {
                         state: winit::event::ElementState::Pressed,
-                        button: winit::event::MouseButton::Left,
+                        button:
+                            winit::event::ButtonSource::Mouse(
+                                winit::event::MouseButton::Left,
+                            )
+                            | winit::event::ButtonSource::Touch {
+                                finger_id: _, ..
+                            },
+                        primary: true,
                         ..
                     } => {
                         if let Some(direction) = cursor_prev_resize_direction {
