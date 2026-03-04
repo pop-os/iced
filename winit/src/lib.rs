@@ -18,6 +18,10 @@
     html_logo_url = "https://raw.githubusercontent.com/iced-rs/iced/9ab6923e943f784985e9ef9ca28b10278297225d/docs/logo.svg"
 )]
 #![cfg_attr(docsrs, feature(doc_cfg))]
+
+#[path = "application/drag_resize.rs"]
+mod drag_resize;
+
 use dnd::DndSurface;
 pub use iced_debug as debug;
 pub use iced_program as program;
@@ -404,7 +408,7 @@ where
                                 #[cfg(target_arch = "wasm32")]
                                 let target =
                                     settings.platform_specific.target.clone();
-
+                                let resize_border = settings.resize_border;
                                 let window_attributes =
                                     conversion::window_attributes(
                                         settings,
@@ -500,6 +504,7 @@ where
                                         exit_on_close_request,
                                         make_visible: visible,
                                         on_open,
+                                        resize_border,
                                     }),
                                 );
                             }
@@ -667,6 +672,7 @@ enum Event<Message: 'static> {
         exit_on_close_request: bool,
         make_visible: bool,
         on_open: oneshot::Sender<window::Id>,
+        resize_border: u32,
     },
     Exit,
     Dnd(dnd::DndEvent<dnd::DndSurface>),
@@ -824,6 +830,7 @@ async fn run_instance<P>(
                 exit_on_close_request,
                 make_visible,
                 on_open,
+                resize_border
             } => {
                 #[cfg(feature = "a11y")]
                 control_sender
@@ -882,6 +889,7 @@ async fn run_instance<P>(
                     compositor,
                     exit_on_close_request,
                     system_theme,
+                    resize_border
                 );
 
                 window.raw.set_theme(conversion::window_theme(
@@ -1287,7 +1295,14 @@ async fn run_instance<P>(
                 else {
                     continue;
                 };
-
+                // Initiates a drag resize window state when found.
+                if let Some(func) =
+                    window.drag_resize_window_func.as_mut()
+                {
+                    if func(window.raw.as_ref(), &event) {
+                        continue;
+                    }
+                }
                 match event {
                     winit::event::WindowEvent::SurfaceResized(_) => {
                         window.raw.request_redraw();

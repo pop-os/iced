@@ -56,6 +56,9 @@ pub struct Settings {
     /// Whether the window should be resizable or not.
     pub resizable: bool,
 
+    /// The border area for the drag resize handle.
+    pub resize_border: u32,
+
     /// Whether the title bar has Close button or not
     pub closeable: bool,
 
@@ -120,6 +123,7 @@ impl Default for Settings {
             icon: None,
             exit_on_close_request: true,
             platform_specific: PlatformSpecific::default(),
+            resize_border: 8,
         }
     }
 }
