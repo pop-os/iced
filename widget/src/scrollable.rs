@@ -1033,10 +1033,9 @@ where
                             -movement * 60.0
                         }
                         mouse::ScrollDelta::Pixels { x, y } => {
-                            Vector::new(x, y)
+                            -Vector::new(x, y)
                         }
                     };
-
                     state.scroll(
                         self.direction.align(delta),
                         bounds,
@@ -1197,7 +1196,6 @@ where
                                 };
 
                             let scroll_factor = time_delta.as_secs_f32();
-
                             state.scroll(
                                 self.direction.align(Vector::new(
                                     delta.x.signum()
