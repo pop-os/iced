@@ -682,7 +682,9 @@ pub fn keysym_to_key(keysym: u32) -> Key {
         keysyms::_3270_PrintScreen => Named::PrintScreen,
         keysyms::_3270_Enter => Named::Enter,
 
-        keysyms::space => Named::Space,
+        keysyms::space => {
+            return Key::Character(" ".into());
+        }
         // exclam..Sinh_kunddaliya
 
         // XFree86
@@ -1069,6 +1071,7 @@ pub fn key_to_keysym(
                 (Some('*'), Location::Numpad) => keysyms::KP_Multiply,
                 (Some('/'), Location::Numpad) => keysyms::KP_Divide,
                 (Some('='), Location::Numpad) => keysyms::KP_Equal,
+                (Some(' '), _) => keysyms::space,
 
                 (Some(c), _) => unsafe {
                     let keysym =
