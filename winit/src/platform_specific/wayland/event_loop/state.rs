@@ -1227,11 +1227,9 @@ impl SctkState {
                             SctkEvent::PopupEvent { variant: crate::sctk_event::PopupEventVariant::Size(size.0, size.1), toplevel_id: existing.data.parent.wl_surface().clone(), parent_id: existing.data.parent.wl_surface().clone(), id: existing.popup.wl_surface().clone() });
                         return Ok(());
                     }
-                    let mut found = false;
-                    let mut parent_mismatch = false;
+                    let mut parent_mismatch = !self.popups.is_empty();
                     for p in &self.popups {
-                        found |= p.data.id == settings.parent;
-                        parent_mismatch |= found && p.data.id != settings.parent;
+                        parent_mismatch = p.data.id != settings.parent;
                     }
                     if !self.destroyed.is_empty() || parent_mismatch {
                         if parent_mismatch {
