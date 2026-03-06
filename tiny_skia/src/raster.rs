@@ -152,21 +152,18 @@ impl Cache {
         }
 
         let _ = self.hits.insert(id);
+        let Some(ret) = self.entries.get(&id).unwrap().as_ref().map(|entry| {
+            tiny_skia::PixmapRef::from_bytes(
+                bytemuck::cast_slice(&entry.pixels),
+                entry.width,
+                entry.height,
+            )
+            .expect("Build pixmap from image bytes")
+        }) else {
+            return Err(raster::Error::Empty);
+        };
 
-        Ok(self
-            .entries
-            .get(&id)
-            .unwrap()
-            .as_ref()
-            .map(|entry| {
-                tiny_skia::PixmapRef::from_bytes(
-                    bytemuck::cast_slice(&entry.pixels),
-                    entry.width,
-                    entry.height,
-                )
-                .expect("Build pixmap from image bytes")
-            })
-            .expect("Image should be allocated"))
+        Ok(ret)
     }
 
     fn trim(&mut self) {
