@@ -991,8 +991,6 @@ pub enum Code {
     ShiftLeft,
     /// <kbd>Shift</kbd> or <kbd>⇧</kbd>
     ShiftRight,
-    /// <kbd> </kbd> (space)
-    Space,
     /// <kbd>Tab</kbd> or <kbd>⇥</kbd>
     Tab,
     /// Japanese: <kbd>変</kbd> (henkan)
