@@ -124,8 +124,8 @@ impl SubsurfaceApp {
                 key,
                 ..
             }) => match key {
-                iced::keyboard::Key::Named(
-                    iced::keyboard::key::Named::Space,
+                iced::keyboard::Key::Character(
+                    " ".into()
                 ) => Some(Message::Toggle),
                 _ => None,
             },

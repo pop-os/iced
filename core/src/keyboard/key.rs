@@ -186,8 +186,6 @@ pub enum Named {
     Enter,
     /// The Horizontal Tabulation `Tab` key.
     Tab,
-    /// Used in text to insert a space between words. Usually located below the character keys.
-    Space,
     /// Navigate or traverse downward. (`KEYCODE_DPAD_DOWN`)
     ArrowDown,
     /// Navigate or traverse leftward. (`KEYCODE_DPAD_LEFT`)
@@ -991,6 +989,8 @@ pub enum Code {
     ShiftLeft,
     /// <kbd>Shift</kbd> or <kbd>⇧</kbd>
     ShiftRight,
+    /// <kbd> </kbd> (space)
+    Space,
     /// <kbd>Tab</kbd> or <kbd>⇥</kbd>
     Tab,
     /// Japanese: <kbd>変</kbd> (henkan)

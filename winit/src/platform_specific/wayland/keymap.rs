@@ -993,8 +993,6 @@ pub fn key_to_keysym(
             (Named::ExSel, _) => keysyms::_3270_ExSelect,
             (Named::CrSel, _) => keysyms::_3270_CursorSelect,
 
-            (Named::Space, _) => keysyms::space,
-
             // XF86 multimedia / internet / power keys (subset shown)
             (Named::BrightnessUp, _) => keysyms::XF86_MonBrightnessUp,
             (Named::BrightnessDown, _) => keysyms::XF86_MonBrightnessDown,
