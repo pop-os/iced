@@ -133,7 +133,6 @@ impl Renderer {
 
                     for group in &layer.primitives {
                         let Some(group_bounds) = (group.clip_bounds()
-                            * group.transformation()
                             * scale_factor)
                             .intersection(&layer_bounds)
                         else {
