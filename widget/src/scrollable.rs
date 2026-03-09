@@ -963,11 +963,12 @@ where
                     )),
                     e => e,
                 };
-
                 self.content.as_widget_mut().update(
                     &mut tree.children[0],
                     &c_event,
-                    content,
+                    content.with_virtual_offset(
+                        translation + layout.virtual_offset(),
+                    ),
                     cursor,
                     renderer,
                     clipboard,

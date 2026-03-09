@@ -113,7 +113,11 @@ where
         self.content.as_widget_mut().update(
             &mut tree.children[0],
             event,
-            layout.children().next().unwrap(),
+            layout
+                .children()
+                .next()
+                .unwrap()
+                .with_virtual_offset(layout.virtual_offset()),
             cursor,
             renderer,
             clipboard,
@@ -137,7 +141,11 @@ where
             renderer,
             theme,
             style,
-            layout.children().next().unwrap(),
+            layout
+                .children()
+                .next()
+                .unwrap()
+                .with_virtual_offset(layout.virtual_offset()),
             cursor,
             viewport,
         );
@@ -153,7 +161,11 @@ where
     ) -> mouse::Interaction {
         self.content.as_widget().mouse_interaction(
             &tree.children[0],
-            layout.children().next().unwrap(),
+            layout
+                .children()
+                .next()
+                .unwrap()
+                .with_virtual_offset(layout.virtual_offset()),
             cursor,
             viewport,
             renderer,
@@ -169,7 +181,11 @@ where
     ) {
         self.content.as_widget_mut().operate(
             &mut tree.children[0],
-            layout.children().next().unwrap(),
+            layout
+                .children()
+                .next()
+                .unwrap()
+                .with_virtual_offset(layout.virtual_offset()),
             renderer,
             operation,
         );
@@ -185,7 +201,11 @@ where
     ) -> Option<overlay::Element<'a, Message, Theme, Renderer>> {
         self.content.as_widget_mut().overlay(
             &mut tree.children[0],
-            layout.children().next().unwrap(),
+            layout
+                .children()
+                .next()
+                .unwrap()
+                .with_virtual_offset(layout.virtual_offset()),
             renderer,
             viewport,
             translation,
