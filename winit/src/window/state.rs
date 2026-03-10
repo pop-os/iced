@@ -184,10 +184,17 @@ where
             } => {
                 self.update_scale_factor(*new_scale_factor);
             }
-            WindowEvent::PointerMoved { position, .. } | WindowEvent::PointerButton { position, .. } => {
+            WindowEvent::PointerEntered { position, .. } => {
                 self.cursor_position = Some(*position);
             }
-            WindowEvent::PointerLeft { kind: PointerKind::Mouse, .. } => {
+            WindowEvent::PointerMoved { position, .. }
+            | WindowEvent::PointerButton { position, .. } => {
+                self.cursor_position = Some(*position);
+            }
+            WindowEvent::PointerLeft {
+                kind: PointerKind::Mouse,
+                ..
+            } => {
                 self.cursor_position = None;
             }
             WindowEvent::ModifiersChanged(new_modifiers) => {
