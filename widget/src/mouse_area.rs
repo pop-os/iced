@@ -512,6 +512,11 @@ fn update<Message: Clone, Theme, Renderer>(
                 shell.publish(message.clone());
             }
         }
+        Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Right)) => {
+            if let Some(message) = widget.on_right_press.as_ref() {
+                shell.publish(message.clone());
+            }
+        }
         Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Middle)) => {
             if let Some(message) = widget.on_middle_press.as_ref() {
                 shell.publish(message.clone());
