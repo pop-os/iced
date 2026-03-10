@@ -5,7 +5,7 @@ use crate::graphics::Viewport;
 use crate::program::{self, Program};
 
 use winit::dpi::LogicalPosition;
-use winit::event::WindowEvent;
+use winit::event::{PointerKind, WindowEvent};
 use winit::window::Window;
 
 use std::fmt::{Debug, Formatter};
@@ -184,10 +184,10 @@ where
             } => {
                 self.update_scale_factor(*new_scale_factor);
             }
-            WindowEvent::PointerMoved { position, .. } => {
+            WindowEvent::PointerMoved { position, .. } | WindowEvent::PointerButton { position, .. } => {
                 self.cursor_position = Some(*position);
             }
-            WindowEvent::PointerLeft { .. } => {
+            WindowEvent::PointerLeft { kind: PointerKind::Mouse, .. } => {
                 self.cursor_position = None;
             }
             WindowEvent::ModifiersChanged(new_modifiers) => {
