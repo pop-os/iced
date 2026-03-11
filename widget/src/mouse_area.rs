@@ -406,8 +406,15 @@ fn update<Message: Clone, Theme, Renderer>(
     let state: &mut State = tree.state.downcast_mut();
     let cursor_position = cursor.position();
 
+    if cursor_position.is_none() {
+        state.drag_initiated = None;
+        return;
+    }
+
     if let Event::Mouse(mouse::Event::CursorMoved { .. })
-    | Event::Touch(touch::Event::FingerMoved { .. }) = event
+    | Event::Touch(touch::Event::FingerMoved { .. })
+    | Event::Mouse(mouse::Event::CursorLeft)
+    | Event::Touch(touch::Event::FingerLost { .. }) = event
     {
         let was_hovered = state.is_hovered;
         let bounds = layout.bounds();
@@ -484,6 +491,7 @@ fn update<Message: Clone, Theme, Renderer>(
     if let Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left))
     | Event::Touch(touch::Event::FingerLifted { .. }) = event
     {
+        state.drag_initiated = None;
         if let Some(position) = cursor_position {
             let new_click = mouse::Click::new(
                 position,
