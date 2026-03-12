@@ -112,9 +112,6 @@ impl Text {
         let buffer = paragraph.buffer();
         let mut swash_cache = cosmic_text::SwashCache::new();
 
-        let mut font_system =
-            text::font_system().write().expect("Write font system");
-
         for run in buffer.layout_runs() {
             for glyph in run.glyphs.iter() {
                 let physical_glyph = glyph.physical((0.0, 0.0), 1.0);
