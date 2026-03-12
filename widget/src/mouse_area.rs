@@ -475,7 +475,11 @@ fn update<Message: Clone, Theme, Renderer>(
             if new_click.kind() == mouse::click::Kind::Double
                 && let Some(double_press) = widget.on_double_press.as_ref()
             {
+                state.drag_initiated = None;
                 shell.publish(double_press.clone());
+                shell.capture_event();
+                state.last_press = Some(new_click);
+                return;
             } else if let Some(on_press_message) = widget.on_press.as_ref() {
                 shell.publish(on_press_message.clone());
             }
@@ -502,6 +506,9 @@ fn update<Message: Clone, Theme, Renderer>(
                 && let Some(double_press) = widget.on_double_click.as_ref()
             {
                 shell.publish(double_press.clone());
+                shell.capture_event();
+                state.previous_click = Some(new_click);
+                return;
             } else if let Some(on_press_message) = widget.on_release.as_ref() {
                 shell.publish(on_press_message.clone());
             }
