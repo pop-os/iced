@@ -11,14 +11,6 @@ use cctk::sctk::{
         CursorIcon, PointerEvent, PointerEventKind, PointerHandler,
     },
 };
-use iced_futures::core::Point;
-use winit::{
-    dpi::PhysicalPosition,
-    event::{
-        ButtonSource, MouseButton, MouseScrollDelta, PointerKind,
-        PointerSource, TouchPhase, WindowEvent,
-    },
-};
 
 impl PointerHandler for SctkState {
     fn pointer_frame(
@@ -66,124 +58,15 @@ impl PointerHandler for SctkState {
                     *entry = FrameStatus::Ready;
                 }
 
-                if let PointerEventKind::Enter { .. } = &e.kind {
-                    self.sctk_events.push(SctkEvent::PointerEvent {
-                        variant: PointerEvent {
-                            surface: e.surface.clone(),
-                            position: e.position,
-                            kind: e.kind.clone(),
-                        },
-                        ptr_id: pointer.clone(),
-                        seat_id: my_seat.seat.clone(),
-                    });
-                }
-
-                if let PointerEventKind::Motion { time } = &e.kind {
-                    self.sctk_events.push(SctkEvent::PointerEvent {
-                        variant: PointerEvent {
-                            surface: e.surface.clone(),
-                            position: e.position,
-                            kind: PointerEventKind::Motion { time: *time },
-                        },
-                        ptr_id: pointer.clone(),
-                        seat_id: my_seat.seat.clone(),
-                    });
-                } else {
-                    self.sctk_events.push(SctkEvent::Winit(
-                        id,
-                        match e.kind {
-                            PointerEventKind::Enter { serial } => {
-                                WindowEvent::PointerEntered {
-                                    device_id: Default::default(),
-                                    position: e.position.into(),
-                                    primary: is_active,
-                                    kind: PointerKind::Mouse,
-                                }
-                            }
-                            PointerEventKind::Leave { serial } => {
-                                WindowEvent::PointerLeft {
-                                    device_id: Default::default(),
-                                    position: Some(e.position.into()),
-                                    primary: is_active,
-                                    kind: PointerKind::Mouse,
-                                }
-                            }
-                            PointerEventKind::Motion { time } => {
-                                WindowEvent::PointerMoved {
-                                    device_id: Default::default(),
-                                    position: e.position.into(),
-                                    primary: is_active,
-                                    source: PointerSource::Mouse,
-                                }
-                            }
-                            PointerEventKind::Press {
-                                time,
-                                button,
-                                serial,
-                            } => WindowEvent::PointerButton {
-                                device_id: Default::default(),
-                                state: winit::event::ElementState::Pressed,
-                                button: ButtonSource::Mouse(
-                                    wayland_button_to_winit(button),
-                                ),
-                                position: e.position.into(),
-                                primary: is_active,
-                            },
-                            PointerEventKind::Release {
-                                time,
-                                button,
-                                serial,
-                            } => WindowEvent::PointerButton {
-                                device_id: Default::default(),
-                                state: winit::event::ElementState::Released,
-                                button: ButtonSource::Mouse(
-                                    wayland_button_to_winit(button),
-                                ),
-                                position: e.position.into(),
-                                primary: is_active,
-                            },
-                            PointerEventKind::Axis {
-                                time,
-                                horizontal,
-                                vertical,
-                                source,
-                            } => {
-                                let delta = if horizontal.value120 != 0
-                                    || vertical.value120 != 0
-                                {
-                                    MouseScrollDelta::LineDelta(
-                                        -horizontal.value120 as f32 / 120.,
-                                        -vertical.value120 as f32 / 120.,
-                                    )
-                                } else if horizontal.discrete != 0
-                                    || vertical.discrete != 0
-                                {
-                                    MouseScrollDelta::LineDelta(
-                                        -horizontal.discrete as f32,
-                                        -vertical.discrete as f32,
-                                    )
-                                } else {
-                                    MouseScrollDelta::PixelDelta(
-                                        PhysicalPosition::new(
-                                            -horizontal.absolute,
-                                            -vertical.absolute,
-                                        ),
-                                    )
-                                };
-
-                                WindowEvent::MouseWheel {
-                                    device_id: Default::default(),
-                                    delta,
-                                    phase: if horizontal.stop {
-                                        TouchPhase::Ended
-                                    } else {
-                                        TouchPhase::Moved
-                                    },
-                                }
-                            }
-                        },
-                    ));
-                }
+                self.sctk_events.push(SctkEvent::PointerEvent {
+                    variant: PointerEvent {
+                        surface: e.surface.clone(),
+                        position: e.position,
+                        kind: e.kind.clone(),
+                    },
+                    ptr_id: pointer.clone(),
+                    seat_id: my_seat.seat.clone(),
+                });
             }
             match e.kind {
                 PointerEventKind::Enter { .. } => {
@@ -204,28 +87,6 @@ impl PointerHandler for SctkState {
                 _ => {}
             }
         }
-    }
-}
-
-/// Convert the Wayland button into winit.
-fn wayland_button_to_winit(button: u32) -> MouseButton {
-    // These values are coming from <linux/input-event-codes.h>.
-    const BTN_LEFT: u32 = 0x110;
-    const BTN_RIGHT: u32 = 0x111;
-    const BTN_MIDDLE: u32 = 0x112;
-    const BTN_SIDE: u32 = 0x113;
-    const BTN_EXTRA: u32 = 0x114;
-    const BTN_FORWARD: u32 = 0x115;
-    const BTN_BACK: u32 = 0x116;
-
-    match button {
-        BTN_LEFT => MouseButton::Left,
-        BTN_RIGHT => MouseButton::Right,
-        BTN_MIDDLE => MouseButton::Middle,
-        BTN_BACK | BTN_SIDE => MouseButton::Back,
-        BTN_FORWARD | BTN_EXTRA => MouseButton::Forward,
-        button => MouseButton::try_from_u8(button as u8)
-            .unwrap_or(MouseButton::Button32), // TODO why was Other variant removed?
     }
 }
 
