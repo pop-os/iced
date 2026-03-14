@@ -463,24 +463,37 @@ impl SctkEvent {
                     time: _,
                     horizontal,
                     vertical,
-                    source,
+                    source: _,
                 } => {
-                    if let Some(e) =
-                        pointer_axis_to_native(source, horizontal, vertical)
-                            .map(|a| {
-                                iced_runtime::core::Event::Mouse(
-                                    mouse::Event::WheelScrolled { delta: a },
-                                )
-                            })
+                    let delta = if horizontal.value120 != 0
+                        || vertical.value120 != 0
                     {
-                        events.push((
-                            surface_ids
-                                .get(&variant.surface.id())
-                                .map(|id| id.inner()),
-                            e,
-                        ));
-                    }
-                } // TODO Ashley: conversion
+                        mouse::ScrollDelta::Lines {
+                            x: -horizontal.value120 as f32 / 120.,
+                            y: -vertical.value120 as f32 / 120.,
+                        }
+                    } else if horizontal.discrete != 0
+                        || vertical.discrete != 0
+                    {
+                        mouse::ScrollDelta::Lines {
+                            x: -horizontal.discrete as f32,
+                            y: -vertical.discrete as f32,
+                        }
+                    } else {
+                        mouse::ScrollDelta::Pixels {
+                            x: -horizontal.absolute as f32,
+                            y: -vertical.absolute as f32,
+                        }
+                    };
+                    events.push((
+                        surface_ids
+                            .get(&variant.surface.id())
+                            .map(|id| id.inner()),
+                        iced_runtime::core::Event::Mouse(
+                            mouse::Event::WheelScrolled { delta },
+                        ),
+                    ));
+                }
             },
             SctkEvent::KeyboardEvent {
                 variant,
