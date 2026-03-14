@@ -1008,6 +1008,19 @@ fn parse_with<'a>(
             });
             None
         }
+        pulldown_cmark::Event::InlineHtml(h)
+            if !metadata && h.eq_ignore_ascii_case("<br>") =>
+        {
+            spans.push(Span::Standard {
+                text: String::from("\n"),
+                strikethrough,
+                strong,
+                emphasis,
+                link: link.clone(),
+                code: false,
+            });
+            None
+        }
         pulldown_cmark::Event::Rule => {
             produce(state.borrow_mut(), &mut stack, Item::Rule, source)
         }
