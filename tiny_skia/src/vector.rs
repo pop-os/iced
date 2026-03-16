@@ -43,10 +43,8 @@ impl Pipeline {
         if let Some(image) = self.cache.borrow_mut().draw(
             handle,
             color,
-            Size::new(
-                (bounds.width * transform.sx) as u32,
-                (bounds.height * transform.sy) as u32,
-            ),
+            // XX Do not apply transform scaling for rotation to the size
+            Size::new((bounds.width) as u32, (bounds.height) as u32),
         ) {
             // XX Do not apply transform scaling for rotation to the position
             pixels.draw_pixmap(
@@ -58,7 +56,7 @@ impl Pipeline {
                     quality: tiny_skia::FilterQuality::Bicubic,
                     ..tiny_skia::PixmapPaint::default()
                 },
-                Transform::default(),
+                transform,
                 clip_mask,
             );
         }
