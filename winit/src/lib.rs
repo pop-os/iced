@@ -292,12 +292,12 @@ where
             #[cfg(target_os = "windows")]
             {
                 if is_move_or_resize {
-                    self.process_event(
-                        event_loop,
-                        Some(Event::EventLoopAwakened(
-                            winit::Event::AboutToWait,
-                        )),
-                    );
+                    // self.process_event(
+                    //     event_loop,
+                    //     Some(Event::EventLoopAwakened(
+                    //         winit::Event::AboutToWait,
+                    //     )),
+                    // );
                 }
             }
         }
