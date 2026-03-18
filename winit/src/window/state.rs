@@ -151,9 +151,9 @@ where
 
     /// Update the scale factor
     pub(crate) fn update_scale_factor(&mut self, new_scale_factor: f64) {
-        let size = self.viewport.physical_size();
+        let size = self.viewport.logical_size();
 
-        self.viewport = Viewport::with_physical_size(
+        self.viewport = Viewport::with_logical_size(
             size,
             new_scale_factor * self.scale_factor,
         );
@@ -243,8 +243,8 @@ where
             if new_size.height == 0 {
                 new_size.height = current_size.height;
             }
-            self.viewport = Viewport::with_physical_size(
-                self.viewport.physical_size(),
+            self.viewport = Viewport::with_logical_size(
+                self.viewport.logical_size(),
                 window.scale_factor() * new_scale_factor,
             );
 
