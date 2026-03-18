@@ -242,6 +242,9 @@ impl Tree {
                 if let Some(id) = self.id.clone() {
                     borrowed.set_id(id);
                 }
+                if self.children.len() != borrowed.children().len() {
+                    self.children = borrowed.children();
+                }
             }
         }
         if tag_match {
