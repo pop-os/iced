@@ -346,6 +346,24 @@ impl Atlas {
         let pad_h = padding.height as usize;
         let stride = PIXEL * w;
 
+        // bounds check for source pixels to fragment
+        if pixels.len() < offset + PIXEL * image_width as usize * h {
+            return;
+        }
+
+        // bounds check for pad_w low / high to fragment
+        if pad_w > 0
+            && (offset + stride < PIXEL
+                || offset
+                    + image_width as usize
+                        * PIXEL
+                        * (h.checked_sub(1).unwrap_or(0))
+                    + PIXEL
+                    > pixels.len())
+        {
+            return;
+        }
+
         // Copy image rows
         for row in 0..h {
             let src = offset + row * PIXEL * image_width as usize;
