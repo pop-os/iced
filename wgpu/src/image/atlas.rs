@@ -354,7 +354,11 @@ impl Atlas {
         // bounds check for pad_w low / high to fragment
         if pad_w > 0
             && (offset + stride < PIXEL
-                || offset + image_width as usize * PIXEL * h + PIXEL
+                || offset
+                    + image_width as usize
+                        * PIXEL
+                        * (h.checked_sub(1).unwrap_or(0))
+                    + PIXEL
                     > pixels.len())
         {
             return;
