@@ -153,6 +153,11 @@ impl<P: Paragraph> Plain<P> {
         self.raw.min_height()
     }
 
+    /// Resizes the underlying [`Paragraph`] to the given bounds.
+    pub fn resize(&mut self, new_bounds: Size) {
+        self.raw.resize(new_bounds);
+    }
+
     /// Returns the cached [`Paragraph`].
     pub fn raw(&self) -> &P {
         &self.raw
