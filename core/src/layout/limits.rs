@@ -64,7 +64,9 @@ impl Limits {
                 self.max.width = new_width;
                 self.compression.width = false;
             }
-            Length::Fill | Length::FillPortion(_) => {}
+            Length::Fill | Length::FillPortion(_) => {
+                self.compression.width = false;
+            }
         }
 
         self
@@ -84,7 +86,9 @@ impl Limits {
                 self.max.height = new_height;
                 self.compression.height = false;
             }
-            Length::Fill | Length::FillPortion(_) => {}
+            Length::Fill | Length::FillPortion(_) => {
+                self.compression.height = false;
+            }
         }
 
         self
