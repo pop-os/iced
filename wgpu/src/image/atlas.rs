@@ -346,7 +346,7 @@ impl Atlas {
         let pad_h = padding.height as usize;
         let stride = PIXEL * w;
 
-        if pixels.len() < offset + stride * h {
+        if pixels.len() < offset + PIXEL * image_width as usize * h {
             return;
         }
         // Copy image rows
