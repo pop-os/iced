@@ -11,7 +11,7 @@ use crate::core::input_method;
 use crate::core::mouse;
 use crate::core::renderer;
 use crate::core::text;
-use crate::core::theme;
+use crate::core::theme::{self, Base};
 use crate::core::time::Instant;
 use crate::core::{
     Color, Element, InputMethod, Padding, Point, Rectangle, Size, Text, Vector,
@@ -266,10 +266,16 @@ where
                         let mut overlay =
                             self.preedit.take().unwrap_or_else(Preedit::new);
 
+                        let mut background_color =
+                            self.state.background_color();
+                        if background_color.a < 1.0 {
+                            let style = self.state.theme().base();
+                            background_color = style.background_color;
+                        }
                         overlay.update(
                             cursor,
                             &preedit,
-                            self.state.background_color(),
+                            background_color,
                             &self.renderer,
                         );
 
@@ -300,10 +306,17 @@ where
 
     pub fn draw_preedit(&mut self) {
         if let Some(preedit) = &self.preedit {
+            let mut text_color = self.state.text_color();
+            let mut background_color = self.state.background_color();
+            if background_color.a < 1.0 {
+                let style = self.state.theme().base();
+                text_color = style.text_color;
+                background_color = style.background_color;
+            }
             preedit.draw(
                 &mut self.renderer,
-                self.state.text_color(),
-                self.state.background_color(),
+                text_color,
+                background_color,
                 &Rectangle::new(
                     Point::ORIGIN,
                     self.state.viewport().logical_size(),
