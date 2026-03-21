@@ -247,7 +247,7 @@ pub struct Column {
 #[derive(Debug, Clone)]
 pub struct Row {
     /// The cells of the row.
-    cells: Vec<Vec<Item>>,
+    pub cells: Vec<Vec<Item>>,
 }
 
 /// A bunch of parsed Markdown text.
