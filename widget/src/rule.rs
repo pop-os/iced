@@ -105,20 +105,14 @@ where
     }
 
     /// Set the width of the rule
-    /// Will not be applied if it is vertical
     pub fn width(mut self, width: impl Into<Length>) -> Self {
-        if !self.is_vertical {
-            self.width = width.into();
-        }
+        self.width = width.into();
         self
     }
 
     /// Set the height of the rule
-    /// Will not be applied if it is horizontal
     pub fn height(mut self, height: impl Into<Length>) -> Self {
-        if self.is_vertical {
-            self.height = height.into();
-        }
+        self.height = height.into();
         self
     }
 
