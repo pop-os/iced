@@ -243,8 +243,8 @@ where
             if new_size.height == 0 {
                 new_size.height = current_size.height;
             }
-            self.viewport = Viewport::with_logical_size(
-                self.viewport.logical_size(),
+            self.viewport = Viewport::with_physical_size(
+                Size::new(new_size.width, new_size.height),
                 window.scale_factor() * new_scale_factor,
             );
 
