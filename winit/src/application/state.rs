@@ -1,10 +1,10 @@
+use crate::Application;
 use crate::application;
 use crate::conversion;
 use crate::core::mouse;
 use crate::core::{Color, Size};
 use crate::graphics::Viewport;
 use crate::runtime::Debug;
-use crate::Application;
 
 use std::marker::PhantomData;
 use winit::event::{Touch, WindowEvent};
@@ -153,9 +153,9 @@ where
                 scale_factor: new_scale_factor,
                 ..
             } => {
-                let size = self.viewport.physical_size();
+                let size = self.viewport.logical_size();
 
-                self.viewport = Viewport::with_physical_size(
+                self.viewport = Viewport::with_logical_size(
                     size,
                     new_scale_factor * self.scale_factor,
                 );
