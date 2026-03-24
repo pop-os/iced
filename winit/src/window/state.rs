@@ -230,8 +230,10 @@ where
 
         // Update scale factor and size
         let new_scale_factor = program.scale_factor(window_id);
+        let window_scale = window.scale_factor();
         let mut new_size = window.surface_size();
         let current_size = self.viewport.physical_size();
+
         if self.scale_factor != new_scale_factor
             || (current_size.width, current_size.height)
                 != (new_size.width, new_size.height)
@@ -245,10 +247,11 @@ where
             }
             self.viewport = Viewport::with_physical_size(
                 Size::new(new_size.width, new_size.height),
-                window.scale_factor() * new_scale_factor,
+                window_scale * new_scale_factor,
             );
 
             self.scale_factor = new_scale_factor;
+            self.surface_version = self.surface_version.wrapping_add(1);
         }
 
         // Update theme and appearance
