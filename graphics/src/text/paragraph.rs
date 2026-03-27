@@ -79,26 +79,19 @@ impl core::text::Paragraph for Paragraph {
             ),
         );
 
-        buffer.set_size(
-            font_system.raw(),
-            Some(text.bounds.width),
-            Some(text.bounds.height),
-        );
+        buffer.set_size(Some(text.bounds.width), Some(text.bounds.height));
 
-        buffer.set_wrap(font_system.raw(), text::to_wrap(text.wrapping));
-        buffer.set_ellipsize(
-            font_system.raw(),
-            text::to_ellipsize(text.ellipsize),
-        );
+        buffer.set_wrap(text::to_wrap(text.wrapping));
+        buffer.set_ellipsize(text::to_ellipsize(text.ellipsize));
 
         buffer.set_text(
-            font_system.raw(),
             text.content,
             &text::to_attributes(text.font),
             text::to_shaping(text.shaping, text.content),
             None,
         );
 
+        buffer.shape_until_scroll(font_system.raw(), false);
         let min_bounds =
             text::align(&mut buffer, font_system.raw(), text.align_x);
 
@@ -130,16 +123,11 @@ impl core::text::Paragraph for Paragraph {
             ),
         );
 
-        buffer.set_size(
-            font_system.raw(),
-            Some(text.bounds.width),
-            Some(text.bounds.height),
-        );
+        buffer.set_size(Some(text.bounds.width), Some(text.bounds.height));
 
-        buffer.set_wrap(font_system.raw(), text::to_wrap(text.wrapping));
+        buffer.set_wrap(text::to_wrap(text.wrapping));
 
         buffer.set_rich_text(
-            font_system.raw(),
             text.content.iter().enumerate().map(|(i, span)| {
                 let attrs = text::to_attributes(span.font.unwrap_or(text.font));
 
@@ -176,6 +164,7 @@ impl core::text::Paragraph for Paragraph {
             },
         );
 
+        buffer.shape_until_scroll(font_system.raw(), false);
         let min_bounds =
             text::align(&mut buffer, font_system.raw(), text.align_x);
 
@@ -199,11 +188,12 @@ impl core::text::Paragraph for Paragraph {
         let mut font_system =
             text::font_system().write().expect("Write font system");
 
-        paragraph.buffer.set_size(
-            font_system.raw(),
-            Some(new_bounds.width),
-            Some(new_bounds.height),
-        );
+        paragraph
+            .buffer
+            .set_size(Some(new_bounds.width), Some(new_bounds.height));
+        paragraph
+            .buffer
+            .shape_until_scroll(font_system.raw(), false);
 
         let min_bounds = text::align(
             &mut paragraph.buffer,
