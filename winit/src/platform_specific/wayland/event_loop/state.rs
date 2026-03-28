@@ -499,6 +499,7 @@ pub struct SctkState {
     pub(crate) text_input_manager: Option<TextInputManager>,
     pub(crate) text_input: Option<Arc<ZwpTextInputV3>>,
     pub(crate) preedit: Option<Preedit>,
+    pub(crate) pending_delete: Option<(usize, usize)>,
     pub(crate) pending_commit: Option<String>,
 }
 
