@@ -91,18 +91,47 @@ impl Dispatch<ZwpTextInputV3, (), SctkState> for TextInputManager {
                     cursor_begin.map(|b| (b, cursor_end.unwrap_or(b)));
                 state.preedit = Some(Preedit { text, cursor_range });
             }
+            TextInputEvent::DeleteSurroundingText {
+                before_length,
+                after_length,
+            } => {
+                state.pending_delete = Some((
+                    before_length.try_into().unwrap(),
+                    after_length.try_into().unwrap(),
+                ));
+            }
             TextInputEvent::CommitString { text } => {
                 state.preedit = None;
                 state.pending_commit = text;
             }
             TextInputEvent::Done { .. } => {
                 let id = WindowId::from_raw(kbd_focus.id().as_ptr() as usize);
+
+                // Protocol says:
+                // https://wayland.app/protocols/text-input-unstable-v3#zwp_text_input_v3:event:done
+                //
+                // The application must proceed by evaluating the changes in the following order:
+                //
+                // 1. Replace existing preedit string with the cursor.
                 state.sctk_events.push(SctkEvent::Winit(
                     id,
                     WindowEvent::Ime(Ime::Preedit(String::new(), None)),
                 ));
 
-                // Commit string
+                // 2. Delete requested surrounding text.
+                if let Some((before_bytes, after_bytes)) =
+                    state.pending_delete.take()
+                {
+                    state.sctk_events.push(SctkEvent::Winit(
+                        id,
+                        WindowEvent::Ime(Ime::DeleteSurrounding {
+                            before_bytes,
+                            after_bytes,
+                        }),
+                    ));
+                }
+
+                // 3. Insert commit string with the cursor at its end.
                 if let Some(text) = state.pending_commit.take() {
                     state.sctk_events.push(SctkEvent::Winit(
                         id,
@@ -110,7 +139,9 @@ impl Dispatch<ZwpTextInputV3, (), SctkState> for TextInputManager {
                     ));
                 }
 
-                // Update preedit string
+                // 4. Calculate surrounding text to send.
+                // 5. Insert new preedit text in cursor position.
+                // 6. Place cursor inside preedit text.
                 if let Some(preedit) = state.preedit.take() {
                     state.sctk_events.push(SctkEvent::Winit(
                         id,
