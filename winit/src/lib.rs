@@ -501,17 +501,25 @@ where
                                         }
                                     };
                                 }
+                                let window: Arc<dyn winit::window::Window + 'static> = Arc::from(window);
+                                #[cfg(feature = "a11y")]
+                                self.init_adapter(event_loop, id, window.clone());
 
                                 self.process_event(
                                     event_loop,
                                     Some(Event::WindowCreated {
                                         id,
-                                        window: Arc::from(window),
+                                        window,
                                         exit_on_close_request,
                                         make_visible: visible,
                                         on_open,
                                         resize_border,
                                     }),
+                                );
+                                #[cfg(feature = "a11y")]
+                                self.process_event(
+                                    event_loop,
+                                    Some(Event::A11yAdapter(id)),
                                 );
                             }
                             Control::Exit => {
@@ -601,50 +609,7 @@ where
                             }
                             #[cfg(feature = "a11y")]
                             Control::InitAdapter(id, window) => {
-                                use crate::a11y::*;
-                                use iced_accessibility::accesskit::{
-                                    ActivationHandler, Node, NodeId, Role,
-                                    Tree, TreeUpdate,
-                                };
-                                use iced_accessibility::accesskit_winit::Adapter;
-
-                                let node_id =
-                                    iced_runtime::core::id::window_node_id();
-
-                                let activation_handler =
-                                    WinitActivationHandler {
-                                        proxy: self.control_sender.clone(),
-                                        title: String::new(),
-                                    };
-
-                                let action_handler = WinitActionHandler {
-                                    id,
-                                    proxy: self.control_sender.clone(),
-                                };
-
-                                let deactivation_handler =
-                                    WinitDeactivationHandler {
-                                        proxy: self.control_sender.clone(),
-                                    };
-
-                                _ = self.adapters.insert(
-                                    id,
-                                    (
-                                        node_id,
-                                        Adapter::with_direct_handlers(
-                                            event_loop,
-                                            window.as_ref(),
-                                            activation_handler,
-                                            action_handler,
-                                            deactivation_handler,
-                                        ),
-                                    ),
-                                );
-
-                                self.process_event(
-                                    event_loop,
-                                    Some(Event::A11yAdapter(id)),
-                                );
+                                self.init_adapter(event_loop, id, window);
                             }
                             Control::Cleanup(id) => {
                                _ = self.adapters.remove(&id);
@@ -660,6 +625,51 @@ where
                     }
                 };
             }
+        }
+
+    #[cfg(feature = "a11y")]
+    fn init_adapter(&mut self, event_loop: &(dyn winit::event_loop::ActiveEventLoop + 'static), id: core::window::Id, window: Arc<dyn winit::window::Window + 'static>) {
+            use crate::a11y::*;
+            use iced_accessibility::accesskit::{
+                ActivationHandler, Node, NodeId, Role,
+                Tree, TreeUpdate,
+            };
+            use iced_accessibility::accesskit_winit::Adapter;
+        
+            let node_id =
+                iced_runtime::core::id::window_node_id();
+        
+            let activation_handler =
+                WinitActivationHandler {
+                    proxy: self.control_sender.clone(),
+                    title: String::new(),
+                };
+        
+            let action_handler = WinitActionHandler {
+                id,
+                proxy: self.control_sender.clone(),
+            };
+        
+            let deactivation_handler =
+                WinitDeactivationHandler {
+                    proxy: self.control_sender.clone(),
+                };
+        
+            _ = self.adapters.insert(
+                id,
+                (
+                    node_id,
+                    Adapter::with_direct_handlers(
+                        event_loop,
+                        window.as_ref(),
+                        activation_handler,
+                        action_handler,
+                        deactivation_handler,
+                    ),
+                ),
+            );
+        
+            
         }
     }
 
@@ -842,10 +852,7 @@ async fn run_instance<P>(
                 on_open,
                 resize_border
             } => {
-                #[cfg(feature = "a11y")]
-                control_sender
-                    .start_send(Control::InitAdapter(id, window.clone()))
-                    .expect("Send control message");
+                
                 #[cfg(all(feature = "cctk", target_os = "linux"))]
                 platform_specific_handler.send_wayland(
                     platform_specific::Action::TrackWindow(window.clone(), id),
@@ -2134,7 +2141,7 @@ where
                         on_open: channel,
                     })
                     .expect("Send control action");
-
+                
                 *is_window_opening = true;
             }
             window::Action::Close(id) => {
