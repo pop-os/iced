@@ -6,8 +6,8 @@ use cctk::sctk::{
 };
 use raw_window_handle::{RawDisplayHandle, WaylandDisplayHandle};
 use wayland_client::{
-    backend::Backend, globals::registry_queue_init, protocol::wl_buffer,
-    Connection, QueueHandle,
+    Connection, QueueHandle, backend::Backend, globals::registry_queue_init,
+    protocol::wl_buffer,
 };
 use wayland_protocols::wp::linux_dmabuf::zv1::client::{
     zwp_linux_buffer_params_v1, zwp_linux_dmabuf_feedback_v1,
