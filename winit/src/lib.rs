@@ -611,6 +611,7 @@ where
                             Control::InitAdapter(id, window) => {
                                 self.init_adapter(event_loop, id, window);
                             }
+                            #[cfg(feature = "a11y")]
                             Control::Cleanup(id) => {
                                _ = self.adapters.remove(&id);
                             },
@@ -716,6 +717,7 @@ enum Control {
     ChangeFlow(winit::event_loop::ControlFlow),
     Exit,
     Crash(Error),
+    #[cfg(feature = "a11y")]
     Cleanup(window::Id),
     CreateWindow {
         id: window::Id,
@@ -2147,7 +2149,10 @@ where
             window::Action::Close(id) => {
                 let _ = ui_caches.remove(&id);
                 let _ = interfaces.remove(&id);
-                _ = control_sender.start_send(Control::Cleanup(id)).ok();
+                #[cfg(feature = "a11y")]
+                {
+                    _ = control_sender.start_send(Control::Cleanup(id)).ok();
+                }
                 let proxy = clipboard.proxy();
                 #[cfg(all(feature = "cctk", target_os = "linux"))]
                 platform_specific
