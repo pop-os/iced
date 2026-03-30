@@ -640,6 +640,11 @@ where
                                         ),
                                     ),
                                 );
+
+                                self.process_event(
+                                    event_loop,
+                                    Some(Event::A11yAdapter(id)),
+                                );
                             }
                             Control::Cleanup(id) => {
                                _ = self.adapters.remove(&id);
@@ -687,11 +692,8 @@ enum Event<Message: 'static> {
     Accessibility(window::Id, iced_accessibility::accesskit::ActionRequest),
     #[cfg(feature = "a11y")]
     AccessibilityEnabled(bool),
-    // #[cfg(feature = "a11y")]
-    // A11yAdapter(
-    //     window::Id,
-    //     (u64, iced_accessibility::accesskit_winit::Adapter),
-    // ),
+    #[cfg(feature = "a11y")]
+    A11yAdapter(window::Id),
     Winit(winit::window::WindowId, winit::event::WindowEvent),
     AboutToWait,
     UserEvent(Action<Message>),
@@ -1017,6 +1019,12 @@ async fn run_instance<P>(
                 window.redraw_requested = false;
 
                 if !window.state.ready {
+                    control_sender
+                        .start_send(Control::Winit(
+                            window.raw.id(),
+                            WindowEvent::RedrawRequested,
+                        ))
+                        .expect("Send redraw event");
                     continue;
                 } 
                 // XX must force update to corner radius before the surface is committed.
@@ -1888,6 +1896,12 @@ async fn run_instance<P>(
                             offset,
                         );
                     }
+                }
+            }
+            #[cfg(feature = "a11y")]
+            Event::A11yAdapter(window_id) => {
+                if let Some(window) = window_manager.get_mut(window_id) {
+                    window.state.ready = true;
                 }
             }
             _ => {}
