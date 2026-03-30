@@ -4,6 +4,7 @@ use state::State;
 use winit::dpi::PhysicalPosition;
 use winit::window::{
     ImeCapabilities, ImeEnableRequest, ImeHint, ImeRequest, ImeRequestData,
+    ImeRequestError,
 };
 
 pub use crate::core::window::{Event, Id, RedrawRequest, Settings};
@@ -97,6 +98,7 @@ where
                 redraw_at: None,
                 preedit: None,
                 ime_state: None,
+                ime_not_supported: false,
                 prev_dnd_destination_rectangles_count: 0,
                 viewport_version: 0,
                 redraw_requested: false,
@@ -206,6 +208,7 @@ where
     pub redraw_at: Option<Instant>,
     preedit: Option<Preedit<P::Renderer>>,
     ime_state: Option<(Rectangle, input_method::Purpose)>,
+    ime_not_supported: bool,
     pub(crate) redraw_requested: bool,
     pub resize_enabled: bool,
 }
@@ -251,6 +254,10 @@ where
     }
 
     pub fn request_input_method(&mut self, input_method: InputMethod) {
+        if self.ime_not_supported {
+            return; // no-op if not supported
+        }
+
         match input_method {
             InputMethod::Disabled => {
                 self.disable_ime();
@@ -259,29 +266,35 @@ where
                 cursor,
                 purpose,
                 preedit,
-            } => {
-                self.enable_ime(cursor, purpose);
+            } => match self.enable_ime(cursor, purpose) {
+                Ok(_) => {
+                    if let Some(preedit) = preedit {
+                        if preedit.content.is_empty() {
+                            self.preedit = None;
+                        } else {
+                            let mut overlay = self
+                                .preedit
+                                .take()
+                                .unwrap_or_else(Preedit::new);
 
-                if let Some(preedit) = preedit {
-                    if preedit.content.is_empty() {
-                        self.preedit = None;
+                            overlay.update(
+                                cursor,
+                                &preedit,
+                                self.state.background_color(),
+                                &self.renderer,
+                            );
+
+                            self.preedit = Some(overlay);
+                        }
                     } else {
-                        let mut overlay =
-                            self.preedit.take().unwrap_or_else(Preedit::new);
-
-                        overlay.update(
-                            cursor,
-                            &preedit,
-                            self.state.background_color(),
-                            &self.renderer,
-                        );
-
-                        self.preedit = Some(overlay);
+                        self.preedit = None;
                     }
-                } else {
-                    self.preedit = None;
                 }
-            }
+                Err(_) => {
+                    // may be failed if the system doesn't support IMEs.
+                    self.ime_not_supported = true;
+                }
+            },
         }
     }
 
@@ -319,9 +332,9 @@ where
         &mut self,
         cursor: Rectangle,
         purpose: input_method::Purpose,
-    ) {
+    ) -> Result<(), ImeRequestError> {
         if self.ime_state == Some((cursor, purpose)) {
-            return;
+            return Ok(());
         }
 
         // Specify only the bottom-left position of the cursor on Linux
@@ -354,11 +367,9 @@ where
         } else {
             ImeRequest::Update(request_data)
         };
-        self.raw
-            .request_ime_update(request)
-            .expect("Enabling may fail if IME is not supported");
-
+        self.raw.request_ime_update(request)?;
         self.ime_state = Some((cursor, purpose));
+        Ok(())
     }
 
     fn disable_ime(&mut self) {
