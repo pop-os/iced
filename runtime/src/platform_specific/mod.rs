@@ -18,7 +18,7 @@ impl fmt::Debug for Action {
         match self {
             #[cfg(all(feature = "cctk", target_os = "linux"))]
             Action::Wayland(action) => action.fmt(_f),
-            #[cfg(not(feature = "wayland"))]
+            #[cfg(not(all(feature = "cctk", target_os = "linux")))]
             _ => Ok(()),
         }
     }
