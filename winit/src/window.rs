@@ -320,43 +320,45 @@ where
         cursor: Rectangle,
         purpose: input_method::Purpose,
     ) {
-        if self.ime_state != Some((cursor, purpose)) {
-            // Specify only the bottom-left position of the cursor on Linux
-            // because fcitx5 doesn't work well with cursor areas of
-            // the top-left position and height.
-            // The candidate window hides the composing text (a.k.a. preedit).
-            let (cursor_y, cursor_height) =
-                if cfg!(not(any(target_os = "windows", target_os = "macos"))) {
-                    (cursor.y + cursor.height, 0.0)
-                } else {
-                    (cursor.y, cursor.height)
-                };
-            let request_data = ImeRequestData::default()
-                .with_cursor_area(
-                    LogicalPosition::new(cursor.x, cursor_y).into(),
-                    LogicalSize::new(cursor.width, cursor_height).into(),
-                )
-                .with_hint_and_purpose(
-                    ImeHint::NONE,
-                    conversion::ime_purpose(purpose),
-                );
-
-            let request = if self.ime_state.is_none() {
-                let caps = ImeCapabilities::new()
-                    .with_cursor_area()
-                    .with_hint_and_purpose();
-                ImeRequest::Enable(
-                    ImeEnableRequest::new(caps, request_data).unwrap(),
-                )
-            } else {
-                ImeRequest::Update(request_data)
-            };
-            self.raw
-                .request_ime_update(request)
-                .expect("Enabling may fail if IME is not supported");
-
-            self.ime_state = Some((cursor, purpose));
+        if self.ime_state == Some((cursor, purpose)) {
+            return;
         }
+
+        // Specify only the bottom-left position of the cursor on Linux
+        // because fcitx5 doesn't work well with cursor areas of
+        // the top-left position and height.
+        // The candidate window hides the composing text (a.k.a. preedit).
+        let (cursor_y, cursor_height) =
+            if cfg!(not(any(target_os = "windows", target_os = "macos"))) {
+                (cursor.y + cursor.height, 0.0)
+            } else {
+                (cursor.y, cursor.height)
+            };
+        let request_data = ImeRequestData::default()
+            .with_cursor_area(
+                LogicalPosition::new(cursor.x, cursor_y).into(),
+                LogicalSize::new(cursor.width, cursor_height).into(),
+            )
+            .with_hint_and_purpose(
+                ImeHint::NONE,
+                conversion::ime_purpose(purpose),
+            );
+
+        let request = if self.ime_state.is_none() {
+            let caps = ImeCapabilities::new()
+                .with_cursor_area()
+                .with_hint_and_purpose();
+            ImeRequest::Enable(
+                ImeEnableRequest::new(caps, request_data).unwrap(),
+            )
+        } else {
+            ImeRequest::Update(request_data)
+        };
+        self.raw
+            .request_ime_update(request)
+            .expect("Enabling may fail if IME is not supported");
+
+        self.ime_state = Some((cursor, purpose));
     }
 
     fn disable_ime(&mut self) {
