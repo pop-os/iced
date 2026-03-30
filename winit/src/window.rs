@@ -2,6 +2,9 @@ mod state;
 
 use state::State;
 use winit::dpi::PhysicalPosition;
+use winit::window::{
+    ImeCapabilities, ImeEnableRequest, ImeHint, ImeRequest, ImeRequestData,
+};
 
 pub use crate::core::window::{Event, Id, RedrawRequest, Settings};
 
@@ -317,10 +320,6 @@ where
         cursor: Rectangle,
         purpose: input_method::Purpose,
     ) {
-        if self.ime_state.is_none() {
-            self.raw.set_ime_allowed(true);
-        }
-
         if self.ime_state != Some((cursor, purpose)) {
             // Specify only the bottom-left position of the cursor on Linux
             // because fcitx5 doesn't work well with cursor areas of
@@ -332,11 +331,29 @@ where
                 } else {
                     (cursor.y, cursor.height)
                 };
-            self.raw.set_ime_cursor_area(
-                LogicalPosition::new(cursor.x, cursor_y).into(),
-                LogicalSize::new(cursor.width, cursor_height).into(),
-            );
-            self.raw.set_ime_purpose(conversion::ime_purpose(purpose));
+            let request_data = ImeRequestData::default()
+                .with_cursor_area(
+                    LogicalPosition::new(cursor.x, cursor_y).into(),
+                    LogicalSize::new(cursor.width, cursor_height).into(),
+                )
+                .with_hint_and_purpose(
+                    ImeHint::NONE,
+                    conversion::ime_purpose(purpose),
+                );
+
+            let request = if self.ime_state.is_none() {
+                let caps = ImeCapabilities::new()
+                    .with_cursor_area()
+                    .with_hint_and_purpose();
+                ImeRequest::Enable(
+                    ImeEnableRequest::new(caps, request_data).unwrap(),
+                )
+            } else {
+                ImeRequest::Update(request_data)
+            };
+            self.raw
+                .request_ime_update(request)
+                .expect("Enabling may fail if IME is not supported");
 
             self.ime_state = Some((cursor, purpose));
         }
@@ -344,7 +361,9 @@ where
 
     fn disable_ime(&mut self) {
         if self.ime_state.is_some() {
-            self.raw.set_ime_allowed(false);
+            self.raw
+                .request_ime_update(ImeRequest::Disable)
+                .expect("Disable cannot fail");
             self.ime_state = None;
         }
 
