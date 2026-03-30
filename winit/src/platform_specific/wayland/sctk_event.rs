@@ -361,10 +361,6 @@ impl SctkEvent {
         events: &mut Vec<(Option<window::Id>, iced_runtime::core::Event)>,
         clipboard: &mut Clipboard,
         subsurface_state: &mut Option<SubsurfaceState>,
-        #[cfg(feature = "a11y")] adapters: &mut HashMap<
-            window::Id,
-            (u64, iced_accessibility::accesskit_winit::Adapter),
-        >,
         create_compositor_data: CreateCompositor<'b, P>,
     ) where
         P: Program,
@@ -472,8 +468,7 @@ impl SctkEvent {
                             x: -horizontal.value120 as f32 / 120.,
                             y: -vertical.value120 as f32 / 120.,
                         }
-                    } else if horizontal.discrete != 0
-                        || vertical.discrete != 0
+                    } else if horizontal.discrete != 0 || vertical.discrete != 0
                     {
                         mouse::ScrollDelta::Lines {
                             x: -horizontal.discrete as f32,

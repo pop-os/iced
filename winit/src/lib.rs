@@ -98,10 +98,10 @@ where
 
     let event_loop = EventLoop::new().expect("Create event loop");
 
-    #[cfg(feature = "wayland")]
+    #[cfg(all(feature = "cctk", target_os = "linux"))]
     let is_wayland =
         winit::platform::wayland::EventLoopExtWayland::is_wayland(&event_loop);
-    #[cfg(not(feature = "wayland"))]
+    #[cfg(not(all(feature = "cctk", target_os = "linux")))]
     let is_wayland = false;
 
     // TODO this is new..
@@ -193,7 +193,10 @@ where
         error: Option<Error>,
         system_theme: Option<oneshot::Sender<theme::Mode>>,
         control_sender: mpsc::UnboundedSender<Control>,
-
+        
+        #[cfg(feature = "a11y")]
+        adapters: std::collections::HashMap<window::Id, (u64, iced_accessibility::accesskit_winit::Adapter)>,
+    
         #[cfg(target_arch = "wasm32")]
         is_booted: std::rc::Rc<std::cell::RefCell<bool>>,
         #[cfg(target_arch = "wasm32")]
@@ -215,6 +218,9 @@ where
         control_sender: control_sender.clone(),
         error: None,
         system_theme: Some(system_theme_sender),
+
+        #[cfg(feature = "a11y")]
+        adapters: Default::default(),
 
         #[cfg(target_arch = "wasm32")]
         canvas: None,
@@ -257,7 +263,7 @@ where
                     | winit::event::WindowEvent::Moved(_)
             );
 
-            #[cfg(feature = "wayland")]
+            #[cfg(all(feature = "cctk", target_os = "linux"))]
             {
                 if matches!(event, WindowEvent::RedrawRequested) {
                     for id in
@@ -558,7 +564,7 @@ where
                                     .expect("Send event");
                             }
                             Control::Winit(id, e) => {
-                                #[cfg(feature = "wayland")]
+                                #[cfg(all(feature = "cctk", target_os = "linux"))]
                                 {
                                     if matches!(e, WindowEvent::RedrawRequested)
                                     {                    
@@ -621,22 +627,23 @@ where
                                         proxy: self.control_sender.clone(),
                                     };
 
-                                self.sender
-                                    .start_send(Event::A11yAdapter(
-                                        id,
-                                        (
-                                            node_id,
-                                            Adapter::with_direct_handlers(
-                                                event_loop,
-                                                window.as_ref(),
-                                                activation_handler,
-                                                action_handler,
-                                                deactivation_handler,
-                                            ),
+                                _ = self.adapters.insert(
+                                    id,
+                                    (
+                                        node_id,
+                                        Adapter::with_direct_handlers(
+                                            event_loop,
+                                            window.as_ref(),
+                                            activation_handler,
+                                            action_handler,
+                                            deactivation_handler,
                                         ),
-                                    ))
-                                    .expect("send event");
+                                    ),
+                                );
                             }
+                            Control::Cleanup(id) => {
+                               _ = self.adapters.remove(&id);
+                            },
                         },
                         _ => {
                             break;
@@ -680,11 +687,11 @@ enum Event<Message: 'static> {
     Accessibility(window::Id, iced_accessibility::accesskit::ActionRequest),
     #[cfg(feature = "a11y")]
     AccessibilityEnabled(bool),
-    #[cfg(feature = "a11y")]
-    A11yAdapter(
-        window::Id,
-        (u64, iced_accessibility::accesskit_winit::Adapter),
-    ),
+    // #[cfg(feature = "a11y")]
+    // A11yAdapter(
+    //     window::Id,
+    //     (u64, iced_accessibility::accesskit_winit::Adapter),
+    // ),
     Winit(winit::window::WindowId, winit::event::WindowEvent),
     AboutToWait,
     UserEvent(Action<Message>),
@@ -697,6 +704,7 @@ enum Control {
     ChangeFlow(winit::event_loop::ControlFlow),
     Exit,
     Crash(Error),
+    Cleanup(window::Id),
     CreateWindow {
         id: window::Id,
         settings: window::Settings,
@@ -743,7 +751,7 @@ async fn run_instance<P>(
 
     let mut platform_specific_handler =
         crate::platform_specific::PlatformSpecific::default();
-    #[cfg(all(feature = "wayland", target_os = "linux"))]
+    #[cfg(all(feature = "cctk", target_os = "linux"))]
     if is_wayland {
         platform_specific_handler = platform_specific_handler.with_wayland(
             control_sender.clone(),
@@ -774,7 +782,7 @@ async fn run_instance<P>(
     let mut dnd_surface_id: Option<window::Id> = None;
 
     #[cfg(feature = "a11y")]
-    let (mut adapters, mut a11y_enabled) = (Default::default(), false);
+    let mut a11y_enabled = false;
 
     #[cfg(all(feature = "linux-theme-detection", target_os = "linux"))]
     let mut system_theme = {
@@ -836,7 +844,7 @@ async fn run_instance<P>(
                 control_sender
                     .start_send(Control::InitAdapter(id, window.clone()))
                     .expect("Send control message");
-                #[cfg(feature = "wayland")]
+                #[cfg(all(feature = "cctk", target_os = "linux"))]
                 platform_specific_handler.send_wayland(
                     platform_specific::Action::TrackWindow(window.clone(), id),
                 );
@@ -1012,7 +1020,7 @@ async fn run_instance<P>(
                     continue;
                 } 
                 // XX must force update to corner radius before the surface is committed.
-                #[cfg(feature = "wayland")]
+                #[cfg(all(feature = "cctk", target_os = "linux"))]
                 if (window.surface_version != window.state.surface_version()
                     || window.logical_size() != window.state.logical_size()
                     ) && !crate::subsurface_widget::is_subsurface(window_id)
@@ -1382,7 +1390,7 @@ async fn run_instance<P>(
                         }
                     });
                     let no_window_events = window_events.is_empty();
-                    #[cfg(feature = "wayland")]
+                    #[cfg(all(feature = "cctk", target_os = "linux"))]
                     window_events.push(core::Event::PlatformSpecific(
                         core::event::PlatformSpecific::Wayland(
                             core::event::wayland::Event::RequestResize,
@@ -1646,8 +1654,6 @@ async fn run_instance<P>(
                     &mut window_manager,
                     &mut user_interfaces,
                     &mut clipboard,
-                    #[cfg(feature = "a11y")]
-                    &mut adapters,
                     CreateCompositor {
                         proxy: &proxy,
                         display_handle: &display_handle,
@@ -1883,10 +1889,6 @@ async fn run_instance<P>(
                         );
                     }
                 }
-            }
-            #[cfg(feature = "a11y")]
-            Event::A11yAdapter(id, adapter) => {
-                _ = adapters.insert(id, adapter);
             }
             _ => {}
         }
@@ -2124,8 +2126,9 @@ where
             window::Action::Close(id) => {
                 let _ = ui_caches.remove(&id);
                 let _ = interfaces.remove(&id);
+                _ = control_sender.start_send(Control::Cleanup(id)).ok();
                 let proxy = clipboard.proxy();
-                #[cfg(feature = "wayland")]
+                #[cfg(all(feature = "cctk", target_os = "linux"))]
                 platform_specific
                     .send_wayland(platform_specific::Action::RemoveWindow(id));
                 if let Some(window) = window_manager.remove(id) {

@@ -17,7 +17,7 @@ workspace = true
 debug = []
 selector = ["dep:iced_selector"]
 a11y = ["iced_accessibility", "iced_core/a11y"]
-wayland = ["iced_core/wayland", "cctk"]
+cctk = ["iced_core/cctk", "dep:cctk"]
 
 [dependencies]
 bytes.workspace = true

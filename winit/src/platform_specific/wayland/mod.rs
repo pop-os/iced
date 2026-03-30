@@ -164,10 +164,6 @@ impl WaylandSpecific {
         >,
         user_interfaces: &mut UserInterfaces<'a, P>,
         clipboard: &mut crate::Clipboard,
-        #[cfg(feature = "a11y")] adapters: &mut HashMap<
-            window::Id,
-            (u64, iced_accessibility::accesskit_winit::Adapter),
-        >,
         create_compositor: CreateCompositor<'b, P>,
     ) where
         P: Program,
@@ -213,8 +209,6 @@ impl WaylandSpecific {
                         events,
                         clipboard,
                         subsurface_state,
-                        #[cfg(feature = "a11y")]
-                        adapters,
                         create_compositor,
                     )
                     .await;

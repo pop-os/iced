@@ -14,18 +14,7 @@ keywords.workspace = true
 workspace = true
 
 [features]
-wayland = [
-    "winit/wayland",
-    "cctk",
-    "wayland-protocols",
-    "raw-window-handle",
-    "iced_runtime/wayland",
-    "wayland-backend",
-    "xkbcommon",
-    "xkbcommon-dl",
-    "xkeysym",
-    "wayland-csd-adwaita",
-]
+wayland = ["winit/wayland", "wayland-csd-adwaita"]
 default = ["x11", "wayland-dlopen"]
 debug = ["iced_debug/enable"]
 sysinfo = ["dep:sysinfo"]
@@ -37,6 +26,17 @@ program = []
 wayland-dlopen = ["winit/wayland-dlopen"]
 wayland-csd-adwaita = ["winit/wayland-csd-adwaita"]
 a11y = ["iced_accessibility", "iced_runtime/a11y"]
+cctk = [
+    "wayland",
+    "wayland-protocols",
+    "raw-window-handle",
+    "iced_runtime/cctk",
+    "wayland-backend",
+    "xkbcommon",
+    "xkbcommon-dl",
+    "xkeysym",
+    "dep:cctk",
+]
 
 
 [dependencies]

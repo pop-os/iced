@@ -19,7 +19,6 @@ crisp = []
 basic-shaping = []
 advanced-shaping = []
 a11y = ["iced_accessibility"]
-wayland = ["cctk"]
 
 [dependencies]
 palette = "0.7"

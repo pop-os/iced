@@ -29,7 +29,7 @@ highlighter = ["dep:iced_highlighter"]
 advanced = []
 crisp = []
 a11y = ["iced_accessibility"]
-wayland = ["cctk", "iced_runtime/wayland"]
+cctk = ["iced_runtime/cctk", "dep:cctk"]
 
 [dependencies]
 iced_renderer.workspace = true

@@ -178,7 +178,7 @@ pub fn window_attributes(
                     ),
             ));
         }
-        #[cfg(feature = "wayland")]
+        #[cfg(all(feature = "cctk", target_os = "linux"))]
         {
             use winit::platform::wayland::WindowAttributesWayland;
 
@@ -424,7 +424,7 @@ pub fn window_event(
         WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
             Some(Event::Window(window::Event::Rescaled(scale_factor as f32)))
         }
-        #[cfg(feature = "wayland")]
+        #[cfg(all(feature = "cctk", target_os = "linux"))]
         WindowEvent::SuggestedBounds(bounds) => {
             let size = bounds.map(|bounds| {
                 let size = bounds.to_logical(scale_factor);
@@ -437,7 +437,7 @@ pub fn window_event(
                 ),
             )))
         }
-        #[cfg(feature = "wayland")]
+        #[cfg(all(feature = "cctk", target_os = "linux"))]
         WindowEvent::WindowStateChanged => {
             use cctk::sctk::reexports::csd_frame::WindowState;
             use winit::platform::wayland::WindowExtWayland;
@@ -1491,7 +1491,7 @@ pub fn winit_key_code(
     })
 }
 
-#[cfg(feature = "wayland")]
+#[cfg(all(feature = "cctk", target_os = "linux"))]
 fn winit_native_key_code(
     keycode: keyboard::key::NativeCode,
 ) -> winit::keyboard::NativeKeyCode {
@@ -1515,7 +1515,7 @@ fn winit_native_key_code(
 }
 
 /// Reconstruct the raw keycode
-#[cfg(feature = "wayland")]
+#[cfg(all(feature = "cctk", target_os = "linux"))]
 pub fn physical_to_scancode(physical: keyboard::key::Physical) -> Option<u32> {
     let Some(physical_key) = (match physical {
         keyboard::key::Physical::Code(code) => {
