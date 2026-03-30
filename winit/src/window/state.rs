@@ -82,7 +82,8 @@ where
             theme_mode,
             default_theme,
             style,
-            ready: true,
+
+            ready: cfg!(not(feature = "a11y")),
         }
     }
 
