@@ -151,7 +151,6 @@ impl editor::Editor for Editor {
         let cursor = match internal.editor.selection_bounds() {
             Some((start, end)) => {
                 let line_height = buffer.metrics().line_height;
-                let scroll_y = buffer.scroll().vertical;
 
                 let regions = buffer
                     .layout_runs()
@@ -165,7 +164,7 @@ impl editor::Editor for Editor {
                             .map(move |(x, width)| Rectangle {
                                 x,
                                 width,
-                                y: line_top - scroll_y,
+                                y: line_top,
                                 height: line_height,
                             })
                             .collect::<Vec<_>>()
@@ -175,8 +174,6 @@ impl editor::Editor for Editor {
                 Selection::Range(regions)
             }
             _ => {
-                let scroll_y = buffer.scroll().vertical;
-
                 let point = buffer
                     .layout_runs()
                     .filter(|run| run.line_i == cursor.line)
@@ -184,12 +181,13 @@ impl editor::Editor for Editor {
                         run.cursor_position(&cursor).map(|x| {
                             let buffer_w = buffer.size().0.unwrap_or(x + 1.0);
                             let x = x.min((buffer_w - 1.0).max(0.0));
-                            Point::new(x, run.line_top - scroll_y)
+                            Point::new(x, run.line_top)
                         })
                     })
                     .unwrap_or_else(|| {
                         // Fallback: cursor not found in any run (e.g. empty buffer).
                         let line_height = buffer.metrics().line_height;
+                        let scroll_y = buffer.scroll().vertical;
                         let visual_lines_offset =
                             visual_lines_offset(cursor.line, buffer);
                         Point::new(
