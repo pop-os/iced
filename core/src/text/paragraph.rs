@@ -1,7 +1,8 @@
 //! Draw paragraphs.
 use crate::alignment;
 use crate::text::{
-    Alignment, Difference, Hit, LineHeight, Shaping, Span, Text, Wrapping,
+    Affinity, Alignment, Difference, Hit, LineHeight, Shaping, Span, Text,
+    Wrapping,
 };
 use crate::{Pixels, Point, Rectangle, Size};
 
@@ -71,6 +72,32 @@ pub trait Paragraph: Sized + Default {
     /// Returns the distance to the given grapheme index in the [`Paragraph`].
     fn grapheme_position(&self, line: usize, index: usize) -> Option<Point>;
 
+    /// Returns the visual position of a cursor at the given byte index and [`Affinity`].
+    fn cursor_position(
+        &self,
+        _line: usize,
+        _byte_index: usize,
+        _affinity: Affinity,
+    ) -> Option<Point> {
+        None
+    }
+
+    /// Returns highlight rectangles for a text selection. For mixed BiDi text,
+    /// this may return multiple rectangles.
+    fn highlight(
+        &self,
+        _line: usize,
+        _start: (usize, Affinity),
+        _end: (usize, Affinity),
+    ) -> Vec<Rectangle> {
+        Vec::new()
+    }
+
+    /// Returns `true` if the line is RTL, `false` for LTR.
+    fn is_rtl(&self, _line: usize) -> Option<bool> {
+        None
+    }
+
     /// Returns the minimum width that can fit the contents of the [`Paragraph`].
     fn min_width(&self) -> f32 {
         self.min_bounds().width
@@ -80,7 +107,6 @@ pub trait Paragraph: Sized + Default {
     fn min_height(&self) -> f32 {
         self.min_bounds().height
     }
-
 
     /// Returns the [`Ellipsize`] strategy of the [`Paragraph`]>
     fn ellipsize(&self) -> Ellipsize;
@@ -180,7 +206,7 @@ impl<P: Paragraph> Plain<P> {
             align_y: self.raw.align_y(),
             shaping: self.raw.shaping(),
             wrapping: self.raw.wrapping(),
-            ellipsize: self.raw.ellipsize()
+            ellipsize: self.raw.ellipsize(),
         }
     }
 }
