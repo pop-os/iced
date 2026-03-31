@@ -4,13 +4,20 @@ use iced_core::text::Ellipsize;
 use crate::core;
 use crate::core::alignment;
 use crate::core::text::{
-    Alignment, Hit, LineHeight, Shaping, Span, Text, Wrapping,
+    Affinity, Alignment, Hit, LineHeight, Shaping, Span, Text, Wrapping,
 };
 use crate::core::{Font, Pixels, Point, Rectangle, Size};
 use crate::text;
 
 use std::fmt;
 use std::sync::{self, Arc};
+
+fn to_cosmic_affinity(affinity: Affinity) -> cosmic_text::Affinity {
+    match affinity {
+        Affinity::Before => cosmic_text::Affinity::Before,
+        Affinity::After => cosmic_text::Affinity::After,
+    }
+}
 
 /// A bunch of text.
 #[derive(Clone, PartialEq)]
@@ -265,8 +272,12 @@ impl core::text::Paragraph for Paragraph {
 
     fn hit_test(&self, point: Point) -> Option<Hit> {
         let cursor = self.internal().buffer.hit(point.x, point.y)?;
+        let affinity = match cursor.affinity {
+            cosmic_text::Affinity::Before => Affinity::Before,
+            cosmic_text::Affinity::After => Affinity::After,
+        };
 
-        Some(Hit::CharOffset(cursor.index))
+        Some(Hit::CharOffset(cursor.index, affinity))
     }
 
     fn hit_span(&self, point: Point) -> Option<usize> {
@@ -392,6 +403,66 @@ impl core::text::Paragraph for Paragraph {
             glyph.x + glyph.x_offset * glyph.font_size + advance,
             glyph.y - glyph.y_offset * glyph.font_size,
         ))
+    }
+
+    fn cursor_position(
+        &self,
+        line: usize,
+        byte_index: usize,
+        affinity: Affinity,
+    ) -> Option<Point> {
+        let internal = self.internal();
+        let cursor = cosmic_text::Cursor::new_with_affinity(
+            line,
+            byte_index,
+            to_cosmic_affinity(affinity),
+        );
+        internal
+            .buffer
+            .cursor_position(&cursor)
+            .map(|(x, y)| Point::new(x, y))
+    }
+
+    fn highlight(
+        &self,
+        line: usize,
+        start: (usize, Affinity),
+        end: (usize, Affinity),
+    ) -> Vec<Rectangle> {
+        let internal = self.internal();
+        let start_cursor = cosmic_text::Cursor::new_with_affinity(
+            line,
+            start.0,
+            to_cosmic_affinity(start.1),
+        );
+        let end_cursor = cosmic_text::Cursor::new_with_affinity(
+            line,
+            end.0,
+            to_cosmic_affinity(end.1),
+        );
+
+        internal
+            .buffer
+            .layout_runs()
+            .filter(|run| run.line_i == line)
+            .flat_map(|run| {
+                let line_top = run.line_top;
+                let line_height = run.line_height;
+                run.highlight(start_cursor, end_cursor)
+                    .filter(|(_, width)| *width > 0.0)
+                    .map(move |(x, w)| Rectangle {
+                        x,
+                        y: line_top,
+                        width: w,
+                        height: line_height,
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect()
+    }
+
+    fn is_rtl(&self, line: usize) -> Option<bool> {
+        self.internal().buffer.is_rtl(line)
     }
 
     fn ellipsize(&self) -> Ellipsize {
