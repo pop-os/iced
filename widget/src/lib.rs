@@ -10,7 +10,6 @@ pub use iced_renderer::graphics;
 pub use core::widget::Id;
 
 mod action;
-mod column;
 mod mouse_area;
 mod pin;
 mod responsive;
@@ -19,6 +18,7 @@ mod themer;
 
 pub mod button;
 pub mod checkbox;
+pub mod column;
 pub mod combo_box;
 pub mod container;
 pub mod float;
