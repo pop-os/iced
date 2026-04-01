@@ -85,7 +85,7 @@ where
             style,
 
             ready: true,
-            a11y_ready: !cfg!(not(feature = "a11y")),
+            a11y_ready: cfg!(not(feature = "a11y")),
         }
     }
 
