@@ -25,7 +25,8 @@ where
     theme_mode: theme::Mode,
     default_theme: P::Theme,
     style: theme::Style,
-    pub(crate) ready: bool,
+    ready: bool,
+    a11y_ready: bool,
 }
 
 impl<P: Program> Debug for State<P>
@@ -83,8 +84,21 @@ where
             default_theme,
             style,
 
-            ready: cfg!(not(feature = "a11y")),
+            ready: true,
+            a11y_ready: !cfg!(not(feature = "a11y")),
         }
+    }
+
+    pub(crate) fn is_ready(&self) -> bool {
+        self.ready && self.a11y_ready
+    }
+
+    pub(crate) fn set_ready(&mut self, ready: bool) {
+        self.ready = ready;
+    }
+
+    pub(crate) fn set_a11y_ready(&mut self, ready: bool) {
+        self.a11y_ready = ready;
     }
 
     pub fn viewport(&self) -> &Viewport {

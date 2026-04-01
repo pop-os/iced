@@ -610,6 +610,11 @@ where
                             #[cfg(feature = "a11y")]
                             Control::InitAdapter(id, window) => {
                                 self.init_adapter(event_loop, id, window);
+                            
+                                self.process_event(
+                                    event_loop,
+                                    Some(Event::A11yAdapter(id)),
+                                );
                             }
                             #[cfg(feature = "a11y")]
                             Control::Cleanup(id) => {
@@ -1027,7 +1032,7 @@ async fn run_instance<P>(
                 };
                 window.redraw_requested = false;
 
-                if !window.state.ready {
+                if !window.state.is_ready() {
                     control_sender
                         .start_send(Control::Winit(
                             window.raw.id(),
@@ -1910,7 +1915,7 @@ async fn run_instance<P>(
             #[cfg(feature = "a11y")]
             Event::A11yAdapter(window_id) => {
                 if let Some(window) = window_manager.get_mut(window_id) {
-                    window.state.ready = true;
+                    window.state.set_a11y_ready(true);
                 }
             }
             _ => {}
