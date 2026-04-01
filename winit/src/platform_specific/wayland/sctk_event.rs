@@ -1020,7 +1020,7 @@ impl SctkEvent {
                             theme::Mode::None, // TODO do we really need to track the system theme here?
                             0,
                         );
-                        window.state.ready = false;
+                        window.state.set_ready(false);
                         let logical_size = window.logical_size();
 
                         let mut ui = crate::build_user_interface(
@@ -1097,7 +1097,7 @@ impl SctkEvent {
                                     .map(|v| (id.inner(), v))
                             })
                         {
-                            w.state.ready = true;
+                            w.state.set_ready(true);
                             if first {
                                 control_sender
                                     .send(Control::Winit(
