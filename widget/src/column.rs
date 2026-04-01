@@ -692,3 +692,21 @@ where
         Self::new(column)
     }
 }
+
+pub fn with_capacity<'a, Message, Theme, Renderer>(
+    capacity: usize,
+) -> Column<'a, Message, Theme, Renderer>
+where
+    Renderer: crate::core::Renderer,
+{
+    Column::with_capacity(capacity)
+}
+
+pub fn with_children<'a, Message, Theme, Renderer>(
+    children: impl IntoIterator<Item = Element<'a, Message, Theme, Renderer>>,
+) -> Column<'a, Message, Theme, Renderer>
+where
+    Renderer: crate::core::Renderer,
+{
+    Column::with_children(children)
+}

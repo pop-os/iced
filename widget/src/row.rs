@@ -680,3 +680,21 @@ where
         Self::new(row)
     }
 }
+
+pub fn with_capacity<'a, Message, Theme, Renderer>(
+    capacity: usize,
+) -> Row<'a, Message, Theme, Renderer>
+where
+    Renderer: crate::core::Renderer,
+{
+    Row::with_capacity(capacity)
+}
+
+pub fn with_children<'a, Message, Theme, Renderer>(
+    children: impl IntoIterator<Item = Element<'a, Message, Theme, Renderer>>,
+) -> Row<'a, Message, Theme, Renderer>
+where
+    Renderer: crate::core::Renderer,
+{
+    Row::with_children(children)
+}
