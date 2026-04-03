@@ -11,6 +11,22 @@ use std::fs;
 use std::panic;
 use std::sync::Arc;
 
+const SMALL_SVG_OVERSAMPLE_LIMIT: u32 = 128;
+const SMALL_SVG_OVERSAMPLE_FACTOR: u32 = 2;
+
+fn oversample_size(size: Size<u32>) -> Size<u32> {
+    let factor = if size.width.max(size.height) <= SMALL_SVG_OVERSAMPLE_LIMIT {
+        SMALL_SVG_OVERSAMPLE_FACTOR
+    } else {
+        1
+    };
+
+    Size::new(
+        size.width.saturating_mul(factor),
+        size.height.saturating_mul(factor),
+    )
+}
+
 #[derive(Debug)]
 pub struct Pipeline {
     cache: RefCell<Cache>,
@@ -40,16 +56,23 @@ impl Pipeline {
         transform: Transform,
         clip_mask: Option<&tiny_skia::Mask>,
     ) {
+        let requested_size =
+            oversample_size(Size::new(bounds.width as u32, bounds.height as u32));
+
         if let Some(image) = self.cache.borrow_mut().draw(
             handle,
             color,
             // XX Do not apply transform scaling for rotation to the size
-            Size::new((bounds.width) as u32, (bounds.height) as u32),
+            requested_size,
         ) {
+            let width_scale = bounds.width / image.width() as f32;
+            let height_scale = bounds.height / image.height() as f32;
+            let transform = transform.pre_scale(width_scale, height_scale);
+
             // XX Do not apply transform scaling for rotation to the position
             pixels.draw_pixmap(
-                (bounds.x) as i32,
-                (bounds.y) as i32,
+                (bounds.x / width_scale) as i32,
+                (bounds.y / height_scale) as i32,
                 image,
                 &tiny_skia::PixmapPaint {
                     opacity,

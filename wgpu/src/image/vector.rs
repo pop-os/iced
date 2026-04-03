@@ -43,6 +43,21 @@ pub struct Cache {
 }
 
 type ColorFilter = Option<[u8; 4]>;
+const SMALL_SVG_OVERSAMPLE_LIMIT: u32 = 128;
+const SMALL_SVG_OVERSAMPLE_FACTOR: u32 = 2;
+
+fn oversample_dimensions(width: u32, height: u32) -> (u32, u32) {
+    let factor = if width.max(height) <= SMALL_SVG_OVERSAMPLE_LIMIT {
+        SMALL_SVG_OVERSAMPLE_FACTOR
+    } else {
+        1
+    };
+
+    (
+        width.saturating_mul(factor),
+        height.saturating_mul(factor),
+    )
+}
 
 impl Cache {
     /// Load svg
@@ -108,9 +123,11 @@ impl Cache {
             (scale * size.width).ceil() as u32,
             (scale * size.height).ceil() as u32,
         );
+        let (raster_width, raster_height) =
+            oversample_dimensions(width, height);
 
         let color = color.map(Color::into_rgba8);
-        let key = (id, width, height, color);
+        let key = (id, raster_width, raster_height, color);
 
         // TODO: Optimize!
         // We currently rerasterize the SVG when its size changes. This is slow
@@ -125,7 +142,7 @@ impl Cache {
 
         match self.load(handle) {
             Svg::Loaded(tree) => {
-                if width == 0 || height == 0 {
+                if raster_width == 0 || raster_height == 0 {
                     return None;
                 }
 
@@ -133,14 +150,15 @@ impl Cache {
                 // We currently rerasterize the SVG when its size changes. This is slow
                 // as heck. A GPU rasterizer like `pathfinder` may perform better.
                 // It would be cool to be able to smooth resize the `svg` example.
-                let mut img = tiny_skia::Pixmap::new(width, height)?;
+                let mut img =
+                    tiny_skia::Pixmap::new(raster_width, raster_height)?;
 
                 let tree_size = tree.size().to_int_size();
 
-                let target_size = if width > height {
-                    tree_size.scale_to_width(width)
+                let target_size = if raster_width > raster_height {
+                    tree_size.scale_to_width(raster_width)
                 } else {
-                    tree_size.scale_to_height(height)
+                    tree_size.scale_to_height(raster_height)
                 };
 
                 let transform = if let Some(target_size) = target_size {
@@ -181,9 +199,18 @@ impl Cache {
                 }
 
                 let allocation = atlas
-                    .upload(device, encoder, belt, width, height, &rgba)?;
+                    .upload(
+                        device,
+                        encoder,
+                        belt,
+                        raster_width,
+                        raster_height,
+                        &rgba,
+                    )?;
 
-                log::debug!("allocating {id} {width}x{height}");
+                log::debug!(
+                    "allocating {id} {raster_width}x{raster_height}"
+                );
 
                 let _ = self.svg_hits.insert(id);
                 let _ = self.rasterized_hits.insert(key);
