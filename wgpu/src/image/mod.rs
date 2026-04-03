@@ -266,8 +266,19 @@ impl State {
                     bounds,
                     clip_bounds,
                 } => {
+                    let target_size = Size::new(
+                        (bounds.width * scale).ceil().max(1.0) as u32,
+                        (bounds.height * scale).ceil().max(1.0) as u32,
+                    );
+
                     if let Some((atlas_entry, bind_group)) = cache
-                        .upload_raster(device, encoder, belt, &image.handle)
+                        .upload_raster(
+                            device,
+                            encoder,
+                            belt,
+                            &image.handle,
+                            target_size,
+                        )
                     {
                         match atlas.as_mut() {
                             None => {

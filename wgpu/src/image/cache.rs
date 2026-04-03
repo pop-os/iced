@@ -57,30 +57,45 @@ impl Cache {
     ) {
         use crate::image::raster::Memory;
 
+        self.receive();
+
+        if let Some(memory) = self.raster.cache.get_mut(handle) {
+            match memory {
+                Memory::Host(image) => {
+                    let size = Size::new(image.width(), image.height());
+
+                    if let Some(device) =
+                        self.raster.cache.get_entry(handle, size)
+                    {
+                        if let Some(allocation) = device
+                            .allocation
+                            .as_ref()
+                            .and_then(core::image::Allocation::upgrade)
+                        {
+                            callback(Ok(allocation));
+                            return;
+                        }
+
+                        #[allow(unsafe_code)]
+                        let allocation =
+                            unsafe { core::image::allocate(handle, size) };
+
+                        device.allocation = Some(allocation.downgrade());
+                        callback(Ok(allocation));
+                        return;
+                    }
+                }
+                Memory::Error(error) => {
+                    callback(Err(error.clone()));
+                    return;
+                }
+            }
+        }
+
         let callback = Box::new(callback);
 
         if let Some(callbacks) = self.raster.pending.get_mut(&handle.id()) {
             callbacks.push(callback);
-            return;
-        }
-
-        if let Some(Memory::Device {
-            allocation, entry, ..
-        }) = self.raster.cache.get_mut(handle)
-        {
-            if let Some(allocation) = allocation
-                .as_ref()
-                .and_then(core::image::Allocation::upgrade)
-            {
-                callback(Ok(allocation));
-                return;
-            }
-
-            #[allow(unsafe_code)]
-            let new = unsafe { core::image::allocate(handle, entry.size()) };
-            *allocation = Some(new.downgrade());
-            callback(Ok(new));
-
             return;
         }
 
@@ -99,34 +114,61 @@ impl Cache {
     ) -> Result<core::image::Allocation, core::image::Error> {
         use crate::image::raster::Memory;
 
+        self.receive();
+
         if !self.raster.cache.contains(handle) {
             self.raster.cache.insert(handle, Memory::load(handle));
         }
 
         match self.raster.cache.get_mut(handle).unwrap() {
             Memory::Host(image) => {
+                let size = Size::new(image.width(), image.height());
+
+                if let Some(device_entry) =
+                    self.raster.cache.get_entry(handle, size)
+                {
+                    if let Some(allocation) = device_entry
+                        .allocation
+                        .as_ref()
+                        .and_then(core::image::Allocation::upgrade)
+                    {
+                        return Ok(allocation);
+                    }
+
+                    #[allow(unsafe_code)]
+                    let allocation =
+                        unsafe { core::image::allocate(handle, size) };
+
+                    device_entry.allocation = Some(allocation.downgrade());
+
+                    return Ok(allocation);
+                }
+
                 let mut encoder = device.create_command_encoder(
                     &wgpu::CommandEncoderDescriptor {
                         label: Some("raster image upload"),
                     },
                 );
 
-                let entry = self.atlas.upload(
-                    device,
-                    &mut encoder,
-                    &mut self.raster.belt,
-                    image.width(),
-                    image.height(),
-                    image,
-                );
+                if self
+                    .raster
+                    .cache
+                    .upload(
+                        device,
+                        &mut encoder,
+                        &mut self.raster.belt,
+                        handle,
+                        size,
+                        &mut self.atlas,
+                    )
+                    .is_none()
+                {
+                    return Err(core::image::Error::OutOfMemory);
+                }
 
                 self.raster.belt.finish();
                 let submission = queue.submit([encoder.finish()]);
                 self.raster.belt.recall();
-
-                let Some(entry) = entry else {
-                    return Err(core::image::Error::OutOfMemory);
-                };
 
                 let _ = device.poll(wgpu::PollType::Wait {
                     submission_index: Some(submission),
@@ -134,41 +176,15 @@ impl Cache {
                 });
 
                 #[allow(unsafe_code)]
-                let allocation = unsafe {
-                    core::image::allocate(
-                        handle,
-                        Size::new(image.width(), image.height()),
-                    )
-                };
+                let allocation = unsafe { core::image::allocate(handle, size) };
 
-                self.raster.cache.insert(
-                    handle,
-                    Memory::Device {
-                        entry,
-                        bind_group: None,
-                        allocation: Some(allocation.downgrade()),
-                    },
-                );
-
-                Ok(allocation)
-            }
-            Memory::Device {
-                entry, allocation, ..
-            } => {
-                if let Some(allocation) = allocation
-                    .as_ref()
-                    .and_then(core::image::Allocation::upgrade)
+                if let Some(device_entry) =
+                    self.raster.cache.get_entry(handle, size)
                 {
-                    return Ok(allocation);
+                    device_entry.allocation = Some(allocation.downgrade());
                 }
 
-                #[allow(unsafe_code)]
-                let new =
-                    unsafe { core::image::allocate(handle, entry.size()) };
-
-                *allocation = Some(new.downgrade());
-
-                Ok(new)
+                Ok(allocation)
             }
             Memory::Error(error) => Err(error.clone()),
         }
@@ -206,12 +222,11 @@ impl Cache {
         encoder: &mut wgpu::CommandEncoder,
         belt: &mut wgpu::util::StagingBelt,
         handle: &core::image::Handle,
+        target_size: Size<u32>,
     ) -> Option<(&atlas::Entry, &Arc<wgpu::BindGroup>)> {
-        use crate::image::raster::Memory;
-
         self.receive();
 
-        let memory = load_image(
+        load_image(
             &mut self.raster.cache,
             &mut self.raster.pending,
             #[cfg(not(target_arch = "wasm32"))]
@@ -220,50 +235,22 @@ impl Cache {
             None,
         )?;
 
-        if let Memory::Device {
-            entry, bind_group, ..
-        } = memory
+        if let Some(device_entry) =
+            self.raster.cache.get_entry(handle, target_size)
         {
             return Some((
-                entry,
-                bind_group.as_ref().unwrap_or(self.atlas.bind_group()),
+                &device_entry.entry,
+                device_entry
+                    .bind_group
+                    .as_ref()
+                    .unwrap_or(self.atlas.bind_group()),
             ));
         }
 
-        let image = memory.host()?;
-
-        const MAX_SYNC_SIZE: usize = 2 * 1024 * 1024;
-
-        // TODO: Concurrent Wasm support
-        if image.len() < MAX_SYNC_SIZE || cfg!(target_arch = "wasm32") {
-            let entry = self.atlas.upload(
-                device,
-                encoder,
-                belt,
-                image.width(),
-                image.height(),
-                &image,
-            )?;
-
-            *memory = Memory::Device {
-                entry,
-                bind_group: None,
-                allocation: None,
-            };
-
-            if let Memory::Device { entry, .. } = memory {
-                return Some((entry, self.atlas.bind_group()));
-            }
-        }
-
-        if !self.raster.pending.contains_key(&handle.id()) {
-            let _ = self.raster.pending.insert(handle.id(), Vec::new());
-
-            #[cfg(not(target_arch = "wasm32"))]
-            self.worker.upload(handle, image);
-        }
-
-        None
+        self.raster
+            .cache
+            .upload(device, encoder, belt, handle, target_size, &mut self.atlas)
+            .map(|device_entry| (&device_entry.entry, self.atlas.bind_group()))
     }
 
     #[cfg(feature = "svg")]
@@ -310,21 +297,22 @@ impl Cache {
     fn receive(&mut self) {
         #[cfg(not(target_arch = "wasm32"))]
         while let Ok(work) = self.worker.try_recv() {
-            use crate::image::raster::Memory;
+            use crate::image::raster::{Device, Memory};
 
             match work {
                 worker::Work::Upload {
                     handle,
+                    image,
                     entry,
                     bind_group,
                 } => {
                     let callbacks = self.raster.pending.remove(&handle.id());
+                    let size = Size::new(image.width(), image.height());
 
                     let allocation = if let Some(callbacks) = callbacks {
                         #[allow(unsafe_code)]
-                        let allocation = unsafe {
-                            core::image::allocate(&handle, entry.size())
-                        };
+                        let allocation =
+                            unsafe { core::image::allocate(&handle, size) };
 
                         let reference = allocation.downgrade();
 
@@ -337,9 +325,11 @@ impl Cache {
                         None
                     };
 
-                    self.raster.cache.insert(
+                    self.raster.cache.insert(&handle, Memory::Host(image));
+                    self.raster.cache.insert_entry(
                         &handle,
-                        Memory::Device {
+                        size,
+                        Device {
                             entry,
                             bind_group: Some(bind_group),
                             allocation,
@@ -517,6 +507,7 @@ mod worker {
     pub enum Work {
         Upload {
             handle: image::Handle,
+            image: raster::Image,
             entry: atlas::Entry,
             bind_group: Arc<wgpu::BindGroup>,
         },
@@ -540,13 +531,20 @@ mod worker {
                 match job {
                     Job::Load(handle) => {
                         match crate::graphics::image::load(&handle) {
-                            Ok(image) => self.upload(
-                                handle,
-                                image.width(),
-                                image.height(),
-                                image.into_raw(),
-                                Shell::invalidate_layout,
-                            ),
+                            Ok(image) => {
+                                let width = image.width();
+                                let height = image.height();
+                                let rgba = image.clone().into_raw();
+
+                                self.upload(
+                                    handle,
+                                    image,
+                                    width,
+                                    height,
+                                    rgba,
+                                    Shell::invalidate_layout,
+                                )
+                            }
                             Err(error) => {
                                 let _ = self
                                     .output
@@ -579,6 +577,7 @@ mod worker {
         fn upload(
             &mut self,
             handle: image::Handle,
+            image: raster::Image,
             width: u32,
             height: u32,
             rgba: Bytes,
@@ -620,6 +619,7 @@ mod worker {
             self.queue.on_submitted_work_done(move || {
                 let _ = output.send(Work::Upload {
                     handle,
+                    image,
                     entry,
                     bind_group,
                 });
