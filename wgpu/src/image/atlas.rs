@@ -347,7 +347,15 @@ impl Atlas {
         let stride = PIXEL * w;
 
         // bounds check for source pixels to fragment
-        if pixels.len() < offset + PIXEL * image_width as usize * h {
+        // The upload loop accesses rows 0..h; the last row starts at
+        // `offset + (h-1) * PIXEL * image_width` and reads `stride` bytes.
+        // Using `h` instead of `h-1` over-estimates by one full image_width
+        // row, causing false positives for bottom-right fragments whose
+        // x-offset is non-zero and whose bottom edge reaches the image edge.
+        if h > 0
+            && pixels.len()
+                < offset + (h - 1) * PIXEL * image_width as usize + stride
+        {
             return;
         }
 
