@@ -108,7 +108,7 @@ where
 
     fn size(&self) -> Size<Length> {
         Size {
-            width: Length::Shrink,
+            width: Length::Fill,
             height: Length::Shrink,
         }
     }
@@ -344,7 +344,7 @@ where
         );
 
         let size =
-            limits.resolve(Length::Shrink, Length::Shrink, intrinsic_size);
+            limits.resolve(Length::Fill, Length::Shrink, intrinsic_size);
 
         layout::Node::new(size)
     }
@@ -363,10 +363,23 @@ where
         let state = tree.state.downcast_mut::<State>();
         let offset = layout.position() - Point::ORIGIN;
 
+        // Repopulate visible elements after a view() rebuild so that
+        // input events (which arrive before RedrawRequested in winit's
+        // event loop) are not silently lost.
+        if self.visible_elements.is_empty() {
+            self.visible_elements = state
+                .visible_layouts
+                .iter()
+                .map(|(i, _, _)| {
+                    (self.view_item)(*i, &self.content.items[*i])
+                })
+                .collect();
+        }
+
         self.visible_elements
             .iter_mut()
             .zip(&mut state.visible_layouts)
-            .map(|(element, (index, layout, tree))| {
+            .for_each(|(element, (index, layout, tree))| {
                 element.as_widget_mut().update(
                     tree,
                     event,
