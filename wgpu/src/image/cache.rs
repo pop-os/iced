@@ -398,10 +398,16 @@ fn load_image<'a>(
             // Load RGBA handles synchronously, since it's very cheap
             cache.insert(handle, Memory::load(handle));
         } else if !pending.contains_key(&handle.id()) {
-            let _ = pending.insert(handle.id(), Vec::from_iter(callback));
+            if callback.is_some() {
+                let _ = pending.insert(handle.id(), Vec::from_iter(callback));
 
-            #[cfg(not(target_arch = "wasm32"))]
-            worker.load(handle);
+                #[cfg(not(target_arch = "wasm32"))]
+                worker.load(handle);
+            } else {
+                // Synchronous fallback when no callback is provided,
+                // needed for one-shot renders like drag icon screenshots
+                cache.insert(handle, Memory::load(handle));
+            }
         }
     }
 
