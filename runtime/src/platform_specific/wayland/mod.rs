@@ -2,7 +2,7 @@
 
 use std::fmt::Debug;
 
-use iced_core::window::Id;
+use iced_core::{Rectangle, window::Id};
 
 /// activation Actions
 pub mod activation;
@@ -35,6 +35,8 @@ pub enum Action {
     InhibitShortcuts(bool),
     /// Rounded corners in logical space
     RoundedCorners(iced_core::window::Id, Option<CornerRadius>),
+    /// Blur effect for a surface
+    BlurSurface(Id, Option<Vec<Rectangle>>),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
@@ -70,6 +72,11 @@ impl Debug for Action {
             Action::RoundedCorners(id, v) => {
                 f.debug_tuple("RoundedCorners").field(id).field(v).finish()
             }
+            Action::BlurSurface(id, rectangles) => f
+                .debug_tuple("BlurSurface")
+                .field(id)
+                .field(rectangles)
+                .finish(),
         }
     }
 }

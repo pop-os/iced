@@ -287,7 +287,21 @@ impl winit::window::Window for SctkWinitWindow {
     }
 
     fn set_blur(&self, blur: bool) {
-        // TODO
+        _ = self.tx.send(Action::Action(
+            iced_runtime::platform_specific::wayland::Action::BlurSurface(
+                self.id.inner(),
+                if blur {
+                    Some(vec![iced_runtime::core::Rectangle {
+                        x: f32::MIN,
+                        y: f32::MIN,
+                        width: f32::MAX,
+                        height: f32::MAX,
+                    }])
+                } else {
+                    None
+                },
+            ),
+        ));
     }
 
     fn set_visible(&self, visible: bool) {}

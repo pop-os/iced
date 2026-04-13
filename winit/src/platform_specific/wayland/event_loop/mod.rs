@@ -7,7 +7,10 @@ use crate::platform_specific::SurfaceIdWrapper;
 use crate::{
     Control,
     futures::futures::channel::mpsc,
-    handlers::{overlap::OverlapNotifyV1, text_input::TextInputManager},
+    handlers::{
+        ext_background_effect, overlap::OverlapNotifyV1,
+        text_input::TextInputManager,
+    },
     platform_specific::wayland::{
         handlers::{
             wp_fractional_scaling::FractionalScalingManager,
@@ -346,25 +349,25 @@ impl SctkEventLoop {
                             &qh,
                         ),
                         corner_radius_manager: registry_state.bind_one::<CosmicCornerRadiusManagerV1, _, _>(
-                        &qh,
-                        1..=1,
-                        (),
-                    ).ok(),
+                            &qh,
+                            1..=1,
+                            (),
+                        ).ok(),
                         toplevel_manager: ToplevelManagerState::try_new(
                             &registry_state,
                             &qh,
                         ),
-                                            inhibitor_manager: registry_state.bind_one::<zwp_keyboard_shortcuts_inhibit_manager_v1::ZwpKeyboardShortcutsInhibitManagerV1, _, _>(
-                        &qh,
-                        1..=1,
-                        (),
-                    ).ok(),
+                        inhibitor_manager: registry_state.bind_one::<zwp_keyboard_shortcuts_inhibit_manager_v1::ZwpKeyboardShortcutsInhibitManagerV1, _, _>(
+                            &qh,
+                            1..=1,
+                            (),
+                        ).ok(),
                         text_input_manager: TextInputManager::try_new(&registry_state, &qh),
+                        ext_background_effect_manager: ext_background_effect::ExtBackgroundEffectManager::new(&globals, &qh).ok(),
                         registry_state,
 
                         queue_handle: qh,
                         loop_handle,
-
 
                         inhibitor: None,
                         inhibited: false,
@@ -373,6 +376,7 @@ impl SctkEventLoop {
                         outputs: Vec::new(),
                         seats: Vec::new(),
                         windows: Vec::new(),
+                        blur_surfaces: HashMap::new(),
                         layer_surfaces: Vec::new(),
                         popups: Vec::new(),
                         lock_surfaces: Vec::new(),
