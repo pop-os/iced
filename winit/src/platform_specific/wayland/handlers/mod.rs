@@ -1,6 +1,7 @@
 // handlers
 pub mod activation;
 pub mod compositor;
+pub mod ext_background_effect;
 pub mod output;
 pub mod overlap;
 pub mod seat;
@@ -12,14 +13,14 @@ pub mod toplevel;
 pub mod wp_fractional_scaling;
 pub mod wp_viewporter;
 
-use cctk::{sctk::{
+use cctk::sctk::{
     delegate_registry, delegate_shm,
     output::OutputState,
     registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
     seat::SeatState,
     shm::{Shm, ShmHandler},
-}};
+};
 
 use crate::platform_specific::wayland::event_loop::state::SctkState;
 

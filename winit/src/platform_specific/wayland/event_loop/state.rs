@@ -2,6 +2,7 @@ use crate::{
     Control,
     handlers::{
         activation::IcedRequestData,
+        ext_background_effect,
         overlap::{OverlapNotificationV1, OverlapNotifyV1},
         text_input::{Preedit, TextInputManager},
     },
@@ -25,7 +26,7 @@ use iced_futures::{
 };
 use raw_window_handle::HasWindowHandle;
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{HashMap, HashSet, hash_map::Entry},
     convert::Infallible,
     fmt::Debug,
     sync::{Arc, Mutex, atomic::AtomicU32},
@@ -108,6 +109,7 @@ use iced_runtime::{
     },
 };
 use wayland_protocols::{
+    ext::background_effect::v1::client::ext_background_effect_surface_v1::ExtBackgroundEffectSurfaceV1,
     wp::{
         fractional_scale::v1::client::wp_fractional_scale_v1::WpFractionalScaleV1,
         keyboard_shortcuts_inhibit::zv1::client::{
@@ -443,6 +445,7 @@ pub struct SctkState {
     pub(crate) popups: Vec<SctkPopup>,
     pub(crate) subsurfaces: Vec<SctkSubsurface>,
     pub(crate) lock_surfaces: Vec<SctkLockSurface>,
+    pub(crate) blur_surfaces: HashMap<core::window::Id, Vec<ExtBackgroundEffectSurfaceV1>>,
     pub(crate) touch_points: HashMap<touch::Finger, (WlSurface, Point)>,
 
     /// Window updates, which are coming from SCTK or the compositor, which require
@@ -485,6 +488,7 @@ pub struct SctkState {
     pub(crate) toplevel_info: Option<ToplevelInfoState>,
     pub(crate) toplevel_manager: Option<ToplevelManagerState>,
     pub(crate) subsurface_state: Option<SubsurfaceState>,
+    pub(crate) ext_background_effect_manager: Option<ext_background_effect::ExtBackgroundEffectManager>,
 
     pub(crate) activation_token_ctr: u32,
     pub(crate) token_senders: HashMap<u32, oneshot::Sender<Option<String>>>,
@@ -666,9 +670,7 @@ impl SctkState {
 
         // TODO winit sets cursor size after handling the change for the window, so maybe that should be done as well.
     }
-}
 
-impl SctkState {
     pub fn get_popup(
         &mut self,
         settings: SctkPopupSettings,
@@ -1091,6 +1093,12 @@ impl SctkState {
                             if let Some(i) = self.layer_surfaces.iter().position(|l| l.id == id) {
                                 let l = self.layer_surfaces.remove(i);
 
+                                if let Some(blurred) = self.blur_surfaces.remove(&l.id) {
+                                    for s in blurred {
+                                        s.destroy();
+                                    }
+                                }
+
                                 let (removed, remaining): (Vec<_>, Vec<_>) =  self
                                     .subsurfaces
                                     .drain(..)
@@ -1344,6 +1352,12 @@ impl SctkState {
                             _ = self.destroyed.insert(id);
                         }
 
+                        if let Some(blurred) = self.blur_surfaces.remove(&id) {
+                            for s in blurred {
+                                s.destroy();
+                            }
+                        }
+
                         let (removed, remaining): (Vec<_>, Vec<_>) =  self
                             .subsurfaces
                             .drain(..)
@@ -1455,6 +1469,7 @@ impl SctkState {
                     // TODO how to handle this when there's no lock?
                     if let Some((surface, _)) = self.get_lock_surface(id, &output) {
                         let wl_surface = surface.wl_surface();
+                        
                         receive_frame(&mut self.frame_status, &wl_surface);
                     }
                 }
@@ -1465,6 +1480,11 @@ impl SctkState {
                         })
                     {
                         let surface = self.lock_surfaces.remove(i);
+                        if let Some(blurred) = self.blur_surfaces.remove(&surface.id) {
+                            for s in blurred {
+                                s.destroy();
+                            }
+                        }
                         let (removed, remaining): (Vec<_>, Vec<_>) =  self
                             .subsurfaces
                             .drain(..)
@@ -1536,7 +1556,7 @@ impl SctkState {
                     let mut destroyed = vec![];
                     if let Some(subsurface) = self.subsurfaces.iter().position(|s| s.id == id) {
                         let subsurface = self.subsurfaces.remove(subsurface);
-                        destroyed.push((subsurface.instance.wl_surface.clone(), subsurface.instance.parent.clone()));
+                        destroyed.push((subsurface.instance.wl_surface.clone(), subsurface.instance.parent.clone(), subsurface.id));
 
                         subsurface.instance.wl_surface.attach(None, 0, 0);
                         subsurface.instance.wl_surface.commit();
@@ -1544,7 +1564,12 @@ impl SctkState {
                             SctkEvent::SubsurfaceEvent( crate::sctk_event::SubsurfaceEventVariant::Destroyed(subsurface.instance) )
                         );
                     }
-                    for (destroyed, parent) in destroyed {
+                    for (destroyed, parent, id) in destroyed {
+                        if let Some(blurred) = self.blur_surfaces.remove(&id) {
+                            for s in blurred {
+                                s.destroy();
+                            }
+                        }
                         if let Some((wl_surface, f)) = self.seats.iter_mut().find(|f| {
                             f.kbd_focus.as_ref().is_some_and(|f| *f == destroyed)
                         }).and_then(|f| Some((parent, &mut f.kbd_focus))) {
@@ -1574,7 +1599,7 @@ impl SctkState {
                 if let Some(manager) = self.corner_radius_manager.as_ref() {
                     if let Some(w) = self.windows.iter_mut().find(|w| w.id == id) {
                         let geo_size: LogicalSize<f64> = w.window.surface_size().cast::<f64>().to_logical(w.window.scale_factor());
-                        let half_min_dim = ((geo_size.width as u32).min(geo_size.height as u32) / 2);
+                        let half_min_dim = (geo_size.width as u32).min(geo_size.height as u32) / 2;
 
                         if let Some(radii) = v {
                             let adjusted_radii  = CornerRadius {
@@ -1621,6 +1646,90 @@ impl SctkState {
                     }
                 }
             }
+            Action::BlurSurface(id, rectangles) => {
+                let s = if let Some(s) = self.popups.iter().find(|s| s.data.id == id) {
+                    s.popup.wl_surface()
+                } else if let Some(s) = self.layer_surfaces.iter().find(|s| s.id == id) {
+                    s.surface.wl_surface()
+                } else if let Some(s) = self.lock_surfaces.iter().find(|s| s.id == id) {
+                    s.session_lock_surface.wl_surface()
+                } else if let Some(subsurface) = self.subsurfaces.iter().find(|s| s.id == id) {
+                    &subsurface.instance.wl_surface
+                } else {
+                    log::error!("Failed to find surface for blur action");
+                    return Ok(());
+                };
+                let existing_blur = self.blur_surfaces.entry(id);
+                match (existing_blur, rectangles) {
+                    (Entry::Occupied(occupied_entry), None) => {
+                        let blur_surfaces = occupied_entry.remove();
+                        for region in blur_surfaces {
+                            region.destroy();
+                        }
+                    },
+                    (Entry::Occupied(mut occupied_entry), Some(rectangles)) => {
+                        let blur_surfaces = occupied_entry.get_mut();
+                        let regions = rectangles.into_iter().map(|rect| {
+                            let region = self
+                                .compositor_state
+                                .wl_compositor()
+                                .create_region(&self.queue_handle, ());
+                            region.add(
+                                rect.x.round() as i32,
+                                rect.y.round() as i32,
+                                rect.width.round() as i32,
+                                rect.height.round() as i32,
+                            );
+                            region
+                        }).collect::<Vec<_>>();
+                        if regions.len() > blur_surfaces.len() {
+                            // add extra blur surfaces if needed
+                            for _ in blur_surfaces.len()..regions.len() {
+                                let Some(extra_region) = self.ext_background_effect_manager.as_mut().map(|mgr| mgr.blur(s, &self.queue_handle)) else {
+                                    log::error!("Failed to create blur effect for surface");
+                                    return Ok(());
+                                };
+                                blur_surfaces.push(extra_region);
+                            }
+                        } else if regions.len() < blur_surfaces.len() {
+                            for surface in blur_surfaces.iter().skip(regions.len()) {
+                                surface.destroy();
+                            }
+                        }
+
+                        // update existing blur surfaces
+                        for (blur_surface, region) in blur_surfaces.iter().zip(regions.into_iter()) {
+                            blur_surface.set_blur_region(Some(&region));
+                        }
+                    },
+                    (Entry::Vacant(..), None) => {
+                        // nothing to remove
+                    },
+                    (Entry::Vacant(vacant_entry), Some(rectangles)) => {
+                        if self.ext_background_effect_manager.is_none() {
+                            log::error!("Blur effect is not supported.");
+                            return Ok(());
+                        }
+                        let blur_surfaces = rectangles.into_iter().map(|rect| {
+                            let region = self
+                                .compositor_state
+                                .wl_compositor()
+                                .create_region(&self.queue_handle, ());
+                            region.add(
+                                rect.x.round() as i32,
+                                rect.y.round() as i32,
+                                rect.width.round() as i32,
+                                rect.height.round() as i32,
+                            );
+                            let blur_manager = self.ext_background_effect_manager.as_mut().unwrap();
+                            let blur_surface = blur_manager.blur(s, &self.queue_handle);
+                            blur_surface.set_blur_region(Some(&region));
+                            blur_surface
+                        }).collect::<Vec<_>>();
+                        _ = vacant_entry.insert(blur_surfaces);
+                    },
+                }
+            },
         };
         Ok(())
     }
