@@ -1647,6 +1647,13 @@ impl SctkState {
                 }
             }
             Action::BlurSurface(id, rectangles) => {
+                use wayland_protocols::ext::background_effect::v1::client::ext_background_effect_manager_v1;
+
+                if let Some(bg_effect_mgr) = self.ext_background_effect_manager.as_mut() && !bg_effect_mgr.capabilities().contains(ext_background_effect_manager_v1::Capability::Blur) {
+                    bg_effect_mgr.enqueue(id, rectangles.clone());
+                    return Ok(());
+                }
+                
                 let s = if let Some(s) = self.popups.iter().find(|s| s.data.id == id) {
                     s.popup.wl_surface()
                 } else if let Some(s) = self.layer_surfaces.iter().find(|s| s.id == id) {
