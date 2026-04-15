@@ -292,8 +292,8 @@ impl winit::window::Window for SctkWinitWindow {
                 self.id.inner(),
                 if blur {
                     Some(vec![iced_runtime::core::Rectangle {
-                        x: f32::MIN,
-                        y: f32::MIN,
+                        x: 0.,
+                        y: 0.,
                         width: f32::MAX,
                         height: f32::MAX,
                     }])
