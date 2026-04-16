@@ -381,6 +381,12 @@ impl SctkEvent {
                         )
                     }
                     events.push((
+                        id.clone(),
+                        iced_runtime::core::Event::Mouse(
+                            mouse::Event::CursorEntered,
+                        ),
+                    ));
+                    events.push((
                         id,
                         iced_runtime::core::Event::Mouse(
                             mouse::Event::CursorMoved {
