@@ -178,7 +178,7 @@ pub fn window_attributes(
                     ),
             ));
         }
-        #[cfg(all(feature = "cctk", target_os = "linux"))]
+        #[cfg(target_os = "linux")]
         {
             use winit::platform::wayland::WindowAttributesWayland;
 
