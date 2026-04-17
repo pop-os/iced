@@ -128,7 +128,6 @@ impl PlatformSpecific {
         };
         self.wayland.display_handle = Some(display);
         self.wayland.proxy = Some(raw);
-        // TODO remove this
         self.wayland.sender =
             crate::platform_specific::event_loop::SctkEventLoop::new(
                 self.wayland.winit_event_sender.clone().unwrap(),
