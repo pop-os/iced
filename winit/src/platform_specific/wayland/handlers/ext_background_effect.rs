@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use cctk::sctk;
+use iced_futures::futures::SinkExt;
 use iced_runtime::core::Rectangle;
 use iced_runtime::platform_specific::wayland::Action;
 use sctk::globals::GlobalData;
@@ -11,7 +12,7 @@ use wayland_protocols::ext::background_effect::v1::client::ext_background_effect
 use wayland_protocols::ext::background_effect::v1::client::ext_background_effect_surface_v1::ExtBackgroundEffectSurfaceV1;
 
 use crate::event_loop::state::SctkState;
-use crate::window;
+use crate::{platform_specific, window};
 
 #[derive(Debug, Clone)]
 pub struct ExtBackgroundEffectManager {
@@ -70,8 +71,15 @@ impl Dispatch<ExtBackgroundEffectManagerV1, GlobalData, SctkState>
                         state.ext_background_effect_manager.as_mut()
                     {
                         bg_effect_mgr.capabilities = capability;
-                        queued_actions =
-                            bg_effect_mgr.queued_blur_actions.drain().collect();
+                        if capability.contains(Capability::Blur) {
+                            queued_actions = bg_effect_mgr
+                                .queued_blur_actions
+                                .drain()
+                                .collect();
+                            state
+                                .sctk_events
+                                .push(crate::sctk_event::SctkEvent::Blur);
+                        }
                     }
                     for (id, rects) in queued_actions {
                         _ = state.handle_action(Action::BlurSurface(id, rects));

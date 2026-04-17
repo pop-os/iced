@@ -68,10 +68,8 @@ use cctk::{
             xdg::{popup::PopupConfigure, window::WindowConfigure},
         },
     },
-    wayland_client::protocol::wl_subsurface::WlSubsurface,
 };
 use std::{
-    any::Any,
     collections::HashMap,
     num::NonZeroU32,
     sync::{Arc, Mutex},
@@ -98,9 +96,7 @@ use super::{
 
 #[derive(Debug, Clone)]
 pub enum SctkEvent {
-    //
-    // Input events
-    //
+    Blur,
     SeatEvent {
         variant: SeatEventVariant,
         id: WlSeat,
@@ -122,11 +118,6 @@ pub enum SctkEvent {
         seat_id: WlSeat,
         surface: WlSurface,
     },
-    // TODO data device & touch
-
-    //
-    // Surface Events
-    //
     WindowEvent {
         variant: WindowEventVariant,
         id: WlSurface,
@@ -167,10 +158,6 @@ pub enum SctkEvent {
     },
 
     SubsurfaceEvent(SubsurfaceEventVariant),
-
-    //
-    // output events
-    //
     NewOutput {
         id: WlOutput,
         info: Option<OutputInfo>,
@@ -180,9 +167,7 @@ pub enum SctkEvent {
         info: OutputInfo,
     },
     RemovedOutput(WlOutput),
-    //
-    // compositor events
-    //
+
     ScaleFactorChanged {
         factor: f64,
         id: WlOutput,
@@ -1736,6 +1721,12 @@ impl SctkEvent {
                     PlatformSpecific::Wayland(
                         wayland::Event::ShortcutsInhibited(v),
                     ),
+                ),
+            )),
+            SctkEvent::Blur => events.push((
+                None,
+                iced_runtime::core::Event::PlatformSpecific(
+                    PlatformSpecific::Wayland(wayland::Event::BlurEnabled),
                 ),
             )),
         }
