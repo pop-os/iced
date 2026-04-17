@@ -46,4 +46,6 @@ pub enum Event {
     Subsurface(SubsurfaceEvent),
     /// Keyboard inhibit shortcuts
     ShortcutsInhibited(bool),
+    /// Blur Support Enabled
+    BlurEnabled,
 }
