@@ -1099,6 +1099,12 @@ impl SctkState {
                                         id: wl_surface.clone(),
                                     }
                                 );
+                                if let Some(corners) = self.pending_corner_radius.remove(&id) {
+                                    self.handle_action(Action::RoundedCorners(
+                                        id,
+                                        Some(corners),
+                                    ))?;
+                                }
                             }
                         }
                         platform_specific::wayland::layer_surface::Action::Size {
@@ -1318,6 +1324,12 @@ impl SctkState {
                                                 SctkEvent::PopupEvent {
                                                     variant: crate::platform_specific::wayland::sctk_event::PopupEventVariant::Created(queue_handle.clone(), surface, id, common, state.connection.display()),
                                                     toplevel_id, parent_id, id: wl_surface });
+                                            if let Some(corners) = state.pending_corner_radius.remove(&id) {
+                                                state.handle_action(Action::RoundedCorners (
+                                                    id,
+                                                    Some(corners),
+                                                ));
+                                            }
                                         }
                                         Err(err) => {
                                             log::error!("Failed to create popup. {err:?}");
@@ -1327,7 +1339,6 @@ impl SctkState {
                                 }
                             });
                         }
-                        // log::error!("Invalid popup Id {:?}", popup.id);
                     } else {
                         self.pending_popup = None;
                         match self.get_popup(settings) {
@@ -1337,6 +1348,12 @@ impl SctkState {
                                     SctkEvent::PopupEvent {
                                         variant: crate::platform_specific::wayland::sctk_event::PopupEventVariant::Created(self.queue_handle.clone(), surface, id, common, self.connection.display()),
                                         toplevel_id, parent_id, id: wl_surface });
+                                if let Some(corners) = self.pending_corner_radius.remove(&id) {
+                                    self.handle_action(Action::RoundedCorners (
+                                        id,
+                                        Some(corners),
+                                    ));
+                                }
                             }
                             Err(err) => {
                                 log::error!("Failed to create popup. {err:?}");
