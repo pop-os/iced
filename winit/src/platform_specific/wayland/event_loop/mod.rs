@@ -33,7 +33,7 @@ use cctk::{
         reexports::{
             calloop::{self, EventLoop},
             client::{
-                ConnectError, Connection, Proxy, globals::registry_queue_init,
+                Connection, Proxy, globals::registry_queue_init,
             },
         },
         registry::RegistryState,
@@ -46,8 +46,6 @@ use cctk::{
 };
 use raw_window_handle::HasDisplayHandle;
 use state::{FrameStatus, SctkWindow, send_event};
-#[cfg(feature = "a11y")]
-use std::sync::{Arc, Mutex};
 use std::{
     collections::{HashMap, HashSet},
     fmt::Debug,
@@ -71,8 +69,8 @@ pub struct SctkEventLoop {
     pub(crate) state: SctkState,
 }
 
+#[derive(Debug)]
 pub enum Error {
-    Connect(ConnectError),
     Calloop(calloop::Error),
     Global(GlobalError),
     NoDisplayHandle,
@@ -129,7 +127,7 @@ impl SctkEventLoop {
                             crate::platform_specific::Action::ResizeWindow(id) => {
                                 if let Some((_, v)) = state.windows.iter()
                                     .find(|w| w.id == id)
-                                    .map(|w| w.corner_radius.as_ref())
+                                    .map(|w| state.corner_radii.get(&id))
                                     .unwrap_or_default() {
                                     _ = state.handle_action(iced_runtime::platform_specific::wayland::Action::RoundedCorners(id, *v));
                                 }
@@ -138,7 +136,7 @@ impl SctkEventLoop {
                                 window,
                                 id,
                             ) => {
-                                state.windows.push(SctkWindow { window, id, corner_radius: Default::default() });
+                                state.windows.push(SctkWindow { window, id });
                                 if let Some(v) = state.pending_corner_radius.remove(&id) {
                                     _ = state.handle_action(iced_runtime::platform_specific::wayland::Action::RoundedCorners(id, Some(v)));
                                 }
@@ -350,7 +348,7 @@ impl SctkEventLoop {
                         ),
                         corner_radius_manager: registry_state.bind_one::<CosmicCornerRadiusManagerV1, _, _>(
                             &qh,
-                            1..=1,
+                            1..=2,
                             (),
                         ).ok(),
                         toplevel_manager: ToplevelManagerState::try_new(
@@ -377,6 +375,7 @@ impl SctkEventLoop {
                         seats: Vec::new(),
                         windows: Vec::new(),
                         blur_surfaces: HashMap::new(),
+                        corner_radii: HashMap::new(),
                         layer_surfaces: Vec::new(),
                         popups: Vec::new(),
                         lock_surfaces: Vec::new(),

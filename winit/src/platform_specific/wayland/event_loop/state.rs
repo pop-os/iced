@@ -1,10 +1,7 @@
 use crate::{
     Control,
     handlers::{
-        activation::IcedRequestData,
-        ext_background_effect,
-        overlap::{OverlapNotificationV1, OverlapNotifyV1},
-        text_input::{Preedit, TextInputManager},
+        activation::IcedRequestData, ext_background_effect, overlap::{OverlapNotificationV1, OverlapNotifyV1}, shell::corner_radius::CornerRadiusWrapper, text_input::{Preedit, TextInputManager}
     },
     platform_specific::{
         Event,
@@ -66,7 +63,7 @@ use cctk::{
                     wl_surface::{self, WlSurface},
                     wl_touch::WlTouch,
                 },
-            },
+            }, protocols_wlr::layer_shell::v1::client::zwlr_layer_surface_v1::ZwlrLayerSurfaceV1,
         },
         registry::RegistryState,
         seat::{
@@ -343,22 +340,13 @@ pub struct SctkPopupData {
     pub(crate) grab: bool,
 }
 
-#[derive(Debug)]
-pub struct MyCosmicCornerRadiusToplevelV1(CosmicCornerRadiusToplevelV1);
-
-impl Drop for MyCosmicCornerRadiusToplevelV1 {
-    fn drop(&mut self) {
-        self.0.destroy();
-    }
-}
 
 #[derive(Debug, Clone)]
-pub struct SctkCornerRadius(Arc<MyCosmicCornerRadiusToplevelV1>);
+pub struct SctkCornerRadius(Arc<CornerRadiusWrapper>);
 
 pub struct SctkWindow {
     pub(crate) window: Arc<dyn winit::window::Window>,
     pub(crate) id: core::window::Id,
-    pub(crate) corner_radius: Option<(SctkCornerRadius, Option<CornerRadius>)>,
 }
 
 impl SctkWindow {
@@ -446,6 +434,7 @@ pub struct SctkState {
     pub(crate) subsurfaces: Vec<SctkSubsurface>,
     pub(crate) lock_surfaces: Vec<SctkLockSurface>,
     pub(crate) blur_surfaces: HashMap<core::window::Id, Vec<ExtBackgroundEffectSurfaceV1>>,
+    pub(crate) corner_radii: HashMap<core::window::Id, (SctkCornerRadius, Option<CornerRadius>)>,
     pub(crate) touch_points: HashMap<touch::Finger, (WlSurface, Point)>,
 
     /// Window updates, which are coming from SCTK or the compositor, which require
@@ -1098,6 +1087,7 @@ impl SctkState {
                                         s.destroy();
                                     }
                                 }
+                                _ = self.corner_radii.remove(&id);
 
                                 let (removed, remaining): (Vec<_>, Vec<_>) =  self
                                     .subsurfaces
@@ -1357,6 +1347,8 @@ impl SctkState {
                                 s.destroy();
                             }
                         }
+                        _ = self.corner_radii.remove(&id);
+
 
                         let (removed, remaining): (Vec<_>, Vec<_>) =  self
                             .subsurfaces
@@ -1485,6 +1477,8 @@ impl SctkState {
                                 s.destroy();
                             }
                         }
+                        _ = self.corner_radii.remove(&id);
+
                         let (removed, remaining): (Vec<_>, Vec<_>) =  self
                             .subsurfaces
                             .drain(..)
@@ -1570,6 +1564,8 @@ impl SctkState {
                                 s.destroy();
                             }
                         }
+                        _ = self.corner_radii.remove(&id);
+
                         if let Some((wl_surface, f)) = self.seats.iter_mut().find(|f| {
                             f.kbd_focus.as_ref().is_some_and(|f| *f == destroyed)
                         }).and_then(|f| Some((parent, &mut f.kbd_focus))) {
@@ -1597,8 +1593,25 @@ impl SctkState {
             }
             Action::RoundedCorners(id, v) => {
                 if let Some(manager) = self.corner_radius_manager.as_ref() {
-                    if let Some(w) = self.windows.iter_mut().find(|w| w.id == id) {
-                        let geo_size: LogicalSize<f64> = w.window.surface_size().cast::<f64>().to_logical(w.window.scale_factor());
+                    enum Surface {
+                        Xdg(XdgSurface, Option<XdgToplevel>),
+                        Wlr(ZwlrLayerSurfaceV1),
+                    }
+                    let s = if let Some(w) = self.windows.iter_mut().find(|w| w.id == id) {
+                        Some((Surface::Xdg(w.xdg_surface(&self.connection), Some(w.xdg_toplevel(&self.connection))), w.window.surface_size().cast::<f64>().to_logical(w.window.scale_factor())))
+                    } else if let Some(p) = self.popups.iter_mut().find(|w| w.data.id == id) {
+                        let guard = p.common.lock().unwrap();
+                        Some((Surface::Xdg(p.popup.xdg_surface().clone(), None), guard.size.cast::<f64>()))
+                    } else if let Some(l) =  self.layer_surfaces.iter_mut().find(|l| l.id == id) {
+                        let guard = l.common.lock().unwrap();
+                        match l.surface.kind() {
+                            SurfaceKind::Wlr(l) => Some((Surface::Wlr(l.clone()), guard.size.cast::<f64>())),
+                            _ => None
+                        }
+                    } else {
+                        None
+                    };
+                    if let Some((s, geo_size)) = s {
                         let half_min_dim = (geo_size.width as u32).min(geo_size.height as u32) / 2;
 
                         if let Some(radii) = v {
@@ -1608,37 +1621,73 @@ impl SctkState {
                                 bottom_right: radii.bottom_right.min(half_min_dim),
                                 bottom_left: radii.bottom_left.min(half_min_dim),
                             };
-                            if let Some((protocol_object, corner_radii)) = w.corner_radius.as_mut() {
+                            if let Some((protocol_object, corner_radii)) = self.corner_radii.get_mut(&id) {
                                 if *corner_radii != Some(adjusted_radii) {
-                                    protocol_object.0.0.set_radius(
+                                    match protocol_object.0.as_ref() {
+                                        CornerRadiusWrapper::Xdg(protocol_object) => protocol_object.set_radius(
+                                            adjusted_radii.top_left,
+                                            adjusted_radii.top_right,
+                                            adjusted_radii.bottom_right,
+                                            adjusted_radii.bottom_left,
+                                        ),
+                                        CornerRadiusWrapper::Wlr(protocol_object) => protocol_object.set_radius(
+                                            adjusted_radii.top_left,
+                                            adjusted_radii.top_right,
+                                            adjusted_radii.bottom_right,
+                                            adjusted_radii.bottom_left,
+                                    )
+                                };
+                                    *corner_radii = Some(adjusted_radii.clone());
+                                }
+                            } else {
+
+                                let protocol_object = match s {
+                                    Surface::Xdg(s, w) => {
+                                        if manager.version() == 1 {
+                                            if let Some(w) = w {
+                                                CornerRadiusWrapper::Xdg(manager.get_corner_radius(&w, &self.queue_handle, ()))
+                                            } else {
+                                                log::error!("Corner radius is not supported for popups on xdg shell v1");
+                                                return Ok(());
+                                            }
+                                        } else {
+                                            CornerRadiusWrapper::Xdg(manager.get_corner_radius_surface(&s, &self.queue_handle, ()))}
+                                        }
+                                    Surface::Wlr(l) => {
+                                        if manager.version() == 1 {
+                                            return Ok(());
+                                        }
+                                        CornerRadiusWrapper::Wlr(manager.get_corner_radius_layer(&l, &self.queue_handle, ()))}
+                                };
+                                match &protocol_object {
+                                    CornerRadiusWrapper::Xdg(protocol_object) => protocol_object.set_radius(
                                         adjusted_radii.top_left,
                                         adjusted_radii.top_right,
                                         adjusted_radii.bottom_right,
                                         adjusted_radii.bottom_left,
-                                    );
-                                    *corner_radii = Some(adjusted_radii.clone());
-                                }
-                            } else {
-                                let toplevel = w.xdg_toplevel(&self.connection);
-
-                                let protocol_object = manager.get_corner_radius(&toplevel, &self.queue_handle, ());
-
-                                protocol_object.set_radius(
-                                    adjusted_radii.top_left,
-                                    adjusted_radii.top_right,
-                                    adjusted_radii.bottom_right,
-                                    adjusted_radii.bottom_left,
-                                );
-                                w.corner_radius = Some((SctkCornerRadius(Arc::new(MyCosmicCornerRadiusToplevelV1( protocol_object))), Some(adjusted_radii.clone())));
+                                    ),
+                                    CornerRadiusWrapper::Wlr(protocol_object) => protocol_object.set_radius(
+                                        adjusted_radii.top_left,
+                                        adjusted_radii.top_right,
+                                        adjusted_radii.bottom_right,
+                                        adjusted_radii.bottom_left,
+                                    )
+                                };
+                                _ = self.corner_radii.insert(id, (SctkCornerRadius(Arc::new(protocol_object)), Some(adjusted_radii.clone())));
                             }
                         } else {
-                            if let Some(old) = w.corner_radius.as_mut() {
-                                old.0.0.as_ref().0.unset_radius();
+                            if let Some(old) = self.corner_radii.get_mut(&id) {
+                                match old.0.0.as_ref() {
+                                    CornerRadiusWrapper::Xdg(protocol_object) => protocol_object.unset_radius(),
+                                    CornerRadiusWrapper::Wlr(protocol_object) => {
+                                        protocol_object.unset_radius()
+                                    }
+                                };
                                 old.1 = None;
                             }
                         }
                     } else {
-                        if let Some(v) = v{
+                        if let Some(v) = v {
                             _ = self.pending_corner_radius.insert(id, v);
                         } else {
                             _ = self.pending_corner_radius.remove(&id);
