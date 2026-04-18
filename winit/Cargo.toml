@@ -37,6 +37,8 @@ cctk = [
     "xkeysym",
     "dep:cctk",
 ]
+# Prevents multiple separate process instances.
+single-instance = []
 
 
 [dependencies]
