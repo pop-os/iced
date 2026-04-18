@@ -69,6 +69,10 @@ impl Dispatch<ZwpTextInputV3, (), SctkState> for TextInputManager {
         _conn: &Connection,
         _qhandle: &QueueHandle<SctkState>,
     ) {
+        if cfg!(not(feature = "single-instance")) {
+            return;
+        }
+
         let kbd_focus =
             match state.seats.iter_mut().find_map(|s| s.kbd_focus.clone()) {
                 Some(surface) => surface,
