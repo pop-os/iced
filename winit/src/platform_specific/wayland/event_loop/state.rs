@@ -1190,6 +1190,14 @@ impl SctkState {
 
                             }
                         },
+                        platform_specific::wayland::layer_surface::Action::Padding { id, padding } => {
+                            // corner radius padding
+                            if let Some((protocol_object, _)) = self.corner_radii.get_mut(&id) {
+                                if let CornerRadiusWrapper::Wlr(protocol_object) = protocol_object.0.as_ref() {
+                                    protocol_object.set_padding(padding.top, padding.right, padding.bottom, padding.left);
+                                }
+                            }
+                        },
                 },
             Action::Popup(action) => match action {
                 platform_specific::wayland::popup::Action::Popup { popup: settings } => {

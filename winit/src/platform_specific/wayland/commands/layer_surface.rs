@@ -2,7 +2,7 @@
 
 use crate::core::window::Id as SurfaceId;
 use iced_runtime::{
-    self,
+    self, Action, Task,
     platform_specific::{
         self,
         wayland::{
@@ -10,7 +10,7 @@ use iced_runtime::{
             layer_surface::{IcedMargin, SctkLayerSurfaceSettings},
         },
     },
-    task, Action, Task,
+    task,
 };
 
 pub use cctk::sctk::shell::wlr_layer::{Anchor, KeyboardInteractivity, Layer};
@@ -111,6 +111,17 @@ pub fn set_layer<Message>(id: SurfaceId, layer: Layer) -> Task<Message> {
     task::effect(Action::PlatformSpecific(
         platform_specific::Action::Wayland(wayland::Action::LayerSurface(
             wayland::layer_surface::Action::Layer { id, layer },
+        )),
+    ))
+}
+
+pub fn set_padding<Message>(
+    id: SurfaceId,
+    padding: IcedMargin,
+) -> Task<Message> {
+    task::effect(Action::PlatformSpecific(
+        platform_specific::Action::Wayland(wayland::Action::LayerSurface(
+            wayland::layer_surface::Action::Padding { id, padding },
         )),
     ))
 }
