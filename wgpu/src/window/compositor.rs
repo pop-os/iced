@@ -126,6 +126,7 @@ impl Compositor {
         // if log::max_level() >= log::LevelFilter::Info {
         //     let available_adapters: Vec<_> = instance
         //         .enumerate_adapters(settings.backends)
+        //         .await
         //         .iter()
         //         .map(wgpu::Adapter::get_info)
         //         .collect();
@@ -155,6 +156,7 @@ impl Compositor {
             if let Some((vendor_id, device_id)) = ids {
                 adapter = instance
                     .enumerate_adapters(settings.backends)
+                    .await
                     .into_iter()
                     .filter(|adapter| {
                         let info = adapter.get_info();
@@ -172,6 +174,7 @@ impl Compositor {
         } else if let Ok(name) = std::env::var("WGPU_ADAPTER_NAME") {
             adapter = instance
                 .enumerate_adapters(settings.backends)
+                .await
                 .into_iter()
                 .filter(|adapter| {
                     let info = adapter.get_info();
