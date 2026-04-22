@@ -202,7 +202,7 @@ repository = "https://github.com/iced-rs/iced"
 homepage = "https://iced.rs"
 categories = ["gui"]
 keywords = ["gui", "ui", "graphics", "interface", "widgets"]
-rust-version = "1.89"
+rust-version = "1.92"
 
 [workspace.dependencies]
 iced = { version = "0.14.0", path = "." }
@@ -238,10 +238,9 @@ async-std = "1.0"
 bitflags = "2.5"
 bytemuck = { version = "1.0", features = ["derive"] }
 bytes = "1.6"
-cosmic-text = { git = "https://github.com/pop-os/cosmic-text.git" }
-# cosmic-text = "0.10"
+cosmic-text = "0.19"
+cryoglyph = { git = "https://github.com/iced-rs/cryoglyph.git", rev = "e429a025df36ab8145708acb309080ae3deec17a" }
 dark-light = "1.0"
-cryoglyph = { package = "cryoglyph", git = "https://github.com/pop-os/glyphon.git", tag = "cosmic-0.14" }
 resvg = "0.45"
 web-sys = "0.3.69"
 guillotiere = "0.6"
@@ -288,7 +287,7 @@ url = "2.5"
 wasm-bindgen-futures = "0.4"
 wasmtimer = "0.4.2"
 web-time = "1.1"
-wgpu = { version = "27.0", default-features = false, features = [
+wgpu = { version = "28.0", default-features = false, features = [
     "std",
     "wgsl",
 ] }
