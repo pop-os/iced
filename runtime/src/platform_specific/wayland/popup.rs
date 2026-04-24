@@ -3,9 +3,7 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 
-use cctk::sctk::reexports::protocols::xdg::shell::client::xdg_positioner::{
-    Anchor, Gravity,
-};
+use cctk::sctk::reexports::protocols::xdg::shell::client::xdg_positioner::{Anchor, Gravity};
 use iced_core::layout::Limits;
 use iced_core::window::Id;
 use iced_core::{Element, Rectangle};
@@ -129,16 +127,10 @@ pub enum Action {
 impl fmt::Debug for Action {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Action::Popup { popup, .. } => write!(
-                f,
-                "Action::PopupAction::Popup {{ popup: {:?} }}",
-                popup
-            ),
-            Action::Destroy { id } => write!(
-                f,
-                "Action::PopupAction::Destroy {{ id: {:?} }}",
-                id
-            ),
+            Action::Popup { popup, .. } => {
+                write!(f, "Action::PopupAction::Popup {{ popup: {:?} }}", popup)
+            }
+            Action::Destroy { id } => write!(f, "Action::PopupAction::Destroy {{ id: {:?} }}", id),
             Action::Size { id, width, height } => write!(
                 f,
                 "Action::PopupAction::Size {{ id: {:?}, width: {:?}, height: {:?} }}",

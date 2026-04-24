@@ -10,9 +10,7 @@ use wayland_protocols::ext::foreign_toplevel_list::v1::client::ext_foreign_tople
 use crate::event_loop::state::SctkState;
 
 impl ToplevelManagerHandler for SctkState {
-    fn toplevel_manager_state(
-        &mut self,
-    ) -> &mut cctk::toplevel_management::ToplevelManagerState {
+    fn toplevel_manager_state(&mut self) -> &mut cctk::toplevel_management::ToplevelManagerState {
         self.toplevel_manager.as_mut().unwrap()
     }
 

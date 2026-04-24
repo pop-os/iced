@@ -16,9 +16,7 @@ use crate::core::overlay;
 use crate::core::renderer;
 use crate::core::widget::tree::{self, Tree};
 use crate::core::widget::{self, Widget};
-use crate::core::{
-    self, Clipboard, Event, Length, Rectangle, Shell, Size, Vector,
-};
+use crate::core::{self, Clipboard, Event, Length, Rectangle, Shell, Size, Vector};
 
 use ouroboros::self_referencing;
 use rustc_hash::FxHasher;
@@ -31,9 +29,7 @@ use std::rc::Rc;
 pub struct Lazy<'a, Message, Theme, Renderer, Dependency, View> {
     dependency: Dependency,
     view: Box<dyn Fn(&Dependency) -> View + 'a>,
-    element: RefCell<
-        Option<Rc<RefCell<Option<Element<'static, Message, Theme, Renderer>>>>>,
-    >,
+    element: RefCell<Option<Rc<RefCell<Option<Element<'static, Message, Theme, Renderer>>>>>>,
 }
 
 impl<'a, Message, Theme, Renderer, Dependency, View>
@@ -44,10 +40,7 @@ where
 {
     /// Creates a new [`Lazy`] widget with the given data `Dependency` and a
     /// closure that can turn this data into a widget tree.
-    pub fn new(
-        dependency: Dependency,
-        view: impl Fn(&Dependency) -> View + 'a,
-    ) -> Self {
+    pub fn new(dependency: Dependency, view: impl Fn(&Dependency) -> View + 'a) -> Self {
         Self {
             dependency,
             view: Box::new(view),
@@ -55,10 +48,7 @@ where
         }
     }
 
-    fn with_element<T>(
-        &self,
-        f: impl FnOnce(&Element<'_, Message, Theme, Renderer>) -> T,
-    ) -> T {
+    fn with_element<T>(&self, f: impl FnOnce(&Element<'_, Message, Theme, Renderer>) -> T) -> T {
         f(self
             .element
             .borrow()
@@ -89,8 +79,7 @@ struct Internal<Message, Theme, Renderer> {
     hash: u64,
 }
 
-impl<'a, Message, Theme, Renderer, Dependency, View>
-    Widget<Message, Theme, Renderer>
+impl<'a, Message, Theme, Renderer, Dependency, View> Widget<Message, Theme, Renderer>
     for Lazy<'a, Message, Theme, Renderer, Dependency, View>
 where
     View: Into<Element<'static, Message, Theme, Renderer>> + 'static,
@@ -112,8 +101,7 @@ where
             hasher.finish()
         };
 
-        let element =
-            Rc::new(RefCell::new(Some((self.view)(&self.dependency).into())));
+        let element = Rc::new(RefCell::new(Some((self.view)(&self.dependency).into())));
 
         (*self.element.borrow_mut()) = Some(element.clone());
 
@@ -144,9 +132,7 @@ where
 
             (*self.element.borrow_mut()) = Some(current.element.clone());
             self.with_element_mut(|element| {
-                tree.diff_children(std::slice::from_mut(
-                    &mut element.as_widget_mut(),
-                ))
+                tree.diff_children(std::slice::from_mut(&mut element.as_widget_mut()))
             });
         } else {
             (*self.element.borrow_mut()) = Some(current.element.clone());
@@ -171,11 +157,9 @@ where
         limits: &layout::Limits,
     ) -> layout::Node {
         self.with_element_mut(|element| {
-            element.as_widget_mut().layout(
-                &mut tree.children[0],
-                renderer,
-                limits,
-            )
+            element
+                .as_widget_mut()
+                .layout(&mut tree.children[0], renderer, limits)
         })
     }
 
@@ -187,12 +171,9 @@ where
         operation: &mut dyn crate::core::widget::Operation,
     ) {
         self.with_element_mut(|element| {
-            element.as_widget_mut().operate(
-                &mut tree.children[0],
-                layout,
-                renderer,
-                operation,
-            );
+            element
+                .as_widget_mut()
+                .operate(&mut tree.children[0], layout, renderer, operation);
         });
     }
 
@@ -301,8 +282,7 @@ where
             // - You may not like it, but this is what peak performance looks like
             // - TODO: Get rid of ouroboros, for good
             // - What?!
-            *self.element.borrow().as_ref().unwrap().borrow_mut() =
-                Some(heads.element);
+            *self.element.borrow().as_ref().unwrap().borrow_mut() = Some(heads.element);
 
             None
         }
@@ -355,9 +335,7 @@ struct Inner<'a, Message: 'a, Theme: 'a, Renderer: 'a> {
     overlay: Option<RefCell<overlay::Nested<'this, Message, Theme, Renderer>>>,
 }
 
-struct Overlay<'a, Message, Theme, Renderer>(
-    Option<Inner<'a, Message, Theme, Renderer>>,
-);
+struct Overlay<'a, Message, Theme, Renderer>(Option<Inner<'a, Message, Theme, Renderer>>);
 
 impl<Message, Theme, Renderer> Drop for Overlay<'_, Message, Theme, Renderer> {
     fn drop(&mut self) {
@@ -371,18 +349,20 @@ impl<Message, Theme, Renderer> Overlay<'_, Message, Theme, Renderer> {
         &self,
         f: impl FnOnce(&mut overlay::Nested<'_, Message, Theme, Renderer>) -> T,
     ) -> Option<T> {
-        self.0.as_ref().unwrap().with_overlay(|overlay| {
-            overlay.as_ref().map(|nested| (f)(&mut nested.borrow_mut()))
-        })
+        self.0
+            .as_ref()
+            .unwrap()
+            .with_overlay(|overlay| overlay.as_ref().map(|nested| (f)(&mut nested.borrow_mut())))
     }
 
     fn with_overlay_mut_maybe<T>(
         &mut self,
         f: impl FnOnce(&mut overlay::Nested<'_, Message, Theme, Renderer>) -> T,
     ) -> Option<T> {
-        self.0.as_mut().unwrap().with_overlay_mut(|overlay| {
-            overlay.as_mut().map(|nested| (f)(nested.get_mut()))
-        })
+        self.0
+            .as_mut()
+            .unwrap()
+            .with_overlay_mut(|overlay| overlay.as_mut().map(|nested| (f)(nested.get_mut())))
     }
 }
 
@@ -415,10 +395,8 @@ where
         cursor: mouse::Cursor,
         renderer: &Renderer,
     ) -> mouse::Interaction {
-        self.with_overlay_maybe(|overlay| {
-            overlay.mouse_interaction(layout, cursor, renderer)
-        })
-        .unwrap_or_default()
+        self.with_overlay_maybe(|overlay| overlay.mouse_interaction(layout, cursor, renderer))
+            .unwrap_or_default()
     }
 
     fn update(
@@ -446,9 +424,7 @@ where
     Theme: 'static,
     Dependency: Hash + 'a,
 {
-    fn from(
-        lazy: Lazy<'a, Message, Theme, Renderer, Dependency, View>,
-    ) -> Self {
+    fn from(lazy: Lazy<'a, Message, Theme, Renderer, Dependency, View>) -> Self {
         Self::new(lazy)
     }
 }

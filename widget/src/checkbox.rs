@@ -47,8 +47,8 @@ use crate::core::widget;
 use crate::core::widget::tree::{self, Tree};
 use crate::core::window;
 use crate::core::{
-    Background, Border, Clipboard, Color, Element, Event, Layout, Length,
-    Pixels, Rectangle, Shell, Size, Theme, Widget, id::Internal,
+    Background, Border, Clipboard, Color, Element, Event, Layout, Length, Pixels, Rectangle, Shell,
+    Size, Theme, Widget, id::Internal,
 };
 
 /// A box that can be checked.
@@ -84,12 +84,8 @@ use crate::core::{
 /// }
 /// ```
 /// ![Checkbox drawn by `iced_wgpu`](https://github.com/iced-rs/iced/blob/7760618fb112074bc40b148944521f312152012a/docs/images/checkbox.png?raw=true)
-pub struct Checkbox<
-    'a,
-    Message,
-    Theme = crate::Theme,
-    Renderer = crate::Renderer,
-> where
+pub struct Checkbox<'a, Message, Theme = crate::Theme, Renderer = crate::Renderer>
+where
     Renderer: text::Renderer,
     Theme: Catalog,
 {
@@ -217,10 +213,7 @@ where
     }
 
     /// Sets the text [`text::LineHeight`] of the [`Checkbox`].
-    pub fn text_line_height(
-        mut self,
-        line_height: impl Into<text::LineHeight>,
-    ) -> Self {
+    pub fn text_line_height(mut self, line_height: impl Into<text::LineHeight>) -> Self {
         self.text_line_height = line_height.into();
         self
     }
@@ -278,10 +271,7 @@ where
 
     #[cfg(feature = "a11y")]
     /// Sets the description of the [`Checkbox`].
-    pub fn description_widget<T: iced_accessibility::Describes>(
-        mut self,
-        description: &T,
-    ) -> Self {
+    pub fn description_widget<T: iced_accessibility::Describes>(mut self, description: &T) -> Self {
         self.description = Some(iced_accessibility::Description::Id(
             description.description(),
         ));
@@ -291,8 +281,7 @@ where
     #[cfg(feature = "a11y")]
     /// Sets the description of the [`Checkbox`].
     pub fn description(mut self, description: impl Into<Cow<'a, str>>) -> Self {
-        self.description =
-            Some(iced_accessibility::Description::Text(description.into()));
+        self.description = Some(iced_accessibility::Description::Text(description.into()));
         self
     }
 }
@@ -335,8 +324,8 @@ where
             |limits| {
                 if let Some(label) = self.label.as_deref() {
                     let state = tree
-                    .state
-                    .downcast_mut::<widget::text::State<Renderer::Paragraph>>();
+                        .state
+                        .downcast_mut::<widget::text::State<Renderer::Paragraph>>();
 
                     widget::text::layout(
                         state,
@@ -495,8 +484,7 @@ where
 
         {
             let label_layout = children.next().unwrap();
-            let state: &widget::text::State<Renderer::Paragraph> =
-                tree.state.downcast_ref();
+            let state: &widget::text::State<Renderer::Paragraph> = tree.state.downcast_ref();
 
             crate::text::draw(
                 renderer,
@@ -544,12 +532,7 @@ where
             height,
         } = bounds;
 
-        let bounds = Rect::new(
-            x as f64,
-            y as f64,
-            (x + width) as f64,
-            (y + height) as f64,
-        );
+        let bounds = Rect::new(x as f64, y as f64, (x + width) as f64, (y + height) as f64);
 
         let mut node = Node::new(Role::CheckBox);
         node.add_action(Action::Focus);

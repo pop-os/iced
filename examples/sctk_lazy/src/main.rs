@@ -5,8 +5,7 @@ use iced::platform_specific::shell::commands::layer_surface::{
 };
 
 use iced::widget::{
-    button, column, horizontal_space, lazy, pick_list, row, scrollable, text,
-    text_input,
+    button, column, horizontal_space, lazy, pick_list, row, scrollable, text, text_input,
 };
 use iced::window::Id;
 use iced::Task;
@@ -131,8 +130,7 @@ enum Message {
 impl App {
     fn new() -> (App, Task<Message>) {
         let mut initial_surface = SctkLayerSurfaceSettings::default();
-        initial_surface.keyboard_interactivity =
-            KeyboardInteractivity::OnDemand;
+        initial_surface.keyboard_interactivity = KeyboardInteractivity::OnDemand;
         initial_surface.size_limits = Limits::NONE
             .min_width(1.0)
             .min_height(1.0)
@@ -184,17 +182,12 @@ impl App {
             let mut items: Vec<_> = self.items.iter().cloned().collect();
 
             items.sort_by(|a, b| match self.order {
-                Order::Ascending => {
-                    a.name.to_lowercase().cmp(&b.name.to_lowercase())
-                }
-                Order::Descending => {
-                    b.name.to_lowercase().cmp(&a.name.to_lowercase())
-                }
+                Order::Ascending => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
+                Order::Descending => b.name.to_lowercase().cmp(&a.name.to_lowercase()),
             });
 
             column(items.into_iter().map(|item| {
-                let button = button("Delete")
-                    .on_press(Message::DeleteItem(item.clone()));
+                let button = button("Delete").on_press(Message::DeleteItem(item.clone()));
 
                 row![
                     text(item.name.clone()),

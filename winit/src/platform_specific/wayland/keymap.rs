@@ -896,10 +896,7 @@ pub fn keysym_location(keysym: u32) -> Location {
     }
 }
 
-pub fn key_to_keysym(
-    unmodified_key: Key,
-    location: Location,
-) -> Option<xkeysym::Keysym> {
+pub fn key_to_keysym(unmodified_key: Key, location: Location) -> Option<xkeysym::Keysym> {
     use xkbcommon_dl::keysyms;
 
     let raw = match unmodified_key {
@@ -1051,37 +1048,34 @@ pub fn key_to_keysym(
 
             _ => return None,
         }),
-        Key::Character(c) if c.chars().count() == 1 => {
-            Some(match (c.chars().next(), location) {
-                (Some('0'), Location::Numpad) => keysyms::KP_0,
-                (Some('1'), Location::Numpad) => keysyms::KP_1,
-                (Some('2'), Location::Numpad) => keysyms::KP_2,
-                (Some('3'), Location::Numpad) => keysyms::KP_3,
-                (Some('4'), Location::Numpad) => keysyms::KP_4,
-                (Some('5'), Location::Numpad) => keysyms::KP_5,
-                (Some('6'), Location::Numpad) => keysyms::KP_6,
-                (Some('7'), Location::Numpad) => keysyms::KP_7,
-                (Some('8'), Location::Numpad) => keysyms::KP_8,
-                (Some('9'), Location::Numpad) => keysyms::KP_9,
-                (Some('.'), Location::Numpad) => keysyms::KP_Decimal,
-                (Some('+'), Location::Numpad) => keysyms::KP_Add,
-                (Some('-'), Location::Numpad) => keysyms::KP_Subtract,
-                (Some('*'), Location::Numpad) => keysyms::KP_Multiply,
-                (Some('/'), Location::Numpad) => keysyms::KP_Divide,
-                (Some('='), Location::Numpad) => keysyms::KP_Equal,
-                (Some(' '), _) => keysyms::space,
+        Key::Character(c) if c.chars().count() == 1 => Some(match (c.chars().next(), location) {
+            (Some('0'), Location::Numpad) => keysyms::KP_0,
+            (Some('1'), Location::Numpad) => keysyms::KP_1,
+            (Some('2'), Location::Numpad) => keysyms::KP_2,
+            (Some('3'), Location::Numpad) => keysyms::KP_3,
+            (Some('4'), Location::Numpad) => keysyms::KP_4,
+            (Some('5'), Location::Numpad) => keysyms::KP_5,
+            (Some('6'), Location::Numpad) => keysyms::KP_6,
+            (Some('7'), Location::Numpad) => keysyms::KP_7,
+            (Some('8'), Location::Numpad) => keysyms::KP_8,
+            (Some('9'), Location::Numpad) => keysyms::KP_9,
+            (Some('.'), Location::Numpad) => keysyms::KP_Decimal,
+            (Some('+'), Location::Numpad) => keysyms::KP_Add,
+            (Some('-'), Location::Numpad) => keysyms::KP_Subtract,
+            (Some('*'), Location::Numpad) => keysyms::KP_Multiply,
+            (Some('/'), Location::Numpad) => keysyms::KP_Divide,
+            (Some('='), Location::Numpad) => keysyms::KP_Equal,
+            (Some(' '), _) => keysyms::space,
 
-                (Some(c), _) => unsafe {
-                    let keysym =
-                        xkbcommon::xkb::ffi::xkb_utf32_to_keysym(c as u32);
-                    if keysym == keysyms::NoSymbol {
-                        return None;
-                    }
-                    keysym
-                },
-                _ => return None,
-            })
-        }
+            (Some(c), _) => unsafe {
+                let keysym = xkbcommon::xkb::ffi::xkb_utf32_to_keysym(c as u32);
+                if keysym == keysyms::NoSymbol {
+                    return None;
+                }
+                keysym
+            },
+            _ => return None,
+        }),
         _ => None,
     };
     raw.map(|k| xkeysym::Keysym::new(k))

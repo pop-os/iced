@@ -6,9 +6,7 @@ use crate::core::overlay;
 use crate::core::renderer;
 use crate::core::widget;
 use crate::core::widget::tree::{self, Tree};
-use crate::core::{
-    self, Clipboard, Element, Length, Rectangle, Shell, Size, Vector, Widget,
-};
+use crate::core::{self, Clipboard, Element, Length, Rectangle, Shell, Size, Vector, Widget};
 
 use iced_renderer::core::widget::Operation;
 use ouroboros::self_referencing;
@@ -58,18 +56,11 @@ pub trait Component<Message, Theme = crate::Theme, Renderer = crate::Renderer> {
     /// Processes an [`Event`](Component::Event) and updates the [`Component`] state accordingly.
     ///
     /// It can produce a `Message` for the parent application.
-    fn update(
-        &mut self,
-        state: &mut Self::State,
-        event: Self::Event,
-    ) -> Option<Message>;
+    fn update(&mut self, state: &mut Self::State, event: Self::Event) -> Option<Message>;
 
     /// Produces the widgets of the [`Component`], which may trigger an [`Event`](Component::Event)
     /// on user interaction.
-    fn view(
-        &self,
-        state: &Self::State,
-    ) -> Element<'_, Self::Event, Theme, Renderer>;
+    fn view(&self, state: &Self::State) -> Element<'_, Self::Event, Theme, Renderer>;
 
     /// Update the [`Component`] state based on the provided [`Operation`](widget::Operation)
     ///
@@ -98,9 +89,7 @@ struct Tag<T>(T);
 
 /// Turns an implementor of [`Component`] into an [`Element`] that can be
 /// embedded in any application.
-pub fn view<'a, C, Message, Theme, Renderer>(
-    component: C,
-) -> Element<'a, Message, Theme, Renderer>
+pub fn view<'a, C, Message, Theme, Renderer>(component: C) -> Element<'a, Message, Theme, Renderer>
 where
     C: Component<Message, Theme, Renderer> + 'a,
     C::State: 'static,
@@ -129,9 +118,7 @@ struct Instance<'a, Message, Theme, Renderer, Event, S> {
 
 #[self_referencing]
 struct State<'a, Message: 'a, Theme: 'a, Renderer: 'a, Event: 'a, S: 'a> {
-    component: Box<
-        dyn Component<Message, Theme, Renderer, Event = Event, State = S> + 'a,
-    >,
+    component: Box<dyn Component<Message, Theme, Renderer, Event = Event, State = S> + 'a>,
     message: PhantomData<Message>,
     state: PhantomData<S>,
 
@@ -140,8 +127,7 @@ struct State<'a, Message: 'a, Theme: 'a, Renderer: 'a, Event: 'a, S: 'a> {
     element: Option<Element<'this, Event, Theme, Renderer>>,
 }
 
-impl<Message, Theme, Renderer, Event, S>
-    Instance<'_, Message, Theme, Renderer, Event, S>
+impl<Message, Theme, Renderer, Event, S> Instance<'_, Message, Theme, Renderer, Event, S>
 where
     S: Default + 'static,
     Renderer: renderer::Renderer,
@@ -232,10 +218,7 @@ where
         self.diff_self();
     }
 
-    fn with_element<T>(
-        &self,
-        f: impl FnOnce(&Element<'_, Event, Theme, Renderer>) -> T,
-    ) -> T {
+    fn with_element<T>(&self, f: impl FnOnce(&Element<'_, Event, Theme, Renderer>) -> T) -> T {
         self.with_element_mut(|element| f(element))
     }
 
@@ -460,8 +443,12 @@ where
             tree,
             types: PhantomData,
             overlay_builder: |instance, tree| {
-                instance.state.get_mut().as_mut().unwrap().with_element_mut(
-                    move |element| {
+                instance
+                    .state
+                    .get_mut()
+                    .as_mut()
+                    .unwrap()
+                    .with_element_mut(move |element| {
                         element
                             .as_mut()
                             .unwrap()
@@ -473,11 +460,8 @@ where
                                 viewport,
                                 translation,
                             )
-                            .map(|overlay| {
-                                RefCell::new(overlay::Nested::new(overlay))
-                            })
-                    },
-                )
+                            .map(|overlay| RefCell::new(overlay::Nested::new(overlay)))
+                    })
             },
         }
         .build();
@@ -509,11 +493,9 @@ where
         let tree = tree.state.downcast_ref::<Rc<RefCell<Option<Tree>>>>();
         self.with_element(|element| {
             if let Some(tree) = tree.borrow().as_ref() {
-                element.as_widget().a11y_nodes(
-                    layout,
-                    &tree.children[0],
-                    cursor,
-                )
+                element
+                    .as_widget()
+                    .a11y_nodes(layout, &tree.children[0], cursor)
             } else {
                 iced_accessibility::A11yTree::default()
             }
@@ -585,9 +567,7 @@ impl<Message, Theme, Renderer, Event, S>
             .0
             .as_ref()
             .unwrap()
-            .with_overlay(|overlay| {
-                overlay.as_ref().map(|nested| (f)(&mut nested.borrow_mut()))
-            })
+            .with_overlay(|overlay| overlay.as_ref().map(|nested| (f)(&mut nested.borrow_mut())))
     }
 
     fn with_overlay_mut_maybe<T>(
@@ -600,14 +580,11 @@ impl<Message, Theme, Renderer, Event, S>
             .0
             .as_mut()
             .unwrap()
-            .with_overlay_mut(|overlay| {
-                overlay.as_mut().map(|nested| (f)(nested.get_mut()))
-            })
+            .with_overlay_mut(|overlay| overlay.as_mut().map(|nested| (f)(nested.get_mut())))
     }
 }
 
-impl<Message, Theme, Renderer, Event, S>
-    overlay::Overlay<Message, Theme, Renderer>
+impl<Message, Theme, Renderer, Event, S> overlay::Overlay<Message, Theme, Renderer>
     for OverlayInstance<'_, '_, Message, Theme, Renderer, Event, S>
 where
     Renderer: core::Renderer,
@@ -637,10 +614,8 @@ where
         cursor: mouse::Cursor,
         renderer: &Renderer,
     ) -> mouse::Interaction {
-        self.with_overlay_maybe(|overlay| {
-            overlay.mouse_interaction(layout, cursor, renderer)
-        })
-        .unwrap_or_default()
+        self.with_overlay_maybe(|overlay| overlay.mouse_interaction(layout, cursor, renderer))
+            .unwrap_or_default()
     }
 
     fn update(
@@ -656,14 +631,7 @@ where
         let mut local_shell = Shell::new(&mut local_messages);
 
         let _ = self.with_overlay_mut_maybe(|overlay| {
-            overlay.update(
-                event,
-                layout,
-                cursor,
-                renderer,
-                clipboard,
-                &mut local_shell,
-            );
+            overlay.update(event, layout, cursor, renderer, clipboard, &mut local_shell);
         });
 
         if local_shell.is_event_captured() {
@@ -675,8 +643,7 @@ where
         shell.request_input_method(local_shell.input_method());
 
         if !local_messages.is_empty() {
-            let mut inner =
-                self.overlay.take().unwrap().0.take().unwrap().into_heads();
+            let mut inner = self.overlay.take().unwrap().0.take().unwrap().into_heads();
             let mut heads = inner.instance.state.take().unwrap().into_heads();
 
             for message in local_messages.into_iter().filter_map(|message| {

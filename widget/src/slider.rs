@@ -39,8 +39,8 @@ use crate::core::widget::Id;
 use crate::core::widget::tree::{self, Tree};
 use crate::core::window;
 use crate::core::{
-    self, Background, Clipboard, Color, Element, Event, Layout, Length, Pixels,
-    Point, Rectangle, Shell, Size, Theme, Widget,
+    self, Background, Clipboard, Color, Element, Event, Layout, Length, Pixels, Point, Rectangle,
+    Shell, Size, Theme, Widget,
 };
 
 use std::ops::RangeInclusive;
@@ -248,10 +248,7 @@ where
 
     #[cfg(feature = "a11y")]
     /// Sets the description of the [`Slider`].
-    pub fn description_widget(
-        mut self,
-        description: &impl iced_accessibility::Describes,
-    ) -> Self {
+    pub fn description_widget(mut self, description: &impl iced_accessibility::Describes) -> Self {
         self.description = Some(iced_accessibility::Description::Id(
             description.description(),
         ));
@@ -261,22 +258,19 @@ where
     #[cfg(feature = "a11y")]
     /// Sets the description of the [`Slider`].
     pub fn description(mut self, description: impl Into<Cow<'a, str>>) -> Self {
-        self.description =
-            Some(iced_accessibility::Description::Text(description.into()));
+        self.description = Some(iced_accessibility::Description::Text(description.into()));
         self
     }
 
     #[cfg(feature = "a11y")]
     /// Sets the label of the [`Slider`].
     pub fn label(mut self, label: &dyn iced_accessibility::Labels) -> Self {
-        self.label =
-            Some(label.label().into_iter().map(|l| l.into()).collect());
+        self.label = Some(label.label().into_iter().map(|l| l.into()).collect());
         self
     }
 }
 
-impl<T, Message, Theme, Renderer> Widget<Message, Theme, Renderer>
-    for Slider<'_, T, Message, Theme>
+impl<T, Message, Theme, Renderer> Widget<Message, Theme, Renderer> for Slider<'_, T, Message, Theme>
 where
     T: Copy + Into<f64> + num_traits::FromPrimitive,
     Message: Clone,
@@ -341,8 +335,7 @@ where
                     let start = (*self.range.start()).into();
                     let end = (*self.range.end()).into();
 
-                    let percent = f64::from(cursor_position.x - bounds.x)
-                        / f64::from(bounds.width);
+                    let percent = f64::from(cursor_position.x - bounds.x) / f64::from(bounds.width);
 
                     let steps = (percent * (end - start) / step).round();
                     let value = steps * step + start;
@@ -396,13 +389,9 @@ where
             };
 
             match &event {
-                Event::Mouse(mouse::Event::ButtonPressed(
-                    mouse::Button::Left,
-                ))
+                Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left))
                 | Event::Touch(touch::Event::FingerPressed { .. }) => {
-                    if let Some(cursor_position) =
-                        cursor.position_over(layout.bounds())
-                    {
+                    if let Some(cursor_position) = cursor.position_over(layout.bounds()) {
                         if state.keyboard_modifiers.command() {
                             let _ = self.default.map(change);
                             state.is_dragging = false;
@@ -414,9 +403,7 @@ where
                         shell.capture_event();
                     }
                 }
-                Event::Mouse(mouse::Event::ButtonReleased(
-                    mouse::Button::Left,
-                ))
+                Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left))
                 | Event::Touch(touch::Event::FingerLifted { .. })
                 | Event::Touch(touch::Event::FingerLost { .. }) => {
                     if state.is_dragging {
@@ -429,11 +416,7 @@ where
                 Event::Mouse(mouse::Event::CursorMoved { .. })
                 | Event::Touch(touch::Event::FingerMoved { .. }) => {
                     if state.is_dragging {
-                        let _ = cursor
-                            .land()
-                            .position()
-                            .and_then(locate)
-                            .map(change);
+                        let _ = cursor.land().position().and_then(locate).map(change);
 
                         shell.capture_event();
                     }
@@ -456,9 +439,7 @@ where
                         shell.capture_event();
                     }
                 }
-                Event::Keyboard(keyboard::Event::KeyPressed {
-                    key, ..
-                }) => {
+                Event::Keyboard(keyboard::Event::KeyPressed { key, .. }) => {
                     if cursor.is_over(layout.bounds()) {
                         match key {
                             Key::Named(key::Named::ArrowUp) => {
@@ -473,9 +454,7 @@ where
                         }
                     }
                 }
-                Event::Keyboard(keyboard::Event::ModifiersChanged(
-                    modifiers,
-                )) => {
+                Event::Keyboard(keyboard::Event::ModifiersChanged(modifiers)) => {
                     state.keyboard_modifiers = *modifiers;
                 }
                 _ => {}
@@ -511,8 +490,7 @@ where
     ) {
         let bounds = layout.bounds();
 
-        let style =
-            theme.style(&self.class, self.status.unwrap_or(Status::Active));
+        let style = theme.style(&self.class, self.status.unwrap_or(Status::Active));
 
         let border_width = style
             .handle
@@ -520,42 +498,41 @@ where
             .min(bounds.height / 2.0)
             .min(bounds.width / 2.0);
 
-        let (handle_width, handle_height, handle_border_radius) =
-            match style.handle.shape {
-                HandleShape::Circle { radius } => {
-                    let radius = (radius)
-                        .max(2.0 * border_width)
-                        .min(bounds.height / 2.0)
-                        .min(bounds.width / 2.0 + 2.0 * border_width);
-                    (radius * 2.0, radius * 2.0, Radius::from(radius))
+        let (handle_width, handle_height, handle_border_radius) = match style.handle.shape {
+            HandleShape::Circle { radius } => {
+                let radius = (radius)
+                    .max(2.0 * border_width)
+                    .min(bounds.height / 2.0)
+                    .min(bounds.width / 2.0 + 2.0 * border_width);
+                (radius * 2.0, radius * 2.0, Radius::from(radius))
+            }
+            HandleShape::Rectangle {
+                height,
+                width,
+                border_radius,
+            } => {
+                let width = (f32::from(width)).max(2.0 * border_width);
+                let height = (f32::from(height)).max(2.0 * border_width);
+                let mut border_radius: [f32; 4] = border_radius.into();
+                for r in &mut border_radius {
+                    *r = (*r)
+                        .min(height / 2.0)
+                        .min(width / 2.0)
+                        .max(*r * (width + border_width * 2.0) / width);
                 }
-                HandleShape::Rectangle {
-                    height,
-                    width,
-                    border_radius,
-                } => {
-                    let width = (f32::from(width)).max(2.0 * border_width);
-                    let height = (f32::from(height)).max(2.0 * border_width);
-                    let mut border_radius: [f32; 4] = border_radius.into();
-                    for r in &mut border_radius {
-                        *r = (*r)
-                            .min(height / 2.0)
-                            .min(width / 2.0)
-                            .max(*r * (width + border_width * 2.0) / width);
-                    }
 
-                    (
-                        width,
-                        height,
-                        Radius {
-                            top_left: border_radius[0],
-                            top_right: border_radius[1],
-                            bottom_right: border_radius[2],
-                            bottom_left: border_radius[3],
-                        },
-                    )
-                }
-            };
+                (
+                    width,
+                    height,
+                    Radius {
+                        top_left: border_radius[0],
+                        top_right: border_radius[1],
+                        bottom_right: border_radius[2],
+                        bottom_left: border_radius[3],
+                    },
+                )
+            }
+        };
 
         let value = self.value.into() as f32;
         let (range_start, range_end) = {
@@ -567,8 +544,7 @@ where
         let offset = if range_start >= range_end {
             0.0
         } else {
-            (bounds.width - handle_width) * (value - range_start)
-                / (range_end - range_start)
+            (bounds.width - handle_width) * (value - range_start) / (range_end - range_start)
         };
 
         let rail_y = bounds.y + bounds.height / 2.0;
@@ -702,12 +678,7 @@ where
             width,
             height,
         } = bounds;
-        let bounds = Rect::new(
-            x as f64,
-            y as f64,
-            (x + width) as f64,
-            (y + height) as f64,
-        );
+        let bounds = Rect::new(x as f64, y as f64, (x + width) as f64, (y + height) as f64);
         let mut node = Node::new(Role::Slider);
         node.set_bounds(bounds);
         if let Some(name) = self.name.as_ref() {
@@ -768,9 +739,7 @@ where
     Theme: Catalog + 'a,
     Renderer: core::Renderer + 'a,
 {
-    fn from(
-        slider: Slider<'a, T, Message, Theme>,
-    ) -> Element<'a, Message, Theme, Renderer> {
+    fn from(slider: Slider<'a, T, Message, Theme>) -> Element<'a, Message, Theme, Renderer> {
         Element::new(slider)
     }
 }

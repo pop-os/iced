@@ -26,9 +26,7 @@ impl PartialEq for OutputEvent {
             (Self::InfoUpdate(l0), Self::InfoUpdate(r0)) => {
                 l0.id == r0.id && l0.make == r0.make && l0.model == r0.model
             }
-            _ => {
-                core::mem::discriminant(self) == core::mem::discriminant(other)
-            }
+            _ => core::mem::discriminant(self) == core::mem::discriminant(other),
         }
     }
 }

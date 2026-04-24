@@ -27,8 +27,7 @@ use crate::core::mouse;
 use crate::core::renderer;
 use crate::core::widget::Tree;
 use crate::core::{
-    ContentFit, Element, Layout, Length, Point, Rectangle, Rotation, Size,
-    Vector, Widget,
+    ContentFit, Element, Layout, Length, Point, Rectangle, Rotation, Size, Vector, Widget,
 };
 
 pub use image::{FilterMethod, Handle};
@@ -193,10 +192,7 @@ impl<'a, Handle> Image<'a, Handle> {
     ///
     /// Currently, it will only be applied around the rectangular bounding box
     /// of the [`Image`].
-    pub fn border_radius(
-        mut self,
-        border_radius: impl Into<border::Radius>,
-    ) -> Self {
+    pub fn border_radius(mut self, border_radius: impl Into<border::Radius>) -> Self {
         self.border_radius = border_radius.into();
         self
     }
@@ -210,10 +206,7 @@ impl<'a, Handle> Image<'a, Handle> {
 
     #[cfg(feature = "a11y")]
     /// Sets the description of the [`Image`].
-    pub fn description_widget<T: iced_accessibility::Describes>(
-        mut self,
-        description: &T,
-    ) -> Self {
+    pub fn description_widget<T: iced_accessibility::Describes>(mut self, description: &T) -> Self {
         self.description = Some(iced_accessibility::Description::Id(
             description.description(),
         ));
@@ -223,16 +216,14 @@ impl<'a, Handle> Image<'a, Handle> {
     #[cfg(feature = "a11y")]
     /// Sets the description of the [`Image`].
     pub fn description(mut self, description: impl Into<Cow<'a, str>>) -> Self {
-        self.description =
-            Some(iced_accessibility::Description::Text(description.into()));
+        self.description = Some(iced_accessibility::Description::Text(description.into()));
         self
     }
 
     #[cfg(feature = "a11y")]
     /// Sets the label of the [`Image`].
     pub fn label(mut self, label: &dyn iced_accessibility::Labels) -> Self {
-        self.label =
-            Some(label.label().into_iter().map(|l| l.into()).collect());
+        self.label = Some(label.label().into_iter().map(|l| l.into()).collect());
         self
     }
 }
@@ -254,8 +245,7 @@ where
     Renderer: image::Renderer<Handle = Handle>,
 {
     // The raw w/h of the underlying image
-    let image_size =
-        crop(renderer.measure_image(handle).unwrap_or_default(), region);
+    let image_size = crop(renderer.measure_image(handle).unwrap_or_default(), region);
 
     // The rotated size of the image
     let rotated_size = rotation.apply(image_size);
@@ -410,8 +400,7 @@ pub fn draw<Renderer, Handle>(
     );
 }
 
-impl<'a, Message, Theme, Renderer, Handle> Widget<Message, Theme, Renderer>
-    for Image<'a, Handle>
+impl<'a, Message, Theme, Renderer, Handle> Widget<Message, Theme, Renderer> for Image<'a, Handle>
 where
     Renderer: image::Renderer<Handle = Handle>,
     Handle: Clone,
@@ -486,12 +475,7 @@ where
             width,
             height,
         } = bounds;
-        let bounds = Rect::new(
-            x as f64,
-            y as f64,
-            (x + width) as f64,
-            (y + height) as f64,
-        );
+        let bounds = Rect::new(x as f64, y as f64, (x + width) as f64, (y + height) as f64);
         let mut node = Node::new(Role::Image);
         node.set_bounds(bounds);
         if let Some(name) = self.name.as_ref() {

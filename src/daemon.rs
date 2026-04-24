@@ -6,10 +6,7 @@ pub use crate::program::{self, Program};
 use crate::shell;
 use crate::theme;
 use crate::window;
-use crate::{
-    Element, Executor, Font, Preset, Result, Settings, Subscription, Theme,
-    task::Task,
-};
+use crate::{Element, Executor, Font, Preset, Result, Settings, Subscription, Theme, task::Task};
 
 use iced_debug as debug;
 
@@ -81,10 +78,7 @@ where
             None
         }
 
-        fn boot(
-            &self,
-        ) -> (<Self as Program>::State, Task<<Self as Program>::Message>)
-        {
+        fn boot(&self) -> (<Self as Program>::State, Task<<Self as Program>::Message>) {
             self.boot.boot()
         }
 
@@ -203,13 +197,9 @@ impl<P: Program> Daemon<P> {
     pub fn title(
         self,
         title: impl TitleFn<P::State>,
-    ) -> Daemon<
-        impl Program<State = P::State, Message = P::Message, Theme = P::Theme>,
-    > {
+    ) -> Daemon<impl Program<State = P::State, Message = P::Message, Theme = P::Theme>> {
         Daemon {
-            raw: program::with_title(self.raw, move |state, window| {
-                title.title(state, window)
-            }),
+            raw: program::with_title(self.raw, move |state, window| title.title(state, window)),
             settings: self.settings,
             presets: self.presets,
         }
@@ -219,9 +209,7 @@ impl<P: Program> Daemon<P> {
     pub fn subscription(
         self,
         f: impl Fn(&P::State) -> Subscription<P::Message>,
-    ) -> Daemon<
-        impl Program<State = P::State, Message = P::Message, Theme = P::Theme>,
-    > {
+    ) -> Daemon<impl Program<State = P::State, Message = P::Message, Theme = P::Theme>> {
         Daemon {
             raw: program::with_subscription(self.raw, f),
             settings: self.settings,
@@ -233,13 +221,9 @@ impl<P: Program> Daemon<P> {
     pub fn theme(
         self,
         f: impl ThemeFn<P::State, P::Theme>,
-    ) -> Daemon<
-        impl Program<State = P::State, Message = P::Message, Theme = P::Theme>,
-    > {
+    ) -> Daemon<impl Program<State = P::State, Message = P::Message, Theme = P::Theme>> {
         Daemon {
-            raw: program::with_theme(self.raw, move |state, window| {
-                f.theme(state, window)
-            }),
+            raw: program::with_theme(self.raw, move |state, window| f.theme(state, window)),
             settings: self.settings,
             presets: self.presets,
         }
@@ -249,9 +233,7 @@ impl<P: Program> Daemon<P> {
     pub fn style(
         self,
         f: impl Fn(&P::State, &P::Theme) -> theme::Style,
-    ) -> Daemon<
-        impl Program<State = P::State, Message = P::Message, Theme = P::Theme>,
-    > {
+    ) -> Daemon<impl Program<State = P::State, Message = P::Message, Theme = P::Theme>> {
         Daemon {
             raw: program::with_style(self.raw, f),
             settings: self.settings,
@@ -263,9 +245,7 @@ impl<P: Program> Daemon<P> {
     pub fn scale_factor(
         self,
         f: impl Fn(&P::State, window::Id) -> f64,
-    ) -> Daemon<
-        impl Program<State = P::State, Message = P::Message, Theme = P::Theme>,
-    > {
+    ) -> Daemon<impl Program<State = P::State, Message = P::Message, Theme = P::Theme>> {
         Daemon {
             raw: program::with_scale_factor(self.raw, f),
             settings: self.settings,
@@ -276,9 +256,7 @@ impl<P: Program> Daemon<P> {
     /// Sets the executor of the [`Daemon`].
     pub fn executor<E>(
         self,
-    ) -> Daemon<
-        impl Program<State = P::State, Message = P::Message, Theme = P::Theme>,
-    >
+    ) -> Daemon<impl Program<State = P::State, Message = P::Message, Theme = P::Theme>>
     where
         E: Executor,
     {
@@ -294,10 +272,7 @@ impl<P: Program> Daemon<P> {
     /// Presets can be used to override the default booting strategy
     /// of your application during testing to create reproducible
     /// environments.
-    pub fn presets(
-        self,
-        presets: impl IntoIterator<Item = Preset<P::State, P::Message>>,
-    ) -> Self {
+    pub fn presets(self, presets: impl IntoIterator<Item = Preset<P::State, P::Message>>) -> Self {
         Self {
             presets: presets.into_iter().collect(),
             ..self
@@ -324,9 +299,7 @@ impl<P: Program> Program for Daemon<P> {
         None
     }
 
-    fn boot(
-        &self,
-    ) -> (<Self as Program>::State, Task<<Self as Program>::Message>) {
+    fn boot(&self) -> (<Self as Program>::State, Task<<Self as Program>::Message>) {
         self.raw.boot()
     }
 
@@ -351,11 +324,7 @@ impl<P: Program> Program for Daemon<P> {
         debug::hot(|| self.raw.view(state, window))
     }
 
-    fn title(
-        &self,
-        state: &<Self as Program>::State,
-        window: window::Id,
-    ) -> String {
+    fn title(&self, state: &<Self as Program>::State, window: window::Id) -> String {
         debug::hot(|| self.raw.title(state, window))
     }
 
@@ -382,11 +351,7 @@ impl<P: Program> Program for Daemon<P> {
         debug::hot(|| self.raw.style(state, theme))
     }
 
-    fn scale_factor(
-        &self,
-        state: &<Self as Program>::State,
-        window: window::Id,
-    ) -> f64 {
+    fn scale_factor(&self, state: &<Self as Program>::State, window: window::Id) -> f64 {
         debug::hot(|| self.raw.scale_factor(state, window))
     }
 
@@ -427,25 +392,17 @@ where
 /// returns any `Into<Element<'_, Message>>`.
 pub trait ViewFn<'a, State, Message, Theme, Renderer> {
     /// Produces the widget of the [`Daemon`].
-    fn view(
-        &self,
-        state: &'a State,
-        window: window::Id,
-    ) -> Element<'a, Message, Theme, Renderer>;
+    fn view(&self, state: &'a State, window: window::Id) -> Element<'a, Message, Theme, Renderer>;
 }
 
-impl<'a, T, State, Message, Theme, Renderer, Widget>
-    ViewFn<'a, State, Message, Theme, Renderer> for T
+impl<'a, T, State, Message, Theme, Renderer, Widget> ViewFn<'a, State, Message, Theme, Renderer>
+    for T
 where
     T: Fn(&'a State, window::Id) -> Widget,
     State: 'static,
     Widget: Into<Element<'a, Message, Theme, Renderer>>,
 {
-    fn view(
-        &self,
-        state: &'a State,
-        window: window::Id,
-    ) -> Element<'a, Message, Theme, Renderer> {
+    fn view(&self, state: &'a State, window: window::Id) -> Element<'a, Message, Theme, Renderer> {
         self(state, window).into()
     }
 }

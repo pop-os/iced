@@ -15,12 +15,7 @@ pub fn search_id(target: Id) -> impl Operation<Id> {
     }
 
     impl Operation<Id> for Find {
-        fn custom(
-            &mut self,
-            id: Option<&Id>,
-            _bounds: Rectangle,
-            _state: &mut dyn std::any::Any,
-        ) {
+        fn custom(&mut self, id: Option<&Id>, _bounds: Rectangle, _state: &mut dyn std::any::Any) {
             if Some(&self.target) == id {
                 self.found = true;
             }
@@ -34,10 +29,7 @@ pub fn search_id(target: Id) -> impl Operation<Id> {
             }
         }
 
-        fn traverse(
-            &mut self,
-            operate: &mut dyn FnMut(&mut dyn Operation<Id>),
-        ) {
+        fn traverse(&mut self, operate: &mut dyn FnMut(&mut dyn Operation<Id>)) {
             operate(self);
         }
     }

@@ -7,8 +7,7 @@ use iced::platform_specific::shell::commands::{
 };
 use iced::theme::{self, Theme};
 use iced::widget::{
-    self, button, checkbox, column, container, row, scrollable, text,
-    text_input, Text,
+    self, button, checkbox, column, container, row, scrollable, text, text_input, Text,
 };
 use iced::window::Settings;
 use iced::{window, Application, Element, Program, Task};
@@ -149,9 +148,7 @@ impl Todos {
                     }
                     Message::CreateTask => {
                         if !state.input_value.is_empty() {
-                            state
-                                .tasks
-                                .push(MyTask::new(state.input_value.clone()));
+                            state.tasks.push(MyTask::new(state.input_value.clone()));
                             state.input_value.clear();
                         }
                         Task::none()
@@ -168,8 +165,7 @@ impl Todos {
                     }
                     Message::TaskMessage(i, task_message) => {
                         if let Some(task) = state.tasks.get_mut(i) {
-                            let should_focus =
-                                matches!(task_message, TaskMessage::Edit);
+                            let should_focus = matches!(task_message, TaskMessage::Edit);
 
                             task.update(task_message);
 
@@ -255,8 +251,7 @@ impl Todos {
                     .on_paste(Message::InputChanged);
 
                 let controls = view_controls(tasks, *filter);
-                let filtered_tasks =
-                    tasks.iter().filter(|task| filter.matches(task));
+                let filtered_tasks = tasks.iter().filter(|task| filter.matches(task));
 
                 let tasks: Element<_> = if filtered_tasks.count() > 0 {
                     column(
@@ -265,9 +260,8 @@ impl Todos {
                             .enumerate()
                             .filter(|(_, task)| filter.matches(task))
                             .map(|(i, task)| {
-                                task.view(i).map(move |message| {
-                                    Message::TaskMessage(i, message)
-                                })
+                                task.view(i)
+                                    .map(move |message| Message::TaskMessage(i, message))
                             })
                             .collect::<Vec<_>>(),
                     )
@@ -277,9 +271,7 @@ impl Todos {
                     empty_message(match filter {
                         Filter::All => "You have not created a task yet...",
                         Filter::Active => "All your tasks are done! :D",
-                        Filter::Completed => {
-                            "You have not completed a task yet..."
-                        }
+                        Filter::Completed => "You have not completed a task yet...",
                     })
                 };
 
@@ -421,13 +413,12 @@ impl MyTask {
                 .into()
             }
             TaskState::Editing => {
-                let text_input =
-                    text_input("Describe your task...", &self.description)
-                        .id(Self::text_input_id(i))
-                        .on_submit(TaskMessage::FinishEdition)
-                        .on_input(TaskMessage::DescriptionEdited)
-                        .on_paste(TaskMessage::DescriptionEdited)
-                        .padding(10);
+                let text_input = text_input("Describe your task...", &self.description)
+                    .id(Self::text_input_id(i))
+                    .on_submit(TaskMessage::FinishEdition)
+                    .on_input(TaskMessage::DescriptionEdited)
+                    .on_paste(TaskMessage::DescriptionEdited)
+                    .padding(10);
 
                 row![
                     text_input,
@@ -598,8 +589,7 @@ impl SavedState {
     async fn save(self) -> Result<(), SaveError> {
         use async_std::prelude::*;
 
-        let json = serde_json::to_string_pretty(&self)
-            .map_err(|_| SaveError::Format)?;
+        let json = serde_json::to_string_pretty(&self).map_err(|_| SaveError::Format)?;
 
         let path = Self::path();
 
@@ -648,8 +638,7 @@ impl SavedState {
     async fn save(self) -> Result<(), SaveError> {
         let storage = Self::storage().ok_or(SaveError::File)?;
 
-        let json = serde_json::to_string_pretty(&self)
-            .map_err(|_| SaveError::Format)?;
+        let json = serde_json::to_string_pretty(&self).map_err(|_| SaveError::Format)?;
 
         storage
             .set_item("state", &json)

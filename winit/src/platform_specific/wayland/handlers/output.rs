@@ -1,6 +1,4 @@
-use crate::platform_specific::wayland::{
-    event_loop::state::SctkState, sctk_event::SctkEvent,
-};
+use crate::platform_specific::wayland::{event_loop::state::SctkState, sctk_event::SctkEvent};
 use cctk::sctk::{delegate_output, output::OutputHandler};
 
 impl OutputHandler for SctkState {

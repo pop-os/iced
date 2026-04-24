@@ -27,9 +27,7 @@ use crate::renderer;
 use crate::text::paragraph::{self, Paragraph};
 use crate::text::{self, Fragment};
 use crate::widget::tree::{self, Tree};
-use crate::{
-    Color, Element, Layout, Length, Pixels, Rectangle, Size, Theme, Widget,
-};
+use crate::{Color, Element, Layout, Length, Pixels, Rectangle, Size, Theme, Widget};
 
 use std::borrow::Cow;
 pub use text::{Alignment, Ellipsize, LineHeight, Shaping, Wrapping};
@@ -105,10 +103,7 @@ where
     /// Sets the [`Font`] of the [`Text`], if `Some`.
     ///
     /// [`Font`]: crate::text::Renderer::Font
-    pub fn font_maybe(
-        mut self,
-        font: Option<impl Into<Renderer::Font>>,
-    ) -> Self {
+    pub fn font_maybe(mut self, font: Option<impl Into<Renderer::Font>>) -> Self {
         self.format.font = font.map(Into::into);
         self
     }
@@ -138,10 +133,7 @@ where
     }
 
     /// Sets the [`alignment::Vertical`] of the [`Text`].
-    pub fn align_y(
-        mut self,
-        alignment: impl Into<alignment::Vertical>,
-    ) -> Self {
+    pub fn align_y(mut self, alignment: impl Into<alignment::Vertical>) -> Self {
         self.format.align_y = alignment.into();
         self
     }
@@ -204,8 +196,7 @@ where
 /// The internal state of a [`Text`] widget.
 pub type State<P> = paragraph::Plain<P>;
 
-impl<Message, Theme, Renderer> Widget<Message, Theme, Renderer>
-    for Text<'_, Theme, Renderer>
+impl<Message, Theme, Renderer> Widget<Message, Theme, Renderer> for Text<'_, Theme, Renderer>
 where
     Theme: Catalog,
     Renderer: text::Renderer,
@@ -291,12 +282,7 @@ where
             width,
             height,
         } = layout.bounds();
-        let bounds = Rect::new(
-            x as f64,
-            y as f64,
-            (x + width) as f64,
-            (y + height) as f64,
-        );
+        let bounds = Rect::new(x as f64, y as f64, (x + width) as f64, (y + height) as f64);
 
         let mut node = Node::new(Role::Paragraph);
 
@@ -419,9 +405,7 @@ where
     Theme: Catalog + 'a,
     Renderer: text::Renderer + 'a,
 {
-    fn from(
-        text: Text<'a, Theme, Renderer>,
-    ) -> Element<'a, Message, Theme, Renderer> {
+    fn from(text: Text<'a, Theme, Renderer>) -> Element<'a, Message, Theme, Renderer> {
         Element::new(text)
     }
 }
@@ -459,8 +443,7 @@ where
     }
 }
 
-impl<'a, Message, Theme, Renderer> From<&'a str>
-    for Element<'a, Message, Theme, Renderer>
+impl<'a, Message, Theme, Renderer> From<&'a str> for Element<'a, Message, Theme, Renderer>
 where
     Theme: Catalog + 'a,
     Renderer: text::Renderer + 'a,

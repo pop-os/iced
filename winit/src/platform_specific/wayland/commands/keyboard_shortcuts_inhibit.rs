@@ -1,7 +1,7 @@
 use iced_runtime::{
-    self,
+    self, Action, Task,
     platform_specific::{self, wayland},
-    task, Action, Task,
+    task,
 };
 
 pub fn inhibit_shortcuts(inhibit: bool) -> Task<()> {

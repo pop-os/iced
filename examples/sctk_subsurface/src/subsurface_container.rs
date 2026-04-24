@@ -7,8 +7,7 @@ use iced::core::overlay;
 use iced::core::renderer;
 use iced::core::widget::{Operation, Tree};
 use iced::core::{
-    Clipboard, Element, Layout, Length, Padding, Pixels, Rectangle, Shell,
-    Size, Vector, Widget,
+    Clipboard, Element, Layout, Length, Padding, Pixels, Rectangle, Shell, Size, Vector, Widget,
 };
 
 /// A container that distributes its contents vertically.
@@ -34,12 +33,7 @@ use iced::core::{
 /// }
 /// ```
 #[allow(missing_debug_implementations)]
-pub struct SubsurfaceContainer<
-    'a,
-    Message,
-    Theme = iced::Theme,
-    Renderer = iced::Renderer,
-> {
+pub struct SubsurfaceContainer<'a, Message, Theme = iced::Theme, Renderer = iced::Renderer> {
     spacing: f32,
     padding: Padding,
     width: Length,
@@ -50,8 +44,7 @@ pub struct SubsurfaceContainer<
     children: Vec<Element<'a, Message, Theme, Renderer>>,
 }
 
-impl<'a, Message, Theme, Renderer>
-    SubsurfaceContainer<'a, Message, Theme, Renderer>
+impl<'a, Message, Theme, Renderer> SubsurfaceContainer<'a, Message, Theme, Renderer>
 where
     Renderer: iced::core::Renderer,
 {
@@ -81,9 +74,7 @@ where
     ///
     /// If any of the children have a [`Length::Fill`] strategy, you will need to
     /// call [`SubsurfaceContainer::width`] or [`SubsurfaceContainer::height`] accordingly.
-    pub fn from_vec(
-        children: Vec<Element<'a, Message, Theme, Renderer>>,
-    ) -> Self {
+    pub fn from_vec(children: Vec<Element<'a, Message, Theme, Renderer>>) -> Self {
         Self {
             spacing: 0.0,
             padding: Padding::ZERO,
@@ -144,10 +135,7 @@ where
     }
 
     /// Adds an element to the [`SubsurfaceContainer`].
-    pub fn push(
-        mut self,
-        child: impl Into<Element<'a, Message, Theme, Renderer>>,
-    ) -> Self {
+    pub fn push(mut self, child: impl Into<Element<'a, Message, Theme, Renderer>>) -> Self {
         let child = child.into();
         let child_size = child.as_widget().size_hint();
 
@@ -179,8 +167,7 @@ where
     }
 }
 
-impl<'a, Message, Renderer> Default
-    for SubsurfaceContainer<'a, Message, Renderer>
+impl<'a, Message, Renderer> Default for SubsurfaceContainer<'a, Message, Renderer>
 where
     Renderer: iced::core::Renderer,
 {
@@ -193,11 +180,7 @@ impl<'a, Message, Theme, Renderer: iced::core::Renderer>
     FromIterator<Element<'a, Message, Theme, Renderer>>
     for SubsurfaceContainer<'a, Message, Theme, Renderer>
 {
-    fn from_iter<
-        T: IntoIterator<Item = Element<'a, Message, Theme, Renderer>>,
-    >(
-        iter: T,
-    ) -> Self {
+    fn from_iter<T: IntoIterator<Item = Element<'a, Message, Theme, Renderer>>>(iter: T) -> Self {
         Self::with_children(iter)
     }
 }
@@ -241,9 +224,7 @@ where
                     size.height,
                     self.padding,
                     |limits| c.0.as_widget().layout(c.1, renderer, limits),
-                    |content, size| {
-                        content.align(self.align, Alignment::Start, size)
-                    },
+                    |content, size| content.align(self.align, Alignment::Start, size),
                 )
             })
             .collect();
@@ -316,9 +297,9 @@ where
             .zip(&tree.children)
             .zip(layout.children())
             .map(|((child, state), layout)| {
-                child.as_widget().mouse_interaction(
-                    state, layout, cursor, viewport, renderer,
-                )
+                child
+                    .as_widget()
+                    .mouse_interaction(state, layout, cursor, viewport, renderer)
             })
             .max()
             .unwrap_or_default()
@@ -348,9 +329,9 @@ where
                 .zip(layout.children())
                 .filter(|(_, layout)| layout.bounds().intersects(viewport))
             {
-                child.as_widget().draw(
-                    state, renderer, theme, style, layout, cursor, viewport,
-                );
+                child
+                    .as_widget()
+                    .draw(state, renderer, theme, style, layout, cursor, viewport);
             }
         }
     }
@@ -362,13 +343,7 @@ where
         renderer: &Renderer,
         translation: Vector,
     ) -> Option<overlay::Element<'b, Message, Theme, Renderer>> {
-        overlay::from_children(
-            &mut self.children,
-            tree,
-            layout,
-            renderer,
-            translation,
-        )
+        overlay::from_children(&mut self.children, tree, layout, renderer, translation)
     }
 
     #[cfg(feature = "a11y")]
@@ -385,9 +360,7 @@ where
                 .iter()
                 .zip(layout.children())
                 .zip(state.children.iter())
-                .map(|((c, c_layout), state)| {
-                    c.as_widget().a11y_nodes(c_layout, state, cursor)
-                }),
+                .map(|((c, c_layout), state)| c.as_widget().a11y_nodes(c_layout, state, cursor)),
         )
     }
 
@@ -404,27 +377,20 @@ where
             .zip(layout.children())
             .zip(state.children.iter())
         {
-            e.as_widget().drag_destinations(
-                state,
-                layout,
-                renderer,
-                dnd_rectangles,
-            );
+            e.as_widget()
+                .drag_destinations(state, layout, renderer, dnd_rectangles);
         }
     }
 }
 
-impl<'a, Message, Theme, Renderer>
-    From<SubsurfaceContainer<'a, Message, Theme, Renderer>>
+impl<'a, Message, Theme, Renderer> From<SubsurfaceContainer<'a, Message, Theme, Renderer>>
     for Element<'a, Message, Theme, Renderer>
 where
     Message: 'a,
     Theme: 'a,
     Renderer: iced::core::Renderer + 'a,
 {
-    fn from(
-        SubsurfaceContainer: SubsurfaceContainer<'a, Message, Theme, Renderer>,
-    ) -> Self {
+    fn from(SubsurfaceContainer: SubsurfaceContainer<'a, Message, Theme, Renderer>) -> Self {
         Self::new(SubsurfaceContainer)
     }
 }

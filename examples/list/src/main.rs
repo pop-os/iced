@@ -1,6 +1,5 @@
 use iced::widget::{
-    button, center, column, container, list, row, scrollable,
-    space::horizontal, text,
+    button, center, column, container, list, row, scrollable, space::horizontal, text,
 };
 use iced::{Alignment, Element, Length, Task, Theme};
 
@@ -55,8 +54,7 @@ impl List {
                 container(list(&self.content, |index, (id, state)| {
                     row![
                         match state {
-                            State::Idle =>
-                                Element::from(text(format!("I am item {id}!"))),
+                            State::Idle => Element::from(text(format!("I am item {id}!"))),
                             State::Updated => center(
                                 column![
                                     text(format!("I am item {id}!")),
@@ -69,8 +67,7 @@ impl List {
                         },
                         horizontal(),
                         button("Update").on_press_maybe(
-                            matches!(state, State::Idle)
-                                .then_some(Message::Update(index))
+                            matches!(state, State::Idle).then_some(Message::Update(index))
                         ),
                         button("Remove")
                             .on_press(Message::Remove(index))
@@ -93,9 +90,7 @@ impl List {
 impl Default for List {
     fn default() -> Self {
         Self {
-            content: list::Content::from_iter(
-                (0..1_000).map(|id| (id, State::Idle)),
-            ),
+            content: list::Content::from_iter((0..1_000).map(|id| (id, State::Idle))),
         }
     }
 }

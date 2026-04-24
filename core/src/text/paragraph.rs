@@ -1,8 +1,7 @@
 //! Draw paragraphs.
 use crate::alignment;
 use crate::text::{
-    Affinity, Alignment, Difference, Hit, LineHeight, Shaping, Span, Text,
-    Wrapping,
+    Affinity, Alignment, Difference, Hit, LineHeight, Shaping, Span, Text, Wrapping,
 };
 use crate::{Pixels, Point, Rectangle, Size};
 
@@ -17,9 +16,7 @@ pub trait Paragraph: Sized + Default {
     fn with_text(text: Text<&str, Self::Font>) -> Self;
 
     /// Creates a new [`Paragraph`] laid out with the given [`Text`].
-    fn with_spans<Link>(
-        text: Text<&[Span<'_, Link, Self::Font>], Self::Font>,
-    ) -> Self;
+    fn with_spans<Link>(text: Text<&[Span<'_, Link, Self::Font>], Self::Font>) -> Self;
 
     /// Lays out the [`Paragraph`] with some new boundaries.
     fn resize(&mut self, new_bounds: Size);

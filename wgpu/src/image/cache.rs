@@ -29,8 +29,7 @@ impl Cache {
         _shell: &Shell,
     ) -> Self {
         #[cfg(all(feature = "image", not(target_arch = "wasm32")))]
-        let worker =
-            Worker::new(device, _queue, backend, layout.clone(), _shell);
+        let worker = Worker::new(device, _queue, backend, layout.clone(), _shell);
 
         Self {
             atlas: Atlas::new(device, backend, layout),
@@ -38,10 +37,7 @@ impl Cache {
             raster: Raster {
                 cache: crate::image::raster::Cache::default(),
                 pending: HashMap::new(),
-                belt: wgpu::util::StagingBelt::new(
-                    device.clone(),
-                    2 * 1024 * 1024,
-                ),
+                belt: wgpu::util::StagingBelt::new(device.clone(), 2 * 1024 * 1024),
             },
             #[cfg(feature = "svg")]
             vector: crate::image::vector::Cache::default(),
@@ -54,9 +50,7 @@ impl Cache {
     pub fn allocate_image(
         &mut self,
         handle: &core::image::Handle,
-        callback: impl FnOnce(Result<core::image::Allocation, core::image::Error>)
-        + Send
-        + 'static,
+        callback: impl FnOnce(Result<core::image::Allocation, core::image::Error>) + Send + 'static,
     ) {
         use crate::image::raster::Memory;
 
@@ -108,11 +102,9 @@ impl Cache {
 
         match self.raster.cache.get_mut(handle).unwrap() {
             Memory::Host(image) => {
-                let mut encoder = device.create_command_encoder(
-                    &wgpu::CommandEncoderDescriptor {
-                        label: Some("raster image upload"),
-                    },
-                );
+                let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("raster image upload"),
+                });
 
                 let entry = self.atlas.upload(
                     device,
@@ -138,10 +130,7 @@ impl Cache {
 
                 #[allow(unsafe_code)]
                 let allocation = unsafe {
-                    core::image::allocate(
-                        handle,
-                        Size::new(image.width(), image.height()),
-                    )
+                    core::image::allocate(handle, Size::new(image.width(), image.height()))
                 };
 
                 self.raster.cache.insert(
@@ -166,8 +155,7 @@ impl Cache {
                 }
 
                 #[allow(unsafe_code)]
-                let new =
-                    unsafe { core::image::allocate(handle, entry.size()) };
+                let new = unsafe { core::image::allocate(handle, entry.size()) };
 
                 *allocation = Some(new.downgrade());
 
@@ -178,10 +166,7 @@ impl Cache {
     }
 
     #[cfg(feature = "image")]
-    pub fn measure_image(
-        &mut self,
-        handle: &core::image::Handle,
-    ) -> Option<Size<u32>> {
+    pub fn measure_image(&mut self, handle: &core::image::Handle) -> Option<Size<u32>> {
         self.receive();
 
         let image = load_image(
@@ -239,14 +224,9 @@ impl Cache {
 
         // TODO: Concurrent Wasm support
         if image.len() < MAX_SYNC_SIZE || cfg!(target_arch = "wasm32") {
-            let entry = self.atlas.upload(
-                device,
-                encoder,
-                belt,
-                image.width(),
-                image.height(),
-                &image,
-            )?;
+            let entry =
+                self.atlas
+                    .upload(device, encoder, belt, image.width(), image.height(), &image)?;
 
             *memory = Memory::Device {
                 entry,
@@ -325,9 +305,7 @@ impl Cache {
 
                     let allocation = if let Some(callbacks) = callbacks {
                         #[allow(unsafe_code)]
-                        let allocation = unsafe {
-                            core::image::allocate(&handle, entry.size())
-                        };
+                        let allocation = unsafe { core::image::allocate(&handle, entry.size()) };
 
                         let reference = allocation.downgrade();
 
@@ -380,8 +358,7 @@ struct Raster {
 }
 
 #[cfg(feature = "image")]
-type Callback =
-    Box<dyn FnOnce(Result<core::image::Allocation, core::image::Error>) + Send>;
+type Callback = Box<dyn FnOnce(Result<core::image::Allocation, core::image::Error>) + Send>;
 
 #[cfg(feature = "image")]
 fn load_image<'a>(
@@ -454,10 +431,7 @@ mod worker {
                 backend,
                 texture_layout,
                 shell: shell.clone(),
-                belt: wgpu::util::StagingBelt::new(
-                    device.clone(),
-                    4 * 1024 * 1024,
-                ),
+                belt: wgpu::util::StagingBelt::new(device.clone(), 4 * 1024 * 1024),
                 jobs: jobs_receiver,
                 output: work_sender,
                 quit: quit_receiver,
@@ -550,35 +524,25 @@ mod worker {
                 };
 
                 match job {
-                    Job::Load(handle) => {
-                        match crate::graphics::image::load(&handle) {
-                            Ok(image) => self.upload(
-                                handle,
-                                image.width(),
-                                image.height(),
-                                image.into_raw(),
-                                Shell::invalidate_layout,
-                            ),
-                            Err(error) => {
-                                let _ = self
-                                    .output
-                                    .send(Work::Error { handle, error });
-                            }
+                    Job::Load(handle) => match crate::graphics::image::load(&handle) {
+                        Ok(image) => self.upload(
+                            handle,
+                            image.width(),
+                            image.height(),
+                            image.into_raw(),
+                            Shell::invalidate_layout,
+                        ),
+                        Err(error) => {
+                            let _ = self.output.send(Work::Error { handle, error });
                         }
-                    }
+                    },
                     Job::Upload {
                         handle,
                         rgba,
                         width,
                         height,
                     } => {
-                        self.upload(
-                            handle,
-                            width,
-                            height,
-                            rgba,
-                            Shell::request_redraw,
-                        );
+                        self.upload(handle, width, height, rgba, Shell::request_redraw);
                     }
                     Job::Drop(bind_group) => {
                         drop(bind_group);
@@ -596,11 +560,11 @@ mod worker {
             rgba: Bytes,
             callback: fn(&Shell),
         ) {
-            let mut encoder = self.device.create_command_encoder(
-                &wgpu::CommandEncoderDescriptor {
+            let mut encoder = self
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                     label: Some("raster image upload"),
-                },
-            );
+                });
 
             let mut atlas = Atlas::with_size(
                 &self.device,

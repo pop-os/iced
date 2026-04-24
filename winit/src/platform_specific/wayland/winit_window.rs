@@ -56,9 +56,7 @@ impl SctkWinitWindow {
 
 impl winit::window::Window for SctkWinitWindow {
     fn id(&self) -> winit::window::WindowId {
-        winit::window::WindowId::from_raw(
-            self.surface.wl_surface().id().as_ptr() as usize,
-        )
+        winit::window::WindowId::from_raw(self.surface.wl_surface().id().as_ptr() as usize)
     }
 
     fn scale_factor(&self) -> f64 {
@@ -107,8 +105,7 @@ impl winit::window::Window for SctkWinitWindow {
     ) -> Option<winit::dpi::PhysicalSize<u32>> {
         let mut guard = self.common.lock().unwrap();
         self.request_redraw();
-        let logical_size: LogicalSize<u32> =
-            size.to_logical(guard.fractional_scale.unwrap_or(1.));
+        let logical_size: LogicalSize<u32> = size.to_logical(guard.fractional_scale.unwrap_or(1.));
         match &self.surface {
             CommonSurface::Popup(popup, positioner) => {
                 if logical_size.width == 0 || logical_size.height == 0 {
@@ -123,10 +120,7 @@ impl winit::window::Window for SctkWinitWindow {
                 guard.size = logical_size;
                 guard.requested_size.0 = Some(guard.size.width);
                 guard.requested_size.1 = Some(guard.size.height);
-                positioner.set_size(
-                    guard.size.width as i32,
-                    guard.size.height as i32,
-                );
+                positioner.set_size(guard.size.width as i32, guard.size.height as i32);
                 popup.xdg_surface().set_window_geometry(
                     0,
                     0,
@@ -135,15 +129,11 @@ impl winit::window::Window for SctkWinitWindow {
                 );
                 popup.xdg_popup().reposition(
                     positioner,
-                    TOKEN_CTR
-                        .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+                    TOKEN_CTR.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
                 );
                 if let Some(viewport) = guard.wp_viewport.as_ref() {
                     // Set inner size without the borders.
-                    viewport.set_destination(
-                        guard.size.width as i32,
-                        guard.size.height as i32,
-                    );
+                    viewport.set_destination(guard.size.width as i32, guard.size.height as i32);
                 }
             }
             CommonSurface::Layer(layer_surface) => {
@@ -166,10 +156,7 @@ impl winit::window::Window for SctkWinitWindow {
                 layer_surface.set_size(logical_size.width, logical_size.height);
                 if let Some(viewport) = guard.wp_viewport.as_ref() {
                     // Set inner size without the borders.
-                    viewport.set_destination(
-                        guard.size.width as i32,
-                        guard.size.height as i32,
-                    );
+                    viewport.set_destination(guard.size.width as i32, guard.size.height as i32);
                 }
             }
             CommonSurface::Lock(_) => {}
@@ -186,10 +173,7 @@ impl winit::window::Window for SctkWinitWindow {
                 guard.size = logical_size;
                 if let Some(viewport) = guard.wp_viewport.as_ref() {
                     // Set inner size without the borders.
-                    viewport.set_destination(
-                        guard.size.width as i32,
-                        guard.size.height as i32,
-                    );
+                    viewport.set_destination(guard.size.width as i32, guard.size.height as i32);
                 }
                 _ = self
                     .tx
@@ -218,13 +202,8 @@ impl winit::window::Window for SctkWinitWindow {
         // XXX not applicable to wrapped surfaces
     }
 
-    fn set_surface_resize_increments(
-        &self,
-        increments: Option<winit::dpi::Size>,
-    ) {
-        log::warn!(
-            "`set_surface_resize_increments` is not implemented for Wayland"
-        )
+    fn set_surface_resize_increments(&self, increments: Option<winit::dpi::Size>) {
+        log::warn!("`set_surface_resize_increments` is not implemented for Wayland")
     }
 
     fn set_title(&self, title: &str) {
@@ -235,9 +214,7 @@ impl winit::window::Window for SctkWinitWindow {
         todo!()
     }
 
-    fn rwh_06_display_handle(
-        &self,
-    ) -> &dyn raw_window_handle::HasDisplayHandle {
+    fn rwh_06_display_handle(&self) -> &dyn raw_window_handle::HasDisplayHandle {
         self
     }
 
@@ -250,9 +227,7 @@ impl winit::window::Window for SctkWinitWindow {
         None
     }
 
-    fn available_monitors(
-        &self,
-    ) -> Box<dyn Iterator<Item = winit::monitor::MonitorHandle>> {
+    fn available_monitors(&self) -> Box<dyn Iterator<Item = winit::monitor::MonitorHandle>> {
         Box::new(None.into_iter())
     }
 
@@ -261,11 +236,7 @@ impl winit::window::Window for SctkWinitWindow {
         false
     }
 
-    fn set_ime_cursor_area(
-        &self,
-        position: winit::dpi::Position,
-        size: winit::dpi::Size,
-    ) {
+    fn set_ime_cursor_area(&self, position: winit::dpi::Position, size: winit::dpi::Size) {
         let guard = self.common.lock().unwrap();
         let scale_factor = guard.fractional_scale.unwrap_or(1.);
         let position = position.to_logical(scale_factor);
@@ -342,10 +313,7 @@ impl winit::window::Window for SctkWinitWindow {
         false
     }
 
-    fn set_fullscreen(
-        &self,
-        fullscreen: Option<winit_core::monitor::Fullscreen>,
-    ) {
+    fn set_fullscreen(&self, fullscreen: Option<winit_core::monitor::Fullscreen>) {
         // XXX can't fullscreen the wrapped surfaces
     }
 
@@ -368,10 +336,7 @@ impl winit::window::Window for SctkWinitWindow {
 
     fn focus_window(&self) {}
 
-    fn request_user_attention(
-        &self,
-        request_type: Option<winit::window::UserAttentionType>,
-    ) {
+    fn request_user_attention(&self, request_type: Option<winit::window::UserAttentionType>) {
         // XXX can't request attention on wrapped surfaces
     }
 
@@ -395,9 +360,7 @@ impl winit::window::Window for SctkWinitWindow {
         None
     }
 
-    fn surface_resize_increments(
-        &self,
-    ) -> Option<winit::dpi::PhysicalSize<u32>> {
+    fn surface_resize_increments(&self) -> Option<winit::dpi::PhysicalSize<u32>> {
         None
     }
 
@@ -412,10 +375,7 @@ impl winit::window::Window for SctkWinitWindow {
         Ok(())
     }
 
-    fn set_cursor_hittest(
-        &self,
-        _hittest: bool,
-    ) -> Result<(), winit::error::RequestError> {
+    fn set_cursor_hittest(&self, _hittest: bool) -> Result<(), winit::error::RequestError> {
         todo!()
     }
 
@@ -425,8 +385,7 @@ impl winit::window::Window for SctkWinitWindow {
 
     fn outer_position(
         &self,
-    ) -> Result<winit::dpi::PhysicalPosition<i32>, winit::error::RequestError>
-    {
+    ) -> Result<winit::dpi::PhysicalPosition<i32>, winit::error::RequestError> {
         Err(RequestError::NotSupported(NotSupportedError::new(
             "Not supported on wayland.",
         )))
@@ -465,10 +424,7 @@ impl winit::window::Window for SctkWinitWindow {
 impl raw_window_handle::HasWindowHandle for SctkWinitWindow {
     fn window_handle(
         &self,
-    ) -> Result<
-        raw_window_handle::WindowHandle<'_>,
-        raw_window_handle::HandleError,
-    > {
+    ) -> Result<raw_window_handle::WindowHandle<'_>, raw_window_handle::HandleError> {
         let raw = raw_window_handle::WaylandWindowHandle::new({
             let ptr = self.surface.wl_surface().id().as_ptr();
             let Some(ptr) = std::ptr::NonNull::new(ptr as *mut _) else {
@@ -484,14 +440,10 @@ impl raw_window_handle::HasWindowHandle for SctkWinitWindow {
 impl raw_window_handle::HasDisplayHandle for SctkWinitWindow {
     fn display_handle(
         &self,
-    ) -> Result<
-        raw_window_handle::DisplayHandle<'_>,
-        raw_window_handle::HandleError,
-    > {
+    ) -> Result<raw_window_handle::DisplayHandle<'_>, raw_window_handle::HandleError> {
         let raw = raw_window_handle::WaylandDisplayHandle::new({
             let ptr = self.display.id().as_ptr();
-            std::ptr::NonNull::new(ptr as *mut _)
-                .expect("wl_proxy should never be null")
+            std::ptr::NonNull::new(ptr as *mut _).expect("wl_proxy should never be null")
         });
 
         unsafe { Ok(raw_window_handle::DisplayHandle::borrow_raw(raw.into())) }

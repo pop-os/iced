@@ -6,10 +6,7 @@ use crate::overlay;
 use crate::renderer;
 use crate::widget;
 use crate::widget::tree::{self, Tree};
-use crate::{
-    Border, Clipboard, Color, Layout, Length, Rectangle, Shell, Size, Vector,
-    Widget,
-};
+use crate::{Border, Clipboard, Color, Layout, Length, Rectangle, Shell, Size, Vector, Widget};
 
 use std::borrow::{Borrow, BorrowMut};
 
@@ -43,9 +40,7 @@ impl<'a, Message, Theme, Renderer> Element<'a, Message, Theme, Renderer> {
     }
 
     /// Returns a mutable reference to the [`Widget`] of the [`Element`],
-    pub fn as_widget_mut(
-        &mut self,
-    ) -> &mut dyn Widget<Message, Theme, Renderer> {
+    pub fn as_widget_mut(&mut self) -> &mut dyn Widget<Message, Theme, Renderer> {
         self.widget.as_mut()
     }
 
@@ -188,10 +183,7 @@ impl<'a, Message, Theme, Renderer> Element<'a, Message, Theme, Renderer> {
     ///     }
     /// }
     /// ```
-    pub fn map<B>(
-        self,
-        f: impl Fn(Message) -> B + 'a,
-    ) -> Element<'a, B, Theme, Renderer>
+    pub fn map<B>(self, f: impl Fn(Message) -> B + 'a) -> Element<'a, B, Theme, Renderer>
     where
         Message: 'a,
         Theme: 'a,
@@ -207,10 +199,7 @@ impl<'a, Message, Theme, Renderer> Element<'a, Message, Theme, Renderer> {
     /// This can be very useful for debugging your layout!
     ///
     /// [`Renderer`]: crate::Renderer
-    pub fn explain<C: Into<Color>>(
-        self,
-        color: C,
-    ) -> Element<'a, Message, Theme, Renderer>
+    pub fn explain<C: Into<Color>>(self, color: C) -> Element<'a, Message, Theme, Renderer>
     where
         Message: 'a,
         Theme: 'a,
@@ -222,8 +211,7 @@ impl<'a, Message, Theme, Renderer> Element<'a, Message, Theme, Renderer> {
     }
 }
 
-impl<'a, Message, Theme, Renderer>
-    Borrow<dyn Widget<Message, Theme, Renderer> + 'a>
+impl<'a, Message, Theme, Renderer> Borrow<dyn Widget<Message, Theme, Renderer> + 'a>
     for Element<'a, Message, Theme, Renderer>
 {
     fn borrow(&self) -> &(dyn Widget<Message, Theme, Renderer> + 'a) {
@@ -231,8 +219,7 @@ impl<'a, Message, Theme, Renderer>
     }
 }
 
-impl<'a, Message, Theme, Renderer>
-    Borrow<dyn Widget<Message, Theme, Renderer> + 'a>
+impl<'a, Message, Theme, Renderer> Borrow<dyn Widget<Message, Theme, Renderer> + 'a>
     for &Element<'a, Message, Theme, Renderer>
 {
     fn borrow(&self) -> &(dyn Widget<Message, Theme, Renderer> + 'a) {
@@ -240,8 +227,7 @@ impl<'a, Message, Theme, Renderer>
     }
 }
 
-impl<'a, Message, Theme, Renderer>
-    Borrow<dyn Widget<Message, Theme, Renderer> + 'a>
+impl<'a, Message, Theme, Renderer> Borrow<dyn Widget<Message, Theme, Renderer> + 'a>
     for &mut Element<'a, Message, Theme, Renderer>
 {
     fn borrow(&self) -> &(dyn Widget<Message, Theme, Renderer> + 'a) {
@@ -249,24 +235,18 @@ impl<'a, Message, Theme, Renderer>
     }
 }
 
-impl<'a, Message, Theme, Renderer>
-    BorrowMut<dyn Widget<Message, Theme, Renderer> + 'a>
+impl<'a, Message, Theme, Renderer> BorrowMut<dyn Widget<Message, Theme, Renderer> + 'a>
     for &mut Element<'a, Message, Theme, Renderer>
 {
-    fn borrow_mut(
-        &mut self,
-    ) -> &mut (dyn Widget<Message, Theme, Renderer> + 'a) {
+    fn borrow_mut(&mut self) -> &mut (dyn Widget<Message, Theme, Renderer> + 'a) {
         self.widget.borrow_mut()
     }
 }
 
-impl<'a, Message, Theme, Renderer>
-    BorrowMut<dyn Widget<Message, Theme, Renderer> + 'a>
+impl<'a, Message, Theme, Renderer> BorrowMut<dyn Widget<Message, Theme, Renderer> + 'a>
     for Element<'a, Message, Theme, Renderer>
 {
-    fn borrow_mut(
-        &mut self,
-    ) -> &mut (dyn Widget<Message, Theme, Renderer> + 'a) {
+    fn borrow_mut(&mut self) -> &mut (dyn Widget<Message, Theme, Renderer> + 'a) {
         self.widget.borrow_mut()
     }
 }
@@ -291,8 +271,7 @@ impl<'a, A, B, Theme, Renderer> Map<'a, A, B, Theme, Renderer> {
     }
 }
 
-impl<'a, A, B, Theme, Renderer> Widget<B, Theme, Renderer>
-    for Map<'a, A, B, Theme, Renderer>
+impl<'a, A, B, Theme, Renderer> Widget<B, Theme, Renderer> for Map<'a, A, B, Theme, Renderer>
 where
     Renderer: crate::Renderer + 'a,
     A: 'a,
@@ -449,10 +428,7 @@ impl<'a, Message, Theme, Renderer> Explain<'a, Message, Theme, Renderer>
 where
     Renderer: crate::Renderer,
 {
-    fn new(
-        element: Element<'a, Message, Theme, Renderer>,
-        color: Color,
-    ) -> Self {
+    fn new(element: Element<'a, Message, Theme, Renderer>, color: Color) -> Self {
         Explain { element, color }
     }
 }
@@ -586,13 +562,9 @@ where
         viewport: &Rectangle,
         translation: Vector,
     ) -> Option<overlay::Element<'b, Message, Theme, Renderer>> {
-        self.element.widget.overlay(
-            tree,
-            layout,
-            renderer,
-            viewport,
-            translation,
-        )
+        self.element
+            .widget
+            .overlay(tree, layout, renderer, viewport, translation)
     }
 
     fn id(&self) -> Option<Id> {
@@ -610,17 +582,13 @@ where
         renderer: &Renderer,
         dnd_rectangles: &mut crate::clipboard::DndDestinationRectangles,
     ) {
-        self.element.widget.drag_destinations(
-            state,
-            layout,
-            renderer,
-            dnd_rectangles,
-        );
+        self.element
+            .widget
+            .drag_destinations(state, layout, renderer, dnd_rectangles);
     }
     // TODO maybe a11y_nodes
 }
-impl<'a, T, Message, Theme, Renderer> From<Option<T>>
-    for Element<'a, Message, Theme, Renderer>
+impl<'a, T, Message, Theme, Renderer> From<Option<T>> for Element<'a, Message, Theme, Renderer>
 where
     T: Into<Self>,
     Renderer: crate::Renderer,

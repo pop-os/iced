@@ -3,10 +3,7 @@ use crate::{
     platform_specific::{
         SurfaceIdWrapper, UserInterfaces,
         wayland::{
-            conversion::{
-                modifiers_to_native, pointer_axis_to_native,
-                pointer_button_to_native,
-            },
+            conversion::{modifiers_to_native, pointer_axis_to_native, pointer_button_to_native},
             keymap::{self, keysym_to_key},
             subsurface_widget::SubsurfaceState,
         },
@@ -20,9 +17,7 @@ use iced_futures::{
         Size,
         event::{
             PlatformSpecific,
-            wayland::{
-                LayerEvent, OverlapNotifyEvent, PopupEvent, SessionLockEvent,
-            },
+            wayland::{LayerEvent, OverlapNotifyEvent, PopupEvent, SessionLockEvent},
         },
     },
     event,
@@ -50,9 +45,9 @@ use cctk::{
                 Proxy, QueueHandle,
                 backend::ObjectId,
                 protocol::{
-                    wl_display::WlDisplay, wl_keyboard::WlKeyboard,
-                    wl_output::WlOutput, wl_pointer::WlPointer,
-                    wl_seat::WlSeat, wl_surface::WlSurface, wl_touch::WlTouch,
+                    wl_display::WlDisplay, wl_keyboard::WlKeyboard, wl_output::WlOutput,
+                    wl_pointer::WlPointer, wl_seat::WlSeat, wl_surface::WlSurface,
+                    wl_touch::WlTouch,
                 },
             },
             csd_frame::WindowManagerCapabilities,
@@ -346,9 +341,7 @@ impl SctkEvent {
         self,
         modifiers: &mut Modifiers,
         program: &'a crate::program::Instance<P>,
-        compositor: &mut Option<
-            <<P as Program>::Renderer as compositor::Default>::Compositor,
-        >,
+        compositor: &mut Option<<<P as Program>::Renderer as compositor::Default>::Compositor>,
         window_manager: &mut crate::WindowManager<
             P,
             <<P as Program>::Renderer as compositor::Default>::Compositor,
@@ -370,32 +363,23 @@ impl SctkEvent {
             SctkEvent::SeatEvent { .. } => Default::default(),
             SctkEvent::PointerEvent { variant, .. } => match variant.kind {
                 PointerEventKind::Enter { .. } => {
-                    let id = surface_ids
-                        .get(&variant.surface.id())
-                        .map(|id| id.inner());
-                    if let Some(w) =
-                        id.clone().and_then(|id| window_manager.get_mut(id))
-                    {
-                        w.state.set_logical_cursor_pos(
-                            (variant.position.0, variant.position.1).into(),
-                        )
+                    let id = surface_ids.get(&variant.surface.id()).map(|id| id.inner());
+                    if let Some(w) = id.clone().and_then(|id| window_manager.get_mut(id)) {
+                        w.state
+                            .set_logical_cursor_pos((variant.position.0, variant.position.1).into())
                     }
                     events.push((
                         id.clone(),
-                        iced_runtime::core::Event::Mouse(
-                            mouse::Event::CursorEntered,
-                        ),
+                        iced_runtime::core::Event::Mouse(mouse::Event::CursorEntered),
                     ));
                     events.push((
                         id,
-                        iced_runtime::core::Event::Mouse(
-                            mouse::Event::CursorMoved {
-                                position: Point::new(
-                                    variant.position.0 as f32,
-                                    variant.position.1 as f32,
-                                ),
-                            },
-                        ),
+                        iced_runtime::core::Event::Mouse(mouse::Event::CursorMoved {
+                            position: Point::new(
+                                variant.position.0 as f32,
+                                variant.position.1 as f32,
+                            ),
+                        }),
                     ));
                 }
                 PointerEventKind::Leave { .. } => events.push((
@@ -403,26 +387,19 @@ impl SctkEvent {
                     iced_runtime::core::Event::Mouse(mouse::Event::CursorLeft),
                 )),
                 PointerEventKind::Motion { .. } => {
-                    let id = surface_ids
-                        .get(&variant.surface.id())
-                        .map(|id| id.inner());
-                    if let Some(w) =
-                        id.clone().and_then(|id| window_manager.get_mut(id))
-                    {
-                        w.state.set_logical_cursor_pos(
-                            (variant.position.0, variant.position.1).into(),
-                        )
+                    let id = surface_ids.get(&variant.surface.id()).map(|id| id.inner());
+                    if let Some(w) = id.clone().and_then(|id| window_manager.get_mut(id)) {
+                        w.state
+                            .set_logical_cursor_pos((variant.position.0, variant.position.1).into())
                     }
                     events.push((
                         id,
-                        iced_runtime::core::Event::Mouse(
-                            mouse::Event::CursorMoved {
-                                position: Point::new(
-                                    variant.position.0 as f32,
-                                    variant.position.1 as f32,
-                                ),
-                            },
-                        ),
+                        iced_runtime::core::Event::Mouse(mouse::Event::CursorMoved {
+                            position: Point::new(
+                                variant.position.0 as f32,
+                                variant.position.1 as f32,
+                            ),
+                        }),
                     ));
                 }
                 PointerEventKind::Press {
@@ -430,15 +407,11 @@ impl SctkEvent {
                     button,
                     serial: _,
                 } => {
-                    if let Some(e) = pointer_button_to_native(button).map(|b| {
-                        iced_runtime::core::Event::Mouse(
-                            mouse::Event::ButtonPressed(b),
-                        )
-                    }) {
+                    if let Some(e) = pointer_button_to_native(button)
+                        .map(|b| iced_runtime::core::Event::Mouse(mouse::Event::ButtonPressed(b)))
+                    {
                         events.push((
-                            surface_ids
-                                .get(&variant.surface.id())
-                                .map(|id| id.inner()),
+                            surface_ids.get(&variant.surface.id()).map(|id| id.inner()),
                             e,
                         ));
                     }
@@ -448,15 +421,11 @@ impl SctkEvent {
                     button,
                     serial: _,
                 } => {
-                    if let Some(e) = pointer_button_to_native(button).map(|b| {
-                        iced_runtime::core::Event::Mouse(
-                            mouse::Event::ButtonReleased(b),
-                        )
-                    }) {
+                    if let Some(e) = pointer_button_to_native(button)
+                        .map(|b| iced_runtime::core::Event::Mouse(mouse::Event::ButtonReleased(b)))
+                    {
                         events.push((
-                            surface_ids
-                                .get(&variant.surface.id())
-                                .map(|id| id.inner()),
+                            surface_ids.get(&variant.surface.id()).map(|id| id.inner()),
                             e,
                         ));
                     }
@@ -467,15 +436,12 @@ impl SctkEvent {
                     vertical,
                     source: _,
                 } => {
-                    let delta = if horizontal.value120 != 0
-                        || vertical.value120 != 0
-                    {
+                    let delta = if horizontal.value120 != 0 || vertical.value120 != 0 {
                         mouse::ScrollDelta::Lines {
                             x: -horizontal.value120 as f32 / 120.,
                             y: -vertical.value120 as f32 / 120.,
                         }
-                    } else if horizontal.discrete != 0 || vertical.discrete != 0
-                    {
+                    } else if horizontal.discrete != 0 || vertical.discrete != 0 {
                         mouse::ScrollDelta::Lines {
                             x: -horizontal.discrete as f32,
                             y: -vertical.discrete as f32,
@@ -487,12 +453,8 @@ impl SctkEvent {
                         }
                     };
                     events.push((
-                        surface_ids
-                            .get(&variant.surface.id())
-                            .map(|id| id.inner()),
-                        iced_runtime::core::Event::Mouse(
-                            mouse::Event::WheelScrolled { delta },
-                        ),
+                        surface_ids.get(&variant.surface.id()).map(|id| id.inner()),
+                        iced_runtime::core::Event::Mouse(mouse::Event::WheelScrolled { delta }),
                     ));
                 }
             },
@@ -503,145 +465,107 @@ impl SctkEvent {
                 surface,
             } => match variant {
                 KeyboardEventVariant::Leave(surface) => {
-                    if let Some(e) =
-                        surface_ids.get(&surface.id()).and_then(|id| match id {
-                            SurfaceIdWrapper::LayerSurface(_id) => Some(
-                                iced_runtime::core::Event::PlatformSpecific(
-                                    PlatformSpecific::Wayland(
-                                        wayland::Event::Layer(
-                                            LayerEvent::Unfocused,
-                                            surface.clone(),
-                                            id.inner(),
-                                        ),
-                                    ),
-                                ),
-                            ),
-                            SurfaceIdWrapper::Window(id) => {
-                                Some(iced_runtime::core::Event::Window(
-                                    window::Event::Unfocused,
-                                ))
-                            }
-                            SurfaceIdWrapper::Popup(_id) => Some(
-                                iced_runtime::core::Event::PlatformSpecific(
-                                    PlatformSpecific::Wayland(
-                                        wayland::Event::Popup(
-                                            PopupEvent::Unfocused,
-                                            surface.clone(),
-                                            id.inner(),
-                                        ),
-                                    ),
-                                ),
-                            ),
-                            SurfaceIdWrapper::SessionLock(_) => Some(
-                                iced_runtime::core::Event::PlatformSpecific(
-                                    PlatformSpecific::Wayland(
-                                        wayland::Event::SessionLock(
-                                            SessionLockEvent::Unfocused(
-                                                surface.clone(),
-                                                id.inner(),
-                                            ),
-                                        ),
-                                    ),
-                                ),
-                            ),
-                            SurfaceIdWrapper::Subsurface(id) => None,
-                        })
-                    {
-                        events.push((
-                            surface_ids.get(&surface.id()).map(|id| id.inner()),
-                            e,
-                        ));
+                    if let Some(e) = surface_ids.get(&surface.id()).and_then(|id| match id {
+                        SurfaceIdWrapper::LayerSurface(_id) => {
+                            Some(iced_runtime::core::Event::PlatformSpecific(
+                                PlatformSpecific::Wayland(wayland::Event::Layer(
+                                    LayerEvent::Unfocused,
+                                    surface.clone(),
+                                    id.inner(),
+                                )),
+                            ))
+                        }
+                        SurfaceIdWrapper::Window(id) => {
+                            Some(iced_runtime::core::Event::Window(window::Event::Unfocused))
+                        }
+                        SurfaceIdWrapper::Popup(_id) => {
+                            Some(iced_runtime::core::Event::PlatformSpecific(
+                                PlatformSpecific::Wayland(wayland::Event::Popup(
+                                    PopupEvent::Unfocused,
+                                    surface.clone(),
+                                    id.inner(),
+                                )),
+                            ))
+                        }
+                        SurfaceIdWrapper::SessionLock(_) => {
+                            Some(iced_runtime::core::Event::PlatformSpecific(
+                                PlatformSpecific::Wayland(wayland::Event::SessionLock(
+                                    SessionLockEvent::Unfocused(surface.clone(), id.inner()),
+                                )),
+                            ))
+                        }
+                        SurfaceIdWrapper::Subsurface(id) => None,
+                    }) {
+                        events.push((surface_ids.get(&surface.id()).map(|id| id.inner()), e));
                     }
 
                     events.push((
                         surface_ids.get(&surface.id()).map(|id| id.inner()),
-                        iced_runtime::core::Event::PlatformSpecific(
-                            PlatformSpecific::Wayland(wayland::Event::Seat(
-                                wayland::SeatEvent::Leave,
-                                seat_id,
-                            )),
-                        ),
+                        iced_runtime::core::Event::PlatformSpecific(PlatformSpecific::Wayland(
+                            wayland::Event::Seat(wayland::SeatEvent::Leave, seat_id),
+                        )),
                     ))
                 }
                 KeyboardEventVariant::Enter(surface) => {
-                    if let Some(e) =
-                        surface_ids.get(&surface.id()).and_then(|id| {
-                            match id {
-                                SurfaceIdWrapper::LayerSurface(_id) => Some(
-                                    iced_runtime::core::Event::PlatformSpecific(
-                                        PlatformSpecific::Wayland(
-                                            wayland::Event::Layer(
-                                                LayerEvent::Focused,
-                                                surface.clone(),
-                                                id.inner(),
-                                            ),
-                                        ),
-                                    ),
-                                ),
-                                SurfaceIdWrapper::Window(id) => {
-                                    Some(iced_runtime::core::Event::Window(
-                                        window::Event::Focused,
-                                    ))
-                                }
-                                SurfaceIdWrapper::Popup(_id) => Some(
-                                    iced_runtime::core::Event::PlatformSpecific(
-                                        PlatformSpecific::Wayland(
-                                            wayland::Event::Popup(
-                                                PopupEvent::Focused,
-                                                surface.clone(),
-                                                id.inner(),
-                                            ),
-                                        ),
-                                    ),
-                                ),
-                                SurfaceIdWrapper::SessionLock(_) => Some(
-                                    iced_runtime::core::Event::PlatformSpecific(
-                                        PlatformSpecific::Wayland(
-                                            wayland::Event::SessionLock(
-                                                SessionLockEvent::Focused(
-                                                    surface.clone(),
-                                                    id.inner(),
-                                                ),
-                                            ),
-                                        ),
-                                    ),
-                                ),
-                                SurfaceIdWrapper::Subsurface(_) => None,
+                    if let Some(e) = surface_ids.get(&surface.id()).and_then(|id| {
+                        match id {
+                            SurfaceIdWrapper::LayerSurface(_id) => {
+                                Some(iced_runtime::core::Event::PlatformSpecific(
+                                    PlatformSpecific::Wayland(wayland::Event::Layer(
+                                        LayerEvent::Focused,
+                                        surface.clone(),
+                                        id.inner(),
+                                    )),
+                                ))
                             }
-                            .map(|e| (Some(id.inner()), e))
-                        })
-                    {
+                            SurfaceIdWrapper::Window(id) => {
+                                Some(iced_runtime::core::Event::Window(window::Event::Focused))
+                            }
+                            SurfaceIdWrapper::Popup(_id) => {
+                                Some(iced_runtime::core::Event::PlatformSpecific(
+                                    PlatformSpecific::Wayland(wayland::Event::Popup(
+                                        PopupEvent::Focused,
+                                        surface.clone(),
+                                        id.inner(),
+                                    )),
+                                ))
+                            }
+                            SurfaceIdWrapper::SessionLock(_) => {
+                                Some(iced_runtime::core::Event::PlatformSpecific(
+                                    PlatformSpecific::Wayland(wayland::Event::SessionLock(
+                                        SessionLockEvent::Focused(surface.clone(), id.inner()),
+                                    )),
+                                ))
+                            }
+                            SurfaceIdWrapper::Subsurface(_) => None,
+                        }
+                        .map(|e| (Some(id.inner()), e))
+                    }) {
                         events.push(e);
                     }
 
                     events.push((
                         surface_ids.get(&surface.id()).map(|id| id.inner()),
-                        iced_runtime::core::Event::PlatformSpecific(
-                            PlatformSpecific::Wayland(wayland::Event::Seat(
-                                wayland::SeatEvent::Enter,
-                                seat_id,
-                            )),
-                        ),
+                        iced_runtime::core::Event::PlatformSpecific(PlatformSpecific::Wayland(
+                            wayland::Event::Seat(wayland::SeatEvent::Enter, seat_id),
+                        )),
                     ));
                 }
                 KeyboardEventVariant::Press(ke) => {
                     let (key, location) = keysym_to_vkey_location(ke.keysym);
                     let physical_key = raw_keycode_to_physicalkey(ke.raw_code);
-                    let physical_key =
-                        crate::conversion::physical_key(physical_key);
+                    let physical_key = crate::conversion::physical_key(physical_key);
                     events.push((
                         surface_ids.get(&surface.id()).map(|id| id.inner()),
-                        iced_runtime::core::Event::Keyboard(
-                            keyboard::Event::KeyPressed {
-                                key: key.clone(),
-                                location: location,
-                                text: ke.utf8.map(|s| s.into()),
-                                modifiers: modifiers_to_native(*modifiers),
-                                physical_key,
-                                repeat: false,
-                                modified_key: key, // TODO calculate without Ctrl?
-                            },
-                        ),
+                        iced_runtime::core::Event::Keyboard(keyboard::Event::KeyPressed {
+                            key: key.clone(),
+                            location: location,
+                            text: ke.utf8.map(|s| s.into()),
+                            modifiers: modifiers_to_native(*modifiers),
+                            physical_key,
+                            repeat: false,
+                            modified_key: key, // TODO calculate without Ctrl?
+                        }),
                     ))
                 }
                 KeyboardEventVariant::Repeat(KeyEvent {
@@ -652,51 +576,43 @@ impl SctkEvent {
                 }) => {
                     let (key, location) = keysym_to_vkey_location(keysym);
                     let physical_key = raw_keycode_to_physicalkey(raw_code);
-                    let physical_key =
-                        crate::conversion::physical_key(physical_key);
+                    let physical_key = crate::conversion::physical_key(physical_key);
 
                     events.push((
                         surface_ids.get(&surface.id()).map(|id| id.inner()),
-                        iced_runtime::core::Event::Keyboard(
-                            keyboard::Event::KeyPressed {
-                                key: key.clone(),
-                                location: location,
-                                text: utf8.map(|s| s.into()),
-                                modifiers: modifiers_to_native(*modifiers),
-                                physical_key,
-                                repeat: true,
-                                modified_key: key, // TODO calculate without Ctrl?
-                            },
-                        ),
+                        iced_runtime::core::Event::Keyboard(keyboard::Event::KeyPressed {
+                            key: key.clone(),
+                            location: location,
+                            text: utf8.map(|s| s.into()),
+                            modifiers: modifiers_to_native(*modifiers),
+                            physical_key,
+                            repeat: true,
+                            modified_key: key, // TODO calculate without Ctrl?
+                        }),
                     ))
                 }
                 KeyboardEventVariant::Release(ke) => {
                     let (k, location) = keysym_to_vkey_location(ke.keysym);
                     let physical_key = raw_keycode_to_physicalkey(ke.raw_code);
-                    let physical_key =
-                        crate::conversion::physical_key(physical_key);
+                    let physical_key = crate::conversion::physical_key(physical_key);
                     events.push((
                         surface_ids.get(&surface.id()).map(|id| id.inner()),
-                        iced_runtime::core::Event::Keyboard(
-                            keyboard::Event::KeyReleased {
-                                key: k.clone(),
-                                location,
-                                modifiers: modifiers_to_native(*modifiers),
-                                modified_key: k,
-                                physical_key: physical_key,
-                            },
-                        ),
+                        iced_runtime::core::Event::Keyboard(keyboard::Event::KeyReleased {
+                            key: k.clone(),
+                            location,
+                            modifiers: modifiers_to_native(*modifiers),
+                            modified_key: k,
+                            physical_key: physical_key,
+                        }),
                     ))
                 }
                 KeyboardEventVariant::Modifiers(new_mods) => {
                     *modifiers = new_mods;
                     events.push((
                         surface_ids.get(&surface.id()).map(|id| id.inner()),
-                        iced_runtime::core::Event::Keyboard(
-                            keyboard::Event::ModifiersChanged(
-                                modifiers_to_native(new_mods),
-                            ),
-                        ),
+                        iced_runtime::core::Event::Keyboard(keyboard::Event::ModifiersChanged(
+                            modifiers_to_native(new_mods),
+                        )),
                     ))
                 }
             },
@@ -713,12 +629,9 @@ impl SctkEvent {
                     touch::Event::FingerLost { position, .. } => position,
                 };
                 let id = surface_ids.get(&surface.id()).map(|id| id.inner());
-                if let Some(w) =
-                    id.clone().and_then(|id| window_manager.get_mut(id))
-                {
-                    w.state.set_logical_cursor_pos(
-                        (position.x, position.y).into(),
-                    );
+                if let Some(w) = id.clone().and_then(|id| window_manager.get_mut(id)) {
+                    w.state
+                        .set_logical_cursor_pos((position.x, position.y).into());
                 }
                 events.push((id, iced_runtime::core::Event::Touch(variant)))
             }
@@ -734,24 +647,15 @@ impl SctkEvent {
                                 DndSurface(Arc::new(Box::new(w.raw.clone()))),
                                 Vec::new(),
                             );
-                            if clipboard
-                                .window_id()
-                                .is_some_and(|id| w.raw.id() == id)
-                            {
+                            if clipboard.window_id().is_some_and(|id| w.raw.id() == id) {
                                 *clipboard = Clipboard::unconnected();
                             }
                         }
                         events.push((
                             Some(id.inner()),
-                            iced_runtime::core::Event::PlatformSpecific(
-                                PlatformSpecific::Wayland(
-                                    wayland::Event::Layer(
-                                        LayerEvent::Done,
-                                        surface,
-                                        id.inner(),
-                                    ),
-                                ),
-                            ),
+                            iced_runtime::core::Event::PlatformSpecific(PlatformSpecific::Wayland(
+                                wayland::Event::Layer(LayerEvent::Done, surface, id.inner()),
+                            )),
                         ));
                     }
                 }
@@ -765,8 +669,7 @@ impl SctkEvent {
                 ) => {
                     let wl_surface = surface.wl_surface();
                     let object_id = wl_surface.id();
-                    let wrapper =
-                        SurfaceIdWrapper::LayerSurface(surface_id.clone());
+                    let wrapper = SurfaceIdWrapper::LayerSurface(surface_id.clone());
                     _ = surface_ids.insert(object_id.clone(), wrapper.clone());
                     let sctk_winit = SctkWinitWindow::new(
                         sctk_tx.clone(),
@@ -778,24 +681,16 @@ impl SctkEvent {
                     );
                     #[cfg(feature = "a11y")]
                     control_sender
-                        .start_send(Control::InitAdapter(
-                            surface_id,
-                            sctk_winit.clone(),
-                        ))
+                        .start_send(Control::InitAdapter(surface_id, sctk_winit.clone()))
                         .expect("Send control message");
                     if compositor.is_none() {
-                        match create_compositor(
-                            sctk_winit.clone(),
-                            create_compositor_data,
-                        )
-                        .await
-                        {
+                        match create_compositor(sctk_winit.clone(), create_compositor_data).await {
                             Ok(c) => *compositor = Some(c),
                             Err(error) => {
                                 control_sender
-                                    .start_send(Control::Crash(
-                                        Error::GraphicsCreationFailed(error),
-                                    ))
+                                    .start_send(Control::Crash(Error::GraphicsCreationFailed(
+                                        error,
+                                    )))
                                     .expect("Send control message");
                                 return;
                             }
@@ -807,7 +702,7 @@ impl SctkEvent {
                         sctk_winit,
                         program,
                         compositor,
-                        false, // TODO do we want to get this value here?
+                        false,             // TODO do we want to get this value here?
                         theme::Mode::None, // TODO do we really need to track the system theme here?
                         0,
                     );
@@ -850,83 +745,60 @@ impl SctkEvent {
                     if let Some(requested_size) =
                         clipboard.requested_logical_size.lock().unwrap().take()
                     {
-                        let requested_physical_size =
-                            winit::dpi::PhysicalSize::new(
-                                (requested_size.width as f64
-                                    * window.state.scale_factor())
-                                .ceil() as u32,
-                                (requested_size.height as f64
-                                    * window.state.scale_factor())
-                                .ceil() as u32,
-                            );
+                        let requested_physical_size = winit::dpi::PhysicalSize::new(
+                            (requested_size.width as f64 * window.state.scale_factor()).ceil()
+                                as u32,
+                            (requested_size.height as f64 * window.state.scale_factor()).ceil()
+                                as u32,
+                        );
                         let physical_size = window.state.physical_size();
                         if requested_physical_size.width != physical_size.width
-                            || requested_physical_size.height
-                                != physical_size.height
+                            || requested_physical_size.height != physical_size.height
                         {
                             // FIXME what to do when we are stuck in a configure event/resize request loop
                             // We don't have control over how winit handles this.
                             window.resize_enabled = true;
 
-                            let s = winit::dpi::Size::Physical(
-                                requested_physical_size,
-                            );
+                            let s = winit::dpi::Size::Physical(requested_physical_size);
                             _ = window.raw.request_surface_size(s);
                             window.raw.set_min_surface_size(Some(s));
                             window.raw.set_max_surface_size(Some(s));
-                            window.state.synchronize(
-                                &program,
-                                surface_id,
-                                window.raw.as_ref(),
-                            );
+                            window
+                                .state
+                                .synchronize(&program, surface_id, window.raw.as_ref());
                         }
                     }
 
                     let _ = user_interfaces.insert(surface_id, ui);
                 }
                 LayerSurfaceEventVariant::ScaleFactorChanged(..) => {}
-                LayerSurfaceEventVariant::Configure(
-                    configure,
-                    surface,
-                    first,
-                ) => {
-                    if let Some((id, w)) =
-                        surface_ids.get(&surface.id()).and_then(|id| {
-                            window_manager
-                                .get_mut(id.inner())
-                                .map(|v| (id.inner(), v))
-                        })
+                LayerSurfaceEventVariant::Configure(configure, surface, first) => {
+                    if let Some((id, w)) = surface_ids
+                        .get(&surface.id())
+                        .and_then(|id| window_manager.get_mut(id.inner()).map(|v| (id.inner(), v)))
                     {
                         let scale = w.state.scale_factor();
-                        let p_w = (configure.new_size.0.max(1) as f64 * scale)
-                            .ceil() as u32;
-                        let p_h = (configure.new_size.1.max(1) as f64 * scale)
-                            .ceil() as u32;
+                        let p_w = (configure.new_size.0.max(1) as f64 * scale).ceil() as u32;
+                        let p_h = (configure.new_size.1.max(1) as f64 * scale).ceil() as u32;
                         w.state.update(
                             program,
                             w.raw.as_ref(),
-                            &WindowEvent::SurfaceResized(PhysicalSize::new(
-                                p_w, p_h,
-                            )),
+                            &WindowEvent::SurfaceResized(PhysicalSize::new(p_w, p_h)),
                         );
                         if first {
                             events.push((
                                 Some(id),
-                                iced_runtime::core::Event::Window(
-                                    window::Event::Opened {
-                                        size: w.state.logical_size(),
-                                        position: Default::default(),
-                                    },
-                                ),
+                                iced_runtime::core::Event::Window(window::Event::Opened {
+                                    size: w.state.logical_size(),
+                                    position: Default::default(),
+                                }),
                             ))
                         } else {
                             events.push((
                                 Some(id),
-                                iced_runtime::core::Event::Window(
-                                    window::Event::Resized(
-                                        w.state.logical_size(),
-                                    ),
-                                ),
+                                iced_runtime::core::Event::Window(window::Event::Resized(
+                                    w.state.logical_size(),
+                                )),
                             ))
                         }
                     }
@@ -939,40 +811,29 @@ impl SctkEvent {
             } => {
                 match variant {
                     PopupEventVariant::Done => {
-                        if let Some(e) =
-                            surface_ids.remove(&surface.id()).map(|id| {
-                                if let Some(w) =
-                                    window_manager.remove(id.inner())
-                                {
-                                    clipboard.register_dnd_destination(
-                                        DndSurface(Arc::new(Box::new(
-                                            w.raw.clone(),
-                                        ))),
-                                        Vec::new(),
-                                    );
-                                    if clipboard
-                                        .window_id()
-                                        .is_some_and(|id| w.raw.id() == id)
-                                    {
-                                        *clipboard = Clipboard::unconnected();
-                                    }
+                        if let Some(e) = surface_ids.remove(&surface.id()).map(|id| {
+                            if let Some(w) = window_manager.remove(id.inner()) {
+                                clipboard.register_dnd_destination(
+                                    DndSurface(Arc::new(Box::new(w.raw.clone()))),
+                                    Vec::new(),
+                                );
+                                if clipboard.window_id().is_some_and(|id| w.raw.id() == id) {
+                                    *clipboard = Clipboard::unconnected();
                                 }
-                                _ = user_interfaces.remove(&id.inner());
+                            }
+                            _ = user_interfaces.remove(&id.inner());
 
-                                (
-                                    Some(id.inner()),
-                                    iced_runtime::core::Event::PlatformSpecific(
-                                        PlatformSpecific::Wayland(
-                                            wayland::Event::Popup(
-                                                PopupEvent::Done,
-                                                surface,
-                                                id.inner(),
-                                            ),
-                                        ),
-                                    ),
-                                )
-                            })
-                        {
+                            (
+                                Some(id.inner()),
+                                iced_runtime::core::Event::PlatformSpecific(
+                                    PlatformSpecific::Wayland(wayland::Event::Popup(
+                                        PopupEvent::Done,
+                                        surface,
+                                        id.inner(),
+                                    )),
+                                ),
+                            )
+                        }) {
                             events.push(e)
                         }
                     }
@@ -985,8 +846,7 @@ impl SctkEvent {
                     ) => {
                         let wl_surface = surface.wl_surface();
                         let wrapper = SurfaceIdWrapper::Popup(surface_id);
-                        _ = surface_ids
-                            .insert(wl_surface.id(), wrapper.clone());
+                        _ = surface_ids.insert(wl_surface.id(), wrapper.clone());
                         let sctk_winit = SctkWinitWindow::new(
                             sctk_tx.clone(),
                             common,
@@ -997,10 +857,7 @@ impl SctkEvent {
                         );
                         #[cfg(feature = "a11y")]
                         control_sender
-                            .start_send(Control::InitAdapter(
-                                surface_id,
-                                sctk_winit.clone(),
-                            ))
+                            .start_send(Control::InitAdapter(surface_id, sctk_winit.clone()))
                             .expect("Send control message");
 
                         if clipboard.window_id().is_none() {
@@ -1022,7 +879,7 @@ impl SctkEvent {
                             sctk_winit,
                             program,
                             compositor,
-                            false, // TODO do we want to get this value here?
+                            false,             // TODO do we want to get this value here?
                             theme::Mode::None, // TODO do we really need to track the system theme here?
                             0,
                         );
@@ -1052,109 +909,81 @@ impl SctkEvent {
                             &mut Vec::new(),
                         );
 
-                        if let Some(requested_size) = clipboard
-                            .requested_logical_size
-                            .lock()
-                            .unwrap()
-                            .take()
+                        if let Some(requested_size) =
+                            clipboard.requested_logical_size.lock().unwrap().take()
                         {
-                            let requested_physical_size =
-                                winit::dpi::PhysicalSize::new(
-                                    (requested_size.width as f64
-                                        * window.state.scale_factor())
-                                    .ceil()
-                                        as u32,
-                                    (requested_size.height as f64
-                                        * window.state.scale_factor())
-                                    .ceil()
-                                        as u32,
-                                );
+                            let requested_physical_size = winit::dpi::PhysicalSize::new(
+                                (requested_size.width as f64 * window.state.scale_factor()).ceil()
+                                    as u32,
+                                (requested_size.height as f64 * window.state.scale_factor()).ceil()
+                                    as u32,
+                            );
                             let physical_size = window.state.physical_size();
-                            if requested_physical_size.width
-                                != physical_size.width
-                                || requested_physical_size.height
-                                    != physical_size.height
+                            if requested_physical_size.width != physical_size.width
+                                || requested_physical_size.height != physical_size.height
                             {
                                 // FIXME what to do when we are stuck in a configure event/resize request loop
                                 // We don't have control over how winit handles this.
                                 window.resize_enabled = true;
 
-                                let s = winit::dpi::Size::Physical(
-                                    requested_physical_size,
-                                );
+                                let s = winit::dpi::Size::Physical(requested_physical_size);
                                 _ = window.raw.request_surface_size(s);
                                 window.raw.set_min_surface_size(Some(s));
                                 window.raw.set_max_surface_size(Some(s));
-                                window.state.synchronize(
-                                    &program,
-                                    surface_id,
-                                    window.raw.as_ref(),
-                                );
+                                window
+                                    .state
+                                    .synchronize(&program, surface_id, window.raw.as_ref());
                             }
                         }
 
                         let _ = user_interfaces.insert(surface_id, ui);
                     }
                     PopupEventVariant::Configure(configure, surface, first) => {
-                        if let Some((id, w)) =
-                            surface_ids.get(&surface.id()).and_then(|id| {
-                                window_manager
-                                    .get_mut(id.inner())
-                                    .map(|v| (id.inner(), v))
-                            })
-                        {
+                        if let Some((id, w)) = surface_ids.get(&surface.id()).and_then(|id| {
+                            window_manager.get_mut(id.inner()).map(|v| (id.inner(), v))
+                        }) {
                             w.state.set_ready(true);
                             if first {
                                 control_sender
                                     .send(Control::Winit(
                                         w.raw.id(),
                                         winit::event::WindowEvent::RedrawRequested,
-                                    )).await
+                                    ))
+                                    .await
                                     .expect("Send control message");
                                 proxy.wake_up();
                             }
                             let physical = w.raw.surface_size();
-                            let (p_w, p_h) =
-                                if physical.width > 0 && physical.height > 0 {
-                                    (physical.width, physical.height)
-                                } else {
-                                    // Fallback if backend has not reported an updated
-                                    // surface size yet for this configure.
-                                    let scale = w.state.scale_factor();
-                                    (
-                                        (configure.width.max(1) as f64 * scale)
-                                            .ceil()
-                                            as u32,
-                                        (configure.height.max(1) as f64 * scale)
-                                            .ceil()
-                                            as u32,
-                                    )
-                                };
+                            let (p_w, p_h) = if physical.width > 0 && physical.height > 0 {
+                                (physical.width, physical.height)
+                            } else {
+                                // Fallback if backend has not reported an updated
+                                // surface size yet for this configure.
+                                let scale = w.state.scale_factor();
+                                (
+                                    (configure.width.max(1) as f64 * scale).ceil() as u32,
+                                    (configure.height.max(1) as f64 * scale).ceil() as u32,
+                                )
+                            };
 
                             w.state.update(
                                 program,
                                 w.raw.as_ref(),
-                                &WindowEvent::SurfaceResized(
-                                    PhysicalSize::new(p_w, p_h),
-                                ),
+                                &WindowEvent::SurfaceResized(PhysicalSize::new(p_w, p_h)),
                             );
                             let size = w.state.logical_size();
                             if first {
                                 events.push((
                                     Some(id),
-                                    iced_runtime::core::Event::Window(
-                                        window::Event::Opened {
-                                            size: size,
-                                            position: Default::default(),
-                                        },
-                                    ),
+                                    iced_runtime::core::Event::Window(window::Event::Opened {
+                                        size: size,
+                                        position: Default::default(),
+                                    }),
                                 ))
                             } else {
                                 events.push((
                                     Some(id),
-                                    iced_runtime::core::Event::Window(
-                                        window::Event::Resized(size),
-                                    ),
+                                    iced_runtime::core::Event::Window(window::Event::Resized(size)),
                                 ))
                             }
                         }
@@ -1166,30 +995,21 @@ impl SctkEvent {
             }
             SctkEvent::NewOutput { id, info } => events.push((
                 None,
-                iced_runtime::core::Event::PlatformSpecific(
-                    PlatformSpecific::Wayland(wayland::Event::Output(
-                        wayland::OutputEvent::Created(info),
-                        id,
-                    )),
-                ),
+                iced_runtime::core::Event::PlatformSpecific(PlatformSpecific::Wayland(
+                    wayland::Event::Output(wayland::OutputEvent::Created(info), id),
+                )),
             )),
             SctkEvent::UpdateOutput { id, info } => events.push((
                 None,
-                iced_runtime::core::Event::PlatformSpecific(
-                    PlatformSpecific::Wayland(wayland::Event::Output(
-                        wayland::OutputEvent::InfoUpdate(info),
-                        id,
-                    )),
-                ),
+                iced_runtime::core::Event::PlatformSpecific(PlatformSpecific::Wayland(
+                    wayland::Event::Output(wayland::OutputEvent::InfoUpdate(info), id),
+                )),
             )),
             SctkEvent::RemovedOutput(id) => events.push((
                 None,
-                iced_runtime::core::Event::PlatformSpecific(
-                    PlatformSpecific::Wayland(wayland::Event::Output(
-                        wayland::OutputEvent::Removed,
-                        id,
-                    )),
-                ),
+                iced_runtime::core::Event::PlatformSpecific(PlatformSpecific::Wayland(
+                    wayland::Event::Output(wayland::OutputEvent::Removed, id),
+                )),
             )),
             SctkEvent::ScaleFactorChanged {
                 factor: _,
@@ -1198,19 +1018,15 @@ impl SctkEvent {
             } => Default::default(),
             SctkEvent::SessionLocked => events.push((
                 None,
-                iced_runtime::core::Event::PlatformSpecific(
-                    PlatformSpecific::Wayland(wayland::Event::SessionLock(
-                        wayland::SessionLockEvent::Locked,
-                    )),
-                ),
+                iced_runtime::core::Event::PlatformSpecific(PlatformSpecific::Wayland(
+                    wayland::Event::SessionLock(wayland::SessionLockEvent::Locked),
+                )),
             )),
             SctkEvent::SessionLockFinished => events.push((
                 None,
-                iced_runtime::core::Event::PlatformSpecific(
-                    PlatformSpecific::Wayland(wayland::Event::SessionLock(
-                        wayland::SessionLockEvent::Finished,
-                    )),
-                ),
+                iced_runtime::core::Event::PlatformSpecific(PlatformSpecific::Wayland(
+                    wayland::Event::SessionLock(wayland::SessionLockEvent::Finished),
+                )),
             )),
             SctkEvent::SessionLockSurfaceCreated {
                 queue_handle,
@@ -1234,10 +1050,7 @@ impl SctkEvent {
                 #[cfg(feature = "a11y")]
                 {
                     control_sender
-                        .start_send(Control::InitAdapter(
-                            surface_id,
-                            sctk_winit.clone(),
-                        ))
+                        .start_send(Control::InitAdapter(surface_id, sctk_winit.clone()))
                         .expect("Send control message");
                     proxy.wake_up();
                 }
@@ -1252,18 +1065,11 @@ impl SctkEvent {
                     );
                 }
                 if compositor.is_none() {
-                    match create_compositor(
-                        sctk_winit.clone(),
-                        create_compositor_data,
-                    )
-                    .await
-                    {
+                    match create_compositor(sctk_winit.clone(), create_compositor_data).await {
                         Ok(c) => *compositor = Some(c),
                         Err(error) => {
                             control_sender
-                                .start_send(Control::Crash(
-                                    Error::GraphicsCreationFailed(error),
-                                ))
+                                .start_send(Control::Crash(Error::GraphicsCreationFailed(error)))
                                 .expect("Send control message");
                             return;
                         }
@@ -1276,7 +1082,7 @@ impl SctkEvent {
                     sctk_winit,
                     program,
                     compositor,
-                    false, // TODO do we want to get this value here?
+                    false,             // TODO do we want to get this value here?
                     theme::Mode::None, // TODO do we really need to track the system theme here?
                     0,
                 );
@@ -1294,56 +1100,46 @@ impl SctkEvent {
                 );
 
                 _ = ui.update(
-                            &vec![iced_runtime::core::Event::PlatformSpecific(
-                                iced_runtime::core::event::PlatformSpecific::Wayland(
-                                    iced_runtime::core::event::wayland::Event::RequestResize,
-                                ),
-                            )],
-                            window.state.cursor(),
-                            &mut window.renderer,
-                            clipboard,
-                            &mut Vec::new(),
-                        );
+                    &vec![iced_runtime::core::Event::PlatformSpecific(
+                        iced_runtime::core::event::PlatformSpecific::Wayland(
+                            iced_runtime::core::event::wayland::Event::RequestResize,
+                        ),
+                    )],
+                    window.state.cursor(),
+                    &mut window.renderer,
+                    clipboard,
+                    &mut Vec::new(),
+                );
 
                 if let Some(requested_size) =
                     clipboard.requested_logical_size.lock().unwrap().take()
                 {
                     let requested_physical_size = winit::dpi::PhysicalSize::new(
-                        (requested_size.width as f64
-                            * window.state.scale_factor())
-                        .ceil() as u32,
-                        (requested_size.height as f64
-                            * window.state.scale_factor())
-                        .ceil() as u32,
+                        (requested_size.width as f64 * window.state.scale_factor()).ceil() as u32,
+                        (requested_size.height as f64 * window.state.scale_factor()).ceil() as u32,
                     );
                     let physical_size = window.state.physical_size();
                     if requested_physical_size.width != physical_size.width
-                        || requested_physical_size.height
-                            != physical_size.height
+                        || requested_physical_size.height != physical_size.height
                     {
                         // FIXME what to do when we are stuck in a configure event/resize request loop
                         // We don't have control over how winit handles this.
                         window.resize_enabled = true;
 
-                        let s =
-                            winit::dpi::Size::Physical(requested_physical_size);
+                        let s = winit::dpi::Size::Physical(requested_physical_size);
                         _ = window.raw.request_surface_size(s);
                         window.raw.set_min_surface_size(Some(s));
                         window.raw.set_max_surface_size(Some(s));
-                        window.state.synchronize(
-                            &program,
-                            surface_id,
-                            window.raw.as_ref(),
-                        );
+                        window
+                            .state
+                            .synchronize(&program, surface_id, window.raw.as_ref());
                     }
                 }
                 events.push((
                     Some(surface_id),
-                    iced_runtime::core::Event::PlatformSpecific(
-                        PlatformSpecific::Wayland(wayland::Event::Subsurface(
-                            wayland::SubsurfaceEvent::Created,
-                        )),
-                    ),
+                    iced_runtime::core::Event::PlatformSpecific(PlatformSpecific::Wayland(
+                        wayland::Event::Subsurface(wayland::SubsurfaceEvent::Created),
+                    )),
                 ));
                 _ = user_interfaces.insert(surface_id, ui);
             }
@@ -1352,45 +1148,31 @@ impl SctkEvent {
                 configure,
                 first,
             } => {
-                let size = Size::new(
-                    configure.new_size.0 as f32,
-                    configure.new_size.1 as f32,
-                );
-                if let Some((id, w)) =
-                    surface_ids.get(&surface.id()).and_then(|id| {
-                        window_manager
-                            .get_mut(id.inner())
-                            .map(|v| (id.inner(), v))
-                    })
+                let size = Size::new(configure.new_size.0 as f32, configure.new_size.1 as f32);
+                if let Some((id, w)) = surface_ids
+                    .get(&surface.id())
+                    .and_then(|id| window_manager.get_mut(id.inner()).map(|v| (id.inner(), v)))
                 {
                     let scale = w.state.scale_factor();
-                    let p_w = (configure.new_size.0.max(1) as f64 * scale)
-                        .round() as u32;
-                    let p_h = (configure.new_size.1.max(1) as f64 * scale)
-                        .round() as u32;
+                    let p_w = (configure.new_size.0.max(1) as f64 * scale).round() as u32;
+                    let p_h = (configure.new_size.1.max(1) as f64 * scale).round() as u32;
                     w.state.update(
                         program,
                         w.raw.as_ref(),
-                        &WindowEvent::SurfaceResized(PhysicalSize::new(
-                            p_w, p_h,
-                        )),
+                        &WindowEvent::SurfaceResized(PhysicalSize::new(p_w, p_h)),
                     );
                     if first {
                         events.push((
                             Some(id),
-                            iced_runtime::core::Event::Window(
-                                window::Event::Opened {
-                                    size: size,
-                                    position: Default::default(),
-                                },
-                            ),
+                            iced_runtime::core::Event::Window(window::Event::Opened {
+                                size: size,
+                                position: Default::default(),
+                            }),
                         ))
                     } else {
                         events.push((
                             Some(id),
-                            iced_runtime::core::Event::Window(
-                                window::Event::Resized(size),
-                            ),
+                            iced_runtime::core::Event::Window(window::Event::Resized(size)),
                         ))
                     }
                 }
@@ -1402,11 +1184,9 @@ impl SctkEvent {
             }
             SctkEvent::SessionUnlocked => events.push((
                 None,
-                iced_runtime::core::Event::PlatformSpecific(
-                    PlatformSpecific::Wayland(wayland::Event::SessionLock(
-                        wayland::SessionLockEvent::Unlocked,
-                    )),
-                ),
+                iced_runtime::core::Event::PlatformSpecific(PlatformSpecific::Wayland(
+                    wayland::Event::SessionLock(wayland::SessionLockEvent::Unlocked),
+                )),
             )),
             SctkEvent::Winit(_, _) => {}
             SctkEvent::SurfaceScaleFactorChanged(scale, _, id) => {
@@ -1425,18 +1205,16 @@ impl SctkEvent {
                 if let Some(id) = surface_ids.get(&surface.id()) {
                     events.push((
                         Some(id.inner()),
-                        iced_runtime::core::Event::PlatformSpecific(
-                            PlatformSpecific::Wayland(
-                                wayland::Event::OverlapNotify(
-                                    OverlapNotifyEvent::OverlapToplevelAdd {
-                                        toplevel,
-                                        logical_rect,
-                                    },
-                                    surface,
-                                    id.inner(),
-                                ),
+                        iced_runtime::core::Event::PlatformSpecific(PlatformSpecific::Wayland(
+                            wayland::Event::OverlapNotify(
+                                OverlapNotifyEvent::OverlapToplevelAdd {
+                                    toplevel,
+                                    logical_rect,
+                                },
+                                surface,
+                                id.inner(),
                             ),
-                        ),
+                        )),
                     ))
                 }
             }
@@ -1444,17 +1222,13 @@ impl SctkEvent {
                 if let Some(id) = surface_ids.get(&surface.id()) {
                     events.push((
                         Some(id.inner()),
-                        iced_runtime::core::Event::PlatformSpecific(
-                            PlatformSpecific::Wayland(
-                                wayland::Event::OverlapNotify(
-                                    OverlapNotifyEvent::OverlapToplevelRemove {
-                                        toplevel,
-                                    },
-                                    surface,
-                                    id.inner(),
-                                ),
+                        iced_runtime::core::Event::PlatformSpecific(PlatformSpecific::Wayland(
+                            wayland::Event::OverlapNotify(
+                                OverlapNotifyEvent::OverlapToplevelRemove { toplevel },
+                                surface,
+                                id.inner(),
                             ),
-                        ),
+                        )),
                     ))
                 }
             }
@@ -1469,21 +1243,19 @@ impl SctkEvent {
                 if let Some(id) = surface_ids.get(&surface.id()) {
                     events.push((
                         Some(id.inner()),
-                        iced_runtime::core::Event::PlatformSpecific(
-                            PlatformSpecific::Wayland(
-                                wayland::Event::OverlapNotify(
-                                    OverlapNotifyEvent::OverlapLayerAdd {
-                                        identifier,
-                                        namespace,
-                                        exclusive,
-                                        layer,
-                                        logical_rect,
-                                    },
-                                    surface,
-                                    id.inner(),
-                                ),
+                        iced_runtime::core::Event::PlatformSpecific(PlatformSpecific::Wayland(
+                            wayland::Event::OverlapNotify(
+                                OverlapNotifyEvent::OverlapLayerAdd {
+                                    identifier,
+                                    namespace,
+                                    exclusive,
+                                    layer,
+                                    logical_rect,
+                                },
+                                surface,
+                                id.inner(),
                             ),
-                        ),
+                        )),
                     ))
                 }
             }
@@ -1494,17 +1266,13 @@ impl SctkEvent {
                 if let Some(id) = surface_ids.get(&surface.id()) {
                     events.push((
                         Some(id.inner()),
-                        iced_runtime::core::Event::PlatformSpecific(
-                            PlatformSpecific::Wayland(
-                                wayland::Event::OverlapNotify(
-                                    OverlapNotifyEvent::OverlapLayerRemove {
-                                        identifier,
-                                    },
-                                    surface,
-                                    id.inner(),
-                                ),
+                        iced_runtime::core::Event::PlatformSpecific(PlatformSpecific::Wayland(
+                            wayland::Event::OverlapNotify(
+                                OverlapNotifyEvent::OverlapLayerRemove { identifier },
+                                surface,
+                                id.inner(),
                             ),
-                        ),
+                        )),
                     ))
                 }
             }
@@ -1551,10 +1319,7 @@ impl SctkEvent {
                     );
                     #[cfg(feature = "a11y")]
                     control_sender
-                        .start_send(Control::InitAdapter(
-                            surface_id,
-                            sctk_winit.clone(),
-                        ))
+                        .start_send(Control::InitAdapter(surface_id, sctk_winit.clone()))
                         .expect("Send control message");
 
                     if clipboard.window_id().is_none() {
@@ -1567,18 +1332,13 @@ impl SctkEvent {
                         );
                     }
                     if compositor.is_none() {
-                        match create_compositor(
-                            sctk_winit.clone(),
-                            create_compositor_data,
-                        )
-                        .await
-                        {
+                        match create_compositor(sctk_winit.clone(), create_compositor_data).await {
                             Ok(c) => *compositor = Some(c),
                             Err(error) => {
                                 control_sender
-                                    .start_send(Control::Crash(
-                                        Error::GraphicsCreationFailed(error),
-                                    ))
+                                    .start_send(Control::Crash(Error::GraphicsCreationFailed(
+                                        error,
+                                    )))
                                     .expect("Send control message");
                                 return;
                             }
@@ -1609,94 +1369,71 @@ impl SctkEvent {
                     );
 
                     _ = ui.update(
-                            &vec![iced_runtime::core::Event::PlatformSpecific(
-                                iced_runtime::core::event::PlatformSpecific::Wayland(
-                                    iced_runtime::core::event::wayland::Event::RequestResize,
-                                ),
-                            )],
-                            window.state.cursor(),
-                            &mut window.renderer,
-                            clipboard,
-                            &mut Vec::new(),
-                        );
+                        &vec![iced_runtime::core::Event::PlatformSpecific(
+                            iced_runtime::core::event::PlatformSpecific::Wayland(
+                                iced_runtime::core::event::wayland::Event::RequestResize,
+                            ),
+                        )],
+                        window.state.cursor(),
+                        &mut window.renderer,
+                        clipboard,
+                        &mut Vec::new(),
+                    );
 
                     if let Some(requested_size) =
                         clipboard.requested_logical_size.lock().unwrap().take()
                     {
-                        let requested_physical_size =
-                            winit::dpi::PhysicalSize::new(
-                                (requested_size.width as f64
-                                    * window.state.scale_factor())
-                                .ceil() as u32,
-                                (requested_size.height as f64
-                                    * window.state.scale_factor())
-                                .ceil() as u32,
-                            );
+                        let requested_physical_size = winit::dpi::PhysicalSize::new(
+                            (requested_size.width as f64 * window.state.scale_factor()).ceil()
+                                as u32,
+                            (requested_size.height as f64 * window.state.scale_factor()).ceil()
+                                as u32,
+                        );
                         let physical_size = window.state.physical_size();
                         if requested_physical_size.width != physical_size.width
-                            || requested_physical_size.height
-                                != physical_size.height
+                            || requested_physical_size.height != physical_size.height
                         {
                             // FIXME what to do when we are stuck in a configure event/resize request loop
                             // We don't have control over how winit handles this.
                             window.resize_enabled = true;
 
-                            let s = winit::dpi::Size::Physical(
-                                requested_physical_size,
-                            );
+                            let s = winit::dpi::Size::Physical(requested_physical_size);
                             _ = window.raw.request_surface_size(s);
                             window.raw.set_min_surface_size(Some(s));
                             window.raw.set_max_surface_size(Some(s));
-                            window.state.synchronize(
-                                &program,
-                                surface_id,
-                                window.raw.as_ref(),
-                            );
+                            window
+                                .state
+                                .synchronize(&program, surface_id, window.raw.as_ref());
                         }
                     }
                     events.push((
                         Some(surface_id),
-                        iced_runtime::core::Event::PlatformSpecific(
-                            PlatformSpecific::Wayland(
-                                wayland::Event::Subsurface(
-                                    wayland::SubsurfaceEvent::Created,
-                                ),
-                            ),
-                        ),
+                        iced_runtime::core::Event::PlatformSpecific(PlatformSpecific::Wayland(
+                            wayland::Event::Subsurface(wayland::SubsurfaceEvent::Created),
+                        )),
                     ));
                     let _ = user_interfaces.insert(surface_id, ui);
                 }
                 SubsurfaceEventVariant::Destroyed(instance) => {
                     remove_iced_subsurface(&instance.wl_surface);
 
-                    if let Some(id_wrapper) =
-                        surface_ids.remove(&instance.wl_surface.id())
-                    {
+                    if let Some(id_wrapper) = surface_ids.remove(&instance.wl_surface.id()) {
                         _ = user_interfaces.remove(&id_wrapper.inner());
 
-                        if let Some(w) =
-                            window_manager.remove(id_wrapper.inner())
-                        {
+                        if let Some(w) = window_manager.remove(id_wrapper.inner()) {
                             clipboard.register_dnd_destination(
                                 DndSurface(Arc::new(Box::new(w.raw.clone()))),
                                 Vec::new(),
                             );
-                            if clipboard
-                                .window_id()
-                                .is_some_and(|id| w.raw.id() == id)
-                            {
+                            if clipboard.window_id().is_some_and(|id| w.raw.id() == id) {
                                 *clipboard = Clipboard::unconnected();
                             }
                         }
                         events.push((
                             Some(id_wrapper.inner()),
-                            iced_runtime::core::Event::PlatformSpecific(
-                                PlatformSpecific::Wayland(
-                                    wayland::Event::Subsurface(
-                                        wayland::SubsurfaceEvent::Destroyed,
-                                    ),
-                                ),
-                            ),
+                            iced_runtime::core::Event::PlatformSpecific(PlatformSpecific::Wayland(
+                                wayland::Event::Subsurface(wayland::SubsurfaceEvent::Destroyed),
+                            )),
                         ));
                     }
                     if let Some(subsurface_state) = subsurface_state.as_mut() {
@@ -1704,9 +1441,7 @@ impl SctkEvent {
                     }
                 }
                 SubsurfaceEventVariant::Resized(id, size) => {
-                    if let Some((id, w)) =
-                        window_manager.get_mut(id).map(|v| (id, v))
-                    {
+                    if let Some((id, w)) = window_manager.get_mut(id).map(|v| (id, v)) {
                         let scale = w.state.scale_factor();
                         let physical_size = size.to_physical(scale);
                         w.state.update(
@@ -1720,23 +1455,19 @@ impl SctkEvent {
 
                         events.push((
                             Some(id),
-                            iced_runtime::core::Event::Window(
-                                window::Event::Opened {
-                                    size: w.state.logical_size(),
-                                    position: Default::default(),
-                                },
-                            ),
+                            iced_runtime::core::Event::Window(window::Event::Opened {
+                                size: w.state.logical_size(),
+                                position: Default::default(),
+                            }),
                         ))
                     }
                 }
             },
             SctkEvent::ShortcutsInhibited(v) => events.push((
                 None,
-                iced_runtime::core::Event::PlatformSpecific(
-                    PlatformSpecific::Wayland(
-                        wayland::Event::ShortcutsInhibited(v),
-                    ),
-                ),
+                iced_runtime::core::Event::PlatformSpecific(PlatformSpecific::Wayland(
+                    wayland::Event::ShortcutsInhibited(v),
+                )),
             )),
         }
     }

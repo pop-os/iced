@@ -533,9 +533,7 @@ pub mod window;
 
 #[cfg(feature = "winit")]
 pub mod platform_specific {
-    pub use iced_winit::{
-        platform_specific as shell, runtime::platform_specific as runtime,
-    };
+    pub use iced_winit::{platform_specific as shell, runtime::platform_specific as runtime};
 }
 
 #[cfg(feature = "winit")]
@@ -554,10 +552,9 @@ pub use crate::core::gradient;
 pub use crate::core::padding;
 pub use crate::core::theme;
 pub use crate::core::{
-    Alignment, Animation, Background, Border, Color, ContentFit, Degrees,
-    Function, Gradient, Length, Never, Padding, Pixels, Point, Radians,
-    Rectangle, Rotation, Settings, Shadow, Size, Theme, Transformation, Vector,
-    id, layout::Limits, never,
+    Alignment, Animation, Background, Border, Color, ContentFit, Degrees, Function, Gradient,
+    Length, Never, Padding, Pixels, Point, Radians, Rectangle, Rotation, Settings, Shadow, Size,
+    Theme, Transformation, Vector, id, layout::Limits, never,
 };
 pub use crate::program::{Preset, message};
 pub use crate::runtime::exit;
@@ -584,8 +581,8 @@ pub mod task {
 pub mod clipboard {
     //! Access the clipboard.
     pub use crate::runtime::clipboard::{
-        read, read_data, read_primary, read_primary_data, write, write_data,
-        write_primary, write_primary_data,
+        read, read_data, read_primary, read_primary_data, write, write_data, write_primary,
+        write_primary_data,
     };
     pub use dnd;
     pub use mime;
@@ -621,9 +618,7 @@ pub mod keyboard {
 
 pub mod mouse {
     //! Listen and react to mouse events.
-    pub use crate::core::mouse::{
-        Button, Cursor, Event, Interaction, ScrollDelta,
-    };
+    pub use crate::core::mouse::{Button, Cursor, Event, Interaction, ScrollDelta};
 }
 
 pub mod system {
@@ -642,12 +637,8 @@ pub mod overlay {
     /// This is an alias of an [`overlay::Element`] with a default `Renderer`.
     ///
     /// [`overlay::Element`]: crate::core::overlay::Element
-    pub type Element<
-        'a,
-        Message,
-        Theme = crate::Renderer,
-        Renderer = crate::Renderer,
-    > = crate::core::overlay::Element<'a, Message, Theme, Renderer>;
+    pub type Element<'a, Message, Theme = crate::Renderer, Renderer = crate::Renderer> =
+        crate::core::overlay::Element<'a, Message, Theme, Renderer>;
 
     pub use iced_widget::overlay::*;
 }
@@ -689,12 +680,8 @@ pub use window::Window;
 /// A generic widget.
 ///
 /// This is an alias of an `iced_native` element with a default `Renderer`.
-pub type Element<
-    'a,
-    Message,
-    Theme = crate::Theme,
-    Renderer = crate::Renderer,
-> = crate::core::Element<'a, Message, Theme, Renderer>;
+pub type Element<'a, Message, Theme = crate::Theme, Renderer = crate::Renderer> =
+    crate::core::Element<'a, Message, Theme, Renderer>;
 
 /// The result of running an iced program.
 pub type Result = std::result::Result<(), Error>;
@@ -733,8 +720,7 @@ pub type Result = std::result::Result<(), Error>;
 /// ```
 pub fn run<State, Message, Theme, Renderer>(
     update: impl application::UpdateFn<State, Message> + 'static,
-    view: impl for<'a> application::ViewFn<'a, State, Message, Theme, Renderer>
-    + 'static,
+    view: impl for<'a> application::ViewFn<'a, State, Message, Theme, Renderer> + 'static,
 ) -> Result
 where
     State: Default + 'static,

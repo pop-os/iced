@@ -9,8 +9,8 @@ use crate::core::renderer;
 use crate::core::widget::Operation;
 use crate::core::widget::tree::{self, Tree};
 use crate::core::{
-    Alignment, Clipboard, Element, Event, Layout, Length, Padding, Pixels,
-    Rectangle, Shell, Size, Vector, Widget,
+    Alignment, Clipboard, Element, Event, Layout, Length, Padding, Pixels, Rectangle, Shell, Size,
+    Vector, Widget,
 };
 
 /// A container that distributes its contents vertically while keeping continuity.
@@ -32,13 +32,8 @@ use crate::core::{
 ///     })).into()
 /// }
 /// ```
-pub struct Column<
-    'a,
-    Key,
-    Message,
-    Theme = crate::Theme,
-    Renderer = crate::Renderer,
-> where
+pub struct Column<'a, Key, Message, Theme = crate::Theme, Renderer = crate::Renderer>
+where
     Key: Copy + PartialEq,
 {
     spacing: f32,
@@ -51,8 +46,7 @@ pub struct Column<
     children: Vec<Element<'a, Message, Theme, Renderer>>,
 }
 
-impl<'a, Key, Message, Theme, Renderer>
-    Column<'a, Key, Message, Theme, Renderer>
+impl<'a, Key, Message, Theme, Renderer> Column<'a, Key, Message, Theme, Renderer>
 where
     Key: Copy + PartialEq,
     Renderer: crate::core::Renderer,
@@ -69,10 +63,7 @@ where
     ///
     /// If any of the children have a [`Length::Fill`] strategy, you will need to
     /// call [`Column::width`] or [`Column::height`] accordingly.
-    pub fn from_vecs(
-        keys: Vec<Key>,
-        children: Vec<Element<'a, Message, Theme, Renderer>>,
-    ) -> Self {
+    pub fn from_vecs(keys: Vec<Key>, children: Vec<Element<'a, Message, Theme, Renderer>>) -> Self {
         Self {
             spacing: 0.0,
             padding: Padding::ZERO,
@@ -87,17 +78,12 @@ where
 
     /// Creates a [`Column`] with the given capacity.
     pub fn with_capacity(capacity: usize) -> Self {
-        Self::from_vecs(
-            Vec::with_capacity(capacity),
-            Vec::with_capacity(capacity),
-        )
+        Self::from_vecs(Vec::with_capacity(capacity), Vec::with_capacity(capacity))
     }
 
     /// Creates a [`Column`] with the given elements.
     pub fn with_children(
-        children: impl IntoIterator<
-            Item = (Key, Element<'a, Message, Theme, Renderer>),
-        >,
+        children: impl IntoIterator<Item = (Key, Element<'a, Message, Theme, Renderer>)>,
     ) -> Self {
         let iterator = children.into_iter();
 
@@ -177,9 +163,7 @@ where
     /// Extends the [`Column`] with the given children.
     pub fn extend(
         self,
-        children: impl IntoIterator<
-            Item = (Key, Element<'a, Message, Theme, Renderer>),
-        >,
+        children: impl IntoIterator<Item = (Key, Element<'a, Message, Theme, Renderer>)>,
     ) -> Self {
         children
             .into_iter()
@@ -293,9 +277,12 @@ where
                 .zip(&mut tree.children)
                 .zip(layout.children())
                 .for_each(|((child, state), c_layout)| {
-                    child
-                        .as_widget_mut()
-                        .operate(state, c_layout.with_virtual_offset(layout.virtual_offset()), renderer, operation);
+                    child.as_widget_mut().operate(
+                        state,
+                        c_layout.with_virtual_offset(layout.virtual_offset()),
+                        renderer,
+                        operation,
+                    );
                 });
         });
     }
@@ -318,7 +305,13 @@ where
             .zip(layout.children())
         {
             child.as_widget_mut().update(
-                tree, event, c_layout.with_virtual_offset(layout.virtual_offset()), cursor, renderer, clipboard, shell,
+                tree,
+                event,
+                c_layout.with_virtual_offset(layout.virtual_offset()),
+                cursor,
+                renderer,
+                clipboard,
+                shell,
                 viewport,
             );
         }
@@ -337,9 +330,13 @@ where
             .zip(&tree.children)
             .zip(layout.children())
             .map(|((child, tree), c_layout)| {
-                child
-                    .as_widget()
-                    .mouse_interaction(tree, c_layout.with_virtual_offset(layout.virtual_offset()), cursor, viewport, renderer)
+                child.as_widget().mouse_interaction(
+                    tree,
+                    c_layout.with_virtual_offset(layout.virtual_offset()),
+                    cursor,
+                    viewport,
+                    renderer,
+                )
             })
             .max()
             .unwrap_or_default()
@@ -392,8 +389,7 @@ where
     }
 }
 
-impl<'a, Key, Message, Theme, Renderer>
-    From<Column<'a, Key, Message, Theme, Renderer>>
+impl<'a, Key, Message, Theme, Renderer> From<Column<'a, Key, Message, Theme, Renderer>>
     for Element<'a, Message, Theme, Renderer>
 where
     Key: Copy + PartialEq + 'static,

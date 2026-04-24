@@ -62,10 +62,7 @@ pub fn subscription(path: &str) -> iced::Subscription<Event> {
     )
 }
 
-fn pipewire_thread(
-    path: &str,
-    mut sender: futures_channel::mpsc::Sender<Event>,
-) {
+fn pipewire_thread(path: &str, mut sender: futures_channel::mpsc::Sender<Event>) {
     gst::init().unwrap();
 
     let pipeline = gst::parse::launch(&format!(
@@ -114,8 +111,7 @@ fn pipewire_thread(
     appsink.set_callbacks(
         gst_app::AppSinkCallbacks::builder()
             .new_sample(move |appsink| {
-                let sample =
-                    appsink.pull_sample().map_err(|_| gst::FlowError::Eos)?;
+                let sample = appsink.pull_sample().map_err(|_| gst::FlowError::Eos)?;
 
                 let buffer = sample.buffer().unwrap();
                 let meta = buffer.meta::<gst_video::VideoMeta>().unwrap();
@@ -166,8 +162,7 @@ fn pipewire_thread(
                     buffer_source
                 };
 
-                let (buffer, new_subsurface_release) =
-                    SubsurfaceBuffer::new(buffer_source);
+                let (buffer, new_subsurface_release) = SubsurfaceBuffer::new(buffer_source);
                 block_on(sender.send(Event::Frame(buffer))).unwrap();
 
                 // Wait for server to release other buffer

@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 iced = { path = "../..", default-features = false, features = [
     "tokio",
-    "wayland",
+    "cctk",
     "winit",
     "debug",
     "tiny-skia",

@@ -59,9 +59,7 @@ impl Tree {
     }
 
     /// Takes all named widgets from the tree.
-    pub fn take_all_named(
-        &mut self,
-    ) -> HashMap<Cow<'static, str>, (State, Vec<(usize, Tree)>)> {
+    pub fn take_all_named(&mut self) -> HashMap<Cow<'static, str>, (State, Vec<(usize, Tree)>)> {
         let mut named = HashMap::new();
         struct Visit {
             parent: Cow<'static, str>,
@@ -75,25 +73,21 @@ impl Tree {
             if let Some(Id(Internal::Custom(_, n))) = tree.id.clone() {
                 let state = mem::replace(&mut tree.state, State::None);
                 let children_count = tree.children.len();
-                let children =
-                    tree.children.iter_mut().enumerate().rev().map(|(i, c)| {
-                        if matches!(c.id, Some(Id(Internal::Custom(_, _)))) {
-                            (c, None)
-                        } else {
-                            (
-                                c,
-                                Some(Visit {
-                                    index: i,
-                                    parent: n.clone(),
-                                    visited: false,
-                                }),
-                            )
-                        }
-                    });
-                _ = named.insert(
-                    n.clone(),
-                    (state, Vec::with_capacity(children_count)),
-                );
+                let children = tree.children.iter_mut().enumerate().rev().map(|(i, c)| {
+                    if matches!(c.id, Some(Id(Internal::Custom(_, _)))) {
+                        (c, None)
+                    } else {
+                        (
+                            c,
+                            Some(Visit {
+                                index: i,
+                                parent: n.clone(),
+                                visited: false,
+                            }),
+                        )
+                    }
+                });
+                _ = named.insert(n.clone(), (state, Vec::with_capacity(children_count)));
                 stack.extend(children);
             } else if let Some(visit) = visit {
                 if visit.visited {
@@ -161,8 +155,7 @@ impl Tree {
     ) where
         Renderer: crate::Renderer,
     {
-        let borrowed: &mut dyn Widget<Message, Theme, Renderer> =
-            new.borrow_mut();
+        let borrowed: &mut dyn Widget<Message, Theme, Renderer> = new.borrow_mut();
 
         let mut tag_match = self.tag == borrowed.tag();
 
@@ -172,8 +165,7 @@ impl Tree {
                     .with(|named| named.borrow_mut().remove(&n))
                     .or_else(|| {
                         //check self.id
-                        if let Some(Id(Internal::Custom(_, ref name))) = self.id
-                        {
+                        if let Some(Id(Internal::Custom(_, ref name))) = self.id {
                             if name == &n {
                                 Some((
                                     mem::replace(&mut self.state, State::None),
@@ -207,8 +199,7 @@ impl Tree {
                         self.children = widget_children;
                     } else {
                         for (old_i, mut old) in children {
-                            let Some(my_state) = self.children.get_mut(old_i)
-                            else {
+                            let Some(my_state) = self.children.get_mut(old_i) else {
                                 continue;
                             };
                             if my_state.tag != old.tag || {
@@ -217,10 +208,9 @@ impl Tree {
                                         Some(Id(Internal::Custom(_, old_name))),
                                         Some(Id(Internal::Custom(_, my_name))),
                                     ) => old_name == my_name,
-                                    (
-                                        Some(Id(Internal::Set(a))),
-                                        Some(Id(Internal::Set(b))),
-                                    ) => a.len() == b.len(),
+                                    (Some(Id(Internal::Set(a))), Some(Id(Internal::Set(b)))) => {
+                                        a.len() == b.len()
+                                    }
                                     (
                                         Some(Id(Internal::Unique(_))),
                                         Some(Id(Internal::Unique(_))),
@@ -256,9 +246,7 @@ impl Tree {
     /// Reconciles the children of the tree with the provided list of widgets.
     pub fn diff_children<'a, Message, Theme, Renderer>(
         &mut self,
-        new_children: &mut [impl BorrowMut<
-            dyn Widget<Message, Theme, Renderer> + 'a,
-        >],
+        new_children: &mut [impl BorrowMut<dyn Widget<Message, Theme, Renderer> + 'a>],
     ) where
         Renderer: crate::Renderer,
     {
@@ -291,30 +279,25 @@ impl Tree {
         }
 
         let children_len = self.children.len();
-        let (mut id_map, mut id_list): (
-            HashMap<String, &mut Tree>,
-            VecDeque<(usize, &mut Tree)>,
-        ) = self.children.iter_mut().enumerate().fold(
-            (HashMap::new(), VecDeque::with_capacity(children_len)),
-            |(mut id_map, mut id_list), (i, c)| {
-                if let Some(id) = c.id.as_ref() {
-                    if let Internal::Custom(_, ref name) = id.0 {
-                        let _ = id_map.insert(name.to_string(), c);
+        let (mut id_map, mut id_list): (HashMap<String, &mut Tree>, VecDeque<(usize, &mut Tree)>) =
+            self.children.iter_mut().enumerate().fold(
+                (HashMap::new(), VecDeque::with_capacity(children_len)),
+                |(mut id_map, mut id_list), (i, c)| {
+                    if let Some(id) = c.id.as_ref() {
+                        if let Internal::Custom(_, ref name) = id.0 {
+                            let _ = id_map.insert(name.to_string(), c);
+                        } else {
+                            id_list.push_back((i, c));
+                        }
                     } else {
                         id_list.push_back((i, c));
                     }
-                } else {
-                    id_list.push_back((i, c));
-                }
-                (id_map, id_list)
-            },
-        );
+                    (id_map, id_list)
+                },
+            );
 
-        let mut new_trees: Vec<(Tree, usize)> =
-            Vec::with_capacity(new_children.len());
-        for (i, (new, new_id)) in
-            new_children.iter_mut().zip(new_ids.iter()).enumerate()
-        {
+        let mut new_trees: Vec<(Tree, usize)> = Vec::with_capacity(new_children.len());
+        for (i, (new, new_id)) in new_children.iter_mut().zip(new_ids.iter()).enumerate() {
             let child_state = if let Some(c) = new_id.as_ref().and_then(|id| {
                 if let Internal::Custom(_, ref name) = id.0 {
                     id_map.remove(name.as_ref())
@@ -396,9 +379,7 @@ pub fn diff_children_custom_with_search<T>(
             };
 
             let _ = current_children.splice(
-                difference_index
-                    ..difference_index
-                        + (current_children.len() - new_children.len()),
+                difference_index..difference_index + (current_children.len() - new_children.len()),
                 std::iter::empty(),
             );
         }
@@ -409,9 +390,7 @@ pub fn diff_children_custom_with_search<T>(
         let last_maybe_changed = maybe_changed(current_children.len() - 1);
 
         if !first_maybe_changed && last_maybe_changed {
-            current_children.extend(
-                new_children[current_children.len()..].iter().map(new_state),
-            );
+            current_children.extend(new_children[current_children.len()..].iter().map(new_state));
         } else {
             let difference_index = if first_maybe_changed {
                 0
@@ -424,8 +403,7 @@ pub fn diff_children_custom_with_search<T>(
             let _ = current_children.splice(
                 difference_index..difference_index,
                 new_children[difference_index
-                    ..difference_index
-                        + (new_children.len() - current_children.len())]
+                    ..difference_index + (new_children.len() - current_children.len())]
                     .iter()
                     .map(new_state),
             );
@@ -433,9 +411,7 @@ pub fn diff_children_custom_with_search<T>(
     }
 
     // TODO: Merge loop with extend logic (?)
-    for (child_state, new) in
-        current_children.iter_mut().zip(new_children.iter_mut())
-    {
+    for (child_state, new) in current_children.iter_mut().zip(new_children.iter_mut()) {
         diff(child_state, new);
     }
 }
@@ -487,9 +463,7 @@ impl State {
     {
         match self {
             State::None => panic!("Downcast on stateless state"),
-            State::Some(state) => {
-                state.downcast_ref().expect("Downcast widget state")
-            }
+            State::Some(state) => state.downcast_ref().expect("Downcast widget state"),
         }
     }
 
@@ -503,9 +477,7 @@ impl State {
     {
         match self {
             State::None => panic!("Downcast on stateless state"),
-            State::Some(state) => {
-                state.downcast_mut().expect("Downcast widget state")
-            }
+            State::Some(state) => state.downcast_mut().expect("Downcast widget state"),
         }
     }
 }

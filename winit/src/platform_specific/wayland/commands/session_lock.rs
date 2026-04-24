@@ -1,9 +1,9 @@
 use crate::core::window::Id as SurfaceId;
 use cctk::sctk::reexports::client::protocol::wl_output::WlOutput;
 use iced_runtime::{
-    self,
+    self, Action, Task,
     platform_specific::{self, wayland},
-    task, Action, Task,
+    task,
 };
 
 pub fn lock<Message>() -> Task<Message> {
@@ -22,10 +22,7 @@ pub fn unlock<Message>() -> Task<Message> {
     ))
 }
 
-pub fn get_lock_surface<Message>(
-    id: SurfaceId,
-    output: WlOutput,
-) -> Task<Message> {
+pub fn get_lock_surface<Message>(id: SurfaceId, output: WlOutput) -> Task<Message> {
     task::effect(Action::PlatformSpecific(
         platform_specific::Action::Wayland(wayland::Action::SessionLock(
             wayland::session_lock::Action::LockSurface { id, output },

@@ -5,20 +5,15 @@ use crate::core::overlay;
 use crate::core::renderer;
 use crate::core::widget::Tree;
 use crate::core::{
-    self, Clipboard, Element, Event, Layout, Padding, Point, Rectangle, Shell,
-    Size, Vector,
+    self, Clipboard, Element, Event, Layout, Padding, Point, Rectangle, Shell, Size, Vector,
 };
 use crate::pane_grid::controls::Controls;
 
 /// The title bar of a [`Pane`].
 ///
 /// [`Pane`]: super::Pane
-pub struct TitleBar<
-    'a,
-    Message,
-    Theme = crate::Theme,
-    Renderer = crate::Renderer,
-> where
+pub struct TitleBar<'a, Message, Theme = crate::Theme, Renderer = crate::Renderer>
+where
     Theme: container::Catalog,
     Renderer: core::Renderer,
 {
@@ -35,9 +30,7 @@ where
     Renderer: core::Renderer,
 {
     /// Creates a new [`TitleBar`] with the given content.
-    pub fn new(
-        content: impl Into<Element<'a, Message, Theme, Renderer>>,
-    ) -> Self {
+    pub fn new(content: impl Into<Element<'a, Message, Theme, Renderer>>) -> Self {
         Self {
             content: content.into(),
             controls: None,
@@ -48,10 +41,7 @@ where
     }
 
     /// Sets the controls of the [`TitleBar`].
-    pub fn controls(
-        mut self,
-        controls: impl Into<Controls<'a, Message, Theme, Renderer>>,
-    ) -> Self {
+    pub fn controls(mut self, controls: impl Into<Controls<'a, Message, Theme, Renderer>>) -> Self {
         self.controls = Some(controls.into());
         self
     }
@@ -77,10 +67,7 @@ where
 
     /// Sets the style of the [`TitleBar`].
     #[must_use]
-    pub fn style(
-        mut self,
-        style: impl Fn(&Theme) -> container::Style + 'a,
-    ) -> Self
+    pub fn style(mut self, style: impl Fn(&Theme) -> container::Style + 'a) -> Self
     where
         Theme::Class<'a>: From<container::StyleFn<'a, Theme>>,
     {
@@ -179,8 +166,7 @@ where
             && (show_controls || self.always_show_controls)
         {
             let controls_layout = children.next().unwrap();
-            if title_layout.bounds().width + controls_layout.bounds().width
-                > padded.bounds().width
+            if title_layout.bounds().width + controls_layout.bounds().width > padded.bounds().width
             {
                 if let Some(compact) = controls.compact.as_ref() {
                     let compact_layout = children.next().unwrap();
@@ -190,8 +176,7 @@ where
                         renderer,
                         theme,
                         &inherited_style,
-                        compact_layout
-                            .with_virtual_offset(layout.virtual_offset()),
+                        compact_layout.with_virtual_offset(layout.virtual_offset()),
                         cursor,
                         viewport,
                     );
@@ -203,8 +188,7 @@ where
                         renderer,
                         theme,
                         &inherited_style,
-                        controls_layout
-                            .with_virtual_offset(layout.virtual_offset()),
+                        controls_layout.with_virtual_offset(layout.virtual_offset()),
                         cursor,
                         viewport,
                     );
@@ -215,8 +199,7 @@ where
                     renderer,
                     theme,
                     &inherited_style,
-                    controls_layout
-                        .with_virtual_offset(layout.virtual_offset()),
+                    controls_layout.with_virtual_offset(layout.virtual_offset()),
                     cursor,
                     viewport,
                 );
@@ -240,11 +223,7 @@ where
     /// [`TitleBar`] or not.
     ///
     /// The whole [`TitleBar`] is a pick area, except its controls.
-    pub fn is_over_pick_area(
-        &self,
-        layout: Layout<'_>,
-        cursor_position: Point,
-    ) -> bool {
+    pub fn is_over_pick_area(&self, layout: Layout<'_>, cursor_position: Point) -> bool {
         if layout.bounds().contains(cursor_position) {
             let mut children = layout.children();
             let padded = children.next().unwrap();
@@ -301,9 +280,7 @@ where
                 &layout::Limits::new(Size::ZERO, max_size),
             );
 
-            if title_layout.bounds().width + controls_layout.bounds().width
-                > max_size.width
-            {
+            if title_layout.bounds().width + controls_layout.bounds().width > max_size.width {
                 if let Some(compact) = controls.compact.as_mut() {
                     let compact_layout = compact.as_widget_mut().layout(
                         &mut tree.children[2],
@@ -312,8 +289,7 @@ where
                     );
 
                     let compact_size = compact_layout.size();
-                    let space_before_controls =
-                        max_size.width - compact_size.width;
+                    let space_before_controls = max_size.width - compact_size.width;
 
                     let height = title_size.height.max(compact_size.height);
 
@@ -322,16 +298,12 @@ where
                         vec![
                             title_layout,
                             controls_layout,
-                            compact_layout.move_to(Point::new(
-                                space_before_controls,
-                                0.0,
-                            )),
+                            compact_layout.move_to(Point::new(space_before_controls, 0.0)),
                         ],
                     )
                 } else {
                     let controls_size = controls_layout.size();
-                    let space_before_controls =
-                        max_size.width - controls_size.width;
+                    let space_before_controls = max_size.width - controls_size.width;
 
                     let height = title_size.height.max(controls_size.height);
 
@@ -339,17 +311,13 @@ where
                         Size::new(max_size.width, height),
                         vec![
                             title_layout,
-                            controls_layout.move_to(Point::new(
-                                space_before_controls,
-                                0.0,
-                            )),
+                            controls_layout.move_to(Point::new(space_before_controls, 0.0)),
                         ],
                     )
                 }
             } else {
                 let controls_size = controls_layout.size();
-                let space_before_controls =
-                    max_size.width - controls_size.width;
+                let space_before_controls = max_size.width - controls_size.width;
 
                 let height = title_size.height.max(controls_size.height);
 
@@ -357,8 +325,7 @@ where
                     Size::new(max_size.width, height),
                     vec![
                         title_layout,
-                        controls_layout
-                            .move_to(Point::new(space_before_controls, 0.0)),
+                        controls_layout.move_to(Point::new(space_before_controls, 0.0)),
                     ],
                 )
             }
@@ -389,16 +356,14 @@ where
         if let Some(controls) = &mut self.controls {
             let controls_layout = children.next().unwrap();
 
-            if title_layout.bounds().width + controls_layout.bounds().width
-                > padded.bounds().width
+            if title_layout.bounds().width + controls_layout.bounds().width > padded.bounds().width
             {
                 if let Some(compact) = controls.compact.as_mut() {
                     let compact_layout = children.next().unwrap();
 
                     compact.as_widget_mut().operate(
                         &mut tree.children[2],
-                        compact_layout
-                            .with_virtual_offset(layout.virtual_offset()),
+                        compact_layout.with_virtual_offset(layout.virtual_offset()),
                         renderer,
                         operation,
                     );
@@ -407,8 +372,7 @@ where
 
                     controls.full.as_widget_mut().operate(
                         &mut tree.children[1],
-                        controls_layout
-                            .with_virtual_offset(layout.virtual_offset()),
+                        controls_layout.with_virtual_offset(layout.virtual_offset()),
                         renderer,
                         operation,
                     );
@@ -416,8 +380,7 @@ where
             } else {
                 controls.full.as_widget_mut().operate(
                     &mut tree.children[1],
-                    controls_layout
-                        .with_virtual_offset(layout.virtual_offset()),
+                    controls_layout.with_virtual_offset(layout.virtual_offset()),
                     renderer,
                     operation,
                 );
@@ -455,8 +418,7 @@ where
         if let Some(controls) = &mut self.controls {
             let controls_layout = children.next().unwrap();
 
-            if title_layout.bounds().width + controls_layout.bounds().width
-                > padded.bounds().width
+            if title_layout.bounds().width + controls_layout.bounds().width > padded.bounds().width
             {
                 if let Some(compact) = controls.compact.as_mut() {
                     let compact_layout = children.next().unwrap();
@@ -464,8 +426,7 @@ where
                     compact.as_widget_mut().update(
                         &mut tree.children[2],
                         event,
-                        compact_layout
-                            .with_virtual_offset(layout.virtual_offset()),
+                        compact_layout.with_virtual_offset(layout.virtual_offset()),
                         cursor,
                         renderer,
                         clipboard,
@@ -478,8 +439,7 @@ where
                     controls.full.as_widget_mut().update(
                         &mut tree.children[1],
                         event,
-                        controls_layout
-                            .with_virtual_offset(layout.virtual_offset()),
+                        controls_layout.with_virtual_offset(layout.virtual_offset()),
                         cursor,
                         renderer,
                         clipboard,
@@ -491,8 +451,7 @@ where
                 controls.full.as_widget_mut().update(
                     &mut tree.children[1],
                     event,
-                    controls_layout
-                        .with_virtual_offset(layout.virtual_offset()),
+                    controls_layout.with_virtual_offset(layout.virtual_offset()),
                     cursor,
                     renderer,
                     clipboard,
@@ -540,30 +499,25 @@ where
 
         if let Some(controls) = &self.controls {
             let controls_layout = children.next().unwrap();
-            let controls_interaction =
-                controls.full.as_widget().mouse_interaction(
-                    &tree.children[1],
-                    controls_layout
-                        .with_virtual_offset(layout.virtual_offset()),
-                    cursor,
-                    viewport,
-                    renderer,
-                );
+            let controls_interaction = controls.full.as_widget().mouse_interaction(
+                &tree.children[1],
+                controls_layout.with_virtual_offset(layout.virtual_offset()),
+                cursor,
+                viewport,
+                renderer,
+            );
 
-            if title_layout.bounds().width + controls_layout.bounds().width
-                > padded.bounds().width
+            if title_layout.bounds().width + controls_layout.bounds().width > padded.bounds().width
             {
                 if let Some(compact) = controls.compact.as_ref() {
                     let compact_layout = children.next().unwrap();
-                    let compact_interaction =
-                        compact.as_widget().mouse_interaction(
-                            &tree.children[2],
-                            compact_layout
-                                .with_virtual_offset(layout.virtual_offset()),
-                            cursor,
-                            viewport,
-                            renderer,
-                        );
+                    let compact_interaction = compact.as_widget().mouse_interaction(
+                        &tree.children[2],
+                        compact_layout.with_virtual_offset(layout.virtual_offset()),
+                        cursor,
+                        viewport,
+                        renderer,
+                    );
 
                     compact_interaction.max(title_interaction)
                 } else {
@@ -606,8 +560,7 @@ where
                 controls.as_mut().and_then(|controls| {
                     let controls_layout = children.next()?;
 
-                    if title_layout.bounds().width
-                        + controls_layout.bounds().width
+                    if title_layout.bounds().width + controls_layout.bounds().width
                         > padded.bounds().width
                     {
                         if let Some(compact) = controls.compact.as_mut() {
@@ -616,9 +569,7 @@ where
 
                             compact.as_widget_mut().overlay(
                                 compact_state,
-                                compact_layout.with_virtual_offset(
-                                    layout.virtual_offset(),
-                                ),
+                                compact_layout.with_virtual_offset(layout.virtual_offset()),
                                 renderer,
                                 viewport,
                                 translation,
@@ -626,9 +577,7 @@ where
                         } else {
                             controls.full.as_widget_mut().overlay(
                                 controls_state,
-                                controls_layout.with_virtual_offset(
-                                    layout.virtual_offset(),
-                                ),
+                                controls_layout.with_virtual_offset(layout.virtual_offset()),
                                 renderer,
                                 viewport,
                                 translation,
@@ -637,8 +586,7 @@ where
                     } else {
                         controls.full.as_widget_mut().overlay(
                             controls_state,
-                            controls_layout
-                                .with_virtual_offset(layout.virtual_offset()),
+                            controls_layout.with_virtual_offset(layout.virtual_offset()),
                             renderer,
                             viewport,
                             translation,

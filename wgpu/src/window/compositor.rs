@@ -72,8 +72,7 @@ impl Compositor {
             not(target_os = "redox")
         ))]
         let ids = compatible_window.as_ref().and_then(|window| {
-            get_wayland_device_ids(window)
-                .or_else(|| get_x11_device_ids(window))
+            get_wayland_device_ids(window).or_else(|| get_x11_device_ids(window))
         });
 
         // HACK:
@@ -89,8 +88,7 @@ impl Compositor {
             not(target_os = "redox")
         ))]
         if !matches!(ids, Some((0x10de, _)))
-            && std::env::var_os("__NV_PRIME_RENDER_OFFLOAD")
-                .is_none_or(|var| var == "0")
+            && std::env::var_os("__NV_PRIME_RENDER_OFFLOAD").is_none_or(|var| var == "0")
             && std::env::var_os("WGPU_ADAPTER_NAME").is_none()
             && std::env::var("WGPU_POWER_PREF").as_deref() != Ok("high")
         {
@@ -103,8 +101,8 @@ impl Compositor {
         // Otherwise it will panic when it drops the available adapters!
         let non_gl_backends = settings.backends.difference(Backends::GL);
         // only load the instance after setting environment variables, this initializes the vulkan loader
-        let mut instance = wgpu::util::new_instance_with_webgpu_detection(
-            &wgpu::InstanceDescriptor {
+        let mut instance =
+            wgpu::util::new_instance_with_webgpu_detection(&wgpu::InstanceDescriptor {
                 backends: non_gl_backends,
                 flags: if cfg!(feature = "strict-assertions") {
                     wgpu::InstanceFlags::debugging()
@@ -112,9 +110,8 @@ impl Compositor {
                     wgpu::InstanceFlags::empty()
                 },
                 ..Default::default()
-            },
-        )
-        .await;
+            })
+            .await;
 
         log::info!("{settings:#?}");
 
@@ -160,8 +157,7 @@ impl Compositor {
                     .into_iter()
                     .filter(|adapter| {
                         let info = adapter.get_info();
-                        info.device == device_id as u32
-                            && info.vendor == vendor_id as u32
+                        info.device == device_id as u32 && info.vendor == vendor_id as u32
                     })
                     .find(|adapter| {
                         if let Some(surface) = compatible_surface.as_ref() {
@@ -193,8 +189,8 @@ impl Compositor {
             Some(adapter) => adapter,
             None => {
                 // fall back to allowing GL backend if enabled
-                instance = wgpu::util::new_instance_with_webgpu_detection(
-                    &wgpu::InstanceDescriptor {
+                instance =
+                    wgpu::util::new_instance_with_webgpu_detection(&wgpu::InstanceDescriptor {
                         backends: settings.backends,
                         flags: if cfg!(feature = "strict-assertions") {
                             wgpu::InstanceFlags::debugging()
@@ -202,20 +198,20 @@ impl Compositor {
                             wgpu::InstanceFlags::empty()
                         },
                         ..Default::default()
-                    },
-                )
-                .await;
-                compatible_surface = compatible_window
-                    .and_then(|window| instance.create_surface(window).ok());
+                    })
+                    .await;
+                compatible_surface =
+                    compatible_window.and_then(|window| instance.create_surface(window).ok());
                 adapter_options = wgpu::RequestAdapterOptions {
                     power_preference: wgpu::PowerPreference::from_env()
                         .unwrap_or(wgpu::PowerPreference::HighPerformance),
                     compatible_surface: compatible_surface.as_ref(),
                     force_fallback_adapter: false,
                 };
-                instance.request_adapter(&adapter_options).await.map_err(
-                    |_| Error::NoAdapterFound(format!("{:?}", adapter_options)),
-                )?
+                instance
+                    .request_adapter(&adapter_options)
+                    .await
+                    .map_err(|_| Error::NoAdapterFound(format!("{:?}", adapter_options)))?
             }
         };
         log::info!("Selected: {:#?}", adapter.get_info());
@@ -255,33 +251,26 @@ impl Compositor {
 
                 log::info!("Available alpha modes: {alpha_modes:#?}");
 
-                let preferred_alpha = if alpha_modes
-                    .contains(&wgpu::CompositeAlphaMode::PostMultiplied)
-                {
-                    wgpu::CompositeAlphaMode::PostMultiplied
-                } else if alpha_modes
-                    .contains(&wgpu::CompositeAlphaMode::PreMultiplied)
-                {
-                    wgpu::CompositeAlphaMode::PreMultiplied
-                } else {
-                    wgpu::CompositeAlphaMode::Auto
-                };
+                let preferred_alpha =
+                    if alpha_modes.contains(&wgpu::CompositeAlphaMode::PostMultiplied) {
+                        wgpu::CompositeAlphaMode::PostMultiplied
+                    } else if alpha_modes.contains(&wgpu::CompositeAlphaMode::PreMultiplied) {
+                        wgpu::CompositeAlphaMode::PreMultiplied
+                    } else {
+                        wgpu::CompositeAlphaMode::Auto
+                    };
 
                 format.zip(Some(preferred_alpha))
             })
             .ok_or(Error::IncompatibleSurface)?;
 
-        log::info!(
-            "Selected format: {format:?} with alpha mode: {alpha_mode:?}"
-        );
+        log::info!("Selected format: {format:?} with alpha mode: {alpha_mode:?}");
 
         #[cfg(target_arch = "wasm32")]
-        let limits = [wgpu::Limits::downlevel_webgl2_defaults()
-            .using_resolution(adapter.limits())];
+        let limits = [wgpu::Limits::downlevel_webgl2_defaults().using_resolution(adapter.limits())];
 
         #[cfg(not(target_arch = "wasm32"))]
-        let limits =
-            [wgpu::Limits::default(), wgpu::Limits::downlevel_defaults()];
+        let limits = [wgpu::Limits::default(), wgpu::Limits::downlevel_defaults()];
 
         let limits = limits.into_iter().map(|limits| wgpu::Limits {
             max_bind_groups: 2,
@@ -294,15 +283,12 @@ impl Compositor {
         for required_limits in limits {
             let result = adapter
                 .request_device(&wgpu::DeviceDescriptor {
-                    label: Some(
-                        "iced_wgpu::window::compositor device descriptor",
-                    ),
+                    label: Some("iced_wgpu::window::compositor device descriptor"),
                     required_features: wgpu::Features::SHADER_F16,
                     required_limits: required_limits.clone(),
                     memory_hints: wgpu::MemoryHints::MemoryUsage,
                     trace: wgpu::Trace::Off,
-                    experimental_features: wgpu::ExperimentalFeatures::disabled(
-                    ),
+                    experimental_features: wgpu::ExperimentalFeatures::disabled(),
                 })
                 .await;
 
@@ -373,16 +359,10 @@ pub fn present(
             Ok(())
         }
         Err(error) => match error {
-            wgpu::SurfaceError::Timeout => {
-                Err(compositor::SurfaceError::Timeout)
-            }
-            wgpu::SurfaceError::Outdated => {
-                Err(compositor::SurfaceError::Outdated)
-            }
+            wgpu::SurfaceError::Timeout => Err(compositor::SurfaceError::Timeout),
+            wgpu::SurfaceError::Outdated => Err(compositor::SurfaceError::Outdated),
             wgpu::SurfaceError::Lost => Err(compositor::SurfaceError::Lost),
-            wgpu::SurfaceError::OutOfMemory => {
-                Err(compositor::SurfaceError::OutOfMemory)
-            }
+            wgpu::SurfaceError::OutOfMemory => Err(compositor::SurfaceError::OutOfMemory),
             wgpu::SurfaceError::Other => Err(compositor::SurfaceError::Other),
         },
     }
@@ -448,12 +428,7 @@ impl graphics::Compositor for Compositor {
         surface
     }
 
-    fn configure_surface(
-        &mut self,
-        surface: &mut Self::Surface,
-        width: u32,
-        height: u32,
-    ) {
+    fn configure_surface(&mut self, surface: &mut Self::Surface, width: u32, height: u32) {
         surface.configure(
             &self.engine.device,
             &wgpu::SurfaceConfiguration {

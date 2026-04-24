@@ -66,10 +66,7 @@ pub struct PlatformSpecific {
 }
 
 impl PlatformSpecific {
-    pub(crate) fn send_action(
-        &mut self,
-        action: iced_runtime::platform_specific::Action,
-    ) {
+    pub(crate) fn send_action(&mut self, action: iced_runtime::platform_specific::Action) {
         match action {
             #[cfg(all(feature = "cctk", target_os = "linux"))]
             iced_runtime::platform_specific::Action::Wayland(a) => {
@@ -78,10 +75,7 @@ impl PlatformSpecific {
         }
     }
 
-    pub(crate) fn retain_subsurfaces<F: Fn(window::Id) -> bool>(
-        &mut self,
-        keep: F,
-    ) {
+    pub(crate) fn retain_subsurfaces<F: Fn(window::Id) -> bool>(&mut self, keep: F) {
         #[cfg(all(feature = "cctk", target_os = "linux"))]
         {
             self.wayland.retain_subsurfaces(keep);
@@ -95,16 +89,10 @@ impl PlatformSpecific {
         }
     }
 
-    pub(crate) fn update_subsurfaces(
-        &mut self,
-        id: window::Id,
-        window: &dyn HasWindowHandle,
-    ) {
+    pub(crate) fn update_subsurfaces(&mut self, id: window::Id, window: &dyn HasWindowHandle) {
         #[cfg(all(feature = "cctk", target_os = "linux"))]
         {
-            use cctk::sctk::reexports::client::{
-                Proxy, protocol::wl_surface::WlSurface,
-            };
+            use cctk::sctk::reexports::client::{Proxy, protocol::wl_surface::WlSurface};
             use wayland_backend::client::ObjectId;
 
             let Some(conn) = self.wayland.conn() else {
@@ -117,9 +105,7 @@ impl PlatformSpecific {
                 return;
             };
             let wl_surface = match raw.as_raw() {
-                raw_window_handle::RawWindowHandle::Wayland(
-                    wayland_window_handle,
-                ) => {
+                raw_window_handle::RawWindowHandle::Wayland(wayland_window_handle) => {
                     let res = unsafe {
                         ObjectId::from_ptr(
                             WlSurface::interface(),
@@ -127,9 +113,7 @@ impl PlatformSpecific {
                         )
                     };
                     let Ok(id) = res else {
-                        log::error!(
-                            "Could not create WlSurface Id from window"
-                        );
+                        log::error!("Could not create WlSurface Id from window");
                         return;
                     };
                     let Ok(surface) = WlSurface::from_id(&conn, id) else {
@@ -169,9 +153,9 @@ impl PlatformSpecific {
     ) {
         #[cfg(all(feature = "cctk", target_os = "linux"))]
         {
-            return self.wayland.update_surface_shm(
-                surface, width, height, scale, data, offset,
-            );
+            return self
+                .wayland
+                .update_surface_shm(surface, width, height, scale, data, offset);
         }
     }
 }
@@ -181,9 +165,7 @@ pub(crate) async fn handle_event<'a, 'b, P>(
     events: &mut Vec<(Option<window::Id>, iced_runtime::core::Event)>,
     platform_specific: &mut PlatformSpecific,
     program: &'a crate::program::Instance<P>,
-    compositor: &mut Option<
-        <<P as Program>::Renderer as compositor::Default>::Compositor,
-    >,
+    compositor: &mut Option<<<P as Program>::Renderer as compositor::Default>::Compositor>,
     window_manager: &mut WindowManager<
         P,
         <<P as Program>::Renderer as compositor::Default>::Compositor,

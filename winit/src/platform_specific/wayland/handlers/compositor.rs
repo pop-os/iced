@@ -9,8 +9,7 @@ use cctk::sctk::{
 };
 
 use crate::{
-    event_loop::state::receive_frame,
-    platform_specific::wayland::event_loop::state::SctkState,
+    event_loop::state::receive_frame, platform_specific::wayland::event_loop::state::SctkState,
 };
 
 impl CompositorHandler for SctkState {

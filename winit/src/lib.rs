@@ -41,10 +41,9 @@ pub mod conversion;
 pub mod platform_specific;
 
 #[cfg(feature = "program")]
-pub mod program;
+pub use program::Program;
 
-#[cfg(feature = "system")]
-pub mod system;
+pub use platform_specific::*;
 
 mod error;
 mod proxy;
@@ -99,8 +98,7 @@ where
     let event_loop = EventLoop::new().expect("Create event loop");
 
     #[cfg(all(feature = "cctk", target_os = "linux"))]
-    let is_wayland =
-        winit::platform::wayland::EventLoopExtWayland::is_wayland(&event_loop);
+    let is_wayland = winit::platform::wayland::EventLoopExtWayland::is_wayland(&event_loop);
     #[cfg(not(all(feature = "cctk", target_os = "linux")))]
     let is_wayland = false;
 
@@ -122,8 +120,7 @@ where
     }
 
     let mut runtime = {
-        let executor =
-            P::Executor::new().map_err(Error::ExecutorCreationFailed)?;
+        let executor = P::Executor::new().map_err(Error::ExecutorCreationFailed)?;
         executor.spawn(worker);
 
         Runtime::new(executor, proxy.clone())
@@ -193,10 +190,13 @@ where
         error: Option<Error>,
         system_theme: Option<oneshot::Sender<theme::Mode>>,
         control_sender: mpsc::UnboundedSender<Control>,
-        
+
         #[cfg(feature = "a11y")]
-        adapters: std::collections::HashMap<window::Id, (u64, iced_accessibility::accesskit_winit::Adapter)>,
-    
+        adapters: std::collections::HashMap<
+            window::Id,
+            (u64, iced_accessibility::accesskit_winit::Adapter),
+        >,
+
         #[cfg(target_arch = "wasm32")]
         is_booted: std::rc::Rc<std::cell::RefCell<bool>>,
         #[cfg(target_arch = "wasm32")]
@@ -232,10 +232,7 @@ where
     where
         F: Future<Output = ()>,
     {
-        fn proxy_wake_up(
-            &mut self,
-            event_loop: &dyn winit::event_loop::ActiveEventLoop,
-        ) {
+        fn proxy_wake_up(&mut self, event_loop: &dyn winit::event_loop::ActiveEventLoop) {
             self.process_event(event_loop, None);
         }
 
@@ -259,37 +256,27 @@ where
             #[cfg(target_os = "windows")]
             let is_move_or_resize = matches!(
                 event,
-                winit::event::WindowEvent::SurfaceResized(_)
-                    | winit::event::WindowEvent::Moved(_)
+                winit::event::WindowEvent::SurfaceResized(_) | winit::event::WindowEvent::Moved(_)
             );
 
             #[cfg(all(feature = "cctk", target_os = "linux"))]
             {
                 if matches!(event, WindowEvent::RedrawRequested) {
-                    for id in
-                        crate::subsurface_widget::subsurface_ids(window_id)
-                    {
-                        _ = self.sender.start_send(Event::Winit(
-                            id,
-                            WindowEvent::RedrawRequested,
-                        ));
+                    for id in crate::subsurface_widget::subsurface_ids(window_id) {
+                        _ = self
+                            .sender
+                            .start_send(Event::Winit(id, WindowEvent::RedrawRequested));
                     }
                 } else if matches!(event, WindowEvent::CloseRequested) {
-                    for id in
-                        crate::subsurface_widget::subsurface_ids(window_id)
-                    {
-                        _ = self.sender.start_send(Event::Winit(
-                            id,
-                            WindowEvent::CloseRequested,
-                        ));
+                    for id in crate::subsurface_widget::subsurface_ids(window_id) {
+                        _ = self
+                            .sender
+                            .start_send(Event::Winit(id, WindowEvent::CloseRequested));
                     }
                 }
             }
 
-            self.process_event(
-                event_loop,
-                Some(Event::Winit(window_id, event)),
-            );
+            self.process_event(event_loop, Some(Event::Winit(window_id, event)));
 
             // TODO: Remove when unnecessary
             // On Windows, we emulate an `AboutToWait` event after every `Resized` event
@@ -308,17 +295,11 @@ where
             }
         }
 
-        fn about_to_wait(
-            &mut self,
-            event_loop: &dyn winit::event_loop::ActiveEventLoop,
-        ) {
+        fn about_to_wait(&mut self, event_loop: &dyn winit::event_loop::ActiveEventLoop) {
             self.process_event(event_loop, Some(Event::AboutToWait));
         }
 
-        fn can_create_surfaces(
-            &mut self,
-            event_loop: &dyn winit::event_loop::ActiveEventLoop,
-        ) {
+        fn can_create_surfaces(&mut self, event_loop: &dyn winit::event_loop::ActiveEventLoop) {
             // create initial window
             let Some(BootConfig {
                 sender,
@@ -336,9 +317,7 @@ where
             };
 
             #[cfg(not(target_arch = "wasm32"))]
-            if let Err(error) =
-                crate::futures::futures::executor::block_on(finish_boot)
-            {
+            if let Err(error) = crate::futures::futures::executor::block_on(finish_boot) {
                 self.error = Some(Error::GraphicsCreationFailed(error));
                 event_loop.exit();
             }
@@ -353,8 +332,7 @@ where
                     *is_booted.borrow_mut() = true;
                 });
 
-                event_loop
-                    .set_control_flow(winit::event_loop::ControlFlow::Poll);
+                event_loop.set_control_flow(winit::event_loop::ControlFlow::Poll);
             }
         }
     }
@@ -389,10 +367,8 @@ where
                                         ControlFlow::WaitUntil(current),
                                         ControlFlow::WaitUntil(new),
                                     ) if current < new => {}
-                                    (
-                                        ControlFlow::WaitUntil(target),
-                                        ControlFlow::Wait,
-                                    ) if target > Instant::now() => {}
+                                    (ControlFlow::WaitUntil(target), ControlFlow::Wait)
+                                        if target > Instant::now() => {}
                                     _ => {
                                         event_loop.set_control_flow(flow);
                                     }
@@ -406,31 +382,26 @@ where
                                 monitor,
                                 on_open,
                             } => {
-                                let exit_on_close_request =
-                                    settings.exit_on_close_request;
+                                let exit_on_close_request = settings.exit_on_close_request;
 
                                 let visible = settings.visible;
 
                                 #[cfg(target_arch = "wasm32")]
-                                let target =
-                                    settings.platform_specific.target.clone();
+                                let target = settings.platform_specific.target.clone();
                                 let resize_border = settings.resize_border;
-                                let window_attributes =
-                                    conversion::window_attributes(
-                                        settings,
-                                        &title,
-                                        scale_factor,
-                                        monitor
-                                            .or(event_loop.primary_monitor()),
-                                        self.id.clone(),
-                                    )
-                                    .with_visible(false);
+                                let window_attributes = conversion::window_attributes(
+                                    settings,
+                                    &title,
+                                    scale_factor,
+                                    monitor.or(event_loop.primary_monitor()),
+                                    self.id.clone(),
+                                )
+                                .with_visible(false);
 
                                 #[cfg(target_arch = "wasm32")]
                                 let window_attributes = {
                                     use winit::platform::web::WindowAttributesExtWebSys;
-                                    window_attributes
-                                        .with_canvas(self.canvas.take())
+                                    window_attributes.with_canvas(self.canvas.take())
                                 };
 
                                 log::info!(
@@ -444,8 +415,7 @@ where
                                 let mut window_attributes = window_attributes;
 
                                 #[cfg(target_os = "macos")]
-                                let position =
-                                    window_attributes.position.take();
+                                let position = window_attributes.position.take();
 
                                 let window = event_loop
                                     .create_window(window_attributes)
@@ -460,9 +430,7 @@ where
                                 {
                                     use winit::platform::web::WindowExtWebSys;
 
-                                    let canvas = window
-                                        .canvas()
-                                        .expect("Get window canvas");
+                                    let canvas = window.canvas().expect("Get window canvas");
 
                                     let _ = canvas.set_attribute(
                                         "style",
@@ -474,34 +442,26 @@ where
                                     let body = document.body().unwrap();
 
                                     let target = target.and_then(|target| {
-                                        body.query_selector(&format!(
-                                            "#{target}"
-                                        ))
-                                        .ok()
-                                        .unwrap_or(None)
+                                        body.query_selector(&format!("#{target}"))
+                                            .ok()
+                                            .unwrap_or(None)
                                     });
 
                                     match target {
                                         Some(node) => {
-                                            let _ = node
-                                                .replace_with_with_node_1(
-                                                    &canvas,
-                                                )
-                                                .expect(&format!(
-                                                    "Could not replace #{}",
-                                                    node.id()
-                                                ));
+                                            let _ = node.replace_with_with_node_1(&canvas).expect(
+                                                &format!("Could not replace #{}", node.id()),
+                                            );
                                         }
                                         None => {
                                             let _ = body
                                                 .append_child(&canvas)
-                                                .expect(
-                                                "Append canvas to HTML body",
-                                            );
+                                                .expect("Append canvas to HTML body");
                                         }
                                     };
                                 }
-                                let window: Arc<dyn winit::window::Window + 'static> = Arc::from(window);
+                                let window: Arc<dyn winit::window::Window + 'static> =
+                                    Arc::from(window);
                                 #[cfg(feature = "a11y")]
                                 self.init_adapter(event_loop, id, window.clone());
 
@@ -517,16 +477,10 @@ where
                                     }),
                                 );
                                 #[cfg(feature = "a11y")]
-                                self.process_event(
-                                    event_loop,
-                                    Some(Event::A11yAdapter(id)),
-                                );
+                                self.process_event(event_loop, Some(Event::A11yAdapter(id)));
                             }
                             Control::Exit => {
-                                self.process_event(
-                                    event_loop,
-                                    Some(Event::Exit),
-                                );
+                                self.process_event(event_loop, Some(Event::Exit));
                                 event_loop.exit();
                                 break;
                             }
@@ -538,10 +492,7 @@ where
                                 #[cfg(target_os = "macos")]
                                 {
                                     use winit::platform::macos::ActiveEventLoopExtMacOS;
-                                    event_loop
-                                        .set_allows_automatic_window_tabbing(
-                                            _enabled,
-                                        );
+                                    event_loop.set_allows_automatic_window_tabbing(_enabled);
                                 }
                             }
                             Control::Dnd(e) => {
@@ -562,9 +513,7 @@ where
                                 );
                             }
                             Control::PlatformSpecific(e) => {
-                                self.sender
-                                    .start_send(Event::PlatformSpecific(e))
-                                    .unwrap();
+                                self.sender.start_send(Event::PlatformSpecific(e)).unwrap();
                             }
                             Control::AboutToWait => {
                                 self.sender
@@ -574,52 +523,40 @@ where
                             Control::Winit(id, e) => {
                                 #[cfg(all(feature = "cctk", target_os = "linux"))]
                                 {
-                                    if matches!(e, WindowEvent::RedrawRequested)
-                                    {                    
-                                        
+                                    if matches!(e, WindowEvent::RedrawRequested) {
                                         for id in crate::subsurface_widget::subsurface_ids(id) {
-                                            _ = self.sender
-                                                .unbounded_send(Event::Winit(
+                                            _ = self.sender.unbounded_send(Event::Winit(
                                                 id,
                                                 WindowEvent::RedrawRequested,
                                             ));
                                         }
-                                    } else if matches!(
-                                        e,
-                                        WindowEvent::CloseRequested
-                                    ) {
+                                    } else if matches!(e, WindowEvent::CloseRequested) {
                                         for id in crate::subsurface_widget::subsurface_ids(id) {
-                                            _ = self.sender
-                                                .start_send(Event::Winit(
+                                            _ = self.sender.start_send(Event::Winit(
                                                 id,
                                                 WindowEvent::CloseRequested,
                                             ));
                                         }
                                     }
                                 }
-                                
+
                                 self.sender
                                     .start_send(Event::Winit(id, e))
                                     .expect("Send event");
                             }
                             Control::StartDnd => {
-                                self.sender
-                                    .start_send(Event::StartDnd)
-                                    .expect("Send event");
+                                self.sender.start_send(Event::StartDnd).expect("Send event");
                             }
                             #[cfg(feature = "a11y")]
                             Control::InitAdapter(id, window) => {
                                 self.init_adapter(event_loop, id, window);
-                            
-                                self.process_event(
-                                    event_loop,
-                                    Some(Event::A11yAdapter(id)),
-                                );
+
+                                self.process_event(event_loop, Some(Event::A11yAdapter(id)));
                             }
                             #[cfg(feature = "a11y")]
                             Control::Cleanup(id) => {
-                               _ = self.adapters.remove(&id);
-                            },
+                                _ = self.adapters.remove(&id);
+                            }
                         },
                         _ => {
                             break;
@@ -633,34 +570,35 @@ where
             }
         }
 
-    #[cfg(feature = "a11y")]
-    fn init_adapter(&mut self, event_loop: &(dyn winit::event_loop::ActiveEventLoop + 'static), id: core::window::Id, window: Arc<dyn winit::window::Window + 'static>) {
+        #[cfg(feature = "a11y")]
+        fn init_adapter(
+            &mut self,
+            event_loop: &(dyn winit::event_loop::ActiveEventLoop + 'static),
+            id: core::window::Id,
+            window: Arc<dyn winit::window::Window + 'static>,
+        ) {
             use crate::a11y::*;
             use iced_accessibility::accesskit::{
-                ActivationHandler, Node, NodeId, Role,
-                Tree, TreeUpdate,
+                ActivationHandler, Node, NodeId, Role, Tree, TreeUpdate,
             };
             use iced_accessibility::accesskit_winit::Adapter;
-        
-            let node_id =
-                iced_runtime::core::id::window_node_id();
-        
-            let activation_handler =
-                WinitActivationHandler {
-                    proxy: self.control_sender.clone(),
-                    title: String::new(),
-                };
-        
+
+            let node_id = iced_runtime::core::id::window_node_id();
+
+            let activation_handler = WinitActivationHandler {
+                proxy: self.control_sender.clone(),
+                title: String::new(),
+            };
+
             let action_handler = WinitActionHandler {
                 id,
                 proxy: self.control_sender.clone(),
             };
-        
-            let deactivation_handler =
-                WinitDeactivationHandler {
-                    proxy: self.control_sender.clone(),
-                };
-        
+
+            let deactivation_handler = WinitDeactivationHandler {
+                proxy: self.control_sender.clone(),
+            };
+
             _ = self.adapters.insert(
                 id,
                 (
@@ -674,8 +612,6 @@ where
                     ),
                 ),
             );
-        
-            
         }
     }
 
@@ -768,8 +704,7 @@ async fn run_instance<P>(
 
     _ = boot.await.expect("Receive boot");
 
-    let mut platform_specific_handler =
-        crate::platform_specific::PlatformSpecific::default();
+    let mut platform_specific_handler = crate::platform_specific::PlatformSpecific::default();
     #[cfg(all(feature = "cctk", target_os = "linux"))]
     if is_wayland {
         platform_specific_handler = platform_specific_handler.with_wayland(
@@ -795,9 +730,7 @@ async fn run_instance<P>(
     let mut clipboard = Clipboard::unconnected();
     let mut cur_dnd_surface: Option<window::Id> = None;
 
-    let mut dnd_surface: Option<
-        Arc<Box<dyn HasWindowHandle + Send + Sync + 'static>>,
-    > = None;
+    let mut dnd_surface: Option<Arc<Box<dyn HasWindowHandle + Send + Sync + 'static>>> = None;
     let mut dnd_surface_id: Option<window::Id> = None;
 
     #[cfg(feature = "a11y")]
@@ -833,8 +766,7 @@ async fn run_instance<P>(
     };
 
     #[cfg(not(all(feature = "linux-theme-detection", target_os = "linux")))]
-    let mut system_theme =
-        _system_theme.try_recv().ok().flatten().unwrap_or_default();
+    let mut system_theme = _system_theme.try_recv().ok().flatten().unwrap_or_default();
 
     log::info!("System theme: {system_theme:?}");
 
@@ -857,13 +789,11 @@ async fn run_instance<P>(
                 exit_on_close_request,
                 make_visible,
                 on_open,
-                resize_border
+                resize_border,
             } => {
-                
                 #[cfg(all(feature = "cctk", target_os = "linux"))]
-                platform_specific_handler.send_wayland(
-                    platform_specific::Action::TrackWindow(window.clone(), id),
-                );
+                platform_specific_handler
+                    .send_wayland(platform_specific::Action::TrackWindow(window.clone(), id));
                 match create_compositor::<P>(
                     window.clone(),
                     CreateCompositor {
@@ -881,9 +811,7 @@ async fn run_instance<P>(
                     }
                     Err(error) => {
                         control_sender
-                            .start_send(Control::Crash(
-                                Error::GraphicsCreationFailed(error),
-                            ))
+                            .start_send(Control::Crash(Error::GraphicsCreationFailed(error)))
                             .expect("Send control message");
                         continue;
                     }
@@ -897,15 +825,12 @@ async fn run_instance<P>(
                 if system_theme != window_theme {
                     system_theme = window_theme;
 
-                    runtime.broadcast(subscription::Event::SystemThemeChanged(
-                        window_theme,
-                    ));
+                    runtime.broadcast(subscription::Event::SystemThemeChanged(window_theme));
                 }
 
                 let is_first = window_manager.is_empty();
-                let compositor: &mut <<P as Program>::Renderer as compositor::Default >::Compositor = compositor
-                    .as_mut()
-                    .expect("Compositor must be initialized");
+                let compositor: &mut <<P as Program>::Renderer as compositor::Default>::Compositor =
+                    compositor.as_mut().expect("Compositor must be initialized");
                 let window = window_manager.insert(
                     id,
                     window,
@@ -913,12 +838,12 @@ async fn run_instance<P>(
                     compositor,
                     exit_on_close_request,
                     system_theme,
-                    resize_border
+                    resize_border,
                 );
 
-                window.raw.set_theme(conversion::window_theme(
-                    window.state.theme_mode(),
-                ));
+                window
+                    .raw
+                    .set_theme(conversion::window_theme(window.state.theme_mode()));
 
                 debug::theme_changed(|| {
                     if is_first {
@@ -975,9 +900,7 @@ async fn run_instance<P>(
                     window.raw.request_redraw();
                 }
             }
-            Event::NewEvents(event::StartCause::ResumeTimeReached {
-                ..
-            }) => {
+            Event::NewEvents(event::StartCause::ResumeTimeReached { .. }) => {
                 let now = Instant::now();
 
                 for (_id, window) in window_manager.iter_mut() {
@@ -990,12 +913,10 @@ async fn run_instance<P>(
                 }
 
                 if let Some(redraw_at) = window_manager.redraw_at() {
-                    let _ = control_sender.start_send(Control::ChangeFlow(
-                        ControlFlow::WaitUntil(redraw_at),
-                    ));
-                } else {
                     let _ = control_sender
-                        .start_send(Control::ChangeFlow(ControlFlow::Wait));
+                        .start_send(Control::ChangeFlow(ControlFlow::WaitUntil(redraw_at)));
+                } else {
+                    let _ = control_sender.start_send(Control::ChangeFlow(ControlFlow::Wait));
                 }
             }
             Event::UserEvent(action) => {
@@ -1025,9 +946,7 @@ async fn run_instance<P>(
                     continue;
                 };
 
-                let Some((id, mut window))  =
-                    window_manager.get_mut_alias(window_id)
-                else {
+                let Some((id, mut window)) = window_manager.get_mut_alias(window_id) else {
                     continue;
                 };
                 window.redraw_requested = false;
@@ -1040,16 +959,15 @@ async fn run_instance<P>(
                         ))
                         .expect("Send redraw event");
                     continue;
-                } 
+                }
                 // XX must force update to corner radius before the surface is committed.
                 #[cfg(all(feature = "cctk", target_os = "linux"))]
                 if (window.surface_version != window.state.surface_version()
-                    || window.logical_size() != window.state.logical_size()
-                    ) && !crate::subsurface_widget::is_subsurface(window_id)
+                    || window.logical_size() != window.state.logical_size())
+                    && !crate::subsurface_widget::is_subsurface(window_id)
                 {
-                    platform_specific_handler.send_wayland(
-                        platform_specific::Action::ResizeWindow(id),
-                    );
+                    platform_specific_handler
+                        .send_wayland(platform_specific::Action::ResizeWindow(id));
                     window.redraw_requested = true;
                     control_sender
                         .start_send(Control::Winit(
@@ -1069,15 +987,11 @@ async fn run_instance<P>(
 
                 // Window was resized between redraws
                 if window.surface_version != window.state.surface_version() {
-                    let ui = user_interfaces
-                        .remove(&id)
-                        .expect("Remove user interface");
+                    let ui = user_interfaces.remove(&id).expect("Remove user interface");
 
                     let layout_span = debug::layout(id);
-                    let _ = user_interfaces.insert(
-                        id,
-                        ui.relayout(logical_size, &mut window.renderer),
-                    );
+                    let _ =
+                        user_interfaces.insert(id, ui.relayout(logical_size, &mut window.renderer));
                     layout_span.finish();
 
                     current_compositor.configure_surface(
@@ -1089,14 +1003,12 @@ async fn run_instance<P>(
                     window.surface_version = window.state.surface_version();
                 }
 
-                let redraw_event = core::Event::Window(
-                    window::Event::RedrawRequested(Instant::now()),
-                );
+                let redraw_event =
+                    core::Event::Window(window::Event::RedrawRequested(Instant::now()));
 
                 let cursor = window.state.cursor();
 
-                let mut interface =
-                    user_interfaces.get_mut(&id).expect("Get user interface");
+                let mut interface = user_interfaces.get_mut(&id).expect("Get user interface");
 
                 let interact_span = debug::interact(id);
                 let mut redraw_count = 0;
@@ -1111,9 +1023,7 @@ async fn run_instance<P>(
                         &mut messages,
                     );
 
-                    if message_count == messages.len()
-                        && !state.has_layout_changed()
-                    {
+                    if message_count == messages.len() && !state.has_layout_changed() {
                         break state;
                     }
 
@@ -1129,24 +1039,19 @@ async fn run_instance<P>(
                     redraw_count += 1;
 
                     if !messages.is_empty() {
-                        let caches: FxHashMap<_, _> =
-                            ManuallyDrop::into_inner(user_interfaces)
-                                .into_iter()
-                                .map(|(id, interface)| {
-                                    (id, interface.into_cache())
-                                })
-                                .collect();
+                        let caches: FxHashMap<_, _> = ManuallyDrop::into_inner(user_interfaces)
+                            .into_iter()
+                            .map(|(id, interface)| (id, interface.into_cache()))
+                            .collect();
 
-                        let actions =
-                            update(&mut program, &mut runtime, &mut messages);
+                        let actions = update(&mut program, &mut runtime, &mut messages);
 
-                        user_interfaces =
-                            ManuallyDrop::new(build_user_interfaces(
-                                &program,
-                                &mut window_manager,
-                                caches,
-                                &mut clipboard,
-                            ));
+                        user_interfaces = ManuallyDrop::new(build_user_interfaces(
+                            &program,
+                            &mut window_manager,
+                            caches,
+                            &mut clipboard,
+                        ));
 
                         for action in actions {
                             // Defer all window actions to avoid compositor
@@ -1194,19 +1099,13 @@ async fn run_instance<P>(
                         if logical_size != window.state.logical_size() {
                             logical_size = window.state.logical_size();
 
-                            log::debug!(
-                                "Window scale factor changed during a redraw request"
-                            );
+                            log::debug!("Window scale factor changed during a redraw request");
 
-                            let ui = user_interfaces
-                                .remove(&id)
-                                .expect("Remove user interface");
+                            let ui = user_interfaces.remove(&id).expect("Remove user interface");
 
                             let layout_span = debug::layout(id);
-                            let _ = user_interfaces.insert(
-                                id,
-                                ui.relayout(logical_size, &mut window.renderer),
-                            );
+                            let _ = user_interfaces
+                                .insert(id, ui.relayout(logical_size, &mut window.renderer));
                             layout_span.finish();
                         }
 
@@ -1226,8 +1125,7 @@ async fn run_instance<P>(
                     },
                     cursor,
                 );
-                platform_specific_handler
-                    .update_subsurfaces(id, window.raw.rwh_06_window_handle());
+                platform_specific_handler.update_subsurfaces(id, window.raw.rwh_06_window_handle());
                 draw_span.finish();
 
                 if let user_interface::State::Updated {
@@ -1266,20 +1164,18 @@ async fn run_instance<P>(
                             // This is an unrecoverable error.
                             panic!("{error:?}");
                         }
-                        compositor::SurfaceError::Outdated
-                        | compositor::SurfaceError::Lost => {
+                        compositor::SurfaceError::Outdated | compositor::SurfaceError::Lost => {
                             present_span.finish();
 
                             // Reconfigure surface and try redrawing
                             let physical_size = window.state.physical_size();
 
                             if error == compositor::SurfaceError::Lost {
-                                window.surface = current_compositor
-                                    .create_surface(
-                                        window.raw.clone(),
-                                        physical_size.width,
-                                        physical_size.height,
-                                    );
+                                window.surface = current_compositor.create_surface(
+                                    window.raw.clone(),
+                                    physical_size.width,
+                                    physical_size.height,
+                                );
                             } else {
                                 current_compositor.configure_surface(
                                     &mut window.surface,
@@ -1320,15 +1216,11 @@ async fn run_instance<P>(
                     continue;
                 }
 
-                let Some((id, window)) =
-                    window_manager.get_mut_alias(window_id)
-                else {
+                let Some((id, window)) = window_manager.get_mut_alias(window_id) else {
                     continue;
                 };
                 // Initiates a drag resize window state when found.
-                if let Some(func) =
-                    window.drag_resize_window_func.as_mut()
-                {
+                if let Some(func) = window.drag_resize_window_func.as_mut() {
                     if func(window.raw.as_ref(), &event) {
                         continue;
                     }
@@ -1343,9 +1235,7 @@ async fn run_instance<P>(
                         if mode != system_theme {
                             system_theme = mode;
 
-                            runtime.broadcast(
-                                subscription::Event::SystemThemeChanged(mode),
-                            );
+                            runtime.broadcast(subscription::Event::SystemThemeChanged(mode));
                         }
                     }
                     _ => {}
@@ -1429,8 +1319,7 @@ async fn run_instance<P>(
                             &mut clipboard,
                             &mut messages,
                         );
-                    let mut needs_redraw =
-                        !no_window_events || !messages.is_empty();
+                    let mut needs_redraw = !no_window_events || !messages.is_empty();
                     if let Some(requested_size) =
                         clipboard.requested_logical_size.lock().unwrap().take()
                     {
@@ -1442,17 +1331,14 @@ async fn run_instance<P>(
 
                         let physical_size = window.state.physical_size();
                         if requested_physical_size.width != physical_size.width
-                            || requested_physical_size.height
-                                != physical_size.height
+                            || requested_physical_size.height != physical_size.height
                         {
                             // FIXME what to do when we are stuck in a configure event/resize request loop
                             // We don't have control over how winit handles this.
                             window.resize_enabled = true;
                             resized = true;
                             needs_redraw = true;
-                            let s = winit::dpi::Size::Logical(
-                                requested_size.cast(),
-                            );
+                            let s = winit::dpi::Size::Logical(requested_size.cast());
                             _ = window.raw.request_surface_size(s);
                             window.raw.set_min_surface_size(Some(s));
                             window.raw.set_max_surface_size(Some(s));
@@ -1460,15 +1346,9 @@ async fn run_instance<P>(
                             window.state.update(
                                 &program,
                                 window.raw.as_ref(),
-                                &WindowEvent::SurfaceResized(
-                                    requested_physical_size,
-                                ),
+                                &WindowEvent::SurfaceResized(requested_physical_size),
                             );
-                            window.state.synchronize(
-                                &program,
-                                id,
-                                window.raw.as_ref(),
-                            );
+                            window.state.synchronize(&program, id, window.raw.as_ref());
                         }
                     }
 
@@ -1476,9 +1356,7 @@ async fn run_instance<P>(
                     window.request_redraw(window::RedrawRequest::NextFrame);
 
                     if needs_redraw {
-                        window.request_redraw(
-                            core::window::RedrawRequest::NextFrame,
-                        );
+                        window.request_redraw(core::window::RedrawRequest::NextFrame);
                     }
                     match ui_state {
                         user_interface::State::Updated {
@@ -1496,9 +1374,7 @@ async fn run_instance<P>(
                         }
                     }
 
-                    for (event, status) in
-                        window_events.into_iter().zip(statuses.into_iter())
-                    {
+                    for (event, status) in window_events.into_iter().zip(statuses.into_iter()) {
                         runtime.broadcast(subscription::Event::Interaction {
                             window: id,
                             event,
@@ -1518,8 +1394,7 @@ async fn run_instance<P>(
                                 | core::Event::Mouse(_)
                         )
                     {
-                        _ = control_sender
-                            .start_send(Control::ChangeFlow(ControlFlow::Wait));
+                        _ = control_sender.start_send(Control::ChangeFlow(ControlFlow::Wait));
                         continue;
                     }
                     runtime.broadcast(subscription::Event::Interaction {
@@ -1536,8 +1411,7 @@ async fn run_instance<P>(
                             .map(|(id, ui)| (id, ui.into_cache()))
                             .collect();
 
-                    let actions =
-                        update(&mut program, &mut runtime, &mut messages);
+                    let actions = update(&mut program, &mut runtime, &mut messages);
 
                     user_interfaces = ManuallyDrop::new(build_user_interfaces(
                         &program,
@@ -1569,8 +1443,7 @@ async fn run_instance<P>(
                     }
 
                     platform_specific_handler.retain_subsurfaces(|id| {
-                        window_manager.get(id).is_some()
-                            || dnd_surface_id == Some(id)
+                        window_manager.get(id).is_some() || dnd_surface_id == Some(id)
                     });
 
                     for (_id, window) in window_manager.iter_mut() {
@@ -1587,12 +1460,10 @@ async fn run_instance<P>(
                     }
                 }
                 if let Some(redraw_at) = window_manager.redraw_at() {
-                    let _ = control_sender.start_send(Control::ChangeFlow(
-                        ControlFlow::WaitUntil(redraw_at),
-                    ));
-                } else {
                     let _ = control_sender
-                        .start_send(Control::ChangeFlow(ControlFlow::Wait));
+                        .start_send(Control::ChangeFlow(ControlFlow::WaitUntil(redraw_at)));
+                } else {
+                    let _ = control_sender.start_send(Control::ChangeFlow(ControlFlow::Wait));
                 }
             }
             Event::Exit => {
@@ -1610,27 +1481,22 @@ async fn run_instance<P>(
                         // the data event comes after
                         // cur_dnd_surface = None;
                     }
-                    dnd::DndEvent::Offer(
-                        _,
-                        dnd::OfferEvent::Enter { surface, .. },
-                    ) => {
+                    dnd::DndEvent::Offer(_, dnd::OfferEvent::Enter { surface, .. }) => {
                         let window_handle = surface.0.window_handle().ok();
-                        let window_id = window_manager.iter_mut().find_map(
-                            |(id, window)| {
-                                if window
-                                    .raw
-                                    .window_handle()
-                                    .ok()
-                                    .zip(window_handle)
-                                    .map(|(a, b)| a == b)
-                                    .unwrap_or_default()
-                                {
-                                    Some(id)
-                                } else {
-                                    None
-                                }
-                            },
-                        );
+                        let window_id = window_manager.iter_mut().find_map(|(id, window)| {
+                            if window
+                                .raw
+                                .window_handle()
+                                .ok()
+                                .zip(window_handle)
+                                .map(|(a, b)| a == b)
+                                .unwrap_or_default()
+                            {
+                                Some(id)
+                            } else {
+                                None
+                            }
+                        });
                         cur_dnd_surface = window_id;
                         events.push((cur_dnd_surface, core::Event::Dnd(e)));
                     }
@@ -1639,8 +1505,7 @@ async fn run_instance<P>(
                     }
                     dnd::DndEvent::Source(evt) => {
                         match evt {
-                            dnd::SourceEvent::Finished
-                            | dnd::SourceEvent::Cancelled => {
+                            dnd::SourceEvent::Finished | dnd::SourceEvent::Cancelled => {
                                 dnd_surface_id = None;
                                 dnd_surface = None;
                             }
@@ -1706,23 +1571,16 @@ async fn run_instance<P>(
                     let Some(window_id) = source_surface.and_then(|source| {
                         match source {
                             core::clipboard::DndSource::Surface(s) => {
-                                log::trace!(
-                                    "start_dnd: using explicit surface {:?}",
-                                    s
-                                );
+                                log::trace!("start_dnd: using explicit surface {:?}", s);
                                 Some(s)
                             }
                             core::clipboard::DndSource::Widget(w) => {
-                                log::trace!(
-                                    "start_dnd: searching for widget {:?}",
-                                    w
-                                );
+                                log::trace!("start_dnd: searching for widget {:?}", w);
                                 // if user intefaces is just 1 len, use the single id instead of wasting time searching
-                                let result = if user_interfaces.len() ==1 {
+                                let result = if user_interfaces.len() == 1 {
                                     user_interfaces.keys().next().cloned()
                                 } else {
-                                    user_interfaces.iter_mut().find_map(
-                                    |(ui_id, ui)| {
+                                    user_interfaces.iter_mut().find_map(|(ui_id, ui)| {
                                         let Some(ui_renderer) = window_manager
                                             .get_mut(ui_id.clone())
                                             .map(|w| &w.renderer)
@@ -1730,49 +1588,34 @@ async fn run_instance<P>(
                                             return None;
                                         };
 
-                                        let operation: Box<
-                                            dyn operation::Operation<()>,
-                                        > = Box::new(operation::map(
-                                            Box::new(
-                                                operation::search_id::search_id(
+                                        let operation: Box<dyn operation::Operation<()>> =
+                                            Box::new(operation::map(
+                                                Box::new(operation::search_id::search_id(
                                                     w.clone(),
-                                                ),
-                                            ),
-                                            |_| {},
-                                        ));
-                                        let mut current_operation =
-                                            Some(operation);
+                                                )),
+                                                |_| {},
+                                            ));
+                                        let mut current_operation = Some(operation);
 
-                                        while let Some(mut operation) =
-                                            current_operation.take()
-                                        {
-                                            ui.operate(
-                                                ui_renderer,
-                                                operation.as_mut(),
-                                            );
+                                        while let Some(mut operation) = current_operation.take() {
+                                            ui.operate(ui_renderer, operation.as_mut());
 
                                             match operation.finish() {
                                                 operation::Outcome::None => {}
-                                                operation::Outcome::Some(
-                                                    (),
-                                                ) => {
+                                                operation::Outcome::Some(()) => {
                                                     return Some(ui_id.clone());
                                                 }
-                                                operation::Outcome::Chain(
-                                                    next,
-                                                ) => {
-                                                    current_operation =
-                                                        Some(next);
+                                                operation::Outcome::Chain(next) => {
+                                                    current_operation = Some(next);
                                                 }
                                             }
                                         }
                                         None
-                                    },
-                                )
+                                    })
                                 };
 
                                 // search windows for widget with operation
-                                 
+
                                 if result.is_none() {
                                     log::warn!(
                                         "start_dnd: widget {:?} not found; drag will fail",
@@ -1795,8 +1638,7 @@ async fn run_instance<P>(
                     let state = &window.state;
                     let mut dnd_buffer = None;
                     let icon_surface = icon_surface.map(|i| {
-                        let mut icon_surface =
-                            i.downcast::<P::Theme, P::Renderer>();
+                        let mut icon_surface = i.downcast::<P::Theme, P::Renderer>();
 
                         let mut renderer = compositor.create_renderer();
 
@@ -1812,10 +1654,7 @@ async fn run_instance<P>(
                             id: icon_surface.element.as_widget().id(),
                             tag: icon_surface.element.as_widget().tag(),
                             state: icon_surface.state,
-                            children: icon_surface
-                                .element
-                                .as_widget()
-                                .children(),
+                            children: icon_surface.element.as_widget().children(),
                         };
 
                         let size = icon_surface
@@ -1824,16 +1663,12 @@ async fn run_instance<P>(
                             .layout(&mut tree, &renderer, &lim);
                         icon_surface.element.as_widget_mut().diff(&mut tree);
 
-                        let size = lim.resolve(
-                            core::Length::Shrink,
-                            core::Length::Shrink,
-                            size.size(),
+                        let size =
+                            lim.resolve(core::Length::Shrink, core::Length::Shrink, size.size());
+                        let viewport = iced_graphics::Viewport::with_logical_size(
+                            size,
+                            state.viewport().scale_factor(),
                         );
-                        let viewport =
-                            iced_graphics::Viewport::with_logical_size(
-                                size,
-                                state.viewport().scale_factor(),
-                            );
 
                         let mut ui = UserInterface::build(
                             icon_surface.element,
@@ -1861,13 +1696,10 @@ async fn run_instance<P>(
                             pix.swap(0, 2);
                         }
                         // update subsurfaces
-                        if let Some(surface) =
-                            platform_specific_handler.create_surface()
-                        {
+                        if let Some(surface) = platform_specific_handler.create_surface() {
                             // TODO Remove id
                             let id = window::Id::unique();
-                            platform_specific_handler
-                                .update_subsurfaces(id, &surface);
+                            platform_specific_handler.update_subsurfaces(id, &surface);
                             let surface = Arc::new(surface);
                             dnd_surface = Some(surface.clone());
                             dnd_surface_id = Some(id);
@@ -1946,10 +1778,7 @@ async fn create_compositor<'a, P>(
         default_fonts,
         runtime,
     }: CreateCompositor<'a, P>,
-) -> Result<
-    <<P as Program>::Renderer as compositor::Default>::Compositor,
-    iced_graphics::Error,
->
+) -> Result<<<P as Program>::Renderer as compositor::Default>::Compositor, iced_graphics::Error>
 where
     P: Program,
 {
@@ -1965,14 +1794,13 @@ where
         async move {
             let shell = Shell::new(proxy.clone());
 
-            let mut compositor =
-                <P::Renderer as compositor::Default>::Compositor::new(
-                    graphics_settings,
-                    display_handle,
-                    window,
-                    shell,
-                )
-                .await;
+            let mut compositor = <P::Renderer as compositor::Default>::Compositor::new(
+                graphics_settings,
+                display_handle,
+                window,
+                shell,
+            )
+            .await;
 
             if let Ok(compositor) = &mut compositor {
                 for font in default_fonts {
@@ -1991,9 +1819,7 @@ where
             {
                 let (sender, _receiver) = oneshot::channel();
 
-                proxy.send_action(Action::Window(
-                    runtime::window::Action::GetLatest(sender),
-                ));
+                proxy.send_action(Action::Window(runtime::window::Action::GetLatest(sender)));
             }
         }
     };
@@ -2029,11 +1855,10 @@ where
     let user_interface = UserInterface::build(view, size, cache, renderer);
     layout_span.finish();
 
-    let dnd_rectangles = user_interface
-        .dnd_rectangles(prev_dnd_destination_rectangles_count, renderer);
+    let dnd_rectangles =
+        user_interface.dnd_rectangles(prev_dnd_destination_rectangles_count, renderer);
     let new_dnd_rectangles_count = dnd_rectangles.as_ref().len();
-    if new_dnd_rectangles_count > 0 || prev_dnd_destination_rectangles_count > 0
-    {
+    if new_dnd_rectangles_count > 0 || prev_dnd_destination_rectangles_count > 0 {
         clipboard.register_dnd_destination(
             DndSurface(Arc::new(Box::new(raw.clone()))),
             dnd_rectangles.into_rectangles(),
@@ -2097,10 +1922,7 @@ fn run_action<'a, P, C>(
     messages: &mut Vec<P::Message>,
     clipboard: &mut Clipboard,
     control_sender: &mut mpsc::UnboundedSender<Control>,
-    interfaces: &mut FxHashMap<
-        window::Id,
-        UserInterface<'a, P::Message, P::Theme, P::Renderer>,
-    >,
+    interfaces: &mut FxHashMap<window::Id, UserInterface<'a, P::Message, P::Theme, P::Renderer>>,
     window_manager: &mut WindowManager<P, C>,
     ui_caches: &mut FxHashMap<window::Id, user_interface::Cache>,
     is_window_opening: &mut bool,
@@ -2148,7 +1970,7 @@ where
                         on_open: channel,
                     })
                     .expect("Send control action");
-                
+
                 *is_window_opening = true;
             }
             window::Action::Close(id) => {
@@ -2160,8 +1982,7 @@ where
                 }
                 let proxy = clipboard.proxy();
                 #[cfg(all(feature = "cctk", target_os = "linux"))]
-                platform_specific
-                    .send_wayland(platform_specific::Action::RemoveWindow(id));
+                platform_specific.send_wayland(platform_specific::Action::RemoveWindow(id));
                 if let Some(window) = window_manager.remove(id) {
                     clipboard.register_dnd_destination(
                         DndSurface(Arc::new(Box::new(window.raw.clone()))),
@@ -2184,10 +2005,7 @@ where
                             .unwrap_or_else(Clipboard::unconnected);
                     }
 
-                    events.push((
-                        Some(id),
-                        core::Event::Window(core::window::Event::Closed),
-                    ));
+                    events.push((Some(id), core::Event::Window(core::window::Event::Closed)));
                 }
 
                 if window_manager.is_empty() {
@@ -2195,14 +2013,12 @@ where
                 }
             }
             window::Action::GetOldest(channel) => {
-                let id =
-                    window_manager.iter_mut().next().map(|(id, _window)| id);
+                let id = window_manager.iter_mut().next().map(|(id, _window)| id);
 
                 let _ = channel.send(id);
             }
             window::Action::GetLatest(channel) => {
-                let id =
-                    window_manager.iter_mut().last().map(|(id, _window)| id);
+                let id = window_manager.iter_mut().last().map(|(id, _window)| id);
 
                 let _ = channel.send(id);
             }
@@ -2213,9 +2029,9 @@ where
             }
             window::Action::DragResize(id, direction) => {
                 if let Some(window) = window_manager.get_mut(id) {
-                    let _ = window.raw.drag_resize_window(
-                        conversion::resize_direction(direction),
-                    );
+                    let _ = window
+                        .raw
+                        .drag_resize_window(conversion::resize_direction(direction));
                 }
             }
             window::Action::Resize(id, size) => {
@@ -2253,15 +2069,15 @@ where
             }
             window::Action::SetResizeIncrements(id, increments) => {
                 if let Some(window) = window_manager.get_mut(id) {
-                    window.raw.set_surface_resize_increments(increments.map(
-                        |size| {
+                    window
+                        .raw
+                        .set_surface_resize_increments(increments.map(|size| {
                             winit::dpi::LogicalSize {
                                 width: size.width,
                                 height: size.height,
                             }
                             .into()
-                        },
-                    ));
+                        }));
                 }
             }
             window::Action::SetResizable(id, resizable) => {
@@ -2301,8 +2117,7 @@ where
                         .raw
                         .outer_position()
                         .map(|position: PhysicalPosition<i32>| {
-                            let position = position
-                                .to_logical::<f32>(window.raw.scale_factor());
+                            let position = position.to_logical::<f32>(window.raw.scale_factor());
 
                             Point::new(position.x, position.y)
                         })
@@ -2332,10 +2147,9 @@ where
             window::Action::SetMode(id, mode) => {
                 if let Some(window) = window_manager.get_mut(id) {
                     window.raw.set_visible(conversion::visible(mode));
-                    window.raw.set_fullscreen(conversion::fullscreen(
-                        window.raw.current_monitor(),
-                        mode,
-                    ));
+                    window
+                        .raw
+                        .set_fullscreen(conversion::fullscreen(window.raw.current_monitor(), mode));
                 }
             }
             window::Action::SetIcon(id, icon) => {
@@ -2366,9 +2180,9 @@ where
             }
             window::Action::RequestUserAttention(id, attention_type) => {
                 if let Some(window) = window_manager.get_mut(id) {
-                    window.raw.request_user_attention(
-                        attention_type.map(conversion::user_attention),
-                    );
+                    window
+                        .raw
+                        .request_user_attention(attention_type.map(conversion::user_attention));
                 }
             }
             window::Action::GainFocus(id) => {
@@ -2378,15 +2192,12 @@ where
             }
             window::Action::SetLevel(id, level) => {
                 if let Some(window) = window_manager.get_mut(id) {
-                    window
-                        .raw
-                        .set_window_level(conversion::window_level(level));
+                    window.raw.set_window_level(conversion::window_level(level));
                 }
             }
             window::Action::ShowSystemMenu(id) => {
                 if let Some(window) = window_manager.get_mut(id)
-                    && let mouse::Cursor::Available(point) =
-                        window.state.cursor()
+                    && let mouse::Cursor::Available(point) = window.state.cursor()
                 {
                     window.raw.show_window_menu(
                         winit::dpi::LogicalPosition {
@@ -2442,8 +2253,7 @@ where
                         .and_then(|m| m.current_video_mode())
                         .map(|monitor| {
                             let scale = window.state.scale_factor();
-                            let size =
-                                monitor.size().to_logical(f64::from(scale));
+                            let size = monitor.size().to_logical(f64::from(scale));
 
                             Size::new(size.width, size.height)
                         });
@@ -2466,10 +2276,7 @@ where
                     if let Some(ui) = interfaces.remove(&id) {
                         let _ = interfaces.insert(
                             id,
-                            ui.relayout(
-                                window.state.logical_size(),
-                                &mut window.renderer,
-                            ),
+                            ui.relayout(window.state.logical_size(), &mut window.renderer),
                         );
                     }
 
@@ -2519,9 +2326,7 @@ where
                 if mode != *system_theme {
                     *system_theme = mode;
 
-                    runtime.broadcast(subscription::Event::SystemThemeChanged(
-                        mode,
-                    ));
+                    runtime.broadcast(subscription::Event::SystemThemeChanged(mode));
                 }
 
                 let Some(theme) = conversion::window_theme(mode) else {
@@ -2562,12 +2367,9 @@ where
 
                 // TODO: Shared image cache in compositor
                 if let Some((_id, window)) = window_manager.iter_mut().next() {
-                    window.renderer.allocate_image(
-                        &handle,
-                        move |allocation| {
-                            let _ = sender.send(allocation);
-                        },
-                    );
+                    window.renderer.allocate_image(&handle, move |allocation| {
+                        let _ = sender.send(allocation);
+                    });
                 }
             }
         },
@@ -2701,9 +2503,7 @@ pub fn user_force_quit(
 }
 
 #[cfg(feature = "sysinfo")]
-fn system_information(
-    graphics: compositor::Information,
-) -> system::Information {
+fn system_information(graphics: compositor::Information) -> system::Information {
     use sysinfo::{Process, System};
 
     let mut system = System::new_all();
@@ -2733,7 +2533,3 @@ fn system_information(
         graphics_backend: graphics.backend,
     }
 }
-#[cfg(feature = "program")]
-pub use program::Program;
-
-pub use platform_specific::*;

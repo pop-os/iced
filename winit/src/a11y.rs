@@ -13,9 +13,7 @@ pub struct WinitActivationHandler {
 }
 
 impl ActivationHandler for WinitActivationHandler {
-    fn request_initial_tree(
-        &mut self,
-    ) -> Option<iced_accessibility::accesskit::TreeUpdate> {
+    fn request_initial_tree(&mut self) -> Option<iced_accessibility::accesskit::TreeUpdate> {
         let node_id = core::id::window_node_id();
         let _ = self
             .proxy
@@ -38,10 +36,7 @@ pub struct WinitActionHandler {
 }
 
 impl iced_accessibility::accesskit::ActionHandler for WinitActionHandler {
-    fn do_action(
-        &mut self,
-        request: iced_accessibility::accesskit::ActionRequest,
-    ) {
+    fn do_action(&mut self, request: iced_accessibility::accesskit::ActionRequest) {
         let _ = self
             .proxy
             .unbounded_send(Control::Accessibility(self.id, request));
@@ -52,9 +47,7 @@ pub struct WinitDeactivationHandler {
     pub proxy: mpsc::UnboundedSender<Control>,
 }
 
-impl iced_accessibility::accesskit::DeactivationHandler
-    for WinitDeactivationHandler
-{
+impl iced_accessibility::accesskit::DeactivationHandler for WinitDeactivationHandler {
     fn deactivate_accessibility(&mut self) {
         let _ = self
             .proxy

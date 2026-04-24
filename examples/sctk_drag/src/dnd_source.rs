@@ -1,16 +1,16 @@
 use std::any::Any;
 
-use iced::Element;
 use iced::id::Id;
 use iced::widget::container;
+use iced::Element;
 use iced::{
-    Event, Length, Point, Rectangle,
     clipboard::dnd::{DndAction, DndEvent, SourceEvent},
-    event, mouse, overlay,
+    event, mouse, overlay, Event, Length, Point, Rectangle,
 };
 use iced_core::{
-    Clipboard, Shell, layout, renderer,
-    widget::{Tree, tree},
+    layout, renderer,
+    widget::{tree, Tree},
+    Clipboard, Shell,
 };
 use iced_core::{Layout, Widget};
 
@@ -30,18 +30,17 @@ pub struct DndSource<'a, Message, AppMessage, D> {
     action: DndAction,
     container: Element<'a, Message>,
     drag_content: Option<Box<dyn Fn() -> D>>,
-    drag_icon:
-        Option<Box<dyn Fn() -> (Element<'static, AppMessage>, tree::State)>>,
+    drag_icon: Option<Box<dyn Fn() -> (Element<'static, AppMessage>, tree::State)>>,
     drag_threshold: f32,
     _phantom: std::marker::PhantomData<AppMessage>,
 }
 
 impl<
-    'a,
-    Message: 'static,
-    AppMessage: 'static,
-    D: iced::clipboard::mime::AsMimeTypes + std::marker::Send + 'static,
-> DndSource<'a, Message, AppMessage, D>
+        'a,
+        Message: 'static,
+        AppMessage: 'static,
+        D: iced::clipboard::mime::AsMimeTypes + std::marker::Send + 'static,
+    > DndSource<'a, Message, AppMessage, D>
 {
     pub fn new(child: impl Into<Element<'a, Message>>) -> Self {
         Self {
@@ -119,12 +118,11 @@ impl<
 }
 
 impl<
-    'a,
-    Message: 'static,
-    AppMessage: 'static,
-    D: iced::clipboard::mime::AsMimeTypes + std::marker::Send + 'static,
-> Widget<Message, iced::Theme, iced::Renderer>
-    for DndSource<'a, Message, AppMessage, D>
+        'a,
+        Message: 'static,
+        AppMessage: 'static,
+        D: iced::clipboard::mime::AsMimeTypes + std::marker::Send + 'static,
+    > Widget<Message, iced::Theme, iced::Renderer> for DndSource<'a, Message, AppMessage, D>
 {
     fn children(&self) -> Vec<Tree> {
         vec![Tree::new(&self.container)]
@@ -153,11 +151,10 @@ impl<
         limits: &layout::Limits,
     ) -> layout::Node {
         let state = tree.state.downcast_mut::<State>();
-        let node = self.container.as_widget().layout(
-            &mut tree.children[0],
-            renderer,
-            limits,
-        );
+        let node = self
+            .container
+            .as_widget()
+            .layout(&mut tree.children[0], renderer, limits);
         state.cached_bounds = node.bounds();
         node
     }
@@ -170,18 +167,11 @@ impl<
         operation: &mut dyn iced_core::widget::Operation<()>,
     ) {
         operation.custom((&mut tree.state) as &mut dyn Any, Some(&self.id));
-        operation.container(
-            Some(&self.id),
-            layout.bounds(),
-            &mut |operation| {
-                self.container.as_widget().operate(
-                    &mut tree.children[0],
-                    layout,
-                    renderer,
-                    operation,
-                )
-            },
-        );
+        operation.container(Some(&self.id), layout.bounds(), &mut |operation| {
+            self.container
+                .as_widget()
+                .operate(&mut tree.children[0], layout, renderer, operation)
+        });
     }
 
     fn update(
@@ -236,16 +226,9 @@ impl<
                                 state.left_pressed_position = None;
                                 return ret;
                             }
-                            if let Some(left_pressed_position) =
-                                state.left_pressed_position
-                            {
-                                if position.distance(left_pressed_position)
-                                    > self.drag_threshold
-                                {
-                                    self.start_dnd(
-                                        clipboard,
-                                        state.cached_bounds,
-                                    );
+                            if let Some(left_pressed_position) = state.left_pressed_position {
+                                if position.distance(left_pressed_position) > self.drag_threshold {
+                                    self.start_dnd(clipboard, state.cached_bounds);
                                     state.is_dragging = true;
                                     state.left_pressed_position = None;
                                 }
@@ -264,9 +247,7 @@ impl<
                 }
                 _ => return ret,
             },
-            Event::Dnd(DndEvent::Source(
-                SourceEvent::Cancelled | SourceEvent::Finished,
-            )) => {
+            Event::Dnd(DndEvent::Source(SourceEvent::Cancelled | SourceEvent::Finished)) => {
                 if state.is_dragging {
                     state.is_dragging = false;
                     shell.capture_event();
@@ -327,8 +308,7 @@ impl<
         layout: Layout<'_>,
         renderer: &iced::Renderer,
         translation: iced::Vector,
-    ) -> Option<overlay::Element<'b, Message, iced::Theme, iced::Renderer>>
-    {
+    ) -> Option<overlay::Element<'b, Message, iced::Theme, iced::Renderer>> {
         None
     }
 
@@ -357,11 +337,11 @@ impl<
 }
 
 impl<
-    'a,
-    Message: 'static,
-    AppMessage: 'static,
-    D: iced::clipboard::mime::AsMimeTypes + std::marker::Send + 'static,
-> From<DndSource<'a, Message, AppMessage, D>> for Element<'a, Message>
+        'a,
+        Message: 'static,
+        AppMessage: 'static,
+        D: iced::clipboard::mime::AsMimeTypes + std::marker::Send + 'static,
+    > From<DndSource<'a, Message, AppMessage, D>> for Element<'a, Message>
 {
     fn from(e: DndSource<'a, Message, AppMessage, D>) -> Element<'a, Message> {
         Element::new(e)

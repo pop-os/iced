@@ -1,17 +1,15 @@
 use crate::core::window::Id as SurfaceId;
 pub use cctk::sctk::shell::wlr_layer::{Anchor, KeyboardInteractivity, Layer};
 use iced_runtime::{
-    self,
+    self, Action, Task,
     platform_specific::{
         self,
         wayland::{self, subsurface::SctkSubsurfaceSettings},
     },
-    task, Action, Task,
+    task,
 };
 
-pub fn get_subsurface<Message>(
-    subsurface: SctkSubsurfaceSettings,
-) -> Task<Message> {
+pub fn get_subsurface<Message>(subsurface: SctkSubsurfaceSettings) -> Task<Message> {
     task::effect(Action::PlatformSpecific(
         platform_specific::Action::Wayland(wayland::Action::Subsurface(
             wayland::subsurface::Action::Subsurface { subsurface },
@@ -27,11 +25,7 @@ pub fn destroy_subsurface<Message>(id: SurfaceId) -> Task<Message> {
     ))
 }
 
-pub fn reposition_subsurface<Message>(
-    id: SurfaceId,
-    x: i32,
-    y: i32,
-) -> Task<Message> {
+pub fn reposition_subsurface<Message>(id: SurfaceId, x: i32, y: i32) -> Task<Message> {
     task::effect(Action::PlatformSpecific(
         platform_specific::Action::Wayland(wayland::Action::Subsurface(
             wayland::subsurface::Action::Reposition { id, x, y },

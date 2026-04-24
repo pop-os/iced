@@ -6,8 +6,8 @@ use cctk::sctk::{
 };
 use iced_core::layout::Limits;
 
-use iced_core::window::Id;
 use iced_core::Rectangle;
+use iced_core::window::Id;
 
 /// output for layer surface
 #[derive(Debug, Clone)]
@@ -162,35 +162,44 @@ impl fmt::Debug for Action {
             ),
             Action::Size { id, width, height } => write!(
                 f,
-                "Action::LayerSurfaceAction::Size {{ id: {:#?}, width: {:?}, height: {:?} }}", id, width, height
+                "Action::LayerSurfaceAction::Size {{ id: {:#?}, width: {:?}, height: {:?} }}",
+                id, width, height
             ),
-            Action::Destroy(id) => write!(
-                f,
-                "Action::LayerSurfaceAction::Destroy {{ id: {:#?} }}", id
-            ),
+            Action::Destroy(id) => {
+                write!(f, "Action::LayerSurfaceAction::Destroy {{ id: {:#?} }}", id)
+            }
             Action::Anchor { id, anchor } => write!(
                 f,
-                "Action::LayerSurfaceAction::Anchor {{ id: {:#?}, anchor: {:?} }}", id, anchor
+                "Action::LayerSurfaceAction::Anchor {{ id: {:#?}, anchor: {:?} }}",
+                id, anchor
             ),
             Action::ExclusiveZone { id, exclusive_zone } => write!(
                 f,
-                "Action::LayerSurfaceAction::ExclusiveZone {{ id: {:#?}, exclusive_zone: {exclusive_zone} }}", id
+                "Action::LayerSurfaceAction::ExclusiveZone {{ id: {:#?}, exclusive_zone: {exclusive_zone} }}",
+                id
             ),
             Action::Margin { id, margin } => write!(
                 f,
-                "Action::LayerSurfaceAction::Margin {{ id: {:#?}, margin: {:?} }}", id, margin
+                "Action::LayerSurfaceAction::Margin {{ id: {:#?}, margin: {:?} }}",
+                id, margin
             ),
-            Action::KeyboardInteractivity { id, keyboard_interactivity } => write!(
+            Action::KeyboardInteractivity {
+                id,
+                keyboard_interactivity,
+            } => write!(
                 f,
-                "Action::LayerSurfaceAction::KeyboardInteractivity {{ id: {:#?}, keyboard_interactivity: {:?} }}", id, keyboard_interactivity
+                "Action::LayerSurfaceAction::KeyboardInteractivity {{ id: {:#?}, keyboard_interactivity: {:?} }}",
+                id, keyboard_interactivity
             ),
             Action::InputZone { id, zone } => write!(
                 f,
-                "Action::LayerSurfaceAction::InputZone {{ id: {:#?}, zone: {:?} }}", id, zone
+                "Action::LayerSurfaceAction::InputZone {{ id: {:#?}, zone: {:?} }}",
+                id, zone
             ),
             Action::Layer { id, layer } => write!(
                 f,
-                "Action::LayerSurfaceAction::Layer {{ id: {:#?}, layer: {:?} }}", id, layer
+                "Action::LayerSurfaceAction::Layer {{ id: {:#?}, layer: {:?} }}",
+                id, layer
             ),
         }
     }
