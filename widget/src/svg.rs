@@ -25,8 +25,8 @@ use crate::core::svg;
 use crate::core::widget::Tree;
 use crate::core::window;
 use crate::core::{
-    Clipboard, Color, ContentFit, Element, Event, Layout, Length, Point,
-    Rectangle, Rotation, Shell, Size, Theme, Vector, Widget,
+    Clipboard, Color, ContentFit, Element, Event, Layout, Length, Point, Rectangle, Rotation,
+    Shell, Size, Theme, Vector, Widget,
 };
 
 #[cfg(feature = "a11y")]
@@ -187,10 +187,7 @@ where
 
     #[cfg(feature = "a11y")]
     /// Sets the description of the [`Svg`].
-    pub fn description_widget<T: iced_accessibility::Describes>(
-        mut self,
-        description: &T,
-    ) -> Self {
+    pub fn description_widget<T: iced_accessibility::Describes>(mut self, description: &T) -> Self {
         self.description = Some(iced_accessibility::Description::Id(
             description.description(),
         ));
@@ -200,22 +197,19 @@ where
     #[cfg(feature = "a11y")]
     /// Sets the description of the [`Svg`].
     pub fn description(mut self, description: impl Into<Cow<'a, str>>) -> Self {
-        self.description =
-            Some(iced_accessibility::Description::Text(description.into()));
+        self.description = Some(iced_accessibility::Description::Text(description.into()));
         self
     }
 
     #[cfg(feature = "a11y")]
     /// Sets the label of the [`Svg`].
     pub fn label(mut self, label: &dyn iced_accessibility::Labels) -> Self {
-        self.label =
-            Some(label.label().into_iter().map(|l| l.into()).collect());
+        self.label = Some(label.label().into_iter().map(|l| l.into()).collect());
         self
     }
 }
 
-impl<Message, Theme, Renderer> Widget<Message, Theme, Renderer>
-    for Svg<'_, Theme>
+impl<Message, Theme, Renderer> Widget<Message, Theme, Renderer> for Svg<'_, Theme>
 where
     Renderer: svg::Renderer,
     Theme: Catalog,
@@ -348,9 +342,7 @@ where
             );
         };
 
-        if adjusted_fit.width > bounds.width
-            || adjusted_fit.height > bounds.height
-        {
+        if adjusted_fit.width > bounds.width || adjusted_fit.height > bounds.height {
             renderer.with_layer(bounds, render);
         } else {
             render(renderer);
@@ -376,12 +368,7 @@ where
             width,
             height,
         } = bounds;
-        let bounds = Rect::new(
-            x as f64,
-            y as f64,
-            (x + width) as f64,
-            (y + height) as f64,
-        );
+        let bounds = Rect::new(x as f64, y as f64, (x + width) as f64, (y + height) as f64);
         let mut node = Node::new(Role::Image);
         node.set_bounds(bounds);
         if let Some(name) = self.name.as_ref() {
@@ -418,8 +405,7 @@ where
     }
 }
 
-impl<'a, Message, Theme, Renderer> From<Svg<'a, Theme>>
-    for Element<'a, Message, Theme, Renderer>
+impl<'a, Message, Theme, Renderer> From<Svg<'a, Theme>> for Element<'a, Message, Theme, Renderer>
 where
     Theme: Catalog + 'a,
     Renderer: svg::Renderer + 'a,

@@ -3,9 +3,7 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 
-use cctk::sctk::reexports::protocols::xdg::shell::client::xdg_positioner::{
-    Anchor, Gravity,
-};
+use cctk::sctk::reexports::protocols::xdg::shell::client::xdg_positioner::{Anchor, Gravity};
 use iced_core::layout::Limits;
 use iced_core::window::Id;
 use iced_core::{Element, Point, Rectangle, Size};
@@ -74,11 +72,9 @@ impl fmt::Debug for Action {
                 "Action::SubsurfaceAction::Subsurface {{ subsurface: {:?} }}",
                 subsurface
             ),
-            Action::Destroy { id } => write!(
-                f,
-                "Action::SubsurfaceAction::Destroy {{ id: {:?} }}",
-                id
-            ),
+            Action::Destroy { id } => {
+                write!(f, "Action::SubsurfaceAction::Destroy {{ id: {:?} }}", id)
+            }
             Action::Reposition { id, x, y } => write!(
                 f,
                 "Action::SubsurfaceAction::Reposition {{ id: {:?}, x: {:?}, y: {:?} }}",

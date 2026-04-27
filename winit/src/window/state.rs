@@ -58,8 +58,7 @@ where
         let title = program.title(window_id);
         let scale_factor = program.scale_factor(window_id);
         let theme = program.theme(window_id);
-        let theme_mode =
-            theme.as_ref().map(theme::Base::mode).unwrap_or_default();
+        let theme_mode = theme.as_ref().map(theme::Base::mode).unwrap_or_default();
         let default_theme = <P::Theme as theme::Base>::default(system_theme);
         let style = program.style(theme.as_ref().unwrap_or(&default_theme));
 
@@ -130,10 +129,7 @@ where
     pub fn cursor(&self) -> mouse::Cursor {
         self.cursor_position
             .map(|cursor_position| {
-                conversion::cursor_position(
-                    cursor_position,
-                    self.viewport.scale_factor(),
-                )
+                conversion::cursor_position(cursor_position, self.viewport.scale_factor())
             })
             .map(mouse::Cursor::Available)
             .unwrap_or(mouse::Cursor::Unavailable)
@@ -168,10 +164,7 @@ where
     pub(crate) fn update_scale_factor(&mut self, new_scale_factor: f64) {
         let size = self.viewport.logical_size();
 
-        self.viewport = Viewport::with_logical_size(
-            size,
-            new_scale_factor * self.scale_factor,
-        );
+        self.viewport = Viewport::with_logical_size(size, new_scale_factor * self.scale_factor);
 
         self.surface_version = self.surface_version.wrapping_add(1);
     }
@@ -187,10 +180,8 @@ where
             WindowEvent::SurfaceResized(new_size) => {
                 let size = Size::new(new_size.width, new_size.height);
 
-                self.viewport = Viewport::with_physical_size(
-                    size,
-                    window.scale_factor() * self.scale_factor,
-                );
+                self.viewport =
+                    Viewport::with_physical_size(size, window.scale_factor() * self.scale_factor);
                 self.surface_version += 1;
             }
             WindowEvent::ScaleFactorChanged {
@@ -216,9 +207,8 @@ where
                 self.modifiers = new_modifiers.state();
             }
             WindowEvent::ThemeChanged(theme) => {
-                self.default_theme = <P::Theme as theme::Base>::default(
-                    conversion::theme_mode(*theme),
-                );
+                self.default_theme =
+                    <P::Theme as theme::Base>::default(conversion::theme_mode(*theme));
 
                 if self.theme.is_none() {
                     self.style = program.style(&self.default_theme);
@@ -250,8 +240,7 @@ where
         let current_size = self.viewport.physical_size();
 
         if self.scale_factor != new_scale_factor
-            || (current_size.width, current_size.height)
-                != (new_size.width, new_size.height)
+            || (current_size.width, current_size.height) != (new_size.width, new_size.height)
                 && !(new_size.width == 0 && new_size.height == 0)
         {
             if new_size.width == 0 {
@@ -287,8 +276,7 @@ where
                 // Assume the old mode matches the system one
                 // We will be notified otherwise
                 if new_mode == theme::Mode::None {
-                    self.default_theme =
-                        <P::Theme as theme::Base>::default(self.theme_mode);
+                    self.default_theme = <P::Theme as theme::Base>::default(self.theme_mode);
 
                     if self.theme.is_none() {
                         self.style = program.style(&self.default_theme);

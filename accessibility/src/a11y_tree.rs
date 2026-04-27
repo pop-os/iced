@@ -25,9 +25,7 @@ impl A11yTree {
 
     /// Helper for creating an A11y tree with a single root node and some children
     pub fn node_with_child_tree(mut root: A11yNode, child_tree: Self) -> Self {
-        root.add_children(
-            child_tree.root.iter().map(|n| n.id()).cloned().collect(),
-        );
+        root.add_children(child_tree.root.iter().map(|n| n.id()).cloned().collect());
         Self {
             root: vec![root],
             children: child_tree

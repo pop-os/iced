@@ -7,19 +7,14 @@ use std::{
 use crate::graphics::compositor::Window;
 
 use as_raw_xcb_connection::AsRawXcbConnection;
-use raw_window_handle::{
-    RawDisplayHandle, XcbDisplayHandle, XlibDisplayHandle,
-};
+use raw_window_handle::{RawDisplayHandle, XcbDisplayHandle, XlibDisplayHandle};
 use rustix::fs::{fstat, stat};
 use tiny_xlib::Display;
 use x11rb::{
     connection::{Connection, RequestConnection},
     protocol::{
         dri3::{ConnectionExt as _, X11_EXTENSION_NAME as DRI3_NAME},
-        randr::{
-            ConnectionExt as _, ProviderCapability,
-            X11_EXTENSION_NAME as RANDR_NAME,
-        },
+        randr::{ConnectionExt as _, ProviderCapability, X11_EXTENSION_NAME as RANDR_NAME},
     },
     xcb_ffi::XCBConnection,
 };
@@ -28,15 +23,10 @@ pub fn get_x11_device_ids<W: Window>(window: &W) -> Option<(u16, u16)> {
     x11rb::xcb_ffi::load_libxcb().ok()?;
 
     #[allow(unsafe_code)]
-    let (conn, screen) = match window
-        .display_handle()
-        .map(|handle| handle.as_raw())
-    {
+    let (conn, screen) = match window.display_handle().map(|handle| handle.as_raw()) {
         #[allow(unsafe_code)]
         Ok(RawDisplayHandle::Xlib(XlibDisplayHandle {
-            display,
-            screen,
-            ..
+            display, screen, ..
         })) => match display {
             Some(ptr) => unsafe {
                 let xlib_display = Display::from_ptr(ptr.as_ptr());
@@ -52,15 +42,10 @@ pub fn get_x11_device_ids<W: Window>(window: &W) -> Option<(u16, u16)> {
             None => (XCBConnection::connect(None).ok()?.0, screen),
         },
         Ok(RawDisplayHandle::Xcb(XcbDisplayHandle {
-            connection,
-            screen,
-            ..
+            connection, screen, ..
         })) => match connection {
             Some(ptr) => (
-                unsafe {
-                    XCBConnection::from_raw_xcb_connection(ptr.as_ptr(), false)
-                        .ok()?
-                },
+                unsafe { XCBConnection::from_raw_xcb_connection(ptr.as_ptr(), false).ok()? },
                 screen,
             ),
             None => (XCBConnection::connect(None).ok()?.0, screen),
@@ -82,9 +67,7 @@ pub fn get_x11_device_ids<W: Window>(window: &W) -> Option<(u16, u16)> {
     let _ = conn.extension_information(RANDR_NAME).ok()??;
     // check version, because we need providers to exist
     let version = conn.randr_query_version(1, 4).ok()?.reply().ok()?;
-    if version.major_version < 1
-        || (version.major_version == 1 && version.minor_version < 4)
-    {
+    if version.major_version < 1 || (version.major_version == 1 && version.minor_version < 4) {
         return None;
     }
 
@@ -109,19 +92,17 @@ pub fn get_x11_device_ids<W: Window>(window: &W) -> Option<(u16, u16)> {
     }
 
     // if that name is formatted `NVIDIA-x`, then x represents the /dev/nvidiaX number, which we can relate to /dev/dri
-    if let Some(number) = name.and_then(|name| {
-        name.trim().strip_prefix("NVIDIA-")?.parse::<u32>().ok()
-    }) {
+    if let Some(number) =
+        name.and_then(|name| name.trim().strip_prefix("NVIDIA-")?.parse::<u32>().ok())
+    {
         // let it be known, that I hate this "interface"...
         for busid in fs::read_dir("/proc/driver/nvidia/gpus")
             .ok()?
             .map(Result::ok)
             .flatten()
         {
-            for line in BufReader::new(
-                fs::File::open(busid.path().join("information")).ok()?,
-            )
-            .lines()
+            for line in
+                BufReader::new(fs::File::open(busid.path().join("information")).ok()?).lines()
             {
                 if let Ok(line) = line {
                     if line.starts_with("Device Minor") {
@@ -142,8 +123,7 @@ pub fn get_x11_device_ids<W: Window>(window: &W) -> Option<(u16, u16)> {
                                     if device.to_string_lossy().starts_with("card")
                                         || device.to_string_lossy().starts_with("render")
                                     {
-                                        let stat =
-                                            stat(Path::new("/dev/dri").join(device)).ok()?;
+                                        let stat = stat(Path::new("/dev/dri").join(device)).ok()?;
                                         let dev = stat.st_rdev;
                                         return super::ids_from_dev(dev);
                                     }

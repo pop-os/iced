@@ -50,8 +50,7 @@ enum State {
 
 #[derive(Debug, Clone)]
 pub(crate) struct ControlSender {
-    pub(crate) sender:
-        iced_futures::futures::channel::mpsc::UnboundedSender<crate::Control>,
+    pub(crate) sender: iced_futures::futures::channel::mpsc::UnboundedSender<crate::Control>,
     pub(crate) proxy: winit::event_loop::EventLoopProxy,
 }
 
@@ -60,15 +59,12 @@ impl dnd::Sender<DndSurface> for ControlSender {
         &self,
         event: dnd::DndEvent<DndSurface>,
     ) -> Result<(), std::sync::mpsc::SendError<dnd::DndEvent<DndSurface>>> {
-        let res =
-            self.sender
-                .unbounded_send(Control::Dnd(event))
-                .map_err(|_err| {
-                    std::sync::mpsc::SendError(dnd::DndEvent::Offer(
-                        None,
-                        dnd::OfferEvent::Leave,
-                    ))
-                });
+        let res = self
+            .sender
+            .unbounded_send(Control::Dnd(event))
+            .map_err(|_err| {
+                std::sync::mpsc::SendError(dnd::DndEvent::Offer(None, dnd::OfferEvent::Leave))
+            });
         self.proxy.wake_up();
         res
     }
@@ -76,21 +72,17 @@ impl dnd::Sender<DndSurface> for ControlSender {
 
 impl Clipboard {
     /// Creates a new [`Clipboard`] for the given window.
-    pub(crate) fn connect(
-        window: Arc<dyn Window>,
-        sender: ControlSender,
-    ) -> Clipboard {
+    pub(crate) fn connect(window: Arc<dyn Window>, sender: ControlSender) -> Clipboard {
         #[allow(unsafe_code)]
-        let state =
-            unsafe { window_clipboard::Clipboard::connect(window.as_ref()) }
-                .ok()
-                .map(|c| State::Connected {
-                    clipboard: c,
-                    sender: sender.clone(),
-                    window,
-                    queued_events: Vec::new(),
-                })
-                .unwrap_or(State::Unavailable);
+        let state = unsafe { window_clipboard::Clipboard::connect(window.as_ref()) }
+            .ok()
+            .map(|c| State::Connected {
+                clipboard: c,
+                sender: sender.clone(),
+                window,
+                queued_events: Vec::new(),
+            })
+            .unwrap_or(State::Unavailable);
 
         #[cfg(target_os = "linux")]
         if let State::Connected { clipboard, .. } = &state {
@@ -126,9 +118,7 @@ impl Clipboard {
 
     pub(crate) fn get_queued(&mut self) -> Vec<StartDnd> {
         match &mut self.state {
-            State::Connected { queued_events, .. } => {
-                std::mem::take(queued_events)
-            }
+            State::Connected { queued_events, .. } => std::mem::take(queued_events),
             State::Unavailable => {
                 log::error!("Invalid request for queued dnd events");
                 Vec::<StartDnd>::new()
@@ -153,9 +143,7 @@ impl Clipboard {
             State::Connected { clipboard, .. } => {
                 let result = match kind {
                     Kind::Standard => clipboard.write(contents),
-                    Kind::Primary => {
-                        clipboard.write_primary(contents).unwrap_or(Ok(()))
-                    }
+                    Kind::Primary => clipboard.write_primary(contents).unwrap_or(Ok(())),
                 };
 
                 match result {
@@ -177,11 +165,7 @@ impl Clipboard {
         }
     }
 
-    pub fn read_data(
-        &self,
-        kind: Kind,
-        mimes: Vec<String>,
-    ) -> Option<(Vec<u8>, String)> {
+    pub fn read_data(&self, kind: Kind, mimes: Vec<String>) -> Option<(Vec<u8>, String)> {
         match (&self.state, kind) {
             (State::Connected { clipboard, .. }, Kind::Standard) => {
                 clipboard.read_raw(mimes).and_then(|res| res.ok())
@@ -196,9 +180,7 @@ impl Clipboard {
     pub fn write_data(
         &mut self,
         kind: Kind,
-        contents: ClipboardStoreData<
-            Box<dyn Send + Sync + 'static + mime::AsMimeTypes>,
-        >,
+        contents: ClipboardStoreData<Box<dyn Send + Sync + 'static + mime::AsMimeTypes>>,
     ) {
         match (&mut self.state, kind) {
             (State::Connected { clipboard, .. }, Kind::Standard) => {
@@ -294,9 +276,7 @@ impl Clipboard {
 
     pub fn set_action(&self, action: DndAction) {
         match &self.state {
-            State::Connected { clipboard, .. } => {
-                _ = clipboard.set_action(action)
-            }
+            State::Connected { clipboard, .. } => _ = clipboard.set_action(action),
             State::Unavailable => {}
         }
     }
@@ -316,13 +296,7 @@ impl Clipboard {
     ) {
         match &self.state {
             State::Connected { clipboard, .. } => {
-                _ = clipboard.start_dnd(
-                    internal,
-                    source_surface,
-                    icon_surface,
-                    content,
-                    actions,
-                )
+                _ = clipboard.start_dnd(internal, source_surface, icon_surface, content, actions)
             }
             State::Unavailable => {}
         }
@@ -332,9 +306,7 @@ impl Clipboard {
 impl crate::core::Clipboard for Clipboard {
     fn read(&self, kind: Kind) -> Option<String> {
         match (&self.state, kind) {
-            (State::Connected { clipboard, .. }, Kind::Standard) => {
-                clipboard.read().ok()
-            }
+            (State::Connected { clipboard, .. }, Kind::Standard) => clipboard.read().ok(),
             (State::Connected { clipboard, .. }, Kind::Primary) => {
                 clipboard.read_primary().and_then(|res| res.ok())
             }
@@ -344,9 +316,7 @@ impl crate::core::Clipboard for Clipboard {
 
     fn write(&mut self, kind: Kind, contents: String) {
         match (&mut self.state, kind) {
-            (State::Connected { clipboard, .. }, Kind::Standard) => {
-                _ = clipboard.write(contents)
-            }
+            (State::Connected { clipboard, .. }, Kind::Standard) => _ = clipboard.write(contents),
             (State::Connected { clipboard, .. }, Kind::Primary) => {
                 _ = clipboard.write_primary(contents)
             }
@@ -354,11 +324,7 @@ impl crate::core::Clipboard for Clipboard {
         }
     }
 
-    fn read_data(
-        &self,
-        kind: Kind,
-        mimes: Vec<String>,
-    ) -> Option<(Vec<u8>, String)> {
+    fn read_data(&self, kind: Kind, mimes: Vec<String>) -> Option<(Vec<u8>, String)> {
         match (&self.state, kind) {
             (State::Connected { clipboard, .. }, Kind::Standard) => {
                 clipboard.read_raw(mimes).and_then(|res| res.ok())
@@ -373,9 +339,7 @@ impl crate::core::Clipboard for Clipboard {
     fn write_data(
         &mut self,
         kind: Kind,
-        contents: ClipboardStoreData<
-            Box<dyn Send + Sync + 'static + mime::AsMimeTypes>,
-        >,
+        contents: ClipboardStoreData<Box<dyn Send + Sync + 'static + mime::AsMimeTypes>>,
     ) {
         match (&mut self.state, kind) {
             (State::Connected { clipboard, .. }, Kind::Standard) => {
@@ -472,9 +436,7 @@ impl crate::core::Clipboard for Clipboard {
 
     fn set_action(&self, action: DndAction) {
         match &self.state {
-            State::Connected { clipboard, .. } => {
-                _ = clipboard.set_action(action)
-            }
+            State::Connected { clipboard, .. } => _ = clipboard.set_action(action),
             State::Unavailable => {}
         }
     }

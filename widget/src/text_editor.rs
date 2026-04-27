@@ -48,8 +48,8 @@ use crate::core::widget::operation;
 use crate::core::widget::{self, Widget};
 use crate::core::window;
 use crate::core::{
-    Background, Border, Color, Element, Event, InputMethod, Length, Padding,
-    Pixels, Point, Rectangle, Shell, Size, SmolStr, Theme, Vector,
+    Background, Border, Color, Element, Event, InputMethod, Length, Padding, Pixels, Point,
+    Rectangle, Shell, Size, SmolStr, Theme, Vector,
 };
 
 use std::borrow::Cow;
@@ -59,9 +59,7 @@ use std::ops;
 use std::ops::DerefMut;
 use std::sync::Arc;
 
-pub use text::editor::{
-    Action, Cursor, Edit, Line, LineEnding, Motion, Position, Selection,
-};
+pub use text::editor::{Action, Cursor, Edit, Line, LineEnding, Motion, Position, Selection};
 
 /// The identifier of a [`TextEditor`].
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -106,13 +104,8 @@ impl From<widget::Id> for Id {
 ///     }
 /// }
 /// ```
-pub struct TextEditor<
-    'a,
-    Highlighter,
-    Message,
-    Theme = crate::Theme,
-    Renderer = crate::Renderer,
-> where
+pub struct TextEditor<'a, Highlighter, Message, Theme = crate::Theme, Renderer = crate::Renderer>
+where
     Highlighter: text::Highlighter,
     Theme: Catalog,
     Renderer: text::Renderer,
@@ -134,15 +127,11 @@ pub struct TextEditor<
     key_binding: Option<Box<dyn Fn(KeyPress) -> Option<Binding<Message>> + 'a>>,
     on_edit: Option<Box<dyn Fn(Action) -> Message + 'a>>,
     highlighter_settings: Highlighter::Settings,
-    highlighter_format: fn(
-        &Highlighter::Highlight,
-        &Theme,
-    ) -> highlighter::Format<Renderer::Font>,
+    highlighter_format: fn(&Highlighter::Highlight, &Theme) -> highlighter::Format<Renderer::Font>,
     last_status: Option<Status>,
 }
 
-impl<'a, Message, Theme, Renderer>
-    TextEditor<'a, highlighter::PlainText, Message, Theme, Renderer>
+impl<'a, Message, Theme, Renderer> TextEditor<'a, highlighter::PlainText, Message, Theme, Renderer>
 where
     Theme: Catalog,
     Renderer: text::Renderer,
@@ -167,9 +156,7 @@ where
             key_binding: None,
             on_edit: None,
             highlighter_settings: (),
-            highlighter_format: |_highlight, _theme| {
-                highlighter::Format::default()
-            },
+            highlighter_format: |_highlight, _theme| highlighter::Format::default(),
             last_status: None,
         }
     }
@@ -189,10 +176,7 @@ where
     Renderer: text::Renderer,
 {
     /// Sets the placeholder of the [`TextEditor`].
-    pub fn placeholder(
-        mut self,
-        placeholder: impl text::IntoFragment<'a>,
-    ) -> Self {
+    pub fn placeholder(mut self, placeholder: impl text::IntoFragment<'a>) -> Self {
         self.placeholder = Some(placeholder.into_fragment());
         self
     }
@@ -225,10 +209,7 @@ where
     /// the [`TextEditor`].
     ///
     /// If this method is not called, the [`TextEditor`] will be disabled.
-    pub fn on_action(
-        mut self,
-        on_edit: impl Fn(Action) -> Message + 'a,
-    ) -> Self {
+    pub fn on_action(mut self, on_edit: impl Fn(Action) -> Message + 'a) -> Self {
         self.on_edit = Some(Box::new(on_edit));
         self
     }
@@ -248,10 +229,7 @@ where
     }
 
     /// Sets the [`text::LineHeight`] of the [`TextEditor`].
-    pub fn line_height(
-        mut self,
-        line_height: impl Into<text::LineHeight>,
-    ) -> Self {
+    pub fn line_height(mut self, line_height: impl Into<text::LineHeight>) -> Self {
         self.line_height = line_height.into();
         self
     }
@@ -292,10 +270,7 @@ where
     pub fn highlight_with<H: text::Highlighter>(
         self,
         settings: H::Settings,
-        to_format: fn(
-            &H::Highlight,
-            &Theme,
-        ) -> highlighter::Format<Renderer::Font>,
+        to_format: fn(&H::Highlight, &Theme) -> highlighter::Format<Renderer::Font>,
     ) -> TextEditor<'a, H, Message, Theme, Renderer> {
         TextEditor {
             id: self.id,
@@ -371,22 +346,17 @@ where
 
         let cursor = match internal.editor.selection() {
             Selection::Caret(position) => position,
-            Selection::Range(ranges) => {
-                ranges.first().cloned().unwrap_or_default().position()
-            }
+            Selection::Range(ranges) => ranges.first().cloned().unwrap_or_default().position(),
         };
 
-        let line_height = self.line_height.to_absolute(
-            self.text_size.unwrap_or_else(|| renderer.default_size()),
-        );
+        let line_height = self
+            .line_height
+            .to_absolute(self.text_size.unwrap_or_else(|| renderer.default_size()));
 
         let position = cursor + translation;
 
         InputMethod::Enabled {
-            cursor: Rectangle::new(
-                position,
-                Size::new(1.0, f32::from(line_height)),
-            ),
+            cursor: Rectangle::new(position, Size::new(1.0, f32::from(line_height))),
             purpose: input_method::Purpose::Normal,
             preedit: state.preedit.as_ref().map(input_method::Preedit::as_ref),
         }
@@ -568,8 +538,7 @@ impl Focus {
 
     fn is_cursor_visible(&self) -> bool {
         self.is_window_focused
-            && ((self.now - self.updated_at).as_millis()
-                / Self::CURSOR_BLINK_INTERVAL_MILLIS)
+            && ((self.now - self.updated_at).as_millis() / Self::CURSOR_BLINK_INTERVAL_MILLIS)
                 .is_multiple_of(2)
     }
 }
@@ -581,9 +550,7 @@ impl<Highlighter: text::Highlighter> State<Highlighter> {
     }
 }
 
-impl<Highlighter: text::Highlighter> operation::Focusable
-    for State<Highlighter>
-{
+impl<Highlighter: text::Highlighter> operation::Focusable for State<Highlighter> {
     fn is_focused(&self) -> bool {
         self.focus.is_some()
     }
@@ -616,9 +583,7 @@ where
             drag_click: None,
             partial_scroll: 0.0,
             last_theme: RefCell::default(),
-            highlighter: RefCell::new(Highlighter::new(
-                &self.highlighter_settings,
-            )),
+            highlighter: RefCell::new(Highlighter::new(&self.highlighter_settings)),
             highlighter_settings: self.highlighter_settings.clone(),
             highlighter_format_address: self.highlighter_format as usize,
         })
@@ -640,8 +605,7 @@ where
         let mut internal = self.content.0.borrow_mut();
         let state = tree.state.downcast_mut::<State<Highlighter>>();
 
-        if state.highlighter_format_address != self.highlighter_format as usize
-        {
+        if state.highlighter_format_address != self.highlighter_format as usize {
             state.highlighter.borrow_mut().change_line(0);
 
             state.highlighter_format_address = self.highlighter_format as usize;
@@ -704,10 +668,7 @@ where
         };
 
         let state = tree.state.downcast_mut::<State<Highlighter>>();
-        let is_redraw = matches!(
-            event,
-            Event::Window(window::Event::RedrawRequested(_now)),
-        );
+        let is_redraw = matches!(event, Event::Window(window::Event::RedrawRequested(_now)),);
 
         match event {
             Event::Window(window::Event::Unfocused) => {
@@ -729,14 +690,12 @@ where
                 {
                     focus.now = *now;
 
-                    let millis_until_redraw =
-                        Focus::CURSOR_BLINK_INTERVAL_MILLIS
-                            - (focus.now - focus.updated_at).as_millis()
-                                % Focus::CURSOR_BLINK_INTERVAL_MILLIS;
+                    let millis_until_redraw = Focus::CURSOR_BLINK_INTERVAL_MILLIS
+                        - (focus.now - focus.updated_at).as_millis()
+                            % Focus::CURSOR_BLINK_INTERVAL_MILLIS;
 
                     shell.request_redraw_at(
-                        focus.now
-                            + Duration::from_millis(millis_until_redraw as u64),
+                        focus.now + Duration::from_millis(millis_until_redraw as u64),
                     );
                 }
             }
@@ -754,9 +713,7 @@ where
             match update {
                 Update::Click(click) => {
                     let action = match click.kind() {
-                        mouse::click::Kind::Single => {
-                            Action::Click(click.position())
-                        }
+                        mouse::click::Kind::Single => Action::Click(click.position()),
                         mouse::click::Kind::Double => Action::SelectWord,
                         mouse::click::Kind::Triple => Action::SelectLine,
                     };
@@ -791,8 +748,7 @@ where
                 }
                 Update::InputMethod(update) => match update {
                     Ime::Toggle(is_open) => {
-                        state.preedit =
-                            is_open.then(input_method::Preedit::new);
+                        state.preedit = is_open.then(input_method::Preedit::new);
 
                         shell.request_redraw();
                     }
@@ -806,17 +762,11 @@ where
                         shell.request_redraw();
                     }
                     Ime::Commit(text) => {
-                        shell.publish(on_edit(Action::Edit(Edit::Paste(
-                            Arc::new(text),
-                        ))));
+                        shell.publish(on_edit(Action::Edit(Edit::Paste(Arc::new(text)))));
                     }
                 },
                 Update::Binding(binding) => {
-                    fn apply_binding<
-                        H: text::Highlighter,
-                        R: text::Renderer,
-                        Message,
-                    >(
+                    fn apply_binding<H: text::Highlighter, R: text::Renderer, Message>(
                         binding: Binding<Message>,
                         content: &Content<R>,
                         state: &mut State<H>,
@@ -824,8 +774,7 @@ where
                         clipboard: &mut dyn Clipboard,
                         shell: &mut Shell<'_, Message>,
                     ) {
-                        let mut publish =
-                            |action| shell.publish(on_edit(action));
+                        let mut publish = |action| shell.publish(on_edit(action));
 
                         match binding {
                             Binding::Unfocus => {
@@ -834,29 +783,19 @@ where
                             }
                             Binding::Copy => {
                                 if let Some(selection) = content.selection() {
-                                    clipboard.write(
-                                        clipboard::Kind::Standard,
-                                        selection,
-                                    );
+                                    clipboard.write(clipboard::Kind::Standard, selection);
                                 }
                             }
                             Binding::Cut => {
                                 if let Some(selection) = content.selection() {
-                                    clipboard.write(
-                                        clipboard::Kind::Standard,
-                                        selection,
-                                    );
+                                    clipboard.write(clipboard::Kind::Standard, selection);
 
                                     publish(Action::Edit(Edit::Delete));
                                 }
                             }
                             Binding::Paste => {
-                                if let Some(contents) =
-                                    clipboard.read(clipboard::Kind::Standard)
-                                {
-                                    publish(Action::Edit(Edit::Paste(
-                                        Arc::new(contents),
-                                    )));
+                                if let Some(contents) = clipboard.read(clipboard::Kind::Standard) {
+                                    publish(Action::Edit(Edit::Paste(Arc::new(contents))));
                                 }
                             }
                             Binding::Move(motion) => {
@@ -889,8 +828,7 @@ where
                             Binding::Sequence(sequence) => {
                                 for binding in sequence {
                                     apply_binding(
-                                        binding, content, state, on_edit,
-                                        clipboard, shell,
+                                        binding, content, state, on_edit, clipboard, shell,
                                     );
                                 }
                             }
@@ -904,14 +842,7 @@ where
                         shell.capture_event();
                     }
 
-                    apply_binding(
-                        binding,
-                        self.content,
-                        state,
-                        on_edit,
-                        clipboard,
-                        shell,
-                    );
+                    apply_binding(binding, self.content, state, on_edit, clipboard, shell);
 
                     if let Some(focus) = &mut state.focus {
                         focus.updated_at = Instant::now();
@@ -938,9 +869,7 @@ where
         if is_redraw {
             self.last_status = Some(status);
 
-            shell.request_input_method(
-                &self.input_method(state, renderer, layout),
-            );
+            shell.request_input_method(&self.input_method(state, renderer, layout));
         } else if self
             .last_status
             .is_some_and(|last_status| status != last_status)
@@ -975,8 +904,7 @@ where
             .is_none_or(|last_theme| last_theme != theme_name)
         {
             state.highlighter.borrow_mut().change_line(0);
-            let _ =
-                state.last_theme.borrow_mut().replace(theme_name.to_owned());
+            let _ = state.last_theme.borrow_mut().replace(theme_name.to_owned());
         }
 
         internal.editor.highlight(
@@ -985,8 +913,7 @@ where
             |highlight| (self.highlighter_format)(highlight, theme),
         );
 
-        let style = theme
-            .style(&self.class, self.last_status.unwrap_or(Status::Active));
+        let style = theme.style(&self.class, self.last_status.unwrap_or(Status::Active));
 
         renderer.fill_quad(
             renderer::Quad {
@@ -1005,9 +932,7 @@ where
                     Text {
                         content: placeholder.into_owned(),
                         bounds: text_bounds.size(),
-                        size: self
-                            .text_size
-                            .unwrap_or_else(|| renderer.default_size()),
+                        size: self.text_size.unwrap_or_else(|| renderer.default_size()),
                         line_height: self.line_height,
                         font,
                         align_x: text::Alignment::Default,
@@ -1035,22 +960,19 @@ where
         if let Some(focus) = state.focus.as_ref() {
             match internal.editor.selection() {
                 Selection::Caret(position) if focus.is_cursor_visible() => {
-                    let cursor =
-                        Rectangle::new(
-                            position + translation,
-                            Size::new(
-                                1.0,
-                                self.line_height
-                                    .to_absolute(self.text_size.unwrap_or_else(
-                                        || renderer.default_size(),
-                                    ))
-                                    .into(),
-                            ),
-                        );
+                    let cursor = Rectangle::new(
+                        position + translation,
+                        Size::new(
+                            1.0,
+                            self.line_height
+                                .to_absolute(
+                                    self.text_size.unwrap_or_else(|| renderer.default_size()),
+                                )
+                                .into(),
+                        ),
+                    );
 
-                    if let Some(clipped_cursor) =
-                        text_bounds.intersection(&cursor)
-                    {
+                    if let Some(clipped_cursor) = text_bounds.intersection(&cursor) {
                         renderer.fill_quad(
                             renderer::Quad {
                                 bounds: clipped_cursor,
@@ -1061,9 +983,10 @@ where
                     }
                 }
                 Selection::Range(ranges) => {
-                    for range in ranges.into_iter().filter_map(|range| {
-                        text_bounds.intersection(&(range + translation))
-                    }) {
+                    for range in ranges
+                        .into_iter()
+                        .filter_map(|range| text_bounds.intersection(&(range + translation)))
+                    {
                         renderer.fill_quad(
                             renderer::Quad {
                                 bounds: range,
@@ -1128,9 +1051,7 @@ where
     Theme: Catalog + 'a,
     Renderer: text::Renderer,
 {
-    fn from(
-        text_editor: TextEditor<'a, Highlighter, Message, Theme, Renderer>,
-    ) -> Self {
+    fn from(text_editor: TextEditor<'a, Highlighter, Message, Theme, Renderer>) -> Self {
         Self::new(text_editor)
     }
 }
@@ -1212,9 +1133,7 @@ impl<Message> Binding<Message> {
         let combination = match key.to_latin(physical_key) {
             Some('c') if modifiers.command() => Some(Self::Copy),
             Some('x') if modifiers.command() => Some(Self::Cut),
-            Some('v') if modifiers.command() && !modifiers.alt() => {
-                Some(Self::Paste)
-            }
+            Some('v') if modifiers.command() && !modifiers.alt() => Some(Self::Paste),
             Some('a') if modifiers.command() => Some(Self::SelectAll),
             _ => None,
         };
@@ -1224,14 +1143,11 @@ impl<Message> Binding<Message> {
         }
 
         #[cfg(target_os = "macos")]
-        let modified_key =
-            convert_macos_shortcut(&key, modifiers).unwrap_or(modified_key);
+        let modified_key = convert_macos_shortcut(&key, modifiers).unwrap_or(modified_key);
 
         match modified_key.as_ref() {
             keyboard::Key::Named(key::Named::Enter) => Some(Self::Enter),
-            keyboard::Key::Named(key::Named::Backspace) => {
-                Some(Self::Backspace)
-            }
+            keyboard::Key::Named(key::Named::Backspace) => Some(Self::Backspace),
             keyboard::Key::Named(key::Named::Delete)
                 if text.is_none() || text.as_deref() == Some("\u{7f}") =>
             {
@@ -1308,8 +1224,8 @@ impl<Message> Update<Message> {
             Event::Mouse(event) => match event {
                 mouse::Event::ButtonPressed(mouse::Button::Left) => {
                     if let Some(cursor_position) = cursor.position_in(bounds) {
-                        let cursor_position = cursor_position
-                            - Vector::new(padding.left, padding.top);
+                        let cursor_position =
+                            cursor_position - Vector::new(padding.left, padding.top);
 
                         let click = mouse::Click::new(
                             cursor_position,
@@ -1324,21 +1240,17 @@ impl<Message> Update<Message> {
                         None
                     }
                 }
-                mouse::Event::ButtonReleased(mouse::Button::Left) => {
-                    Some(Update::Release)
-                }
+                mouse::Event::ButtonReleased(mouse::Button::Left) => Some(Update::Release),
                 mouse::Event::CursorMoved { .. } => match state.drag_click {
                     Some(mouse::click::Kind::Single) => {
-                        let cursor_position = cursor.position_in(bounds)?
-                            - Vector::new(padding.left, padding.top);
+                        let cursor_position =
+                            cursor.position_in(bounds)? - Vector::new(padding.left, padding.top);
 
                         Some(Update::Drag(cursor_position))
                     }
                     _ => None,
                 },
-                mouse::Event::WheelScrolled { delta }
-                    if cursor.is_over(bounds) =>
-                {
+                mouse::Event::WheelScrolled { delta } if cursor.is_over(bounds) => {
                     Some(Update::Scroll(match delta {
                         mouse::ScrollDelta::Lines { y, .. } => {
                             if y.abs() > 0.0 {
@@ -1353,23 +1265,16 @@ impl<Message> Update<Message> {
                 _ => None,
             },
             Event::InputMethod(event) => match event {
-                input_method::Event::Opened | input_method::Event::Closed => {
-                    Some(Update::InputMethod(Ime::Toggle(matches!(
-                        event,
-                        input_method::Event::Opened
-                    ))))
-                }
-                input_method::Event::Preedit(content, selection)
-                    if state.focus.is_some() =>
-                {
+                input_method::Event::Opened | input_method::Event::Closed => Some(
+                    Update::InputMethod(Ime::Toggle(matches!(event, input_method::Event::Opened))),
+                ),
+                input_method::Event::Preedit(content, selection) if state.focus.is_some() => {
                     Some(Update::InputMethod(Ime::Preedit {
                         content: content.clone(),
                         selection: selection.clone(),
                     }))
                 }
-                input_method::Event::Commit(content)
-                    if state.focus.is_some() =>
-                {
+                input_method::Event::Commit(content) if state.focus.is_some() => {
                     Some(Update::InputMethod(Ime::Commit(content.clone())))
                 }
                 _ => None,

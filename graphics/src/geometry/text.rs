@@ -79,9 +79,7 @@ impl Text {
         );
 
         let translation_x = match self.align_x {
-            Alignment::Left | Alignment::Default | Alignment::Justified => {
-                self.position.x
-            }
+            Alignment::Left | Alignment::Default | Alignment::Justified => self.position.x,
             Alignment::Center | Alignment::Right => {
                 let mut line_width = 0.0f32;
 
@@ -100,12 +98,8 @@ impl Text {
         let translation_y = {
             match self.align_y {
                 alignment::Vertical::Top => self.position.y,
-                alignment::Vertical::Center => {
-                    self.position.y - paragraph.min_height() / 2.0
-                }
-                alignment::Vertical::Bottom => {
-                    self.position.y - paragraph.min_height()
-                }
+                alignment::Vertical::Center => self.position.y - paragraph.min_height() / 2.0,
+                alignment::Vertical::Bottom => self.position.y - paragraph.min_height(),
             }
         };
 
@@ -120,38 +114,30 @@ impl Text {
                 let start_y = translation_y + glyph.y_offset + run.line_y;
                 let offset = Vector::new(start_x, start_y);
 
-                if let Some(commands) = swash_cache.get_outline_commands(
-                    font_system.raw(),
-                    physical_glyph.cache_key,
-                ) {
+                if let Some(commands) =
+                    swash_cache.get_outline_commands(font_system.raw(), physical_glyph.cache_key)
+                {
                     let glyph = Path::new(|path| {
                         use cosmic_text::Command;
 
                         for command in commands {
                             match command {
                                 Command::MoveTo(p) => {
-                                    path.move_to(
-                                        Point::new(p.x, -p.y) + offset,
-                                    );
+                                    path.move_to(Point::new(p.x, -p.y) + offset);
                                 }
                                 Command::LineTo(p) => {
-                                    path.line_to(
-                                        Point::new(p.x, -p.y) + offset,
-                                    );
+                                    path.line_to(Point::new(p.x, -p.y) + offset);
                                 }
                                 Command::CurveTo(control_a, control_b, to) => {
                                     path.bezier_curve_to(
-                                        Point::new(control_a.x, -control_a.y)
-                                            + offset,
-                                        Point::new(control_b.x, -control_b.y)
-                                            + offset,
+                                        Point::new(control_a.x, -control_a.y) + offset,
+                                        Point::new(control_b.x, -control_b.y) + offset,
                                         Point::new(to.x, -to.y) + offset,
                                     );
                                 }
                                 Command::QuadTo(control, to) => {
                                     path.quadratic_curve_to(
-                                        Point::new(control.x, -control.y)
-                                            + offset,
+                                        Point::new(control.x, -control.y) + offset,
                                         Point::new(to.x, -to.y) + offset,
                                     );
                                 }

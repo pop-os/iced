@@ -27,8 +27,7 @@ impl A11yNode {
     }
 
     pub fn add_children(&mut self, children: Vec<A11yId>) {
-        let mut children =
-            children.into_iter().map(|id| id.into()).collect::<Vec<_>>();
+        let mut children = children.into_iter().map(|id| id.into()).collect::<Vec<_>>();
         children.extend_from_slice(self.node.children());
         self.node.set_children(children);
     }

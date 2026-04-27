@@ -123,9 +123,7 @@ fn create_memfile() -> rustix::io::Result<OwnedFd> {
             time.duration_since(UNIX_EPOCH).unwrap().subsec_nanos()
         );
 
-        match rustix::io::retry_on_intr(|| {
-            rustix::shm::shm_open(&name, flags, 0600.into())
-        }) {
+        match rustix::io::retry_on_intr(|| rustix::shm::shm_open(&name, flags, 0600.into())) {
             Ok(fd) => match rustix::shm::shm_unlink(&name) {
                 Ok(_) => return Ok(fd),
                 Err(errno) => {

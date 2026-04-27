@@ -1,8 +1,7 @@
 //! Build window-based GUI applications.
 use crate::core::time::Instant;
 use crate::core::window::{
-    Direction, Event, Icon, Id, Level, Mode, Screenshot, Settings,
-    UserAttention,
+    Direction, Event, Icon, Id, Level, Mode, Screenshot, Settings, UserAttention,
 };
 use crate::core::{Point, Size};
 use crate::futures::Subscription;
@@ -216,9 +215,7 @@ impl<T> Window for T where T: HasWindowHandle + HasDisplayHandle {}
 /// animations without missing any frames.
 pub fn frames() -> Subscription<(Id, Instant)> {
     event::listen_raw(|event, _status, window| match event {
-        crate::core::Event::Window(Event::RedrawRequested(at)) => {
-            Some((window, at))
-        }
+        crate::core::Event::Window(Event::RedrawRequested(at)) => Some((window, at)),
         _ => None,
     })
 }
@@ -234,11 +231,9 @@ pub fn frames() -> Subscription<(Id, Instant)> {
 pub fn wayland_frames() -> Subscription<Instant> {
     event::listen_raw(|event, _status, _window| match event {
         iced_core::Event::Window(Event::RedrawRequested(at))
-        | iced_core::Event::PlatformSpecific(
-            iced_core::event::PlatformSpecific::Wayland(
-                iced_core::event::wayland::Event::Frame(at, _, _),
-            ),
-        ) => Some(at),
+        | iced_core::Event::PlatformSpecific(iced_core::event::PlatformSpecific::Wayland(
+            iced_core::event::wayland::Event::Frame(at, _, _),
+        )) => Some(at),
         _ => None,
     })
 }
@@ -305,9 +300,7 @@ pub fn open(settings: Settings) -> (Id, Task<Id>) {
 
     (
         id,
-        task::oneshot(|channel| {
-            crate::Action::Window(Action::Open(id, settings, channel))
-        }),
+        task::oneshot(|channel| crate::Action::Window(Action::Open(id, settings, channel))),
     )
 }
 
@@ -367,16 +360,12 @@ pub fn set_resize_increments<T>(id: Id, increments: Option<Size>) -> Task<T> {
 
 /// Gets the window size in logical dimensions.
 pub fn size(id: Id) -> Task<Size> {
-    task::oneshot(move |channel| {
-        crate::Action::Window(Action::GetSize(id, channel))
-    })
+    task::oneshot(move |channel| crate::Action::Window(Action::GetSize(id, channel)))
 }
 
 /// Gets the maximized state of the window with the given [`Id`].
 pub fn is_maximized(id: Id) -> Task<bool> {
-    task::oneshot(move |channel| {
-        crate::Action::Window(Action::GetMaximized(id, channel))
-    })
+    task::oneshot(move |channel| crate::Action::Window(Action::GetMaximized(id, channel)))
 }
 
 /// Maximizes the window.
@@ -386,9 +375,7 @@ pub fn maximize<T>(id: Id, maximized: bool) -> Task<T> {
 
 /// Gets the minimized state of the window with the given [`Id`].
 pub fn is_minimized(id: Id) -> Task<Option<bool>> {
-    task::oneshot(move |channel| {
-        crate::Action::Window(Action::GetMinimized(id, channel))
-    })
+    task::oneshot(move |channel| crate::Action::Window(Action::GetMinimized(id, channel)))
 }
 
 /// Minimizes the window.
@@ -398,16 +385,12 @@ pub fn minimize<T>(id: Id, minimized: bool) -> Task<T> {
 
 /// Gets the position in logical coordinates of the window with the given [`Id`].
 pub fn position(id: Id) -> Task<Option<Point>> {
-    task::oneshot(move |channel| {
-        crate::Action::Window(Action::GetPosition(id, channel))
-    })
+    task::oneshot(move |channel| crate::Action::Window(Action::GetPosition(id, channel)))
 }
 
 /// Gets the scale factor of the window with the given [`Id`].
 pub fn scale_factor(id: Id) -> Task<f32> {
-    task::oneshot(move |channel| {
-        crate::Action::Window(Action::GetScaleFactor(id, channel))
-    })
+    task::oneshot(move |channel| crate::Action::Window(Action::GetScaleFactor(id, channel)))
 }
 
 /// Moves the window to the given logical coordinates.
@@ -417,9 +400,7 @@ pub fn move_to<T>(id: Id, position: Point) -> Task<T> {
 
 /// Gets the current [`Mode`] of the window.
 pub fn mode(id: Id) -> Task<Mode> {
-    task::oneshot(move |channel| {
-        crate::Action::Window(Action::GetMode(id, channel))
-    })
+    task::oneshot(move |channel| crate::Action::Window(Action::GetMode(id, channel)))
 }
 
 /// Changes the [`Mode`] of the window.
@@ -443,10 +424,7 @@ pub fn toggle_decorations<T>(id: Id) -> Task<T> {
 ///
 /// Providing `None` will unset the request for user attention. Unsetting the request for
 /// user attention might not be done automatically by the WM when the window receives input.
-pub fn request_user_attention<T>(
-    id: Id,
-    user_attention: Option<UserAttention>,
-) -> Task<T> {
+pub fn request_user_attention<T>(id: Id, user_attention: Option<UserAttention>) -> Task<T> {
     task::effect(crate::Action::Window(Action::RequestUserAttention(
         id,
         user_attention,
@@ -478,9 +456,7 @@ pub fn show_system_menu<T>(id: Id) -> Task<T> {
 /// Gets an identifier unique to the window, provided by the underlying windowing system. This is
 /// not to be confused with [`Id`].
 pub fn raw_id<Message>(id: Id) -> Task<u64> {
-    task::oneshot(|channel| {
-        crate::Action::Window(Action::GetRawId(id, channel))
-    })
+    task::oneshot(|channel| crate::Action::Window(Action::GetRawId(id, channel)))
 }
 
 /// Changes the [`Icon`] of the window.
@@ -491,10 +467,7 @@ pub fn set_icon<T>(id: Id, icon: Icon) -> Task<T> {
 /// Runs the given callback with a reference to the [`Window`] with the given [`Id`].
 ///
 /// Note that if the window closes before this call is processed the callback will not be run.
-pub fn run<T>(
-    id: Id,
-    f: impl FnOnce(&dyn Window) -> T + Send + 'static,
-) -> Task<T>
+pub fn run<T>(id: Id, f: impl FnOnce(&dyn Window) -> T + Send + 'static) -> Task<T>
 where
     T: Send + 'static,
 {
@@ -511,10 +484,7 @@ where
 /// Runs the given callback with the native window handle for the window with the given id.
 ///
 /// Note that if the window closes before this call is processed the callback will not be run.
-pub fn run_with_handle<T>(
-    id: Id,
-    f: impl FnOnce(WindowHandle<'_>) -> T + Send + 'static,
-) -> Task<T>
+pub fn run_with_handle<T>(id: Id, f: impl FnOnce(WindowHandle<'_>) -> T + Send + 'static) -> Task<T>
 where
     T: Send + 'static,
 {
@@ -530,9 +500,7 @@ where
 
 /// Captures a [`Screenshot`] from the window.
 pub fn screenshot(id: Id) -> Task<Screenshot> {
-    task::oneshot(move |channel| {
-        crate::Action::Window(Action::Screenshot(id, channel))
-    })
+    task::oneshot(move |channel| crate::Action::Window(Action::Screenshot(id, channel)))
 }
 
 /// Enables mouse passthrough for the given window.
@@ -553,9 +521,7 @@ pub fn disable_mouse_passthrough<Message>(id: Id) -> Task<Message> {
 
 /// Gets the logical dimensions of the monitor containing the window with the given [`Id`].
 pub fn monitor_size(id: Id) -> Task<Option<Size>> {
-    task::oneshot(move |channel| {
-        crate::Action::Window(Action::GetMonitorSize(id, channel))
-    })
+    task::oneshot(move |channel| crate::Action::Window(Action::GetMonitorSize(id, channel)))
 }
 
 /// Sets whether the system can automatically organize windows into tabs.

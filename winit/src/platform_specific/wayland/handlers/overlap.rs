@@ -1,15 +1,17 @@
+use cctk::sctk::globals::GlobalData;
 use cctk::{
     cosmic_protocols::overlap_notify::v1::client::{
         zcosmic_overlap_notification_v1::{self, ZcosmicOverlapNotificationV1},
         zcosmic_overlap_notify_v1::ZcosmicOverlapNotifyV1,
-    }, sctk::shell::wlr_layer::Layer, wayland_client::{
-        self, event_created_child,
+    },
+    sctk::shell::wlr_layer::Layer,
+    wayland_client::{
+        self, Connection, Dispatch, Proxy, QueueHandle, event_created_child,
         globals::{BindError, GlobalList},
         protocol::wl_surface::WlSurface,
-        Connection, Dispatch, Proxy, QueueHandle,
-    }, wayland_protocols::ext::foreign_toplevel_list::v1::client::ext_foreign_toplevel_handle_v1::ExtForeignToplevelHandleV1
+    },
+    wayland_protocols::ext::foreign_toplevel_list::v1::client::ext_foreign_toplevel_handle_v1::ExtForeignToplevelHandleV1,
 };
-use cctk::sctk::globals::GlobalData;
 use iced_futures::core::Rectangle;
 
 use crate::{event_loop::state::SctkState, sctk_event::SctkEvent};
@@ -29,9 +31,7 @@ impl OverlapNotifyV1 {
     }
 }
 
-impl Dispatch<ZcosmicOverlapNotifyV1, GlobalData, SctkState>
-    for OverlapNotifyV1
-{
+impl Dispatch<ZcosmicOverlapNotifyV1, GlobalData, SctkState> for OverlapNotifyV1 {
     fn event(
         _: &mut SctkState,
         _: &ZcosmicOverlapNotifyV1,

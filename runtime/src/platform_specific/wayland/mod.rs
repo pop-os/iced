@@ -50,25 +50,13 @@ pub struct CornerRadius {
 impl Debug for Action {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Action::LayerSurface(arg0) => {
-                f.debug_tuple("LayerSurface").field(arg0).finish()
-            }
+            Action::LayerSurface(arg0) => f.debug_tuple("LayerSurface").field(arg0).finish(),
             Action::Popup(arg0) => f.debug_tuple("Popup").field(arg0).finish(),
-            Action::Activation(arg0) => {
-                f.debug_tuple("Activation").field(arg0).finish()
-            }
-            Action::SessionLock(arg0) => {
-                f.debug_tuple("SessionLock").field(arg0).finish()
-            }
-            Action::OverlapNotify(id, _) => {
-                f.debug_tuple("OverlapNotify").field(id).finish()
-            }
-            Action::Subsurface(action) => {
-                f.debug_tuple("Subsurface").field(action).finish()
-            }
-            Action::InhibitShortcuts(v) => {
-                f.debug_tuple("InhibitShortcuts").field(v).finish()
-            }
+            Action::Activation(arg0) => f.debug_tuple("Activation").field(arg0).finish(),
+            Action::SessionLock(arg0) => f.debug_tuple("SessionLock").field(arg0).finish(),
+            Action::OverlapNotify(id, _) => f.debug_tuple("OverlapNotify").field(id).finish(),
+            Action::Subsurface(action) => f.debug_tuple("Subsurface").field(action).finish(),
+            Action::InhibitShortcuts(v) => f.debug_tuple("InhibitShortcuts").field(v).finish(),
             Action::RoundedCorners(id, v) => {
                 f.debug_tuple("RoundedCorners").field(id).field(v).finish()
             }

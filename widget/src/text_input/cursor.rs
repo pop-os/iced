@@ -56,9 +56,7 @@ impl Cursor {
     /// `start` is guaranteed to be <= than `end`.
     pub fn selection(&self, value: &Value) -> Option<(usize, usize)> {
         match self.state(value) {
-            State::Selection { start, end } => {
-                Some((start.min(end), start.max(end)))
-            }
+            State::Selection { start, end } => Some((start.min(end), start.max(end))),
             State::Index(_) => None,
         }
     }
@@ -75,11 +73,7 @@ impl Cursor {
         self.move_to(value.next_end_of_word(self.right(value)));
     }
 
-    pub(crate) fn move_right_by_amount(
-        &mut self,
-        value: &Value,
-        amount: usize,
-    ) {
+    pub(crate) fn move_right_by_amount(&mut self, value: &Value, amount: usize) {
         match self.state(value) {
             State::Index(index) => {
                 self.move_to(index.saturating_add(amount).min(value.len()));
@@ -205,13 +199,7 @@ impl Cursor {
     /// `forward` = `true` is visually rightward
     /// RTL text flips the logical direction so that pressing the right-arrow key
     /// still moves the caret forward visually.
-    pub fn move_visual(
-        &mut self,
-        forward: bool,
-        by_words: bool,
-        rtl: bool,
-        value: &Value,
-    ) {
+    pub fn move_visual(&mut self, forward: bool, by_words: bool, rtl: bool, value: &Value) {
         match (forward ^ rtl, by_words) {
             (true, false) => self.move_right(value),
             (true, true) => self.move_right_by_words(value),
@@ -223,13 +211,7 @@ impl Cursor {
     /// Extends the selection in a visual direction, accounting for RTL text.
     ///
     /// See [`Cursor::move_visual`] for the `forward` / `rtl` semantics.
-    pub fn select_visual(
-        &mut self,
-        forward: bool,
-        by_words: bool,
-        rtl: bool,
-        value: &Value,
-    ) {
+    pub fn select_visual(&mut self, forward: bool, by_words: bool, rtl: bool, value: &Value) {
         match (forward ^ rtl, by_words) {
             (true, false) => self.select_right(value),
             (true, true) => self.select_right_by_words(value),

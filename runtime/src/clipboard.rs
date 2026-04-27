@@ -98,11 +98,7 @@ pub fn write_primary<Message>(contents: String) -> Task<Message> {
 /// Read the current contents of the clipboard.
 pub fn read_data<T: AllowedMimeTypes>() -> Task<Option<T>> {
     task::oneshot(|tx| {
-        crate::Action::Clipboard(Action::ReadData(
-            T::allowed().into(),
-            tx,
-            Kind::Standard,
-        ))
+        crate::Action::Clipboard(Action::ReadData(T::allowed().into(), tx, Kind::Standard))
     })
     .map(|d| d.and_then(|d| T::try_from(d).ok()))
 }

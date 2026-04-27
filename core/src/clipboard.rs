@@ -17,11 +17,7 @@ pub struct IconSurface<E> {
 pub type DynIconSurface = IconSurface<Box<dyn Any>>;
 
 impl<T: 'static, R: 'static> IconSurface<Element<'static, (), T, R>> {
-    pub fn new(
-        element: Element<'static, (), T, R>,
-        state: State,
-        offset: Vector,
-    ) -> Self {
+    pub fn new(element: Element<'static, (), T, R>, state: State, offset: Vector) -> Self {
         Self {
             element,
             state,
@@ -42,9 +38,7 @@ impl DynIconSurface {
     /// Downcast `element` to concrete type `Element<(), T, R>`
     ///
     /// Panics if type doesn't match
-    pub fn downcast<T: 'static, R: 'static>(
-        self,
-    ) -> IconSurface<Element<'static, (), T, R>> {
+    pub fn downcast<T: 'static, R: 'static>(self) -> IconSurface<Element<'static, (), T, R>> {
         IconSurface {
             element: *self
                 .element
@@ -67,11 +61,7 @@ pub trait Clipboard {
 
     /// Consider using [`read_data`] instead
     /// Reads the current content of the [`Clipboard`] as text.
-    fn read_data(
-        &self,
-        _kind: Kind,
-        _mimes: Vec<String>,
-    ) -> Option<(Vec<u8>, String)> {
+    fn read_data(&self, _kind: Kind, _mimes: Vec<String>) -> Option<(Vec<u8>, String)> {
         None
     }
 
@@ -79,9 +69,7 @@ pub trait Clipboard {
     fn write_data(
         &mut self,
         _kind: Kind,
-        _contents: ClipboardStoreData<
-            Box<dyn Send + Sync + 'static + mime::AsMimeTypes>,
-        >,
+        _contents: ClipboardStoreData<Box<dyn Send + Sync + 'static + mime::AsMimeTypes>>,
     ) {
     }
 
@@ -165,18 +153,14 @@ impl Clipboard for Null {
 }
 
 /// Reads the current content of the [`Clipboard`].
-pub fn read_data<T: AllowedMimeTypes>(
-    clipboard: &mut dyn Clipboard,
-) -> Option<T> {
+pub fn read_data<T: AllowedMimeTypes>(clipboard: &mut dyn Clipboard) -> Option<T> {
     clipboard
         .read_data(Kind::Standard, T::allowed().into())
         .and_then(|data| T::try_from(data).ok())
 }
 
 /// Reads the current content of the primary [`Clipboard`].
-pub fn read_primary_data<T: AllowedMimeTypes>(
-    clipboard: &mut dyn Clipboard,
-) -> Option<T> {
+pub fn read_primary_data<T: AllowedMimeTypes>(clipboard: &mut dyn Clipboard) -> Option<T> {
     clipboard
         .read_data(Kind::Primary, T::allowed().into())
         .and_then(|data| T::try_from(data).ok())

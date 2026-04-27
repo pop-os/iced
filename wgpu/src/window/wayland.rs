@@ -6,8 +6,7 @@ use cctk::sctk::{
 };
 use raw_window_handle::{RawDisplayHandle, WaylandDisplayHandle};
 use wayland_client::{
-    Connection, QueueHandle, backend::Backend, globals::registry_queue_init,
-    protocol::wl_buffer,
+    Connection, QueueHandle, backend::Backend, globals::registry_queue_init, protocol::wl_buffer,
 };
 use wayland_protocols::wp::linux_dmabuf::zv1::client::{
     zwp_linux_buffer_params_v1, zwp_linux_dmabuf_feedback_v1,
@@ -74,11 +73,11 @@ pub fn get_wayland_device_ids<W: Window>(window: &W) -> Option<(u16, u16)> {
 
     let conn = match window.display_handle().map(|handle| handle.as_raw()) {
         #[allow(unsafe_code)]
-        Ok(RawDisplayHandle::Wayland(WaylandDisplayHandle {
-            display, ..
-        })) => Connection::from_backend(unsafe {
-            Backend::from_foreign_display(display.as_ptr() as *mut _)
-        }),
+        Ok(RawDisplayHandle::Wayland(WaylandDisplayHandle { display, .. })) => {
+            Connection::from_backend(unsafe {
+                Backend::from_foreign_display(display.as_ptr() as *mut _)
+            })
+        }
         _ => {
             return None;
         }

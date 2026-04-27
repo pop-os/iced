@@ -1,5 +1,5 @@
+use iced::widget::{button, column, text, Column};
 use iced::Center;
-use iced::widget::{Column, button, column, text};
 
 pub fn main() -> iced::Result {
     iced::run(Counter::update, Counter::view)
@@ -42,7 +42,7 @@ impl Counter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use iced_test::{Error, simulator};
+    use iced_test::{simulator, Error};
 
     #[test]
     fn it_counts() -> Result<(), Error> {

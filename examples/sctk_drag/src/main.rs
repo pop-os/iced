@@ -19,8 +19,7 @@ use iced_core::{
 };
 
 fn main() -> iced::Result {
-    iced::daemon(DndTest::title, DndTest::update, DndTest::view)
-        .run_with(DndTest::new)
+    iced::daemon(DndTest::title, DndTest::update, DndTest::view).run_with(DndTest::new)
     // iced::application(Todos::title, Todos::update, Todos::view)
     // .subscription(Todos::subscription)
     // .font(include_bytes!("../fonts/icons.ttf").as_slice())
@@ -75,10 +74,7 @@ impl AsMimeTypes for MyDndString {
         ])
     }
 
-    fn as_bytes(
-        &self,
-        _mime_type: &str,
-    ) -> Option<std::borrow::Cow<'static, [u8]>> {
+    fn as_bytes(&self, _mime_type: &str) -> Option<std::borrow::Cow<'static, [u8]>> {
         Some(Cow::Owned(self.0.clone().into_bytes()))
     }
 }
@@ -136,13 +132,10 @@ impl DndTest {
         let s2 = s.clone();
         column![
             dnd_destination::dnd_destination_for_data::<MyDndString, Message>(
-                container(text(format!(
-                    "Drag text here: {}",
-                    &self.current_text
-                )))
-                .width(Length::Fill)
-                .height(Length::FillPortion(1))
-                .padding(20),
+                container(text(format!("Drag text here: {}", &self.current_text)))
+                    .width(Length::Fill)
+                    .height(Length::FillPortion(1))
+                    .padding(20),
                 |data, _| {
                     dbg!("got data");
                     Message::DndData(data.unwrap_or_default())
@@ -176,8 +169,7 @@ impl DndTest {
             )
             .drag_threshold(5.0)
             .drag_icon(move || {
-                let t: Text<'static, iced::Theme, iced::Renderer> =
-                    text(s.clone());
+                let t: Text<'static, iced::Theme, iced::Renderer> = text(s.clone());
                 let state = <iced_core::widget::Text<
                     'static,
                     iced::Theme,
@@ -186,9 +178,7 @@ impl DndTest {
                     &t,
                 );
                 (
-                    Element::<'static, (), iced::Theme, iced::Renderer>::from(
-                        t,
-                    ),
+                    Element::<'static, (), iced::Theme, iced::Renderer>::from(t),
                     state,
                 )
             })

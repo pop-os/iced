@@ -6,7 +6,7 @@ use dnd::{DndDestinationRectangle, DndSurface};
 use iced_core::clipboard::DndSource;
 use window_clipboard::mime::{AllowedMimeTypes, AsMimeTypes};
 
-use crate::{oneshot, task, Action, Task};
+use crate::{Action, Task, oneshot, task};
 
 /// An action to be performed on the system.
 pub enum DndAction {
@@ -41,9 +41,7 @@ impl std::fmt::Debug for DndAction {
                 .field("rectangles", rectangles)
                 .finish(),
             Self::EndDnd => f.write_str("EndDnd"),
-            Self::PeekDnd(mime, _) => {
-                f.debug_struct("PeekDnd").field("mime", mime).finish()
-            }
+            Self::PeekDnd(mime, _) => f.debug_struct("PeekDnd").field("mime", mime).finish(),
             Self::SetAction(a) => f.debug_tuple("SetAction").field(a).finish(),
         }
     }

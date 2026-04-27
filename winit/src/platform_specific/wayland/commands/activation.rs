@@ -1,23 +1,18 @@
 use crate::core::window::Id as SurfaceId;
 use iced_runtime::{
-    self,
+    self, Action, Task,
     platform_specific::{self, wayland},
-    task, Action, Task,
+    task,
 };
 
-pub fn request_token(
-    app_id: Option<String>,
-    window: Option<SurfaceId>,
-) -> Task<Option<String>> {
+pub fn request_token(app_id: Option<String>, window: Option<SurfaceId>) -> Task<Option<String>> {
     task::oneshot(|channel| {
         Action::PlatformSpecific(platform_specific::Action::Wayland(
-            wayland::Action::Activation(
-                wayland::activation::Action::RequestToken {
-                    app_id,
-                    window,
-                    channel,
-                },
-            ),
+            wayland::Action::Activation(wayland::activation::Action::RequestToken {
+                app_id,
+                window,
+                channel,
+            }),
         ))
     })
 }

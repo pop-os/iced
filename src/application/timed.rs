@@ -25,9 +25,7 @@ pub fn timed<State, Message, Theme, Renderer>(
     update: impl UpdateFn<State, Message>,
     subscription: impl Fn(&State) -> Subscription<Message>,
     view: impl for<'a> ViewFn<'a, State, Message, Theme, Renderer>,
-) -> Application<
-    impl Program<State = State, Message = (Message, Instant), Theme = Theme>,
->
+) -> Application<impl Program<State = State, Message = (Message, Instant), Theme = Theme>>
 where
     State: 'static,
     Message: Send + 'static,
@@ -36,16 +34,7 @@ where
 {
     use std::marker::PhantomData;
 
-    struct Instance<
-        State,
-        Message,
-        Theme,
-        Renderer,
-        Boot,
-        Update,
-        Subscription,
-        View,
-    > {
+    struct Instance<State, Message, Theme, Renderer, Boot, Update, Subscription, View> {
         boot: Boot,
         update: Update,
         subscription: Subscription,
@@ -56,18 +45,8 @@ where
         _renderer: PhantomData<Renderer>,
     }
 
-    impl<State, Message, Theme, Renderer, Boot, Update, Subscription, View>
-        Program
-        for Instance<
-            State,
-            Message,
-            Theme,
-            Renderer,
-            Boot,
-            Update,
-            Subscription,
-            View,
-        >
+    impl<State, Message, Theme, Renderer, Boot, Update, Subscription, View> Program
+        for Instance<State, Message, Theme, Renderer, Boot, Update, Subscription, View>
     where
         Message: Send + 'static,
         Theme: theme::Base + 'static,
@@ -137,10 +116,7 @@ where
             &self,
             state: &<Self as Program>::State,
         ) -> self::Subscription<<Self as Program>::Message> {
-            debug::hot(|| {
-                (self.subscription)(state)
-                    .map(|message| (message, Instant::now()))
-            })
+            debug::hot(|| (self.subscription)(state).map(|message| (message, Instant::now())))
         }
     }
 
@@ -167,12 +143,8 @@ where
 /// but it also takes an [`Instant`].
 pub trait UpdateFn<State, Message> {
     /// Processes the message and updates the state of the [`Application`].
-    fn update(
-        &self,
-        state: &mut State,
-        message: Message,
-        now: Instant,
-    ) -> impl Into<Task<Message>>;
+    fn update(&self, state: &mut State, message: Message, now: Instant)
+    -> impl Into<Task<Message>>;
 }
 
 impl<State, Message> UpdateFn<State, Message> for () {

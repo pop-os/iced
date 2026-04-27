@@ -1,7 +1,5 @@
 use crate::platform_specific::wayland::event_loop::state::SctkState;
-use cctk::sctk::{
-    delegate_xdg_shell, delegate_xdg_window, shell::xdg::window::WindowHandler,
-};
+use cctk::sctk::{delegate_xdg_shell, delegate_xdg_window, shell::xdg::window::WindowHandler};
 
 impl WindowHandler for SctkState {
     fn request_close(

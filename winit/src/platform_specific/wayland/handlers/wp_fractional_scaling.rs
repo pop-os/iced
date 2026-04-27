@@ -50,9 +50,7 @@ impl FractionalScalingManager {
     }
 }
 
-impl Dispatch<WpFractionalScaleManagerV1, GlobalData, SctkState>
-    for FractionalScalingManager
-{
+impl Dispatch<WpFractionalScaleManagerV1, GlobalData, SctkState> for FractionalScalingManager {
     fn event(
         _: &mut SctkState,
         _: &WpFractionalScaleManagerV1,
@@ -65,9 +63,7 @@ impl Dispatch<WpFractionalScaleManagerV1, GlobalData, SctkState>
     }
 }
 
-impl Dispatch<WpFractionalScaleV1, FractionalScaling, SctkState>
-    for FractionalScalingManager
-{
+impl Dispatch<WpFractionalScaleV1, FractionalScaling, SctkState> for FractionalScalingManager {
     fn event(
         state: &mut SctkState,
         _: &WpFractionalScaleV1,
@@ -77,11 +73,7 @@ impl Dispatch<WpFractionalScaleV1, FractionalScaling, SctkState>
         _: &QueueHandle<SctkState>,
     ) {
         if let FractionalScalingEvent::PreferredScale { scale } = event {
-            state.scale_factor_changed(
-                &data.surface,
-                scale as f64 / SCALE_DENOMINATOR,
-                false,
-            );
+            state.scale_factor_changed(&data.surface, scale as f64 / SCALE_DENOMINATOR, false);
         }
     }
 }

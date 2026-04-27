@@ -1,13 +1,13 @@
 use crate::platform_specific::wayland::{
-    event_loop::state::{receive_frame, SctkState},
+    event_loop::state::{SctkState, receive_frame},
     sctk_event::{LayerSurfaceEventVariant, SctkEvent},
 };
 use cctk::sctk::{
     delegate_layer,
     reexports::client::Proxy,
     shell::{
-        wlr_layer::{Anchor, KeyboardInteractivity, LayerShellHandler},
         WaylandSurface,
+        wlr_layer::{Anchor, KeyboardInteractivity, LayerShellHandler},
     },
 };
 use std::fmt::Debug;
@@ -20,9 +20,11 @@ impl LayerShellHandler for SctkState {
         _qh: &cctk::sctk::reexports::client::QueueHandle<Self>,
         layer: &cctk::sctk::shell::wlr_layer::LayerSurface,
     ) {
-        let layer = match self.layer_surfaces.iter().position(|s| {
-            s.surface.wl_surface().id() == layer.wl_surface().id()
-        }) {
+        let layer = match self
+            .layer_surfaces
+            .iter()
+            .position(|s| s.surface.wl_surface().id() == layer.wl_surface().id())
+        {
             Some(w) => self.layer_surfaces.remove(w),
             None => return,
         };
@@ -42,13 +44,14 @@ impl LayerShellHandler for SctkState {
         mut configure: cctk::sctk::shell::wlr_layer::LayerSurfaceConfigure,
         _serial: u32,
     ) {
-        let layer =
-            match self.layer_surfaces.iter_mut().find(|s| {
-                s.surface.wl_surface().id() == layer.wl_surface().id()
-            }) {
-                Some(l) => l,
-                None => return,
-            };
+        let layer = match self
+            .layer_surfaces
+            .iter_mut()
+            .find(|s| s.surface.wl_surface().id() == layer.wl_surface().id())
+        {
+            Some(l) => l,
+            None => return,
+        };
         let first = layer.last_configure.is_none();
         let common = layer.common.lock().unwrap();
         let requested_size = common.requested_size;
@@ -67,19 +70,14 @@ impl LayerShellHandler for SctkState {
         layer.update_viewport(configure.new_size.0, configure.new_size.1);
         _ = layer.last_configure.replace(configure.clone());
         let mut common = layer.common.lock().unwrap();
-        common.size =
-            LogicalSize::new(configure.new_size.0, configure.new_size.1);
+        common.size = LogicalSize::new(configure.new_size.0, configure.new_size.1);
         drop(common);
         let wl_surface = layer.surface.wl_surface().clone();
         receive_frame(&mut self.frame_status, &wl_surface);
         self.request_redraw(&wl_surface);
 
         self.sctk_events.push(SctkEvent::LayerSurfaceEvent {
-            variant: LayerSurfaceEventVariant::Configure(
-                configure,
-                wl_surface.clone(),
-                first,
-            ),
+            variant: LayerSurfaceEventVariant::Configure(configure, wl_surface.clone(), first),
             id: wl_surface,
         });
     }

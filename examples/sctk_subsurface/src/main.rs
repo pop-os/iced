@@ -7,7 +7,6 @@ use cctk::sctk::reexports::{
 
 use iced::platform_specific::shell::commands::subsurface::get_subsurface;
 use iced::{
-    Element, Length, Subscription, Task,
     event::wayland::Event as WaylandEvent,
     platform_specific::{
         runtime::wayland::subsurface::SctkSubsurfaceSettings,
@@ -15,6 +14,7 @@ use iced::{
     },
     widget::{button, column, text, text_input},
     window::{self, Id, Settings},
+    Element, Length, Subscription, Task,
 };
 use std::sync::{Arc, Mutex};
 
@@ -74,8 +74,7 @@ impl SubsurfaceApp {
                 WaylandEvent::Output(_evt, output) => {
                     if self.connection.is_none() {
                         if let Some(backend) = output.backend().upgrade() {
-                            self.connection =
-                                Some(Connection::from_backend(backend));
+                            self.connection = Some(Connection::from_backend(backend));
                         }
                     }
                 }
@@ -130,28 +129,22 @@ impl SubsurfaceApp {
                             .width(Length::Fill)
                             .height(Length::Fill)
                             .push(
-                                subsurface_widget::Subsurface::new(
-                                    red_buffer.clone()
-                                )
-                                .width(Length::Fill)
-                                .height(Length::Fill)
-                                .z(0)
+                                subsurface_widget::Subsurface::new(red_buffer.clone())
+                                    .width(Length::Fill)
+                                    .height(Length::Fill)
+                                    .z(0)
                             )
                             .push(
-                                subsurface_widget::Subsurface::new(
-                                    green_buffer.clone()
-                                )
-                                .width(Length::Fixed(1920.))
-                                .height(Length::Fixed(200.))
-                                .z(1)
+                                subsurface_widget::Subsurface::new(green_buffer.clone())
+                                    .width(Length::Fixed(1920.))
+                                    .height(Length::Fixed(200.))
+                                    .z(1)
                             )
                             .push(
-                                subsurface_widget::Subsurface::new(
-                                    red_buffer.clone()
-                                )
-                                .width(Length::Fill)
-                                .height(Length::Fixed(100.))
-                                .z(2)
+                                subsurface_widget::Subsurface::new(red_buffer.clone())
+                                    .width(Length::Fill)
+                                    .height(Length::Fixed(100.))
+                                    .z(2)
                             )
                     )
                     .width(Length::Fill)
@@ -176,12 +169,9 @@ impl SubsurfaceApp {
 
     fn subscription(&self) -> Subscription<Message> {
         let mut subscriptions = vec![iced::event::listen_with(|evt, _, _| {
-            if let iced::Event::PlatformSpecific(
-                iced::event::PlatformSpecific::Wayland(WaylandEvent::Output(
-                    evt,
-                    output,
-                )),
-            ) = evt
+            if let iced::Event::PlatformSpecific(iced::event::PlatformSpecific::Wayland(
+                WaylandEvent::Output(evt, output),
+            )) = evt
             {
                 Some(Message::WaylandEvent(WaylandEvent::Output(evt, output)))
             } else {
@@ -189,8 +179,7 @@ impl SubsurfaceApp {
             }
         })];
         if let Some(connection) = &self.connection {
-            subscriptions
-                .push(wayland::subscription(connection).map(Message::Wayland));
+            subscriptions.push(wayland::subscription(connection).map(Message::Wayland));
         }
         Subscription::batch(subscriptions)
     }

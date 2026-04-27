@@ -72,11 +72,9 @@ impl Rectangle<f32> {
     ) -> (Rectangle, Radians) {
         let width = (top_right.x - top_left.x).hypot(top_right.y - top_left.y);
 
-        let height =
-            (bottom_left.x - top_left.x).hypot(bottom_left.y - top_left.y);
+        let height = (bottom_left.x - top_left.x).hypot(bottom_left.y - top_left.y);
 
-        let rotation =
-            (top_right.y - top_left.y).atan2(top_right.x - top_left.x);
+        let rotation = (top_right.y - top_left.y).atan2(top_right.x - top_left.x);
 
         let rotation = if rotation < 0.0 {
             2.0 * std::f32::consts::PI + rotation
@@ -153,11 +151,9 @@ impl Rectangle<f32> {
     pub fn distance(&self, point: Point) -> f32 {
         let center = self.center();
 
-        let distance_x =
-            ((point.x - center.x).abs() - self.width / 2.0).max(0.0);
+        let distance_x = ((point.x - center.x).abs() - self.width / 2.0).max(0.0);
 
-        let distance_y =
-            ((point.y - center.y).abs() - self.height / 2.0).max(0.0);
+        let distance_y = ((point.y - center.y).abs() - self.height / 2.0).max(0.0);
 
         distance_x.hypot(distance_y)
     }
@@ -212,16 +208,11 @@ impl Rectangle<f32> {
     /// not be on the border.
     pub fn is_within_strict(&self, container: &Rectangle) -> bool {
         container.contains_strict(self.position())
-            && container.contains_strict(
-                self.position() + Vector::new(self.width, self.height),
-            )
+            && container.contains_strict(self.position() + Vector::new(self.width, self.height))
     }
 
     /// Computes the intersection with the given [`Rectangle`].
-    pub fn intersection(
-        &self,
-        other: &Rectangle<f32>,
-    ) -> Option<Rectangle<f32>> {
+    pub fn intersection(&self, other: &Rectangle<f32>) -> Option<Rectangle<f32>> {
         let x = self.x.max(other.x);
         let y = self.y.max(other.y);
 
@@ -345,17 +336,13 @@ impl Rectangle<f32> {
     ) -> Point {
         let x = match align_x.into() {
             alignment::Horizontal::Left => self.x,
-            alignment::Horizontal::Center => {
-                self.x + (self.width - size.width) / 2.0
-            }
+            alignment::Horizontal::Center => self.x + (self.width - size.width) / 2.0,
             alignment::Horizontal::Right => self.x + self.width - size.width,
         };
 
         let y = match align_y.into() {
             alignment::Vertical::Top => self.y,
-            alignment::Vertical::Center => {
-                self.y + (self.height - size.height) / 2.0
-            }
+            alignment::Vertical::Center => self.y + (self.height - size.height) / 2.0,
             alignment::Vertical::Bottom => self.y + self.height - size.height,
         };
 

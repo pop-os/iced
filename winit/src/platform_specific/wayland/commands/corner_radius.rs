@@ -1,17 +1,14 @@
 use iced_futures::core::window;
 use iced_runtime::{
-    self,
+    self, Action, Task,
     platform_specific::{
         self,
         wayland::{self, CornerRadius},
     },
-    task, Action, Task,
+    task,
 };
 
-pub fn corner_radius(
-    id: window::Id,
-    corners: Option<CornerRadius>,
-) -> Task<()> {
+pub fn corner_radius(id: window::Id, corners: Option<CornerRadius>) -> Task<()> {
     task::oneshot(|_| {
         Action::PlatformSpecific(platform_specific::Action::Wayland(
             wayland::Action::RoundedCorners(id, corners),

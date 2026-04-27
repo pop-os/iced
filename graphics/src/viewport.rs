@@ -20,10 +20,7 @@ impl Viewport {
             physical_size,
             logical_size: size,
             scale_factor,
-            projection: Transformation::orthographic(
-                physical_size.width,
-                physical_size.height,
-            ),
+            projection: Transformation::orthographic(physical_size.width, physical_size.height),
         }
     }
 

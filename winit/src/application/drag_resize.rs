@@ -27,14 +27,7 @@ const DRAG_RESIZE_SUPPORTED: bool = false;
 pub fn event_func(
     window: &dyn winit::window::Window,
     border_size: f64,
-) -> Option<
-    Box<
-        dyn FnMut(
-            &dyn winit::window::Window,
-            &winit::event::WindowEvent,
-        ) -> bool,
-    >,
-> {
+) -> Option<Box<dyn FnMut(&dyn winit::window::Window, &winit::event::WindowEvent) -> bool>> {
     if DRAG_RESIZE_SUPPORTED {
         // Keep track of cursor when it is within a resizeable border.
         let mut cursor_prev_resize_direction = None;
@@ -45,10 +38,7 @@ pub fn event_func(
                   -> bool {
                 // Keep track of border resize state and set cursor icon when in range
                 match window_event {
-                    winit::event::WindowEvent::PointerMoved {
-                        position,
-                        ..
-                    } => {
+                    winit::event::WindowEvent::PointerMoved { position, .. } => {
                         if !window.is_decorated() {
                             let location = cursor_resize_direction(
                                 window.surface_size(),
@@ -56,10 +46,7 @@ pub fn event_func(
                                 border_size,
                             );
                             if location != cursor_prev_resize_direction {
-                                window.set_cursor(
-                                    resize_direction_cursor_icon(location)
-                                        .into(),
-                                );
+                                window.set_cursor(resize_direction_cursor_icon(location).into());
                                 cursor_prev_resize_direction = location;
                                 return true;
                             }
@@ -68,12 +55,8 @@ pub fn event_func(
                     winit::event::WindowEvent::PointerButton {
                         state: winit::event::ElementState::Pressed,
                         button:
-                            winit::event::ButtonSource::Mouse(
-                                winit::event::MouseButton::Left,
-                            )
-                            | winit::event::ButtonSource::Touch {
-                                finger_id: _, ..
-                            },
+                            winit::event::ButtonSource::Mouse(winit::event::MouseButton::Left)
+                            | winit::event::ButtonSource::Touch { finger_id: _, .. },
                         primary: true,
                         ..
                     } => {
@@ -94,9 +77,7 @@ pub fn event_func(
 }
 
 /// Get the cursor icon that corresponds to the resize direction.
-fn resize_direction_cursor_icon(
-    resize_direction: Option<ResizeDirection>,
-) -> CursorIcon {
+fn resize_direction_cursor_icon(resize_direction: Option<ResizeDirection>) -> CursorIcon {
     match resize_direction {
         Some(resize_direction) => match resize_direction {
             ResizeDirection::East => CursorIcon::EResize,

@@ -1,8 +1,8 @@
 use cctk::sctk::globals::GlobalData;
 use cctk::sctk::reexports::client::{Connection, Proxy, QueueHandle};
 
-use cctk::sctk::reexports::client::delegate_dispatch;
 use cctk::sctk::reexports::client::Dispatch;
+use cctk::sctk::reexports::client::delegate_dispatch;
 use cctk::sctk::reexports::protocols::wp::text_input::zv3::client::zwp_text_input_manager_v3::ZwpTextInputManagerV3;
 use cctk::sctk::reexports::protocols::wp::text_input::zv3::client::zwp_text_input_v3::Event as TextInputEvent;
 use cctk::sctk::reexports::protocols::wp::text_input::zv3::client::zwp_text_input_v3::ZwpTextInputV3;
@@ -24,10 +24,7 @@ pub struct TextInputManager {
 }
 
 impl TextInputManager {
-    pub fn try_new<D>(
-        registry: &RegistryState,
-        qh: &QueueHandle<D>,
-    ) -> Option<Self>
+    pub fn try_new<D>(registry: &RegistryState, qh: &QueueHandle<D>) -> Option<Self>
     where
         D: Dispatch<ZwpTextInputManagerV3, GlobalData> + 'static,
     {
@@ -37,18 +34,12 @@ impl TextInputManager {
         Some(Self { manager })
     }
 
-    pub fn get_text_input(
-        &self,
-        seat: &WlSeat,
-        qh: &QueueHandle<SctkState>,
-    ) -> ZwpTextInputV3 {
+    pub fn get_text_input(&self, seat: &WlSeat, qh: &QueueHandle<SctkState>) -> ZwpTextInputV3 {
         self.manager.get_text_input(&seat, &qh, ())
     }
 }
 
-impl Dispatch<ZwpTextInputManagerV3, GlobalData, SctkState>
-    for TextInputManager
-{
+impl Dispatch<ZwpTextInputManagerV3, GlobalData, SctkState> for TextInputManager {
     fn event(
         _state: &mut SctkState,
         _proxy: &ZwpTextInputManagerV3,
@@ -73,11 +64,10 @@ impl Dispatch<ZwpTextInputV3, (), SctkState> for TextInputManager {
             return;
         }
 
-        let kbd_focus =
-            match state.seats.iter_mut().find_map(|s| s.kbd_focus.clone()) {
-                Some(surface) => surface,
-                None => return,
-            };
+        let kbd_focus = match state.seats.iter_mut().find_map(|s| s.kbd_focus.clone()) {
+            Some(surface) => surface,
+            None => return,
+        };
         match event {
             TextInputEvent::PreeditString {
                 text,
@@ -91,8 +81,7 @@ impl Dispatch<ZwpTextInputV3, (), SctkState> for TextInputManager {
                 let cursor_end = usize::try_from(cursor_end)
                     .ok()
                     .and_then(|idx| text.is_char_boundary(idx).then_some(idx));
-                let cursor_range =
-                    cursor_begin.map(|b| (b, cursor_end.unwrap_or(b)));
+                let cursor_range = cursor_begin.map(|b| (b, cursor_end.unwrap_or(b)));
                 state.preedit = Some(Preedit { text, cursor_range });
             }
             TextInputEvent::DeleteSurroundingText {
@@ -123,9 +112,7 @@ impl Dispatch<ZwpTextInputV3, (), SctkState> for TextInputManager {
                 ));
 
                 // 2. Delete requested surrounding text.
-                if let Some((before_bytes, after_bytes)) =
-                    state.pending_delete.take()
-                {
+                if let Some((before_bytes, after_bytes)) = state.pending_delete.take() {
                     state.sctk_events.push(SctkEvent::Winit(
                         id,
                         WindowEvent::Ime(Ime::DeleteSurrounding {
@@ -137,10 +124,9 @@ impl Dispatch<ZwpTextInputV3, (), SctkState> for TextInputManager {
 
                 // 3. Insert commit string with the cursor at its end.
                 if let Some(text) = state.pending_commit.take() {
-                    state.sctk_events.push(SctkEvent::Winit(
-                        id,
-                        WindowEvent::Ime(Ime::Commit(text)),
-                    ));
+                    state
+                        .sctk_events
+                        .push(SctkEvent::Winit(id, WindowEvent::Ime(Ime::Commit(text))));
                 }
 
                 // 4. Calculate surrounding text to send.
@@ -149,10 +135,7 @@ impl Dispatch<ZwpTextInputV3, (), SctkState> for TextInputManager {
                 if let Some(preedit) = state.preedit.take() {
                     state.sctk_events.push(SctkEvent::Winit(
                         id,
-                        WindowEvent::Ime(Ime::Preedit(
-                            preedit.text,
-                            preedit.cursor_range,
-                        )),
+                        WindowEvent::Ime(Ime::Preedit(preedit.text, preedit.cursor_range)),
                     ));
                 }
             }

@@ -63,9 +63,7 @@ impl From<Id> for NonZeroU128 {
     fn from(id: Id) -> NonZeroU128 {
         match &id.0 {
             Internal::Unique(id) => NonZeroU128::try_from(*id as u128).unwrap(),
-            Internal::Custom(id, _) => {
-                NonZeroU128::try_from(*id as u128).unwrap()
-            }
+            Internal::Custom(id, _) => NonZeroU128::try_from(*id as u128).unwrap(),
             // this is a set id, which is not a valid id and will not ever be converted to a NonZeroU128
             // so we panic
             Internal::Set(_) => {
@@ -89,8 +87,7 @@ impl std::fmt::Display for Id {
 /// get window node id that won't conflict with other node ids for the duration of the program
 pub fn window_node_id() -> NonZeroU128 {
     std::num::NonZeroU128::try_from(
-        u64::MAX as u128
-            + NEXT_WINDOW_ID.fetch_add(1, atomic::Ordering::Relaxed) as u128,
+        u64::MAX as u128 + NEXT_WINDOW_ID.fetch_add(1, atomic::Ordering::Relaxed) as u128,
     )
     .unwrap()
 }
@@ -131,17 +128,14 @@ impl IdEq for Internal {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::Unique(l0), Self::Unique(r0)) => l0 == r0,
-            (Self::Custom(l0, l1), Self::Custom(r0, r1)) => {
-                l0 == r0 || l1 == r1
-            }
+            (Self::Custom(l0, l1), Self::Custom(r0, r1)) => l0 == r0 || l1 == r1,
             // allow custom ids to be equal to unique ids
-            (Self::Unique(l0), Self::Custom(r0, _))
-            | (Self::Custom(l0, _), Self::Unique(r0)) => l0 == r0,
+            (Self::Unique(l0), Self::Custom(r0, _)) | (Self::Custom(l0, _), Self::Unique(r0)) => {
+                l0 == r0
+            }
             (Self::Set(l0), Self::Set(r0)) => l0 == r0,
             // allow set ids to just be equal to any of their members
-            (Self::Set(l0), r) | (r, Self::Set(l0)) => {
-                l0.iter().any(|l| l == r)
-            }
+            (Self::Set(l0), r) | (r, Self::Set(l0)) => l0.iter().any(|l| l == r),
         }
     }
 }

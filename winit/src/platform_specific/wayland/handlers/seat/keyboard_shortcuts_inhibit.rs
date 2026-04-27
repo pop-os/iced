@@ -20,11 +20,8 @@ impl Dispatch<keyboard_shortcuts_inhibit::zv1::client::zwp_keyboard_shortcuts_in
     ) {}
 }
 
-impl
-    Dispatch<
-        zwp_keyboard_shortcuts_inhibitor_v1::ZwpKeyboardShortcutsInhibitorV1,
-        (),
-    > for SctkState
+impl Dispatch<zwp_keyboard_shortcuts_inhibitor_v1::ZwpKeyboardShortcutsInhibitorV1, ()>
+    for SctkState
 {
     fn event(
         state: &mut Self,

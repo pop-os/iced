@@ -34,8 +34,8 @@ use crate::core::widget::Operation;
 use crate::core::widget::tree::{self, Tree};
 use crate::core::window;
 use crate::core::{
-    Background, Clipboard, Color, Element, Event, Layout, Length, Padding,
-    Rectangle, Shadow, Shell, Size, Theme, Vector, Widget,
+    Background, Clipboard, Color, Element, Event, Layout, Length, Padding, Rectangle, Shadow,
+    Shell, Size, Theme, Vector, Widget,
 };
 
 use iced_renderer::core::widget::operation;
@@ -119,9 +119,7 @@ where
     Theme: Catalog,
 {
     /// Creates a new [`Button`] with the given content.
-    pub fn new(
-        content: impl Into<Element<'a, Message, Theme, Renderer>>,
-    ) -> Self {
+    pub fn new(content: impl Into<Element<'a, Message, Theme, Renderer>>) -> Self {
         let content = content.into();
         let size = content.as_widget().size_hint();
 
@@ -178,10 +176,7 @@ where
     /// This closure will only be called when the [`Button`] is actually pressed and,
     /// therefore, this method is useful to reduce overhead if creating the resulting
     /// message is slow.
-    pub fn on_press_with(
-        mut self,
-        on_press: impl Fn() -> Message + 'a,
-    ) -> Self {
+    pub fn on_press_with(mut self, on_press: impl Fn() -> Message + 'a) -> Self {
         self.on_press = Some(OnPress::Closure(Box::new(on_press)));
         self
     }
@@ -235,10 +230,7 @@ where
 
     #[cfg(feature = "a11y")]
     /// Sets the description of the [`Button`].
-    pub fn description_widget<T: iced_accessibility::Describes>(
-        mut self,
-        description: &T,
-    ) -> Self {
+    pub fn description_widget<T: iced_accessibility::Describes>(mut self, description: &T) -> Self {
         self.description = Some(iced_accessibility::Description::Id(
             description.description(),
         ));
@@ -248,16 +240,14 @@ where
     #[cfg(feature = "a11y")]
     /// Sets the description of the [`Button`].
     pub fn description(mut self, description: impl Into<Cow<'a, str>>) -> Self {
-        self.description =
-            Some(iced_accessibility::Description::Text(description.into()));
+        self.description = Some(iced_accessibility::Description::Text(description.into()));
         self
     }
 
     #[cfg(feature = "a11y")]
     /// Sets the label of the [`Button`].
     pub fn label(mut self, label: &dyn iced_accessibility::Labels) -> Self {
-        self.label =
-            Some(label.label().into_iter().map(|l| l.into()).collect());
+        self.label = Some(label.label().into_iter().map(|l| l.into()).collect());
         self
     }
 }
@@ -305,19 +295,11 @@ where
         renderer: &Renderer,
         limits: &layout::Limits,
     ) -> layout::Node {
-        layout::padded(
-            limits,
-            self.width,
-            self.height,
-            self.padding,
-            |limits| {
-                self.content.as_widget_mut().layout(
-                    &mut tree.children[0],
-                    renderer,
-                    limits,
-                )
-            },
-        )
+        layout::padded(limits, self.width, self.height, self.padding, |limits| {
+            self.content
+                .as_widget_mut()
+                .layout(&mut tree.children[0], renderer, limits)
+        })
     }
 
     fn operate(
@@ -406,16 +388,10 @@ where
                 }
             }
             #[cfg(feature = "a11y")]
-            Event::A11y(
-                event_id,
-                iced_accessibility::accesskit::ActionRequest { action, .. },
-            ) => {
+            Event::A11y(event_id, iced_accessibility::accesskit::ActionRequest { action, .. }) => {
                 let state = tree.state.downcast_mut::<State>();
                 if let Some(Some(on_press)) = (self.id == *event_id
-                    && matches!(
-                        action,
-                        iced_accessibility::accesskit::Action::Click
-                    ))
+                    && matches!(action, iced_accessibility::accesskit::Action::Click))
                 .then(|| self.on_press.as_ref())
                 {
                     state.is_pressed = false;
@@ -427,10 +403,7 @@ where
                 if let Some(on_press) = self.on_press.as_ref() {
                     let state = tree.state.downcast_mut::<State>();
                     if state.is_focused
-                        && matches!(
-                            key,
-                            keyboard::Key::Named(keyboard::key::Named::Enter)
-                        )
+                        && matches!(key, keyboard::Key::Named(keyboard::key::Named::Enter))
                     {
                         state.is_pressed = true;
                         shell.publish(on_press.get());
@@ -485,13 +458,9 @@ where
             .next()
             .unwrap()
             .with_virtual_offset(layout.virtual_offset());
-        let style =
-            theme.style(&self.class, self.status.unwrap_or(Status::Disabled));
+        let style = theme.style(&self.class, self.status.unwrap_or(Status::Disabled));
 
-        if style.background.is_some()
-            || style.border.width > 0.0
-            || style.shadow.color.a > 0.0
-        {
+        if style.background.is_some() || style.border.width > 0.0 || style.shadow.color.a > 0.0 {
             renderer.fill_quad(
                 renderer::Quad {
                     bounds,
@@ -517,9 +486,7 @@ where
             theme,
             &renderer::Style {
                 text_color: style.text_color,
-                icon_color: style
-                    .icon_color
-                    .unwrap_or(renderer_style.icon_color),
+                icon_color: style.icon_color.unwrap_or(renderer_style.icon_color),
                 scale_factor: renderer_style.scale_factor,
             },
             content_layout,
@@ -593,12 +560,7 @@ where
             width,
             height,
         } = layout.bounds();
-        let bounds = Rect::new(
-            x as f64,
-            y as f64,
-            (x + width) as f64,
-            (y + height) as f64,
-        );
+        let bounds = Rect::new(x as f64, y as f64, (x + width) as f64, (y + height) as f64);
         let is_hovered = state.state.downcast_ref::<State>().is_hovered;
 
         let mut node = Node::new(Role::Button);
@@ -637,10 +599,7 @@ where
         //     node.set_busy()
         // }
 
-        A11yTree::node_with_child_tree(
-            A11yNode::new(node, self.id.clone()),
-            child_tree,
-        )
+        A11yTree::node_with_child_tree(A11yNode::new(node, self.id.clone()), child_tree)
     }
 
     fn id(&self) -> Option<Id> {
@@ -934,9 +893,7 @@ pub fn background(theme: &Theme, status: Status) -> Style {
     match status {
         Status::Active => base,
         Status::Pressed => Style {
-            background: Some(Background::Color(
-                palette.background.strong.color,
-            )),
+            background: Some(Background::Color(palette.background.strong.color)),
             ..base
         },
         Status::Hovered => Style {
@@ -955,15 +912,11 @@ pub fn subtle(theme: &Theme, status: Status) -> Style {
     match status {
         Status::Active => base,
         Status::Pressed => Style {
-            background: Some(Background::Color(
-                palette.background.strong.color,
-            )),
+            background: Some(Background::Color(palette.background.strong.color)),
             ..base
         },
         Status::Hovered => Style {
-            background: Some(Background::Color(
-                palette.background.weaker.color,
-            )),
+            background: Some(Background::Color(palette.background.weaker.color)),
             ..base
         },
         Status::Disabled => disabled(base),

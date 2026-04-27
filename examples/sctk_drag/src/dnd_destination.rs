@@ -3,20 +3,20 @@ use std::{
     sync::atomic::{AtomicU64, Ordering},
 };
 
-use iced::{Element, id::Id};
 use iced::{
-    Event, Length, Rectangle,
     clipboard::{
         dnd::{self, DndAction, DndDestinationRectangle, DndEvent, OfferEvent},
         mime::AllowedMimeTypes,
     },
     event,
     id::Internal,
-    mouse, overlay,
+    mouse, overlay, Event, Length, Rectangle,
 };
+use iced::{id::Id, Element};
 use iced_core::{
-    self, Clipboard, Layout, Shell, Widget, layout,
-    widget::{Tree, tree},
+    self, layout,
+    widget::{tree, Tree},
+    Clipboard, Layout, Shell, Widget,
 };
 
 pub fn dnd_destination<'a, Message: 'static>(
@@ -40,10 +40,7 @@ pub struct DragId(pub u128);
 
 impl DragId {
     pub fn new() -> Self {
-        DragId(
-            u128::from(u64::MAX)
-                + u128::from(DRAG_ID_COUNTER.fetch_add(1, Ordering::Relaxed)),
-        )
+        DragId(u128::from(u64::MAX) + u128::from(DRAG_ID_COUNTER.fetch_add(1, Ordering::Relaxed)))
     }
 }
 
@@ -69,15 +66,11 @@ pub struct DndDestination<'a, Message> {
     on_motion: Option<Box<dyn Fn(f64, f64) -> Message>>,
     on_action_selected: Option<Box<dyn Fn(DndAction) -> Message>>,
     on_data_received: Option<Box<dyn Fn(String, Vec<u8>) -> Message>>,
-    on_finish:
-        Option<Box<dyn Fn(String, Vec<u8>, DndAction, f64, f64) -> Message>>,
+    on_finish: Option<Box<dyn Fn(String, Vec<u8>, DndAction, f64, f64) -> Message>>,
 }
 
 impl<'a, Message: 'static> DndDestination<'a, Message> {
-    pub fn new(
-        child: impl Into<Element<'a, Message>>,
-        mimes: Vec<Cow<'static, str>>,
-    ) -> Self {
+    pub fn new(child: impl Into<Element<'a, Message>>, mimes: Vec<Cow<'static, str>>) -> Self {
         Self {
             id: Id::unique(),
             drag_id: None,
@@ -127,10 +120,9 @@ impl<'a, Message: 'static> DndDestination<'a, Message> {
         mut self,
         f: impl Fn(Option<T>) -> Message + 'static,
     ) -> Self {
-        self.on_data_received =
-            Some(Box::new(
-                move |mime, data| f(T::try_from((data, mime)).ok()),
-            ));
+        self.on_data_received = Some(Box::new(
+            move |mime, data| f(T::try_from((data, mime)).ok()),
+        ));
         self
     }
 
@@ -183,28 +175,19 @@ impl<'a, Message: 'static> DndDestination<'a, Message> {
     }
 
     #[must_use]
-    pub fn on_hold(
-        mut self,
-        f: impl Fn(f64, f64) -> Message + 'static,
-    ) -> Self {
+    pub fn on_hold(mut self, f: impl Fn(f64, f64) -> Message + 'static) -> Self {
         self.on_hold = Some(Box::new(f));
         self
     }
 
     #[must_use]
-    pub fn on_drop(
-        mut self,
-        f: impl Fn(f64, f64) -> Message + 'static,
-    ) -> Self {
+    pub fn on_drop(mut self, f: impl Fn(f64, f64) -> Message + 'static) -> Self {
         self.on_drop = Some(Box::new(f));
         self
     }
 
     #[must_use]
-    pub fn on_enter(
-        mut self,
-        f: impl Fn(f64, f64, Vec<String>) -> Message + 'static,
-    ) -> Self {
+    pub fn on_enter(mut self, f: impl Fn(f64, f64, Vec<String>) -> Message + 'static) -> Self {
         self.on_enter = Some(Box::new(f));
         self
     }
@@ -225,28 +208,19 @@ impl<'a, Message: 'static> DndDestination<'a, Message> {
     }
 
     #[must_use]
-    pub fn on_motion(
-        mut self,
-        f: impl Fn(f64, f64) -> Message + 'static,
-    ) -> Self {
+    pub fn on_motion(mut self, f: impl Fn(f64, f64) -> Message + 'static) -> Self {
         self.on_motion = Some(Box::new(f));
         self
     }
 
     #[must_use]
-    pub fn on_action_selected(
-        mut self,
-        f: impl Fn(DndAction) -> Message + 'static,
-    ) -> Self {
+    pub fn on_action_selected(mut self, f: impl Fn(DndAction) -> Message + 'static) -> Self {
         self.on_action_selected = Some(Box::new(f));
         self
     }
 
     #[must_use]
-    pub fn on_data_received(
-        mut self,
-        f: impl Fn(String, Vec<u8>) -> Message + 'static,
-    ) -> Self {
+    pub fn on_data_received(mut self, f: impl Fn(String, Vec<u8>) -> Message + 'static) -> Self {
         self.on_data_received = Some(Box::new(f));
         self
     }
@@ -295,11 +269,9 @@ impl<'a, Message: 'static> Widget<Message, iced::Theme, iced::Renderer>
         renderer: &iced::Renderer,
         limits: &layout::Limits,
     ) -> layout::Node {
-        self.container.as_widget().layout(
-            &mut tree.children[0],
-            renderer,
-            limits,
-        )
+        self.container
+            .as_widget()
+            .layout(&mut tree.children[0], renderer, limits)
     }
 
     fn operate(
@@ -309,12 +281,9 @@ impl<'a, Message: 'static> Widget<Message, iced::Theme, iced::Renderer>
         renderer: &iced::Renderer,
         operation: &mut dyn iced_core::widget::Operation<()>,
     ) {
-        self.container.as_widget().operate(
-            &mut tree.children[0],
-            layout,
-            renderer,
-            operation,
-        );
+        self.container
+            .as_widget()
+            .operate(&mut tree.children[0], layout, renderer, operation);
     }
 
     #[allow(clippy::too_many_lines)]
@@ -366,8 +335,7 @@ impl<'a, Message: 'static> Widget<Message, iced::Theme, iced::Renderer>
                 }
                 if self.forward_drag_as_cursor {
                     #[allow(clippy::cast_possible_truncation)]
-                    let drag_cursor =
-                        mouse::Cursor::Available((x as f32, y as f32).into());
+                    let drag_cursor = mouse::Cursor::Available((x as f32, y as f32).into());
                     let event = Event::Mouse(mouse::Event::CursorMoved {
                         position: drag_cursor.position().unwrap(),
                     });
@@ -385,12 +353,8 @@ impl<'a, Message: 'static> Widget<Message, iced::Theme, iced::Renderer>
                 shell.capture_event();
                 return;
             }
-            Event::Dnd(DndEvent::Offer(id, OfferEvent::Leave))
-                if id == Some(my_id) =>
-            {
-                state.on_leave(
-                    self.on_leave.as_ref().map(std::convert::AsRef::as_ref),
-                );
+            Event::Dnd(DndEvent::Offer(id, OfferEvent::Leave)) if id == Some(my_id) => {
+                state.on_leave(self.on_leave.as_ref().map(std::convert::AsRef::as_ref));
 
                 if self.forward_drag_as_cursor {
                     let drag_cursor = mouse::Cursor::Unavailable;
@@ -409,9 +373,7 @@ impl<'a, Message: 'static> Widget<Message, iced::Theme, iced::Renderer>
                 shell.capture_event();
                 return;
             }
-            Event::Dnd(DndEvent::Offer(id, OfferEvent::Motion { x, y }))
-                if id == Some(my_id) =>
-            {
+            Event::Dnd(DndEvent::Offer(id, OfferEvent::Motion { x, y })) if id == Some(my_id) => {
                 if let Some(msg) = state.on_motion(
                     x,
                     y,
@@ -424,8 +386,7 @@ impl<'a, Message: 'static> Widget<Message, iced::Theme, iced::Renderer>
 
                 if self.forward_drag_as_cursor {
                     #[allow(clippy::cast_possible_truncation)]
-                    let drag_cursor =
-                        mouse::Cursor::Available((x as f32, y as f32).into());
+                    let drag_cursor = mouse::Cursor::Available((x as f32, y as f32).into());
                     let event = Event::Mouse(mouse::Event::CursorMoved {
                         position: drag_cursor.position().unwrap(),
                     });
@@ -443,32 +404,27 @@ impl<'a, Message: 'static> Widget<Message, iced::Theme, iced::Renderer>
                 shell.capture_event();
                 return;
             }
-            Event::Dnd(DndEvent::Offer(id, OfferEvent::LeaveDestination))
-                if id == Some(my_id) =>
-            {
-                if let Some(msg) = state.on_leave(
-                    self.on_leave.as_ref().map(std::convert::AsRef::as_ref),
-                ) {
+            Event::Dnd(DndEvent::Offer(id, OfferEvent::LeaveDestination)) if id == Some(my_id) => {
+                if let Some(msg) =
+                    state.on_leave(self.on_leave.as_ref().map(std::convert::AsRef::as_ref))
+                {
                     shell.publish(msg);
                 }
                 shell.capture_event();
                 return;
             }
-            Event::Dnd(DndEvent::Offer(id, OfferEvent::Drop))
-                if id == Some(my_id) =>
-            {
-                if let Some(msg) = state.on_drop(
-                    self.on_drop.as_ref().map(std::convert::AsRef::as_ref),
-                ) {
+            Event::Dnd(DndEvent::Offer(id, OfferEvent::Drop)) if id == Some(my_id) => {
+                if let Some(msg) =
+                    state.on_drop(self.on_drop.as_ref().map(std::convert::AsRef::as_ref))
+                {
                     shell.publish(msg);
                 }
                 shell.capture_event();
                 return;
             }
-            Event::Dnd(DndEvent::Offer(
-                id,
-                OfferEvent::SelectedAction(action),
-            )) if id == Some(my_id) => {
+            Event::Dnd(DndEvent::Offer(id, OfferEvent::SelectedAction(action)))
+                if id == Some(my_id) =>
+            {
                 if let Some(msg) = state.on_action_selected(
                     action,
                     self.on_action_selected
@@ -480,10 +436,9 @@ impl<'a, Message: 'static> Widget<Message, iced::Theme, iced::Renderer>
                 shell.capture_event();
                 return;
             }
-            Event::Dnd(DndEvent::Offer(
-                id,
-                OfferEvent::Data { data, mime_type },
-            )) if id == Some(my_id) => {
+            Event::Dnd(DndEvent::Offer(id, OfferEvent::Data { data, mime_type }))
+                if id == Some(my_id) =>
+            {
                 if let (Some(msg), ret) = state.on_data_received(
                     mime_type,
                     data,
@@ -547,8 +502,7 @@ impl<'a, Message: 'static> Widget<Message, iced::Theme, iced::Renderer>
         layout: Layout<'_>,
         renderer: &iced::Renderer,
         translation: iced::Vector,
-    ) -> Option<overlay::Element<'b, Message, iced::Theme, iced::Renderer>>
-    {
+    ) -> Option<overlay::Element<'b, Message, iced::Theme, iced::Renderer>> {
         None
     }
 
@@ -629,10 +583,7 @@ impl<T> State<T> {
         on_enter.map(|f| f(x, y, mime_types))
     }
 
-    pub fn on_leave<Message>(
-        &mut self,
-        on_leave: Option<&dyn Fn() -> Message>,
-    ) -> Option<Message> {
+    pub fn on_leave<Message>(&mut self, on_leave: Option<&dyn Fn() -> Message>) -> Option<Message> {
         if self.drag_offer.as_ref().is_some_and(|d| !d.dropped) {
             self.drag_offer = None;
             on_leave.map(|f| f())
@@ -700,9 +651,7 @@ impl<T> State<T> {
         mime: String,
         data: Vec<u8>,
         on_data_received: Option<impl Fn(String, Vec<u8>) -> Message>,
-        on_finish: Option<
-            impl Fn(String, Vec<u8>, DndAction, f64, f64) -> Message,
-        >,
+        on_finish: Option<impl Fn(String, Vec<u8>, DndAction, f64, f64) -> Message>,
     ) -> (Option<Message>, event::Status) {
         let Some(dnd) = self.drag_offer.as_ref() else {
             self.drag_offer = None;
@@ -711,8 +660,7 @@ impl<T> State<T> {
 
         if dnd.dropped {
             let ret = (
-                on_finish
-                    .map(|f| f(mime, data, dnd.selected_action, dnd.x, dnd.y)),
+                on_finish.map(|f| f(mime, data, dnd.selected_action, dnd.x, dnd.y)),
                 event::Status::Captured,
             );
             self.drag_offer = None;
@@ -725,9 +673,7 @@ impl<T> State<T> {
     }
 }
 
-impl<'a, Message: 'static> From<DndDestination<'a, Message>>
-    for Element<'a, Message>
-{
+impl<'a, Message: 'static> From<DndDestination<'a, Message>> for Element<'a, Message> {
     fn from(wrapper: DndDestination<'a, Message>) -> Self {
         Element::new(wrapper)
     }

@@ -1,15 +1,11 @@
 use crate::{
     event_loop::state::FrameStatus,
-    platform_specific::wayland::{
-        event_loop::state::SctkState, sctk_event::SctkEvent,
-    },
+    platform_specific::wayland::{event_loop::state::SctkState, sctk_event::SctkEvent},
 };
 use cctk::sctk::{
     delegate_pointer,
     reexports::client::Proxy,
-    seat::pointer::{
-        CursorIcon, PointerEvent, PointerEventKind, PointerHandler,
-    },
+    seat::pointer::{CursorIcon, PointerEvent, PointerEventKind, PointerHandler},
 };
 
 impl PointerHandler for SctkState {
@@ -20,32 +16,26 @@ impl PointerHandler for SctkState {
         pointer: &cctk::sctk::reexports::client::protocol::wl_pointer::WlPointer,
         events: &[cctk::sctk::seat::pointer::PointerEvent],
     ) {
-        let (is_active, my_seat) =
-            match self.seats.iter_mut().enumerate().find_map(|(i, s)| {
-                if s.ptr.as_ref().map(|p| p.pointer()) == Some(pointer) {
-                    Some((i, s))
-                } else {
-                    None
-                }
-            }) {
-                Some((i, s)) => (i == 0, s),
-                None => return,
-            };
+        let (is_active, my_seat) = match self.seats.iter_mut().enumerate().find_map(|(i, s)| {
+            if s.ptr.as_ref().map(|p| p.pointer()) == Some(pointer) {
+                Some((i, s))
+            } else {
+                None
+            }
+        }) {
+            Some((i, s)) => (i == 0, s),
+            None => return,
+        };
 
         // track events, but only forward for the active seat
         for e in events {
             if my_seat.active_icon != my_seat.icon {
                 // Restore cursor that was set by appliction, or default
-                my_seat.set_cursor(
-                    conn,
-                    my_seat.icon.unwrap_or(CursorIcon::Default),
-                );
+                my_seat.set_cursor(conn, my_seat.icon.unwrap_or(CursorIcon::Default));
             }
 
             if is_active {
-                let id = winit::window::WindowId::from_raw(
-                    e.surface.id().as_ptr() as usize,
-                );
+                let id = winit::window::WindowId::from_raw(e.surface.id().as_ptr() as usize);
                 if self.windows.iter().any(|w| w.window.id() == id) {
                     continue;
                 }
