@@ -154,21 +154,22 @@ impl Compositor {
                 not(target_os = "redox")
             ))]
             if let Some((vendor_id, device_id)) = ids {
+                // Trust the compositor's DMA-BUF device preference
+                // without probing the surface.  On Wayland the surface
+                // may not be fully committed at this point, causing
+                // VK_ERROR_SURFACE_LOST_KHR in the capability query
+                // which falsely rejects the correct GPU.  The DMA-BUF
+                // feedback already guarantees this device can render for
+                // the compositor, and the surface will be (re-)created
+                // on the chosen adapter later anyway.
                 adapter = instance
                     .enumerate_adapters(settings.backends)
                     .await
                     .into_iter()
-                    .filter(|adapter| {
+                    .find(|adapter| {
                         let info = adapter.get_info();
                         info.device == device_id as u32
                             && info.vendor == vendor_id as u32
-                    })
-                    .find(|adapter| {
-                        if let Some(surface) = compatible_surface.as_ref() {
-                            adapter.is_surface_supported(surface)
-                        } else {
-                            true
-                        }
                     });
             }
         } else if let Ok(name) = std::env::var("WGPU_ADAPTER_NAME") {
@@ -192,30 +193,76 @@ impl Compositor {
         let adapter = match adapter {
             Some(adapter) => adapter,
             None => {
-                // fall back to allowing GL backend if enabled
-                instance = wgpu::util::new_instance_with_webgpu_detection(
-                    &wgpu::InstanceDescriptor {
-                        backends: settings.backends,
-                        flags: if cfg!(feature = "strict-assertions") {
-                            wgpu::InstanceFlags::debugging()
-                        } else {
-                            wgpu::InstanceFlags::empty()
+                let surface_pick =
+                    instance.request_adapter(&adapter_options).await;
+                let is_cpu = surface_pick
+                    .as_ref()
+                    .is_ok_and(|a| a.get_info().device_type == wgpu::DeviceType::Cpu);
+
+                if surface_pick.is_err() || is_cpu {
+                    // Either no adapter was found, or only a CPU software
+                    // rasterizer (e.g. llvmpipe) survived the surface
+                    // compatibility filter.
+                    //
+                    // On Wayland the surface may not be fully committed
+                    // yet (common for layer-shell panel applets), causing
+                    // real GPUs to fail VK_ERROR_SURFACE_LOST_KHR while
+                    // software rasterizers pass.  Retry without the
+                    // surface constraint so a real GPU is preferred.
+                    //
+                    // If the surface-less retry also yields nothing, fall
+                    // back to the GL backend (upstream fallback) or to
+                    // whatever the original attempt returned (possibly
+                    // the CPU adapter) so we are never worse off.
+                    log::warn!(
+                        "adapter selection: surface-compatible pick is \
+                         {pick}; retrying without surface constraint",
+                        pick = match surface_pick.as_ref() {
+                            Ok(a) => a.get_info().name,
+                            Err(e) => format!("Err({e})"),
                         },
-                        ..Default::default()
-                    },
-                )
-                .await;
-                compatible_surface = compatible_window
-                    .and_then(|window| instance.create_surface(window).ok());
-                adapter_options = wgpu::RequestAdapterOptions {
-                    power_preference: wgpu::PowerPreference::from_env()
-                        .unwrap_or(wgpu::PowerPreference::HighPerformance),
-                    compatible_surface: compatible_surface.as_ref(),
-                    force_fallback_adapter: false,
-                };
-                instance.request_adapter(&adapter_options).await.map_err(
-                    |_| Error::NoAdapterFound(format!("{:?}", adapter_options)),
-                )?
+                    );
+                    let fallback_options = wgpu::RequestAdapterOptions {
+                        compatible_surface: None,
+                        ..adapter_options
+                    };
+                    match instance
+                        .request_adapter(&fallback_options)
+                        .await
+                        .or(surface_pick)
+                    {
+                        Ok(a) => a,
+                        Err(_) => {
+                            // Last resort: fall back to allowing GL backend
+                            instance = wgpu::util::new_instance_with_webgpu_detection(
+                                &wgpu::InstanceDescriptor {
+                                    backends: settings.backends,
+                                    flags: if cfg!(feature = "strict-assertions") {
+                                        wgpu::InstanceFlags::debugging()
+                                    } else {
+                                        wgpu::InstanceFlags::empty()
+                                    },
+                                    ..Default::default()
+                                },
+                            )
+                            .await;
+                            compatible_surface = compatible_window
+                                .and_then(|window| instance.create_surface(window).ok());
+                            adapter_options = wgpu::RequestAdapterOptions {
+                                power_preference: wgpu::PowerPreference::from_env()
+                                    .unwrap_or(wgpu::PowerPreference::HighPerformance),
+                                compatible_surface: compatible_surface.as_ref(),
+                                force_fallback_adapter: false,
+                            };
+                            instance.request_adapter(&adapter_options).await.map_err(
+                                |_| Error::NoAdapterFound(format!("{:?}", adapter_options)),
+                            )?
+                        }
+                    }
+                } else {
+                    // A real (non-CPU) GPU was found -- use it.
+                    surface_pick.expect("guaranteed Ok: is_err() was false")
+                }
             }
         };
         log::info!("Selected: {:#?}", adapter.get_info());
