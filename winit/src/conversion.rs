@@ -387,19 +387,19 @@ pub fn window_event(
                 self::modifiers(new_modifiers.state()),
             )))
         }
-        WindowEvent::Ime(event) => Some(Event::InputMethod(match event {
-            Ime::Enabled => input_method::Event::Opened,
-            Ime::Preedit(content, size) => input_method::Event::Preedit(
+        WindowEvent::Ime(event) => match event {
+            Ime::Enabled => Some(input_method::Event::Opened),
+            Ime::Preedit(content, size) => Some(input_method::Event::Preedit(
                 content,
                 size.map(|(start, end)| start..end),
-            ),
-            Ime::Commit(content) => input_method::Event::Commit(content),
-            Ime::Disabled => input_method::Event::Closed,
-            Ime::DeleteSurrounding {
-                before_bytes,
-                after_bytes,
-            } => todo!(),
-        })),
+            )),
+            Ime::Commit(content) => Some(input_method::Event::Commit(content)),
+            Ime::Disabled => Some(input_method::Event::Closed),
+            // Upstream iced depends on the winit version which doesn't support
+            // this kind of ime event.
+            Ime::DeleteSurrounding { .. } => None,
+        }
+        .map(Event::InputMethod),
         WindowEvent::Focused(focused) => Some(Event::Window(if focused {
             window::Event::Focused
         } else {
