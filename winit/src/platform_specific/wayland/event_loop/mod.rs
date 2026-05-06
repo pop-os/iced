@@ -488,6 +488,23 @@ impl SctkEventLoop {
                     let had_events = !state.state.sctk_events.is_empty();
                     let mut wake_up = had_events;
 
+                    for e in state.state.sctk_events.drain(..) {
+                        if let SctkEvent::Winit(id, e) = e {
+                            _ = state
+                                .state
+                                .events_sender
+                                .unbounded_send(Control::Winit(id, e));
+                        } else {
+                            _ =
+                                state
+                                    .state
+                                    .events_sender
+                                    .unbounded_send(Control::PlatformSpecific(
+                                    crate::platform_specific::Event::Wayland(e),
+                                ));
+                        }
+                    }
+
                     for s in
                         state
                             .state
@@ -532,22 +549,6 @@ impl SctkEventLoop {
                         );
                     }
 
-                    for e in state.state.sctk_events.drain(..) {
-                        if let SctkEvent::Winit(id, e) = e {
-                            _ = state
-                                .state
-                                .events_sender
-                                .unbounded_send(Control::Winit(id, e));
-                        } else {
-                            _ =
-                                state
-                                    .state
-                                    .events_sender
-                                    .unbounded_send(Control::PlatformSpecific(
-                                    crate::platform_specific::Event::Wayland(e),
-                                ));
-                        }
-                    }
                     if wake_up {
                         state.state.proxy.wake_up();
                     }
