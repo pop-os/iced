@@ -1124,6 +1124,12 @@ impl SctkState {
                             }
                         },
                         platform_specific::wayland::layer_surface::Action::Destroy(id) => {
+                            if let Some(p) =  self
+                                    .popups
+                                    .iter().find_map(|p| 
+                                         self.layer_surfaces.iter().find_map(|l| if l.id == id && l.surface.wl_surface() == p.data.parent.wl_surface() {Some(p.data.id)} else {None})) {
+                                            _ = self.handle_action(Action::Popup(platform_specific::wayland::popup::Action::Destroy { id: p }));
+                                         }
                             if let Some(i) = self.layer_surfaces.iter().position(|l| l.id == id) {
                                 let l = self.layer_surfaces.remove(i);
 
@@ -1155,6 +1161,8 @@ impl SctkState {
                                 if let Some(destroyed) = self.id_map.remove(&l.surface.wl_surface().id()) {
                                     _ = self.destroyed.insert(destroyed);
                                 }
+
+                                
                                 send_event(&self.events_sender, &self.proxy, SctkEvent::LayerSurfaceEvent {
                                             variant: LayerSurfaceEventVariant::Done,
                                             id: l.surface.wl_surface().clone(),
