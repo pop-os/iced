@@ -933,12 +933,12 @@ impl SctkState {
         _ = self.id_map.insert(wl_surface.id(), id.clone());
         let mut size = size.unwrap_or((None, None));
         if anchor.contains(Anchor::BOTTOM.union(Anchor::TOP)) {
-            size.1 = None;
+            size.1 = size.1.map(|x| x.max(1));
         } else {
             size.1 = Some(size.1.unwrap_or(1).max(1));
         }
         if anchor.contains(Anchor::LEFT.union(Anchor::RIGHT)) {
-            size.0 = None;
+            size.0 = size.0.map(|x| x.max(1));
         } else {
             size.0 = Some(size.0.unwrap_or(1).max(1));
         }
