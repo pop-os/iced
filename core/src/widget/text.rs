@@ -22,16 +22,18 @@
 //! ```
 use crate::alignment;
 use crate::layout;
-use crate::mouse;
+use crate::mouse::{self, click};
 use crate::renderer;
+use crate::text;
 use crate::text::paragraph::{self, Paragraph};
-use crate::text::{self, Fragment};
 use crate::widget::tree::{self, Tree};
 use crate::{
-    Color, Element, Layout, Length, Pixels, Rectangle, Size, Theme, Widget,
+    Clipboard, Color, Element, Event, Layout, Length, Pixels, Point, Rectangle,
+    Shell, Size, Theme, Widget, keyboard, touch,
 };
 
-use std::borrow::Cow;
+use unicode_segmentation::UnicodeSegmentation;
+
 pub use text::{Alignment, Ellipsize, LineHeight, Shaping, Wrapping};
 
 /// A bunch of text.
@@ -65,6 +67,7 @@ where
     fragment: text::Fragment<'a>,
     format: Format<Renderer::Font>,
     class: Theme::Class<'a>,
+    selectable: bool,
 }
 
 impl<'a, Theme, Renderer> Text<'a, Theme, Renderer>
@@ -79,6 +82,7 @@ where
             fragment: fragment.into_fragment(),
             format: Format::default(),
             class: Theme::default(),
+            selectable: false,
         }
     }
 
@@ -189,7 +193,17 @@ where
     {
         let color = color.map(Into::into);
 
-        self.style(move |_theme| Style { color })
+        self.style(move |_theme| Style {
+            color,
+            ..Style::default()
+        })
+    }
+
+    /// Makes the [`Text`] selectable. When enabled, the user can click and
+    /// drag to select text, and copy it with Ctrl+C / Cmd+C.
+    pub fn selectable(mut self) -> Self {
+        self.selectable = true;
+        self
     }
 
     /// Sets the style class of the [`Text`].
@@ -202,7 +216,53 @@ where
 }
 
 /// The internal state of a [`Text`] widget.
-pub type State<P> = paragraph::Plain<P>;
+pub struct State<P: Paragraph> {
+    /// The cached paragraph layout.
+    pub paragraph: paragraph::Plain<P>,
+    /// Lazily allocated when text is selectable and first interacted with.
+    selection: Option<Box<SelectionState>>,
+}
+
+impl<P: Paragraph> Default for State<P> {
+    fn default() -> Self {
+        Self {
+            paragraph: paragraph::Plain::default(),
+            selection: None,
+        }
+    }
+}
+
+impl<P: Paragraph> std::fmt::Debug for State<P> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("State")
+            .field("selection", &self.selection)
+            .finish_non_exhaustive()
+    }
+}
+
+impl<P: Paragraph> std::ops::Deref for State<P> {
+    type Target = paragraph::Plain<P>;
+
+    fn deref(&self) -> &paragraph::Plain<P> {
+        &self.paragraph
+    }
+}
+
+impl<P: Paragraph> std::ops::DerefMut for State<P> {
+    fn deref_mut(&mut self) -> &mut paragraph::Plain<P> {
+        &mut self.paragraph
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+struct SelectionState {
+    anchor: usize,
+    end: usize,
+    dragging: bool,
+    focused: bool,
+    modifiers: keyboard::Modifiers,
+    last_click: Option<click::Click>,
+}
 
 impl<Message, Theme, Renderer> Widget<Message, Theme, Renderer>
     for Text<'_, Theme, Renderer>
@@ -215,7 +275,7 @@ where
     }
 
     fn state(&self) -> tree::State {
-        tree::State::new(paragraph::Plain::<Renderer::Paragraph>::default())
+        tree::State::new(State::<Renderer::Paragraph>::default())
     }
 
     fn size(&self) -> Size<Length> {
@@ -231,8 +291,10 @@ where
         renderer: &Renderer,
         limits: &layout::Limits,
     ) -> layout::Node {
+        let state = tree.state.downcast_mut::<State<Renderer::Paragraph>>();
+
         layout(
-            tree.state.downcast_mut::<State<Renderer::Paragraph>>(),
+            &mut state.paragraph,
             renderer,
             limits,
             &self.fragment,
@@ -252,15 +314,285 @@ where
     ) {
         let state = tree.state.downcast_ref::<State<Renderer::Paragraph>>();
         let style = theme.style(&self.class);
+        let bounds = layout.bounds();
+        let paragraph = state.paragraph.raw();
+        if let Some(sel) = &state.selection {
+            let left = sel.anchor.min(sel.end);
+            let right = sel.anchor.max(sel.end);
+            let content: &str = self.fragment.as_ref();
 
-        draw(
-            renderer,
-            defaults,
-            layout.bounds(),
-            state.raw(),
-            style,
-            viewport,
-        );
+            if left != right {
+                let lo_byte = grapheme_to_byte(content, left);
+                let hi_byte = grapheme_to_byte(content, right);
+
+                let anchor = bounds.anchor(
+                    paragraph.min_bounds(),
+                    paragraph.align_x(),
+                    paragraph.align_y(),
+                );
+
+                let rects = paragraph.highlight(
+                    0,
+                    (lo_byte, text::Affinity::After),
+                    (hi_byte, text::Affinity::Before),
+                );
+
+                for r in rects {
+                    renderer.fill_quad(
+                        renderer::Quad {
+                            bounds: Rectangle {
+                                x: anchor.x + r.x,
+                                y: anchor.y + r.y,
+                                width: r.width,
+                                height: r.height,
+                            },
+                            ..renderer::Quad::default()
+                        },
+                        style.selected_fill,
+                    );
+                }
+            }
+        }
+
+        draw(renderer, defaults, bounds, paragraph, style, viewport);
+    }
+
+    fn update(
+        &mut self,
+        tree: &mut Tree,
+        event: &Event,
+        layout: Layout<'_>,
+        cursor: mouse::Cursor,
+        _renderer: &Renderer,
+        clipboard: &mut dyn Clipboard,
+        shell: &mut Shell<'_, Message>,
+        _viewport: &Rectangle,
+    ) {
+        if !self.selectable {
+            return;
+        }
+
+        let state = tree.state.downcast_mut::<State<Renderer::Paragraph>>();
+        let bounds = layout.bounds();
+        let content: &str = self.fragment.as_ref();
+        let grapheme_count = content.graphemes(true).count();
+        let paragraph = state.paragraph.raw();
+
+        match event {
+            Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left))
+            | Event::Touch(touch::Event::FingerPressed { .. }) => {
+                if let Some(pos) = cursor.position_over(bounds) {
+                    let sel = state.selection.get_or_insert_with(|| {
+                        Box::new(SelectionState::default())
+                    });
+
+                    let anchor = bounds.anchor(
+                        paragraph.min_bounds(),
+                        paragraph.align_x(),
+                        paragraph.align_y(),
+                    );
+                    let relative =
+                        Point::new(pos.x - anchor.x, pos.y - anchor.y);
+
+                    let grapheme_pos =
+                        hit_to_grapheme(paragraph, relative, content);
+
+                    let new_click = click::Click::new(
+                        pos,
+                        mouse::Button::Left,
+                        sel.last_click.take(),
+                    );
+
+                    match new_click.kind() {
+                        click::Kind::Single => {
+                            if sel.modifiers.shift() {
+                                sel.end = grapheme_pos;
+                            } else {
+                                sel.anchor = grapheme_pos;
+                                sel.end = grapheme_pos;
+                            }
+                            sel.dragging = true;
+                        }
+                        click::Kind::Double => {
+                            sel.anchor =
+                                previous_start_of_word(content, grapheme_pos);
+                            sel.end = next_end_of_word(content, grapheme_pos);
+                            sel.dragging = true;
+                        }
+                        click::Kind::Triple => {
+                            sel.anchor = 0;
+                            sel.end = grapheme_count;
+                            sel.dragging = true;
+                        }
+                    }
+
+                    sel.last_click = Some(new_click);
+                    sel.focused = true;
+                    shell.capture_event();
+                } else if let Some(sel) = &mut state.selection {
+                    sel.focused = false;
+                    sel.anchor = 0;
+                    sel.end = 0;
+                    sel.dragging = false;
+                }
+            }
+
+            Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left))
+            | Event::Touch(touch::Event::FingerLifted { .. }) => {
+                if let Some(sel) = &mut state.selection {
+                    sel.dragging = false;
+                }
+            }
+
+            Event::Mouse(mouse::Event::CursorMoved { position })
+            | Event::Touch(touch::Event::FingerMoved { position, .. }) => {
+                if let Some(sel) = &mut state.selection {
+                    if sel.dragging {
+                        let anchor = bounds.anchor(
+                            paragraph.min_bounds(),
+                            paragraph.align_x(),
+                            paragraph.align_y(),
+                        );
+                        let relative = Point::new(
+                            position.x - anchor.x,
+                            position.y - anchor.y,
+                        );
+
+                        sel.end = hit_to_grapheme(paragraph, relative, content);
+                        shell.capture_event();
+                    }
+                }
+            }
+
+            Event::Keyboard(keyboard::Event::KeyPressed {
+                key,
+                modifiers,
+                physical_key,
+                text: _,
+                ..
+            }) => {
+                let focused =
+                    state.selection.as_ref().is_some_and(|s| s.focused);
+                if !focused {
+                    return;
+                }
+                let sel = state.selection.as_mut().unwrap();
+
+                if modifiers.command() {
+                    match key.to_latin(*physical_key) {
+                        Some('c') => {
+                            let left = sel.anchor.min(sel.end);
+                            let right = sel.anchor.max(sel.end);
+                            if left != right {
+                                let selected: String = content
+                                    .graphemes(true)
+                                    .skip(left)
+                                    .take(right - left)
+                                    .collect();
+                                clipboard.write(
+                                    crate::clipboard::Kind::Standard,
+                                    selected,
+                                );
+                            }
+                            shell.capture_event();
+                            return;
+                        }
+                        Some('a') => {
+                            sel.anchor = 0;
+                            sel.end = grapheme_count;
+                            shell.capture_event();
+                            return;
+                        }
+                        _ => {}
+                    }
+                }
+
+                match key {
+                    keyboard::Key::Named(keyboard::key::Named::ArrowLeft) => {
+                        let by_word = is_jump_modifier(*modifiers);
+                        if modifiers.shift() {
+                            sel.end = if by_word {
+                                previous_start_of_word(content, sel.end)
+                            } else {
+                                sel.end.saturating_sub(1)
+                            };
+                        } else {
+                            let left = sel.anchor.min(sel.end);
+                            let pos = if by_word {
+                                previous_start_of_word(content, left)
+                            } else {
+                                left.saturating_sub(1)
+                            };
+                            sel.anchor = pos;
+                            sel.end = pos;
+                        }
+                        shell.capture_event();
+                    }
+                    keyboard::Key::Named(keyboard::key::Named::ArrowRight) => {
+                        let by_word = is_jump_modifier(*modifiers);
+                        if modifiers.shift() {
+                            sel.end = if by_word {
+                                next_end_of_word(content, sel.end)
+                            } else {
+                                (sel.end + 1).min(grapheme_count)
+                            };
+                        } else {
+                            let right = sel.anchor.max(sel.end);
+                            let pos = if by_word {
+                                next_end_of_word(content, right)
+                            } else {
+                                (right + 1).min(grapheme_count)
+                            };
+                            sel.anchor = pos;
+                            sel.end = pos;
+                        }
+                        shell.capture_event();
+                    }
+                    keyboard::Key::Named(keyboard::key::Named::Home) => {
+                        if modifiers.shift() {
+                            sel.end = 0;
+                        } else {
+                            sel.anchor = 0;
+                            sel.end = 0;
+                        }
+                        shell.capture_event();
+                    }
+                    keyboard::Key::Named(keyboard::key::Named::End) => {
+                        if modifiers.shift() {
+                            sel.end = grapheme_count;
+                        } else {
+                            sel.anchor = grapheme_count;
+                            sel.end = grapheme_count;
+                        }
+                        shell.capture_event();
+                    }
+                    _ => {}
+                }
+            }
+
+            Event::Keyboard(keyboard::Event::ModifiersChanged(modifiers)) => {
+                if let Some(sel) = &mut state.selection {
+                    sel.modifiers = *modifiers;
+                }
+            }
+
+            _ => {}
+        }
+    }
+
+    fn mouse_interaction(
+        &self,
+        _tree: &Tree,
+        layout: Layout<'_>,
+        cursor: mouse::Cursor,
+        _viewport: &Rectangle,
+        _renderer: &Renderer,
+    ) -> mouse::Interaction {
+        if self.selectable && cursor.is_over(layout.bounds()) {
+            mouse::Interaction::Text
+        } else {
+            mouse::Interaction::None
+        }
     }
 
     fn operate(
@@ -471,12 +803,23 @@ where
 }
 
 /// The appearance of some text.
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Style {
     /// The [`Color`] of the text.
     ///
     /// The default, `None`, means using the inherited color.
     pub color: Option<Color>,
+    /// The fill [`Color`] of the selection highlight.
+    pub selected_fill: Color,
+}
+
+impl Default for Style {
+    fn default() -> Self {
+        Self {
+            color: None,
+            selected_fill: DEFAULT_SELECTION_COLOR,
+        }
+    }
 }
 
 /// The theme catalog of a [`Text`].
@@ -510,13 +853,14 @@ impl Catalog for Theme {
 
 /// The default text styling; color is inherited.
 pub fn default(_theme: &Theme) -> Style {
-    Style { color: None }
+    Style::default()
 }
 
 /// Text with the default base color.
 pub fn base(theme: &Theme) -> Style {
     Style {
         color: Some(theme.palette().text),
+        ..Style::default()
     }
 }
 
@@ -524,6 +868,7 @@ pub fn base(theme: &Theme) -> Style {
 pub fn primary(theme: &Theme) -> Style {
     Style {
         color: Some(theme.palette().primary),
+        ..Style::default()
     }
 }
 
@@ -531,6 +876,7 @@ pub fn primary(theme: &Theme) -> Style {
 pub fn secondary(theme: &Theme) -> Style {
     Style {
         color: Some(theme.extended_palette().secondary.base.color),
+        ..Style::default()
     }
 }
 
@@ -538,6 +884,7 @@ pub fn secondary(theme: &Theme) -> Style {
 pub fn success(theme: &Theme) -> Style {
     Style {
         color: Some(theme.palette().success),
+        ..Style::default()
     }
 }
 
@@ -545,6 +892,7 @@ pub fn success(theme: &Theme) -> Style {
 pub fn warning(theme: &Theme) -> Style {
     Style {
         color: Some(theme.palette().warning),
+        ..Style::default()
     }
 }
 
@@ -552,5 +900,72 @@ pub fn warning(theme: &Theme) -> Style {
 pub fn danger(theme: &Theme) -> Style {
     Style {
         color: Some(theme.palette().danger),
+        ..Style::default()
+    }
+}
+
+const DEFAULT_SELECTION_COLOR: Color = Color {
+    r: 0.0,
+    g: 0.47,
+    b: 0.84,
+    a: 0.3,
+};
+
+fn grapheme_to_byte(content: &str, grapheme_index: usize) -> usize {
+    content
+        .graphemes(true)
+        .take(grapheme_index)
+        .map(|g| g.len())
+        .sum()
+}
+
+fn hit_to_grapheme<P: Paragraph>(
+    paragraph: &P,
+    point: Point,
+    content: &str,
+) -> usize {
+    match paragraph.hit_test(point) {
+        Some(hit) => {
+            let byte_offset = hit.cursor().min(content.len());
+            content[..byte_offset].graphemes(true).count()
+        }
+        None => content.graphemes(true).count(),
+    }
+}
+
+fn previous_start_of_word(content: &str, grapheme_index: usize) -> usize {
+    let graphemes: Vec<&str> = content.graphemes(true).collect();
+    let clamped = grapheme_index.min(graphemes.len());
+    let before: String = graphemes[..clamped].concat();
+
+    UnicodeSegmentation::split_word_bound_indices(&*before)
+        .filter(|(_, word)| !word.trim_start().is_empty())
+        .next_back()
+        .map_or(0, |(i, prev_word)| {
+            clamped
+                - prev_word.graphemes(true).count()
+                - before[i + prev_word.len()..].graphemes(true).count()
+        })
+}
+
+fn next_end_of_word(content: &str, grapheme_index: usize) -> usize {
+    let graphemes: Vec<&str> = content.graphemes(true).collect();
+    let clamped = grapheme_index.min(graphemes.len());
+    let after: String = graphemes[clamped..].concat();
+
+    UnicodeSegmentation::split_word_bound_indices(&*after)
+        .find(|(_, word)| !word.trim_start().is_empty())
+        .map_or(graphemes.len(), |(i, next_word)| {
+            clamped
+                + next_word.graphemes(true).count()
+                + after[..i].graphemes(true).count()
+        })
+}
+
+fn is_jump_modifier(modifiers: keyboard::Modifiers) -> bool {
+    if cfg!(target_os = "macos") {
+        modifiers.alt()
+    } else {
+        modifiers.control()
     }
 }
