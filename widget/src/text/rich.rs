@@ -179,7 +179,7 @@ where
     {
         let color = color.map(Into::into);
 
-        self.style(move |_theme| Style { color })
+        self.style(move |_theme| Style { color, ..Style::default() })
     }
 
     /// Sets the default style class of the [`Rich`] text.

@@ -3023,6 +3023,7 @@ dependencies = [
  "serde",
  "smol_str",
  "thiserror 2.0.18",
+ "unicode-segmentation",
  "web-time",
  "window_clipboard",
 ]
