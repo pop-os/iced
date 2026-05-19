@@ -1590,7 +1590,7 @@ impl SctkState {
                         };
                         let notification = overlap_notify_state.notify.notify_on_overlap(wlr, &self.queue_handle, OverlapNotificationV1 { surface: layer_surface.surface.wl_surface().clone() });
                         _ = self.overlap_notifications.insert(my_id, notification);
-                    } else {
+                    } else if !enabled {
                         _ = self.overlap_notifications.remove(&my_id);
                     }
                 } else {
