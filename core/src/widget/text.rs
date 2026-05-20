@@ -221,6 +221,9 @@ pub struct State<P: Paragraph> {
     pub paragraph: paragraph::Plain<P>,
     /// Lazily allocated when text is selectable and first interacted with.
     selection: Option<Box<SelectionState>>,
+    focused: bool,
+    keyboard_focused: bool,
+    context_menu_position: Option<Point>,
 }
 
 impl<P: Paragraph> Default for State<P> {
@@ -228,6 +231,9 @@ impl<P: Paragraph> Default for State<P> {
         Self {
             paragraph: paragraph::Plain::default(),
             selection: None,
+            focused: false,
+            keyboard_focused: false,
+            context_menu_position: None,
         }
     }
 }
@@ -236,7 +242,40 @@ impl<P: Paragraph> std::fmt::Debug for State<P> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("State")
             .field("selection", &self.selection)
+            .field("focused", &self.focused)
             .finish_non_exhaustive()
+    }
+}
+
+impl<P: Paragraph> State<P> {
+    /// Returns `true` if the widget currently has focus.
+    pub fn is_focused(&self) -> bool {
+        self.focused
+    }
+
+    /// Returns `true` if focus was gained via keyboard navigation (Tab).
+    pub fn is_keyboard_focused(&self) -> bool {
+        self.keyboard_focused
+    }
+
+    /// Clears focus, selection, and all interaction state.
+    pub fn clear_focus(&mut self) {
+        self.focused = false;
+        self.keyboard_focused = false;
+        self.context_menu_position = None;
+        if let Some(sel) = &mut self.selection {
+            sel.clear();
+        }
+    }
+
+    /// Returns the context menu position, if a context menu should be shown.
+    pub fn context_menu_position(&self) -> Option<Point> {
+        self.context_menu_position
+    }
+
+    /// Sets or clears the context menu position.
+    pub fn set_context_menu_position(&mut self, pos: Option<Point>) {
+        self.context_menu_position = pos;
     }
 }
 
@@ -259,9 +298,31 @@ struct SelectionState {
     anchor: usize,
     end: usize,
     dragging: bool,
-    focused: bool,
     modifiers: keyboard::Modifiers,
     last_click: Option<click::Click>,
+}
+
+impl SelectionState {
+    fn clear(&mut self) {
+        self.anchor = 0;
+        self.end = 0;
+        self.dragging = false;
+    }
+}
+
+impl<P: Paragraph> crate::widget::operation::Focusable for State<P> {
+    fn is_focused(&self) -> bool {
+        self.focused
+    }
+
+    fn focus(&mut self) {
+        self.focused = true;
+        self.keyboard_focused = true;
+    }
+
+    fn unfocus(&mut self) {
+        self.clear_focus();
+    }
 }
 
 impl<Message, Theme, Renderer> Widget<Message, Theme, Renderer>
@@ -378,9 +439,29 @@ where
         let grapheme_count = content.graphemes(true).count();
         let paragraph = state.paragraph.raw();
 
+        // Any click outside this widget clears selection and focus.
+        if matches!(
+            event,
+            Event::Mouse(mouse::Event::ButtonPressed(_))
+                | Event::Touch(touch::Event::FingerPressed { .. })
+        ) {
+            if cursor.position_over(bounds).is_none() {
+                state.focused = false;
+                state.keyboard_focused = false;
+                if let Some(sel) = &mut state.selection {
+                    sel.clear();
+                }
+            }
+        }
+
         match event {
             Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left))
             | Event::Touch(touch::Event::FingerPressed { .. }) => {
+                if state.context_menu_position.take().is_some() {
+                    shell.capture_event();
+                    return;
+                }
+
                 if let Some(pos) = cursor.position_over(bounds) {
                     let sel = state.selection.get_or_insert_with(|| {
                         Box::new(SelectionState::default())
@@ -427,13 +508,18 @@ where
                     }
 
                     sel.last_click = Some(new_click);
-                    sel.focused = true;
+                    state.focused = true;
+                    state.keyboard_focused = false;
                     shell.capture_event();
-                } else if let Some(sel) = &mut state.selection {
-                    sel.focused = false;
-                    sel.anchor = 0;
-                    sel.end = 0;
-                    sel.dragging = false;
+                }
+            }
+
+            Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Right)) => {
+                if let Some(pos) = cursor.position_over(bounds) {
+                    state.context_menu_position = Some(pos);
+                    state.focused = true;
+                    state.keyboard_focused = false;
+                    shell.capture_event();
                 }
             }
 
@@ -471,12 +557,12 @@ where
                 text: _,
                 ..
             }) => {
-                let focused =
-                    state.selection.as_ref().is_some_and(|s| s.focused);
-                if !focused {
+                if !state.focused {
                     return;
                 }
-                let sel = state.selection.as_mut().unwrap();
+                let sel = state
+                    .selection
+                    .get_or_insert_with(|| Box::new(SelectionState::default()));
 
                 if modifiers.command() {
                     match key.to_latin(*physical_key) {
@@ -597,12 +683,17 @@ where
 
     fn operate(
         &mut self,
-        _tree: &mut Tree,
+        tree: &mut Tree,
         layout: Layout<'_>,
         _renderer: &Renderer,
         operation: &mut dyn super::Operation,
     ) {
         operation.text(None, layout.bounds(), &self.fragment);
+
+        if self.selectable {
+            let state = tree.state.downcast_mut::<State<Renderer::Paragraph>>();
+            operation.focusable(None, layout.bounds(), state);
+        }
     }
 
     #[cfg(feature = "a11y")]
@@ -901,6 +992,111 @@ pub fn danger(theme: &Theme) -> Style {
     Style {
         color: Some(theme.palette().danger),
         ..Style::default()
+    }
+}
+
+use crate::widget::tree::Tree as WidgetTree;
+
+/// Implement this on a **widget** to enable context menu support for
+/// text selection (Copy, Select All, and optionally Cut / Paste) in libcosmic
+pub trait HasSelectableText {
+    /// Returns the currently selected text, if any.
+    fn selected_text(&self, tree: &WidgetTree) -> Option<String>;
+
+    /// Selects all text.
+    fn select_all(&self, tree: &mut WidgetTree);
+
+    /// Returns `true` if the widget is editable (enables Cut / Paste).
+    fn is_editable(&self) -> bool {
+        false
+    }
+
+    /// Returns `true` if the widget is currently focused.
+    fn is_focused(&self, tree: &WidgetTree) -> bool;
+
+    /// Returns the position where the context menu should appear
+    fn context_menu_position(&self, tree: &WidgetTree) -> Option<Point>;
+
+    /// Sets or clears the context menu position.
+    fn set_context_menu_position(
+        &self,
+        tree: &mut WidgetTree,
+        pos: Option<Point>,
+    );
+
+    /// Copies the selection to the clipboard.
+    fn copy_to_clipboard(
+        &self,
+        tree: &WidgetTree,
+        clipboard: &mut dyn Clipboard,
+    ) {
+        if let Some(text) = self.selected_text(tree) {
+            clipboard.write(crate::clipboard::Kind::Standard, text);
+        }
+    }
+
+    /// Deletes the selected text and returns the new full content.
+    /// Only called when [`is_editable`](Self::is_editable) is `true`.
+    fn delete_selection(&self, _tree: &mut WidgetTree) -> Option<String> {
+        None
+    }
+
+    /// Inserts `text` at the cursor (replacing any selection) and returns
+    /// the new full content.
+    /// Only called when [`is_editable`](Self::is_editable) is `true`.
+    fn paste_text(
+        &self,
+        _tree: &mut WidgetTree,
+        _text: &str,
+    ) -> Option<String> {
+        None
+    }
+}
+
+impl<Theme: Catalog, Renderer: text::Renderer> HasSelectableText
+    for Text<'_, Theme, Renderer>
+{
+    fn selected_text(&self, tree: &WidgetTree) -> Option<String> {
+        let state = tree.state.downcast_ref::<State<Renderer::Paragraph>>();
+        let sel = state.selection.as_ref()?;
+        let left = sel.anchor.min(sel.end);
+        let right = sel.anchor.max(sel.end);
+        if left == right {
+            return None;
+        }
+        let content = state.paragraph.content();
+        let lo = grapheme_to_byte(content, left);
+        let hi = grapheme_to_byte(content, right);
+        content.get(lo..hi).map(|s| s.to_owned())
+    }
+
+    fn select_all(&self, tree: &mut WidgetTree) {
+        let state = tree.state.downcast_mut::<State<Renderer::Paragraph>>();
+        let count = state.paragraph.content().graphemes(true).count();
+        let sel = state
+            .selection
+            .get_or_insert_with(|| Box::new(SelectionState::default()));
+        sel.anchor = 0;
+        sel.end = count;
+    }
+
+    fn is_focused(&self, tree: &WidgetTree) -> bool {
+        let state = tree.state.downcast_ref::<State<Renderer::Paragraph>>();
+        state.is_focused()
+    }
+
+    fn context_menu_position(&self, tree: &WidgetTree) -> Option<Point> {
+        let state = tree.state.downcast_ref::<State<Renderer::Paragraph>>();
+        state.context_menu_position()
+    }
+
+    fn set_context_menu_position(
+        &self,
+        tree: &mut WidgetTree,
+        pos: Option<Point>,
+    ) {
+        let state = tree.state.downcast_mut::<State<Renderer::Paragraph>>();
+        state.set_context_menu_position(pos);
     }
 }
 
