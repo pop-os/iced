@@ -336,6 +336,10 @@ impl editor::Editor for Editor {
                     }
                 }
 
+                Action::ClearSelection => {
+                    editor.set_selection(cosmic_text::Selection::None);
+                }
+
                 // Editing events
                 Action::Edit(edit) => {
                     let topmost_line_before_edit = editor
