@@ -368,6 +368,13 @@ pub fn present(
 ) -> Result<(), compositor::SurfaceError> {
     match surface.get_current_texture() {
         Ok(frame) => {
+            if frame.suboptimal
+                || frame.texture.width() != viewport.physical_width()
+                || frame.texture.height() != viewport.physical_height()
+            {
+                return Err(compositor::SurfaceError::Outdated);
+            }
+
             let view = &frame
                 .texture
                 .create_view(&wgpu::TextureViewDescriptor::default());
