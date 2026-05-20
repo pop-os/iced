@@ -544,6 +544,8 @@ pub struct State<Highlighter: text::Highlighter> {
     highlighter: RefCell<Highlighter>,
     highlighter_settings: Highlighter::Settings,
     highlighter_format_address: usize,
+    context_menu_position: Option<Point>,
+    pending_edit: Option<Action>,
 }
 
 #[derive(Debug, Clone)]
@@ -579,6 +581,14 @@ impl<Highlighter: text::Highlighter> State<Highlighter> {
     pub fn is_focused(&self) -> bool {
         self.focus.is_some()
     }
+
+    /// Clears focus, selection, and all interaction state.
+    pub fn clear_focus(&mut self) {
+        self.focus = None;
+        self.drag_click = None;
+        self.context_menu_position = None;
+        self.pending_edit = Some(Action::ClearSelection);
+    }
 }
 
 impl<Highlighter: text::Highlighter> operation::Focusable
@@ -593,7 +603,7 @@ impl<Highlighter: text::Highlighter> operation::Focusable
     }
 
     fn unfocus(&mut self) {
-        self.focus = None;
+        self.clear_focus();
     }
 }
 
@@ -621,6 +631,8 @@ where
             )),
             highlighter_settings: self.highlighter_settings.clone(),
             highlighter_format_address: self.highlighter_format as usize,
+            context_menu_position: None,
+            pending_edit: None,
         })
     }
 
@@ -699,6 +711,58 @@ where
         shell: &mut Shell<'_, Message>,
         _viewport: &Rectangle,
     ) {
+        // Handle context menu and focus-loss on clicks outside.
+        {
+            let state = tree.state.downcast_mut::<State<Highlighter>>();
+            let text_bounds = layout.bounds();
+
+            if matches!(
+                event,
+                Event::Mouse(mouse::Event::ButtonPressed(_))
+                    | Event::Touch(
+                        crate::core::touch::Event::FingerPressed { .. }
+                    )
+            ) && cursor.position_over(text_bounds).is_none()
+            {
+                state.clear_focus();
+            }
+
+            match event {
+                Event::Mouse(mouse::Event::ButtonPressed(
+                    mouse::Button::Right,
+                )) => {
+                    if let Some(pos) = cursor.position_over(text_bounds) {
+                        if state.focus.is_none() {
+                            state.focus = Some(Focus::now());
+                        }
+                        state.context_menu_position = Some(pos);
+                        shell.capture_event();
+                        return;
+                    }
+                }
+                Event::Mouse(mouse::Event::ButtonPressed(
+                    mouse::Button::Left,
+                )) => {
+                    if state.context_menu_position.take().is_some() {
+                        shell.capture_event();
+                        return;
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        // Process pending edits from context menu
+        // publishes via on_edit so the app calls content.perform().
+        {
+            let state = tree.state.downcast_mut::<State<Highlighter>>();
+            if let Some(action) = state.pending_edit.take() {
+                if let Some(on_edit) = self.on_edit.as_ref() {
+                    shell.publish((on_edit)(action));
+                }
+            }
+        }
+
         let Some(on_edit) = self.on_edit.as_ref() else {
             return;
         };
@@ -1544,4 +1608,64 @@ pub(crate) fn convert_macos_shortcut(
     };
 
     Some(keyboard::Key::Named(key))
+}
+
+use crate::core::widget::text::HasSelectableText;
+
+impl<Highlighter, Message, Theme, Renderer> HasSelectableText
+    for TextEditor<'_, Highlighter, Message, Theme, Renderer>
+where
+    Highlighter: text::Highlighter,
+    Theme: Catalog,
+    Renderer: text::Renderer,
+{
+    fn selected_text(&self, _tree: &widget::Tree) -> Option<String> {
+        self.content.selection()
+    }
+
+    fn select_all(&self, tree: &mut widget::Tree) {
+        let state = tree.state.downcast_mut::<State<Highlighter>>();
+        state.pending_edit = Some(Action::SelectAll);
+    }
+
+    fn is_editable(&self) -> bool {
+        self.on_edit.is_some()
+    }
+
+    fn is_focused(&self, tree: &widget::Tree) -> bool {
+        tree.state.downcast_ref::<State<Highlighter>>().is_focused()
+    }
+
+    fn context_menu_position(&self, tree: &widget::Tree) -> Option<Point> {
+        tree.state
+            .downcast_ref::<State<Highlighter>>()
+            .context_menu_position
+    }
+
+    fn set_context_menu_position(
+        &self,
+        tree: &mut widget::Tree,
+        pos: Option<Point>,
+    ) {
+        tree.state
+            .downcast_mut::<State<Highlighter>>()
+            .context_menu_position = pos;
+    }
+
+    fn delete_selection(&self, tree: &mut widget::Tree) -> Option<String> {
+        let state = tree.state.downcast_mut::<State<Highlighter>>();
+        state.pending_edit = Some(Action::Edit(Edit::Delete));
+        Some(String::new())
+    }
+
+    fn paste_text(
+        &self,
+        tree: &mut widget::Tree,
+        text: &str,
+    ) -> Option<String> {
+        let state = tree.state.downcast_mut::<State<Highlighter>>();
+        state.pending_edit =
+            Some(Action::Edit(Edit::Paste(Arc::new(text.to_owned()))));
+        Some(String::new())
+    }
 }

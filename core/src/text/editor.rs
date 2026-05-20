@@ -78,6 +78,8 @@ pub enum Action {
     SelectLine,
     /// Select the entire buffer.
     SelectAll,
+    /// Clear the selection
+    ClearSelection,
     /// Perform an [`Edit`].
     Edit(Edit),
     /// Click the [`Editor`] at the given [`Point`].
