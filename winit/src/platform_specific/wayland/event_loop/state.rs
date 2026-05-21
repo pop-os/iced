@@ -431,7 +431,7 @@ pub struct SctkState {
     pub(crate) popups: Vec<SctkPopup>,
     pub(crate) subsurfaces: Vec<SctkSubsurface>,
     pub(crate) lock_surfaces: Vec<SctkLockSurface>,
-    pub(crate) blur_surfaces: HashMap<core::window::Id, Vec<ExtBackgroundEffectSurfaceV1>>,
+    pub(crate) blur_surfaces: HashMap<core::window::Id, ExtBackgroundEffectSurfaceV1>,
     pub(crate) corner_radii: HashMap<core::window::Id, (SctkCornerRadius, Option<CornerRadius>)>,
     pub(crate) touch_points: HashMap<touch::Finger, (WlSurface, Point)>,
 
@@ -1134,9 +1134,7 @@ impl SctkState {
                                 let l = self.layer_surfaces.remove(i);
 
                                 if let Some(blurred) = self.blur_surfaces.remove(&l.id) {
-                                    for s in blurred {
-                                        s.destroy();
-                                    }
+                                    blurred.destroy();
                                 }
                                 _ = self.corner_radii.remove(&id);
 
@@ -1415,9 +1413,7 @@ impl SctkState {
                         }
 
                         if let Some(blurred) = self.blur_surfaces.remove(&id) {
-                            for s in blurred {
-                                s.destroy();
-                            }
+                            blurred.destroy();
                         }
                         _ = self.corner_radii.remove(&id);
 
@@ -1545,9 +1541,7 @@ impl SctkState {
                     {
                         let surface = self.lock_surfaces.remove(i);
                         if let Some(blurred) = self.blur_surfaces.remove(&surface.id) {
-                            for s in blurred {
-                                s.destroy();
-                            }
+                            blurred.destroy();
                         }
                         _ = self.corner_radii.remove(&id);
 
@@ -1632,9 +1626,7 @@ impl SctkState {
                     }
                     for (destroyed, parent, id) in destroyed {
                         if let Some(blurred) = self.blur_surfaces.remove(&id) {
-                            for s in blurred {
-                                s.destroy();
-                            }
+                            blurred.destroy();
                         }
                         _ = self.corner_radii.remove(&id);
 
@@ -1790,45 +1782,27 @@ impl SctkState {
                 let existing_blur = self.blur_surfaces.entry(id);
                 match (existing_blur, rectangles) {
                     (Entry::Occupied(occupied_entry), None) => {
-                        let blur_surfaces = occupied_entry.remove();
-                        for region in blur_surfaces {
-                            region.destroy();
-                        }
+                        let blur_surface = occupied_entry.remove();
+                        blur_surface.destroy();
                     },
                     (Entry::Occupied(mut occupied_entry), Some(rectangles)) => {
-                        let blur_surfaces = occupied_entry.get_mut();
-                        let regions = rectangles.into_iter().map(|rect| {
-                            let region = self
+                        let blur_surface = occupied_entry.get_mut();
+                        let region = self
                                 .compositor_state
                                 .wl_compositor()
                                 .create_region(&self.queue_handle, ());
+                        for rect in rectangles.into_iter() {
                             region.add(
                                 rect.x.round() as i32,
                                 rect.y.round() as i32,
                                 rect.width.round() as i32,
                                 rect.height.round() as i32,
                             );
-                            region
-                        }).collect::<Vec<_>>();
-                        if regions.len() > blur_surfaces.len() {
-                            // add extra blur surfaces if needed
-                            for _ in blur_surfaces.len()..regions.len() {
-                                let Some(extra_region) = self.ext_background_effect_manager.as_mut().map(|mgr| mgr.blur(s, &self.queue_handle)) else {
-                                    log::error!("Failed to create blur effect for surface");
-                                    return Ok(());
-                                };
-                                blur_surfaces.push(extra_region);
-                            }
-                        } else if regions.len() < blur_surfaces.len() {
-                            for surface in blur_surfaces.iter().skip(regions.len()) {
-                                surface.destroy();
-                            }
                         }
-
+                        
                         // update existing blur surfaces
-                        for (blur_surface, region) in blur_surfaces.iter().zip(regions.into_iter()) {
-                            blur_surface.set_blur_region(Some(&region));
-                        }
+                        blur_surface.set_blur_region(Some(&region));
+                        
                     },
                     (Entry::Vacant(..), None) => {
                         // nothing to remove
@@ -1838,23 +1812,23 @@ impl SctkState {
                             log::error!("Blur effect is not supported.");
                             return Ok(());
                         }
-                        let blur_surfaces = rectangles.into_iter().map(|rect| {
                             let region = self
                                 .compositor_state
                                 .wl_compositor()
                                 .create_region(&self.queue_handle, ());
-                            region.add(
-                                rect.x.round() as i32,
-                                rect.y.round() as i32,
-                                rect.width.round() as i32,
-                                rect.height.round() as i32,
-                            );
+                            for rect in rectangles {
+                                region.add(
+                                    rect.x.round() as i32,
+                                    rect.y.round() as i32,
+                                    rect.width.round() as i32,
+                                    rect.height.round() as i32,
+                                );
+                            }
+                            
                             let blur_manager = self.ext_background_effect_manager.as_mut().unwrap();
                             let blur_surface = blur_manager.blur(s, &self.queue_handle);
                             blur_surface.set_blur_region(Some(&region));
-                            blur_surface
-                        }).collect::<Vec<_>>();
-                        _ = vacant_entry.insert(blur_surfaces);
+                        _ = vacant_entry.insert(blur_surface);
                     },
                 }
             },
