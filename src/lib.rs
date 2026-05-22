@@ -682,7 +682,7 @@ pub use error::Error;
 pub use event::Event;
 pub use executor::Executor;
 pub use font::Font;
-pub use renderer::Renderer;
+pub use renderer::{Renderer, graphics::geometry};
 pub use task::Task;
 pub use window::Window;
 
