@@ -4,9 +4,45 @@ use crate::platform_specific::wayland::{
 };
 use cctk::sctk::{
     delegate_keyboard,
-    seat::keyboard::{KeyboardHandler, Keysym},
+    seat::keyboard::{KeyboardHandler, Keysym, Modifiers},
 };
 use cctk::sctk::{reexports::client::Proxy, seat::keyboard::RawModifiers};
+
+fn modifiers_from_keysyms(
+    keysyms: &[Keysym],
+    previous: Modifiers,
+) -> Modifiers {
+    let mut modifiers = Modifiers {
+        caps_lock: previous.caps_lock,
+        num_lock: previous.num_lock,
+        ..Modifiers::default()
+    };
+
+    for keysym in keysyms {
+        match keysym.raw() {
+            xkeysym::key::Shift_L | xkeysym::key::Shift_R => {
+                modifiers.shift = true
+            }
+            xkeysym::key::Control_L | xkeysym::key::Control_R => {
+                modifiers.ctrl = true
+            }
+            xkeysym::key::Alt_L | xkeysym::key::Alt_R => modifiers.alt = true,
+            xkeysym::key::Super_L
+            | xkeysym::key::Super_R
+            | xkeysym::key::Hyper_L
+            | xkeysym::key::Hyper_R
+            | xkeysym::key::Meta_L
+            | xkeysym::key::Meta_R => modifiers.logo = true,
+            xkeysym::key::Caps_Lock | xkeysym::key::Shift_Lock => {
+                modifiers.caps_lock = true
+            }
+            xkeysym::key::Num_Lock => modifiers.num_lock = true,
+            _ => {}
+        }
+    }
+
+    modifiers
+}
 
 impl KeyboardHandler for SctkState {
     fn enter(
@@ -17,9 +53,9 @@ impl KeyboardHandler for SctkState {
         surface: &cctk::sctk::reexports::client::protocol::wl_surface::WlSurface,
         _serial: u32,
         _raw: &[u32],
-        _keysyms: &[Keysym],
+        keysyms: &[Keysym],
     ) {
-        let (i, mut is_active, seat) = {
+        let (i, mut is_active, seat, modifiers) = {
             let (i, is_active, my_seat) =
                 match self.seats.iter_mut().enumerate().find_map(|(i, s)| {
                     if s.kbd.as_ref() == Some(keyboard) {
@@ -41,9 +77,11 @@ impl KeyboardHandler for SctkState {
                 surface
             };
             _ = my_seat.kbd_focus.replace(surface.clone());
+            let modifiers = modifiers_from_keysyms(keysyms, my_seat._modifiers);
+            my_seat._modifiers = modifiers;
 
             let seat = my_seat.seat.clone();
-            (i, is_active, seat)
+            (i, is_active, seat, modifiers)
         };
 
         if !is_active && self.seats[0].kbd_focus.is_none() {
@@ -69,6 +107,12 @@ impl KeyboardHandler for SctkState {
                 ));
                 self.sctk_events.push(SctkEvent::KeyboardEvent {
                     variant: KeyboardEventVariant::Enter(surface.clone()),
+                    kbd_id: keyboard.clone(),
+                    seat_id: seat.clone(),
+                    surface: surface.clone(),
+                });
+                self.sctk_events.push(SctkEvent::KeyboardEvent {
+                    variant: KeyboardEventVariant::Modifiers(modifiers),
                     kbd_id: keyboard.clone(),
                     seat_id: seat.clone(),
                     surface: surface.clone(),
@@ -126,6 +170,7 @@ impl KeyboardHandler for SctkState {
                     if self.windows.iter().any(|w| w.window.id() == id) {
                         continue;
                     }
+                    let modifiers = s._modifiers;
                     self.sctk_events.push(SctkEvent::Winit(
                         id,
                         winit::event::WindowEvent::Focused(true),
@@ -134,6 +179,12 @@ impl KeyboardHandler for SctkState {
                         variant: KeyboardEventVariant::Enter(
                             s.kbd_focus.clone().unwrap(),
                         ),
+                        kbd_id: s.kbd.clone().unwrap(),
+                        seat_id: s.seat.clone(),
+                        surface: surface.clone(),
+                    });
+                    self.sctk_events.push(SctkEvent::KeyboardEvent {
+                        variant: KeyboardEventVariant::Modifiers(modifiers),
                         kbd_id: s.kbd.clone().unwrap(),
                         seat_id: s.seat.clone(),
                         surface: surface.clone(),
@@ -248,6 +299,7 @@ impl KeyboardHandler for SctkState {
             };
         let seat_id = my_seat.seat.clone();
         let kbd_id = keyboard.clone();
+        my_seat._modifiers = modifiers;
 
         if is_active {
             if let Some(surface) = my_seat.kbd_focus.clone() {
