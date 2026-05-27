@@ -30,7 +30,6 @@ use std::{
     convert::Infallible,
     fmt::Debug,
     sync::{Arc, Mutex, atomic::AtomicU32},
-    thread::panicking,
     time::Duration,
 };
 use wayland_backend::client::ObjectId;
@@ -71,7 +70,7 @@ use cctk::{
         registry::RegistryState,
         seat::{
             SeatState,
-            keyboard::KeyEvent,
+            keyboard::{KeyEvent, Modifiers},
             pointer::{CursorIcon, PointerData, ThemedPointer},
             touch::TouchData,
         },
@@ -97,7 +96,6 @@ use cctk::{
 };
 use iced_runtime::{
     core::{self, Point, touch},
-    keyboard::Modifiers,
     platform_specific::{
         self,
         wayland::{
@@ -1469,7 +1467,7 @@ impl SctkState {
                     // TODO how to handle this when there's no lock?
                     if let Some((surface, _)) = self.get_lock_surface(id, &output) {
                         let wl_surface = surface.wl_surface();
-                        
+
                         receive_frame(&mut self.frame_status, &wl_surface);
                     }
                 }
@@ -1653,7 +1651,7 @@ impl SctkState {
                     bg_effect_mgr.enqueue(id, rectangles.clone());
                     return Ok(());
                 }
-                
+
                 let s = if let Some(s) = self.popups.iter().find(|s| s.data.id == id) {
                     s.popup.wl_surface()
                 } else if let Some(s) = self.layer_surfaces.iter().find(|s| s.id == id) {
