@@ -368,12 +368,13 @@ pub fn present(
 ) -> Result<(), compositor::SurfaceError> {
     match surface.get_current_texture() {
         Ok(frame) => {
-            if frame.suboptimal
-                || frame.texture.width() != viewport.physical_width()
+            if frame.texture.width() != viewport.physical_width()
                 || frame.texture.height() != viewport.physical_height()
             {
                 return Err(compositor::SurfaceError::Outdated);
             }
+
+            let suboptimal = frame.suboptimal;
 
             let view = &frame
                 .texture
@@ -389,6 +390,10 @@ pub fn present(
             // Present the frame
             on_pre_present();
             frame.present();
+
+            if suboptimal {
+                return Err(compositor::SurfaceError::Outdated);
+            }
 
             Ok(())
         }
