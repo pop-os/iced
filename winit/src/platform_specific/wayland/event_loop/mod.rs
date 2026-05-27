@@ -538,6 +538,7 @@ impl SctkEventLoop {
                         wake_up = true;
 
                         _ = s.frame(&state.state.queue_handle, s.clone());
+                        _ = state.state.frame_status.remove(&id);
                         _ = state.state.events_sender.unbounded_send(
                             Control::Winit(
                                 winit::window::WindowId::from_raw(
@@ -546,7 +547,6 @@ impl SctkEventLoop {
                                 winit::event::WindowEvent::RedrawRequested,
                             ),
                         );
-                        _ = state.state.frame_status.insert(id, state::FrameStatus::Received);
                     }
 
                     if wake_up {
