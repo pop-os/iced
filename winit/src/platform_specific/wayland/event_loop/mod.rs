@@ -401,6 +401,7 @@ impl SctkEventLoop {
                         preedit: None,
                         pending_delete: None,
                         pending_commit: None,
+                        pending_blur: HashMap::new(),
                     },
                     _features: Default::default(),
                 };
