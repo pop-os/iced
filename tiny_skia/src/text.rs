@@ -15,7 +15,6 @@ use std::collections::hash_map;
 pub struct Pipeline {
     glyph_cache: GlyphCache,
     cache: RefCell<Cache>,
-    swash_cache: cosmic_text::SwashCache,
 }
 
 impl Pipeline {
@@ -23,7 +22,6 @@ impl Pipeline {
         Pipeline {
             glyph_cache: GlyphCache::new(),
             cache: RefCell::new(Cache::new()),
-            swash_cache: cosmic_text::SwashCache::new(),
         }
     }
 
@@ -56,7 +54,6 @@ impl Pipeline {
         draw(
             font_system.raw(),
             &mut self.glyph_cache,
-            &mut self.swash_cache,
             paragraph.buffer(),
             position,
             color,
@@ -84,7 +81,6 @@ impl Pipeline {
         draw(
             font_system.raw(),
             &mut self.glyph_cache,
-            &mut self.swash_cache,
             editor.buffer(),
             position,
             color,
@@ -146,7 +142,6 @@ impl Pipeline {
         draw(
             font_system,
             &mut self.glyph_cache,
-            &mut self.swash_cache,
             &entry.buffer,
             Point::new(x, y),
             color,
@@ -170,7 +165,6 @@ impl Pipeline {
         draw(
             font_system.raw(),
             &mut self.glyph_cache,
-            &mut self.swash_cache,
             buffer,
             position,
             color,
@@ -189,7 +183,6 @@ impl Pipeline {
 fn draw(
     font_system: &mut cosmic_text::FontSystem,
     glyph_cache: &mut GlyphCache,
-    swash_cache: &mut cosmic_text::SwashCache,
     buffer: &cosmic_text::Buffer,
     position: Point,
     color: Color,
@@ -198,6 +191,8 @@ fn draw(
     transformation: Transformation,
 ) {
     let position = position * transformation;
+
+    let mut swash = cosmic_text::SwashCache::new();
 
     for run in buffer.layout_runs() {
         for glyph in run.glyphs {
@@ -210,7 +205,7 @@ fn draw(
                 physical_glyph.cache_key,
                 glyph.color_opt.map(from_color).unwrap_or(color),
                 font_system,
-                swash_cache,
+                &mut swash,
             ) {
                 let pixmap = tiny_skia::PixmapRef::from_bytes(
                     buffer,
