@@ -308,6 +308,7 @@ pub struct State {
     prepare_layer: usize,
     cache: BufferCache,
     storage: Storage,
+    swash_cache: cryoglyph::SwashCache,
 }
 
 impl State {
@@ -352,6 +353,7 @@ impl State {
                         renderer,
                         &mut atlas,
                         &mut self.cache,
+                        &mut self.swash_cache,
                         text,
                         layer_bounds * layer_transformation,
                         layer_transformation * *transformation,
@@ -448,6 +450,7 @@ fn prepare(
     renderer: &mut cryoglyph::TextRenderer,
     atlas: &mut cryoglyph::TextAtlas,
     buffer_cache: &mut BufferCache,
+    swash_cache: &mut cryoglyph::SwashCache,
     sections: &[Text],
     layer_bounds: Rectangle,
     layer_transformation: Transformation,
@@ -643,6 +646,6 @@ fn prepare(
         atlas,
         viewport,
         text_areas,
-        &mut cryoglyph::SwashCache::new(),
+        swash_cache,
     )
 }
