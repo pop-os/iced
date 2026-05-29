@@ -1,5 +1,6 @@
 use crate::core::svg::{Data, Handle};
 use crate::core::{Color, Rectangle, Size};
+use crate::graphics::text;
 
 use resvg::usvg;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -74,6 +75,7 @@ struct Cache {
     rasters: FxHashMap<RasterKey, tiny_skia::Pixmap>,
     raster_hits: FxHashSet<RasterKey>,
     fontdb: Option<Arc<usvg::fontdb::Database>>,
+    fontdb_version: Option<text::Version>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -87,12 +89,15 @@ impl Cache {
     fn load(&mut self, handle: &Handle) -> Option<&usvg::Tree> {
         let id = handle.id();
 
-        // TODO: Reuse `cosmic-text` font database
-        if self.fontdb.is_none() {
-            let mut fontdb = usvg::fontdb::Database::new();
-            fontdb.load_system_fonts();
+        // Reuse the font database already loaded by the `cosmic-text` font
+        // system. We clone it once and refresh only when a font is
+        // loaded (i.e. when the font system's version changes).
+        let font_system = text::font_system().read().expect("Read font system");
+        let version = font_system.version();
 
-            self.fontdb = Some(Arc::new(fontdb));
+        if self.fontdb_version != Some(version) {
+            self.fontdb = Some(Arc::new(font_system.db().clone()));
+            self.fontdb_version = Some(version);
         }
 
         let options = usvg::Options {
