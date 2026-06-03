@@ -621,8 +621,7 @@ where
         renderer.fill_quad(
             renderer::Quad {
                 bounds: Rectangle {
-                    x: bounds.x + offset + handle_width / 2.0
-                        - style.handle.border_width,
+                    x: bounds.x + offset,
                     y: rail_y - style.rail.width / 2.0,
                     width: bounds.width - offset,
                     height: style.rail.width,
