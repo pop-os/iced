@@ -304,14 +304,18 @@ where
                                 + Size::new(span.padding.x(), span.padding.y()),
                         );
 
-                        renderer.fill_quad(
-                            renderer::Quad {
-                                bounds: bounds + translation,
-                                border: highlight.border,
-                                ..Default::default()
-                            },
-                            highlight.background,
-                        );
+                        if let Some(clipped) =
+                            (bounds + translation).intersection(viewport)
+                        {
+                            renderer.fill_quad(
+                                renderer::Quad {
+                                    bounds: clipped,
+                                    border: highlight.border,
+                                    ..Default::default()
+                                },
+                                highlight.background,
+                            );
+                        }
                     }
                 }
 
@@ -339,33 +343,45 @@ where
 
                     if span.underline || is_hovered_link {
                         for bounds in &regions {
-                            renderer.fill_quad(
-                                renderer::Quad {
-                                    bounds: Rectangle::new(
-                                        bounds.position() + baseline
-                                            - Vector::new(0.0, size.0 * 0.08),
-                                        Size::new(bounds.width, 1.0),
-                                    ),
-                                    ..Default::default()
-                                },
-                                color,
+                            let underline = Rectangle::new(
+                                bounds.position() + baseline
+                                    - Vector::new(0.0, size.0 * 0.08),
+                                Size::new(bounds.width, 1.0),
                             );
+
+                            if let Some(clipped) =
+                                underline.intersection(viewport)
+                            {
+                                renderer.fill_quad(
+                                    renderer::Quad {
+                                        bounds: clipped,
+                                        ..Default::default()
+                                    },
+                                    color,
+                                );
+                            }
                         }
                     }
 
                     if span.strikethrough {
                         for bounds in &regions {
-                            renderer.fill_quad(
-                                renderer::Quad {
-                                    bounds: Rectangle::new(
-                                        bounds.position() + baseline
-                                            - Vector::new(0.0, size.0 / 2.0),
-                                        Size::new(bounds.width, 1.0),
-                                    ),
-                                    ..Default::default()
-                                },
-                                color,
+                            let strikethrough = Rectangle::new(
+                                bounds.position() + baseline
+                                    - Vector::new(0.0, size.0 / 2.0),
+                                Size::new(bounds.width, 1.0),
                             );
+
+                            if let Some(clipped) =
+                                strikethrough.intersection(viewport)
+                            {
+                                renderer.fill_quad(
+                                    renderer::Quad {
+                                        bounds: clipped,
+                                        ..Default::default()
+                                    },
+                                    color,
+                                );
+                            }
                         }
                     }
                 }
