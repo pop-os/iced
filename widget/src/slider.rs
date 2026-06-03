@@ -607,8 +607,7 @@ where
                 bounds: Rectangle {
                     x: bounds.x,
                     y: rail_y - style.rail.width / 2.0,
-                    width: offset - handle_width / 2.0
-                        + style.handle.border_width,
+                    width: offset,
                     height: style.rail.width,
                 },
                 border: style.rail.border,
@@ -625,8 +624,7 @@ where
                     x: bounds.x + offset + handle_width / 2.0
                         - style.handle.border_width,
                     y: rail_y - style.rail.width / 2.0,
-                    width: bounds.width - offset - handle_width / 2.0
-                        + style.handle.border_width,
+                    width: bounds.width - offset,
                     height: style.rail.width,
                 },
                 border: style.rail.border,
