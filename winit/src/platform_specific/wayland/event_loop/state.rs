@@ -865,19 +865,12 @@ impl SctkState {
         }
 
         _ = wl_surface.frame(&self.queue_handle, wl_surface.clone());
-        if let Some(corners) = self.pending_corner_radius.remove(&settings.id) {
-            self.handle_action(Action::RoundedCorners (
-                settings.id,
-                Some(corners),
-            ));
-        }
+        
         if let Some(blur) = self.pending_blur.remove(&settings.id) {
             self.apply_blur(settings.id, Some(blur), &wl_surface);
         }
 
-        
 
-        wl_surface.commit();
 
         let wp_viewport = self.viewporter_state.as_ref().map(|state| {
             let viewport =
@@ -909,7 +902,14 @@ impl SctkState {
             common: common.clone(),
             close_with_children: settings.close_with_children,
         });
-
+        
+        if let Some(corners) = self.pending_corner_radius.remove(&settings.id) {
+            self.handle_action(Action::RoundedCorners (
+                settings.id,
+                Some(corners),
+            ));
+        }
+        wl_surface.commit();
         Ok((
             settings.id,
             parent.wl_surface().clone(),
@@ -1008,13 +1008,7 @@ impl SctkState {
         if let Some(blur) = self.pending_blur.remove(&id) {
             self.apply_blur(id, Some(blur), &wl_surface);
         }
-        if let Some(corners) = self.pending_corner_radius.remove(&id) {
-            _  = self.handle_action(Action::RoundedCorners(
-                id,
-                Some(corners),
-            ));
-        }
-        layer_surface.commit();
+        
 
         let wp_viewport = self.viewporter_state.as_ref().map(|state| {
             state.get_viewport(layer_surface.wl_surface(), &self.queue_handle)
@@ -1048,6 +1042,13 @@ impl SctkState {
             wp_fractional_scale,
             common: common.clone(),
         });
+        if let Some(corners) = self.pending_corner_radius.remove(&id) {
+            _  = self.handle_action(Action::RoundedCorners(
+                id,
+                Some(corners),
+            ));
+        }
+        layer_surface.commit();
         Ok((id, CommonSurface::Layer(layer_surface), common))
     }
     pub fn get_lock_surface(
@@ -1976,14 +1977,7 @@ impl SctkState {
         if let Some(blur) = self.pending_blur.remove(&settings.id) {
             _ = self.apply_blur(settings.id, Some(blur), &wl_surface);
         }
-        if let Some(corners) = self.pending_corner_radius.remove(&settings.id) {
-            self.handle_action(Action::RoundedCorners (
-                settings.id,
-                Some(corners),
-            ));
-        }
-
-        wl_surface.commit();
+        
 
         let wp_viewport = subsurface_state.wp_viewporter.get_viewport(
             &wl_surface,
@@ -2059,7 +2053,14 @@ impl SctkState {
         // XXX subsurfaces need to be sorted by z in descending order
         self.subsurfaces
             .sort_by(|a, b| b.instance.z.cmp(&a.instance.z));
+        if let Some(corners) = self.pending_corner_radius.remove(&id) {
+            self.handle_action(Action::RoundedCorners (
+                id,
+                Some(corners),
+            ));
+        }
 
+        wl_surface.commit();
         Ok((
             id,
             parent.wl_surface().clone(),
