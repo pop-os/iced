@@ -508,6 +508,10 @@ pub struct SctkState {
 /// An error that occurred while running an application.
 #[derive(Debug, thiserror::Error)]
 pub enum PopupCreationError {
+    /// The requested ID already exists.
+    #[error("The requested ID already exists")]
+    AlreadyExists,
+
     /// Positioner creation failed
     #[error("Positioner creation failed")]
     PositionerCreationFailed(GlobalError),
@@ -528,6 +532,10 @@ pub enum PopupCreationError {
 /// An error that occurred while running an application.
 #[derive(Debug, thiserror::Error)]
 pub enum LayerSurfaceCreationError {
+    /// The requested ID already exists.
+    #[error("The requested ID already exists")]
+    AlreadyExists,
+
     /// Layer shell is not supported by the compositor
     #[error("Layer shell is not supported by the compositor")]
     LayerShellNotSupported,
@@ -544,6 +552,10 @@ pub enum LayerSurfaceCreationError {
 /// An error that occurred while running an application.
 #[derive(Debug, thiserror::Error)]
 pub enum SubsurfaceCreationError {
+    /// The requested ID already exists.
+    #[error("The requested ID already exists")]
+    AlreadyExists,
+
     /// Subsurface creation failed
     #[error("Subsurface creation failed")]
     CreationFailed(GlobalError),
@@ -682,6 +694,18 @@ impl SctkState {
         ),
         PopupCreationError,
     > {
+        if self.layer_surfaces.iter().any(|s| s.id == settings.id)
+            || self.windows.iter().any(|w| w.id == settings.id)
+            || self.popups.iter().any(|p| p.data.id == settings.id)
+            || self.subsurfaces.iter().any(|s| s.id == settings.id)
+        {
+            log::warn!(
+                "Popup surface with id {:?} already exists",
+                settings.id
+            );
+            return Err(PopupCreationError::AlreadyExists);
+        }
+
         let (parent, toplevel) = if let Some(parent) =
             self.layer_surfaces.iter().find(|l| l.id == settings.parent)
         {
@@ -922,6 +946,15 @@ impl SctkState {
             IcedOutput::Output(output) => Some(output),
         };
 
+        if self.layer_surfaces.iter().any(|s| s.id == id)
+            || self.windows.iter().any(|w| w.id == id)
+            || self.popups.iter().any(|p| p.data.id == id)
+            || self.subsurfaces.iter().any(|s| s.id == id)
+        {
+            log::warn!("Layer surface with id {id:?} already exists");
+            return Err(LayerSurfaceCreationError::AlreadyExists);
+        }
+
         let layer_shell = self
             .layer_shell
             .as_ref()
@@ -1015,6 +1048,14 @@ impl SctkState {
         id: core::window::Id,
         output: &WlOutput,
     ) -> Option<(CommonSurface, Arc<Mutex<Common>>)> {
+        if self.layer_surfaces.iter().any(|s| s.id == id)
+            || self.windows.iter().any(|w| w.id == id)
+            || self.popups.iter().any(|p| p.data.id == id)
+            || self.subsurfaces.iter().any(|s| s.id == id)
+        {
+            log::warn!("Lock surface with id {id:?} already exists");
+            return None;
+        }
         if let Some(lock) = self.session_lock.as_ref() {
             let wl_surface =
                 self.compositor_state.create_surface(&self.queue_handle);
@@ -1755,6 +1796,14 @@ impl SctkState {
         let Some(subsurface_state) = self.subsurface_state.as_ref() else {
             return Err(SubsurfaceCreationError::Unsupported);
         };
+        if self.layer_surfaces.iter().any(|s| s.id == settings.id)
+            || self.windows.iter().any(|w| w.id == settings.id)
+            || self.popups.iter().any(|p| p.data.id == settings.id)
+            || self.subsurfaces.iter().any(|s| s.id == settings.id)
+        {
+            log::warn!("Subsurface with id {:?} already exists", settings.id);
+            return Err(SubsurfaceCreationError::AlreadyExists);
+        }
 
         let size = settings.size.unwrap_or(Size::new(1., 1.));
         let half_w = size.width / 2.;
