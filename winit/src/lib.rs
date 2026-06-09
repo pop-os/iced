@@ -864,28 +864,30 @@ async fn run_instance<P>(
                 platform_specific_handler.send_wayland(
                     platform_specific::Action::TrackWindow(window.clone(), id),
                 );
-                match create_compositor::<P>(
-                    window.clone(),
-                    CreateCompositor {
-                        proxy: &proxy,
-                        runtime: &mut runtime,
-                        display_handle: &display_handle,
-                        graphics_settings: &graphics_settings,
-                        default_fonts: &default_fonts,
-                    },
-                )
-                .await
-                {
-                    Ok(comp) => {
-                        compositor = Some(comp);
-                    }
-                    Err(error) => {
-                        control_sender
-                            .start_send(Control::Crash(
-                                Error::GraphicsCreationFailed(error),
-                            ))
-                            .expect("Send control message");
-                        continue;
+                if compositor.is_none() {
+                    match create_compositor::<P>(
+                        window.clone(),
+                        CreateCompositor {
+                            proxy: &proxy,
+                            runtime: &mut runtime,
+                            display_handle: &display_handle,
+                            graphics_settings: &graphics_settings,
+                            default_fonts: &default_fonts,
+                        },
+                    )
+                    .await
+                    {
+                        Ok(comp) => {
+                            compositor = Some(comp);
+                        }
+                        Err(error) => {
+                            control_sender
+                                .start_send(Control::Crash(
+                                    Error::GraphicsCreationFailed(error),
+                                ))
+                                .expect("Send control message");
+                            continue;
+                        }
                     }
                 }
 
@@ -1014,6 +1016,7 @@ async fn run_instance<P>(
                     &mut is_window_opening,
                     &mut system_theme,
                     &mut platform_specific_handler,
+                    is_daemon,
                 );
                 if exited {
                     runtime.track(None.into_iter());
@@ -1171,6 +1174,7 @@ async fn run_instance<P>(
                                 &mut is_window_opening,
                                 &mut system_theme,
                                 &mut platform_specific_handler,
+                                is_daemon,
                             );
                         }
 
@@ -1369,6 +1373,7 @@ async fn run_instance<P>(
                         &mut is_window_opening,
                         &mut system_theme,
                         &mut platform_specific_handler,
+                        is_daemon,
                     );
                 } else {
                     window.state.update(&program, window.raw.as_ref(), &event);
@@ -1562,6 +1567,7 @@ async fn run_instance<P>(
                             &mut is_window_opening,
                             &mut system_theme,
                             &mut platform_specific_handler,
+                            is_daemon,
                         );
                         if exited {
                             runtime.track(None.into_iter());
@@ -2106,6 +2112,7 @@ fn run_action<'a, P, C>(
     is_window_opening: &mut bool,
     system_theme: &mut theme::Mode,
     platform_specific: &mut crate::platform_specific::PlatformSpecific,
+    is_daemon: bool,
 ) -> bool
 where
     P: Program,
@@ -2190,7 +2197,7 @@ where
                     ));
                 }
 
-                if window_manager.is_empty() {
+                if window_manager.is_empty() && !is_daemon {
                     *compositor = None;
                 }
             }
