@@ -838,6 +838,28 @@ async fn run_instance<P>(
 
     log::info!("System theme: {system_theme:?}");
 
+    macro_rules! run_action {
+        ($action:expr) => {
+            run_action(
+                $action,
+                &program,
+                &mut runtime,
+                &mut compositor,
+                &mut events,
+                &mut messages,
+                &mut clipboard,
+                &mut control_sender,
+                &mut user_interfaces,
+                &mut window_manager,
+                &mut ui_caches,
+                &mut is_window_opening,
+                &mut system_theme,
+                &mut platform_specific_handler,
+                is_daemon,
+            )
+        };
+    }
+
     'next_event: loop {
         // Empty the queue if possible
         let event = if let Ok(event) = event_receiver.try_recv() {
@@ -1001,23 +1023,7 @@ async fn run_instance<P>(
                 }
             }
             Event::UserEvent(action) => {
-                let exited = run_action(
-                    action,
-                    &program,
-                    &mut runtime,
-                    &mut compositor,
-                    &mut events,
-                    &mut messages,
-                    &mut clipboard,
-                    &mut control_sender,
-                    &mut user_interfaces,
-                    &mut window_manager,
-                    &mut ui_caches,
-                    &mut is_window_opening,
-                    &mut system_theme,
-                    &mut platform_specific_handler,
-                    is_daemon,
-                );
+                let exited = run_action!(action);
                 if exited {
                     runtime.track(None.into_iter());
                 }
@@ -1159,23 +1165,7 @@ async fn run_instance<P>(
                                 continue;
                             }
 
-                            _ = run_action(
-                                action,
-                                &program,
-                                &mut runtime,
-                                &mut compositor,
-                                &mut events,
-                                &mut messages,
-                                &mut clipboard,
-                                &mut control_sender,
-                                &mut user_interfaces,
-                                &mut window_manager,
-                                &mut ui_caches,
-                                &mut is_window_opening,
-                                &mut system_theme,
-                                &mut platform_specific_handler,
-                                is_daemon,
-                            );
+                            _ = run_action!(action);
                         }
 
                         for (window_id, window) in window_manager.iter_mut() {
@@ -1358,23 +1348,7 @@ async fn run_instance<P>(
                 if matches!(event, winit::event::WindowEvent::CloseRequested)
                     && window.exit_on_close_request
                 {
-                    _ = run_action(
-                        Action::Window(runtime::window::Action::Close(id)),
-                        &program,
-                        &mut runtime,
-                        &mut compositor,
-                        &mut events,
-                        &mut messages,
-                        &mut clipboard,
-                        &mut control_sender,
-                        &mut user_interfaces,
-                        &mut window_manager,
-                        &mut ui_caches,
-                        &mut is_window_opening,
-                        &mut system_theme,
-                        &mut platform_specific_handler,
-                        is_daemon,
-                    );
+                    _ = run_action!(Action::Window(runtime::window::Action::Close(id)));
                 } else {
                     window.state.update(&program, window.raw.as_ref(), &event);
 
@@ -1552,23 +1526,7 @@ async fn run_instance<P>(
                     ));
 
                     for action in actions {
-                        let exited = run_action(
-                            action,
-                            &program,
-                            &mut runtime,
-                            &mut compositor,
-                            &mut events,
-                            &mut messages,
-                            &mut clipboard,
-                            &mut control_sender,
-                            &mut user_interfaces,
-                            &mut window_manager,
-                            &mut ui_caches,
-                            &mut is_window_opening,
-                            &mut system_theme,
-                            &mut platform_specific_handler,
-                            is_daemon,
-                        );
+                        let exited = run_action!(action);
                         if exited {
                             runtime.track(None.into_iter());
                         }
