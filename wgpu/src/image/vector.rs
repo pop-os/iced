@@ -1,5 +1,6 @@
 use crate::core::svg;
 use crate::core::{Color, Size};
+use crate::graphics::text;
 use crate::image::atlas::{self, Atlas};
 
 use resvg::tiny_skia;
@@ -40,6 +41,7 @@ pub struct Cache {
     rasterized_hits: FxHashSet<(u64, u32, u32, ColorFilter)>,
     should_trim: bool,
     fontdb: Option<Arc<usvg::fontdb::Database>>,
+    fontdb_version: Option<text::Version>,
 }
 
 type ColorFilter = Option<[u8; 4]>;
@@ -51,12 +53,12 @@ impl Cache {
             return self.svgs.get(&handle.id()).unwrap();
         }
 
-        // TODO: Reuse `cosmic-text` font database
-        if self.fontdb.is_none() {
-            let mut fontdb = usvg::fontdb::Database::new();
-            fontdb.load_system_fonts();
+        let font_system = text::font_system().read().expect("Read font system");
+        let version = font_system.version();
 
-            self.fontdb = Some(Arc::new(fontdb));
+        if self.fontdb_version != Some(version) {
+            self.fontdb = Some(Arc::new(font_system.db().clone()));
+            self.fontdb_version = Some(version);
         }
 
         let options = usvg::Options {
