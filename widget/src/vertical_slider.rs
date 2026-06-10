@@ -463,7 +463,7 @@ where
         let offset = if range_start >= range_end {
             0.0
         } else {
-            (bounds.height - handle_width) * (value - range_end)
+            (bounds.height - handle_height) * (value - range_end)
                 / (range_start - range_end)
         };
 
@@ -473,9 +473,9 @@ where
             renderer::Quad {
                 bounds: Rectangle {
                     x: rail_x - style.rail.width / 2.0,
-                    y: bounds.y,
+                    y: bounds.y + handle_height / 2.0,
                     width: style.rail.width,
-                    height: offset + handle_width / 2.0,
+                    height: offset,
                 },
                 border: style.rail.border,
                 ..renderer::Quad::default()
@@ -487,9 +487,9 @@ where
             renderer::Quad {
                 bounds: Rectangle {
                     x: rail_x - style.rail.width / 2.0,
-                    y: bounds.y + offset + handle_width / 2.0,
+                    y: bounds.y + offset + handle_height / 2.0,
                     width: style.rail.width,
-                    height: bounds.height - offset - handle_width / 2.0,
+                    height: bounds.height - offset - handle_height,
                 },
                 border: style.rail.border,
                 ..renderer::Quad::default()

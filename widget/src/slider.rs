@@ -567,8 +567,7 @@ where
         let offset = if range_start >= range_end {
             0.0
         } else {
-            (bounds.width - handle_width) * (value - range_start)
-                / (range_end - range_start)
+            (bounds.width - handle_width) * (value - range_start) / (range_end - range_start)
         };
 
         let rail_y = bounds.y + bounds.height / 2.0;
@@ -580,14 +579,14 @@ where
             let offset = if range_start >= range_end {
                 0.0
             } else {
-                (bounds.width - BREAKPOINT_WIDTH) * (value as f32 - range_start)
+                (bounds.width - BREAKPOINT_WIDTH - handle_width) * (value as f32 - range_start)
                     / (range_end - range_start)
             };
 
             renderer.fill_quad(
                 renderer::Quad {
                     bounds: Rectangle {
-                        x: bounds.x + offset,
+                        x: bounds.x + offset + handle_width / 2.0,
                         y: rail_y + 6.0,
                         width: BREAKPOINT_WIDTH,
                         height: 8.0,
@@ -606,9 +605,9 @@ where
         renderer.fill_quad(
             renderer::Quad {
                 bounds: Rectangle {
-                    x: bounds.x,
+                    x: bounds.x + handle_width / 2.0,
                     y: rail_y - style.rail.width / 2.0,
-                    width: offset + handle_width / 2.0,
+                    width: offset,
                     height: style.rail.width,
                 },
                 border: style.rail.border,
@@ -624,7 +623,7 @@ where
                 bounds: Rectangle {
                     x: bounds.x + offset + handle_width / 2.0,
                     y: rail_y - style.rail.width / 2.0,
-                    width: bounds.width - offset - handle_width / 2.0,
+                    width: bounds.width - offset - handle_width,
                     height: style.rail.width,
                 },
                 border: style.rail.border,
@@ -638,7 +637,7 @@ where
             renderer::Quad {
                 bounds: Rectangle {
                     x: bounds.x + offset,
-                    y: rail_y - (handle_height / 2.0),
+                    y: rail_y - handle_height / 2.0,
                     width: handle_width,
                     height: handle_height,
                 },
