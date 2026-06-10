@@ -363,24 +363,25 @@ where
         let state = tree.state.downcast_mut::<State>();
         let offset = layout.position() - Point::ORIGIN;
 
-        self.visible_elements
+        for (element, (index, layout, tree)) in self
+            .visible_elements
             .iter_mut()
             .zip(&mut state.visible_layouts)
-            .map(|(element, (index, layout, tree))| {
-                element.as_widget_mut().update(
-                    tree,
-                    event,
-                    Layout::with_offset(
-                        offset + Vector::new(0.0, self.spacing * *index as f32),
-                        layout,
-                    ),
-                    cursor,
-                    renderer,
-                    clipboard,
-                    shell,
-                    viewport,
-                )
-            });
+        {
+            element.as_widget_mut().update(
+                tree,
+                event,
+                Layout::with_offset(
+                    offset + Vector::new(0.0, self.spacing * *index as f32),
+                    layout,
+                ),
+                cursor,
+                renderer,
+                clipboard,
+                shell,
+                viewport,
+            );
+        }
 
         if let Event::Window(window::Event::RedrawRequested(_)) = event {
             match &mut state.task {
