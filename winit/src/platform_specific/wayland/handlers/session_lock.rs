@@ -6,7 +6,6 @@ use crate::{
     },
 };
 use cctk::sctk::{
-    delegate_session_lock,
     reexports::client::{Connection, QueueHandle},
     session_lock::{
         SessionLock, SessionLockHandler, SessionLockSurface,
@@ -76,5 +75,3 @@ impl SessionLockHandler for SctkState {
         self.request_redraw(&wl_surface);
     }
 }
-
-delegate_session_lock!(SctkState);

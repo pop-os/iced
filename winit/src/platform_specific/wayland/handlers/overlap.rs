@@ -24,19 +24,19 @@ impl OverlapNotifyV1 {
         globals: &GlobalList,
         qh: &QueueHandle<SctkState>,
     ) -> Result<OverlapNotifyV1, BindError> {
-        let notify = globals.bind(qh, 1..=1, GlobalData)?;
+        let notify = globals.bind_singleton(qh, 1..=1, GlobalData)?;
         Ok(OverlapNotifyV1 { notify })
     }
 }
 
-impl Dispatch<ZcosmicOverlapNotifyV1, GlobalData, SctkState>
-    for OverlapNotifyV1
+impl Dispatch<ZcosmicOverlapNotifyV1, SctkState>
+    for GlobalData
 {
     fn event(
+        &self,
         _: &mut SctkState,
         _: &ZcosmicOverlapNotifyV1,
         _: <ZcosmicOverlapNotifyV1 as Proxy>::Event,
-        _: &GlobalData,
         _: &Connection,
         _: &QueueHandle<SctkState>,
     ) {
@@ -47,18 +47,18 @@ pub struct OverlapNotificationV1 {
     pub surface: WlSurface,
 }
 
-impl Dispatch<ZcosmicOverlapNotificationV1, OverlapNotificationV1, SctkState>
+impl Dispatch<ZcosmicOverlapNotificationV1, SctkState>
     for OverlapNotificationV1
 {
     fn event(
+        &self,
         state: &mut SctkState,
         _: &ZcosmicOverlapNotificationV1,
         event: <ZcosmicOverlapNotificationV1 as Proxy>::Event,
-        data: &OverlapNotificationV1,
         _: &Connection,
         _: &QueueHandle<SctkState>,
     ) {
-        let surface = data.surface.clone();
+        let surface = self.surface.clone();
 
         state.sctk_events.push(match event {
             zcosmic_overlap_notification_v1::Event::ToplevelEnter {
@@ -90,14 +90,11 @@ impl Dispatch<ZcosmicOverlapNotificationV1, OverlapNotificationV1, SctkState>
                 width,
                 height,
             } => SctkEvent::OverlapLayerAdd { surface, namespace, identifier, exclusive, layer: match layer {
-                wayland_client::WEnum::Value(v) => match v {
-                    cctk::sctk::reexports::protocols_wlr::layer_shell::v1::client::zwlr_layer_shell_v1::Layer::Background => Some(Layer::Background),
-                    cctk::sctk::reexports::protocols_wlr::layer_shell::v1::client::zwlr_layer_shell_v1::Layer::Bottom => Some(Layer::Bottom),
-                    cctk::sctk::reexports::protocols_wlr::layer_shell::v1::client::zwlr_layer_shell_v1::Layer::Top => Some(Layer::Top),
-                    cctk::sctk::reexports::protocols_wlr::layer_shell::v1::client::zwlr_layer_shell_v1::Layer::Overlay => Some(Layer::Overlay),
-                    _ => Default::default(),
-                },
-                wayland_client::WEnum::Unknown(_) => Default::default(),
+                cctk::sctk::reexports::protocols_wlr::layer_shell::v1::client::zwlr_layer_shell_v1::Layer::Background => Some(Layer::Background),
+                cctk::sctk::reexports::protocols_wlr::layer_shell::v1::client::zwlr_layer_shell_v1::Layer::Bottom => Some(Layer::Bottom),
+                cctk::sctk::reexports::protocols_wlr::layer_shell::v1::client::zwlr_layer_shell_v1::Layer::Top => Some(Layer::Top),
+                cctk::sctk::reexports::protocols_wlr::layer_shell::v1::client::zwlr_layer_shell_v1::Layer::Overlay => Some(Layer::Overlay),
+                _ => Default::default(),
             }, logical_rect: Rectangle::new(
                 (x as f32, y as f32).into(),
                 (width as f32, height as f32).into(),
@@ -108,11 +105,4 @@ impl Dispatch<ZcosmicOverlapNotificationV1, OverlapNotificationV1, SctkState>
             _ => unimplemented!(),
         });
     }
-
-    event_created_child!(SctkState, ZcosmicOverlapNotifyV1, [
-        0 => (ExtForeignToplevelHandleV1, Default::default())
-    ]);
 }
-
-wayland_client::delegate_dispatch!(SctkState: [ZcosmicOverlapNotifyV1: GlobalData] => OverlapNotifyV1);
-wayland_client::delegate_dispatch!(SctkState: [ZcosmicOverlapNotificationV1: OverlapNotificationV1] => OverlapNotificationV1);

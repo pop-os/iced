@@ -27,7 +27,7 @@ use cctk::{
 use cctk::{
     sctk::{
         activation::ActivationState,
-        compositor::CompositorState,
+        compositor::{CompositorState, FrameCallbackData},
         globals::GlobalData,
         output::OutputState,
         reexports::{
@@ -36,7 +36,6 @@ use cctk::{
                 Connection, Proxy, globals::registry_queue_init,
             },
         },
-        registry::RegistryState,
         seat::SeatState,
         session_lock::SessionLockState,
         shell::{WaylandSurface, wlr_layer::LayerShell, xdg::XdgShell},
@@ -52,7 +51,7 @@ use std::{
 };
 use log::error;
 use wayland_backend::client::Backend;
-use wayland_client::globals::GlobalError;
+use wayland_client::{globals::GlobalError, NoopIgnore};
 use wayland_protocols::wp::{keyboard_shortcuts_inhibit::zv1::client::zwp_keyboard_shortcuts_inhibit_manager_v1, text_input::zv3::client::zwp_text_input_v3::{ContentHint, ContentPurpose}};
 use winit::{dpi::LogicalSize, event_loop::OwnedDisplayHandle, window::ImePurpose};
 
@@ -98,7 +97,7 @@ impl SctkEventLoop {
         };
 
         let backend = unsafe {
-            Backend::from_foreign_display(wayland_dh.display.as_ptr().cast())
+            Backend::from_foreign_display(wayland_dh.display.cast())
         };
         let connection = Connection::from_backend(backend);
 
@@ -113,7 +112,6 @@ impl SctkEventLoop {
                 let loop_handle = event_loop.handle();
 
                 let qh = event_queue.handle();
-                let registry_state = RegistryState::new(&globals);
 
                 _ = loop_handle
                 .insert_source(action_rx, |event, _, state| {
@@ -157,7 +155,7 @@ impl SctkEventLoop {
                                         .enumerate()
                                         .filter_map(|(i, s)| {
                                             (winit::window::WindowId::from_raw(
-                                                s.instance.parent.id().as_ptr()
+                                                s.instance.parent.id().as_ptr().unwrap().as_ptr()
                                                     as usize,
                                             ) == w.window.id())
                                             .then_some(i)
@@ -343,26 +341,26 @@ impl SctkEventLoop {
                         overlap_notify: OverlapNotifyV1::bind(&globals, &qh)
                             .ok(),
                         toplevel_info: ToplevelInfoState::try_new(
-                            &registry_state,
+                            &globals,
                             &qh,
                         ),
-                        corner_radius_manager: registry_state.bind_one::<CosmicCornerRadiusManagerV1, _, _>(
+                        corner_radius_manager: globals.bind_singleton::<CosmicCornerRadiusManagerV1, _, _>(
                             &qh,
                             1..=2,
                             (),
                         ).ok(),
                         toplevel_manager: ToplevelManagerState::try_new(
-                            &registry_state,
+                            &globals,
                             &qh,
                         ),
-                        inhibitor_manager: registry_state.bind_one::<zwp_keyboard_shortcuts_inhibit_manager_v1::ZwpKeyboardShortcutsInhibitManagerV1, _, _>(
+                        inhibitor_manager: globals.bind_singleton::<zwp_keyboard_shortcuts_inhibit_manager_v1::ZwpKeyboardShortcutsInhibitManagerV1, _, _>(
                             &qh,
                             1..=1,
                             (),
                         ).ok(),
-                        text_input_manager: TextInputManager::try_new(&registry_state, &qh),
+                        text_input_manager: TextInputManager::try_new(&globals, &qh),
                         ext_background_effect_manager: ext_background_effect::ExtBackgroundEffectManager::new(&globals, &qh).ok(),
-                        registry_state,
+                        globals,
 
                         queue_handle: qh,
                         loop_handle,
@@ -407,33 +405,33 @@ impl SctkEventLoop {
                 };
                 let wl_compositor = state
                     .state
-                    .registry_state
-                    .bind_one(&state.state.queue_handle, 1..=6, GlobalData)
+                    .globals
+                    .bind_singleton(&state.state.queue_handle, 1..=6, GlobalData)
                     .unwrap();
-                let wl_subcompositor = state.state.registry_state.bind_one(
+                let wl_subcompositor = state.state.globals.bind_singleton(
                     &state.state.queue_handle,
                     1..=1,
                     GlobalData,
                 );
-                let wp_viewporter = state.state.registry_state.bind_one(
+                let wp_viewporter = state.state.globals.bind_singleton(
                     &state.state.queue_handle,
                     1..=1,
                     GlobalData,
                 );
                 let wl_shm = state
                     .state
-                    .registry_state
-                    .bind_one(&state.state.queue_handle, 1..=1, GlobalData)
+                    .globals
+                    .bind_singleton(&state.state.queue_handle, 1..=1, GlobalData)
                     .unwrap();
                 let wp_dmabuf = state
                     .state
-                    .registry_state
-                    .bind_one(&state.state.queue_handle, 2..=4, GlobalData)
+                    .globals
+                    .bind_singleton(&state.state.queue_handle, 2..=4, GlobalData)
                     .ok();
                 let wp_alpha_modifier = state
                     .state
-                    .registry_state
-                    .bind_one(&state.state.queue_handle, 1..=1, ())
+                    .globals
+                    .bind_singleton(&state.state.queue_handle, 1..=1, NoopIgnore)
                     .ok();
 
                 if let (Ok(wl_subcompositor), Ok(wp_viewporter)) =
@@ -537,12 +535,12 @@ impl SctkEventLoop {
                         }
                         wake_up = true;
 
-                        _ = s.frame(&state.state.queue_handle, s.clone());
+                        _ = s.frame(&state.state.queue_handle, FrameCallbackData(s.clone()));
                         _ = state.state.frame_status.remove(&id);
                         _ = state.state.events_sender.unbounded_send(
                             Control::Winit(
                                 winit::window::WindowId::from_raw(
-                                    id.as_ptr() as usize
+                                    id.as_ptr().unwrap().as_ptr() as usize
                                 ),
                                 winit::event::WindowEvent::RedrawRequested,
                             ),

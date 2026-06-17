@@ -4,7 +4,7 @@
 use cctk::sctk::reexports::client::globals::{BindError, GlobalList};
 use cctk::sctk::reexports::client::protocol::wl_surface::WlSurface;
 use cctk::sctk::reexports::client::Dispatch;
-use cctk::sctk::reexports::client::{delegate_dispatch, Connection, Proxy, QueueHandle};
+use cctk::sctk::reexports::client::{Connection, Proxy, QueueHandle};
 use cctk::sctk::reexports::protocols::wp::fractional_scale::v1::client::wp_fractional_scale_manager_v1::WpFractionalScaleManagerV1;
 use cctk::sctk::reexports::protocols::wp::fractional_scale::v1::client::wp_fractional_scale_v1::Event as FractionalScalingEvent;
 use cctk::sctk::reexports::protocols::wp::fractional_scale::v1::client::wp_fractional_scale_v1::WpFractionalScaleV1;
@@ -33,7 +33,7 @@ impl FractionalScalingManager {
         globals: &GlobalList,
         queue_handle: &QueueHandle<SctkState>,
     ) -> Result<Self, BindError> {
-        let manager = globals.bind(queue_handle, 1..=1, GlobalData)?;
+        let manager = globals.bind_singleton(queue_handle, 1..=1, GlobalData)?;
         Ok(Self { manager })
     }
 
@@ -50,14 +50,14 @@ impl FractionalScalingManager {
     }
 }
 
-impl Dispatch<WpFractionalScaleManagerV1, GlobalData, SctkState>
-    for FractionalScalingManager
+impl Dispatch<WpFractionalScaleManagerV1, SctkState>
+    for GlobalData
 {
     fn event(
+        &self,
         _: &mut SctkState,
         _: &WpFractionalScaleManagerV1,
         _: <WpFractionalScaleManagerV1 as Proxy>::Event,
-        _: &GlobalData,
         _: &Connection,
         _: &QueueHandle<SctkState>,
     ) {
@@ -65,26 +65,23 @@ impl Dispatch<WpFractionalScaleManagerV1, GlobalData, SctkState>
     }
 }
 
-impl Dispatch<WpFractionalScaleV1, FractionalScaling, SctkState>
-    for FractionalScalingManager
+impl Dispatch<WpFractionalScaleV1, SctkState>
+    for FractionalScaling
 {
     fn event(
+        &self,
         state: &mut SctkState,
         _: &WpFractionalScaleV1,
         event: <WpFractionalScaleV1 as Proxy>::Event,
-        data: &FractionalScaling,
         _: &Connection,
         _: &QueueHandle<SctkState>,
     ) {
         if let FractionalScalingEvent::PreferredScale { scale } = event {
             state.scale_factor_changed(
-                &data.surface,
+                &self.surface,
                 scale as f64 / SCALE_DENOMINATOR,
                 false,
             );
         }
     }
 }
-
-delegate_dispatch!(SctkState: [WpFractionalScaleManagerV1: GlobalData] => FractionalScalingManager);
-delegate_dispatch!(SctkState: [WpFractionalScaleV1: FractionalScaling] => FractionalScalingManager);

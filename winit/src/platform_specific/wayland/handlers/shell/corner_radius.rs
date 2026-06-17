@@ -25,26 +25,32 @@ impl Drop for CornerRadiusWrapper {
     }
 }
 
-impl Dispatch<CosmicCornerRadiusManagerV1, ()> for SctkState {
+impl Dispatch<CosmicCornerRadiusManagerV1, SctkState> for () {
     fn event(
-        _state: &mut Self,
+        &self,
+        _state: &mut SctkState,
         _proxy: &CosmicCornerRadiusManagerV1,
         _event: <CosmicCornerRadiusManagerV1 as Proxy>::Event,
-        _data: &(),
         _conn: &Connection,
         _qhandle: &sctk::reexports::client::QueueHandle<Self>,
+        _qhandle: &sctk::reexports::client::QueueHandle<SctkState>,
     ) {
     }
 }
 
-impl Dispatch<CosmicCornerRadiusToplevelV1, ()> for SctkState {
+impl
+    Dispatch<
+        CosmicCornerRadiusToplevelV1,
+        SctkState,
+    > for ()
+{
     fn event(
-        state: &mut Self,
+        &self,
+        state: &mut SctkState,
         _proxy: &CosmicCornerRadiusToplevelV1,
         event: <CosmicCornerRadiusToplevelV1 as Proxy>::Event,
-        _data: &(),
         _conn: &Connection,
-        _qhandle: &sctk::reexports::client::QueueHandle<Self>,
+        _qhandle: &sctk::reexports::client::QueueHandle<SctkState>,
     ) {
         match event {
             _ => unimplemented!(),

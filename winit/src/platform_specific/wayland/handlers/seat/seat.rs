@@ -3,7 +3,6 @@ use crate::platform_specific::wayland::{
     sctk_event::{KeyboardEventVariant, SctkEvent, SeatEventVariant},
 };
 use cctk::sctk::{
-    delegate_seat,
     reexports::client::{Proxy, protocol::wl_keyboard::WlKeyboard},
     seat::{SeatHandler, keyboard::Modifiers, pointer::ThemeSpec},
 };
@@ -110,7 +109,7 @@ impl SeatHandler for SctkState {
             cctk::sctk::seat::Capability::Pointer => {
                 let surface = self.compositor_state.create_surface(qh);
 
-                if let Ok(ptr) = self.seat_state.get_pointer_with_theme(
+                if let Ok(ptr) = self.seat_state.get_pointer_with_theme::<_, ()>(
                     qh,
                     &seat,
                     self.shm_state.wl_shm(),
@@ -224,5 +223,3 @@ impl SeatHandler for SctkState {
         }
     }
 }
-
-delegate_seat!(SctkState);

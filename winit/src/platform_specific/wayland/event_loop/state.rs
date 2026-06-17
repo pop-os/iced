@@ -46,13 +46,13 @@ use cctk::{
     },
     sctk::{
         activation::{ActivationState, RequestData},
-        compositor::CompositorState,
+        compositor::{CompositorState, FrameCallbackData},
         error::GlobalError,
         output::OutputState,
         reexports::{
             calloop::{LoopHandle, timer::TimeoutAction},
             client::{
-                Connection, Proxy, QueueHandle, delegate_noop,
+                Connection, Proxy, QueueHandle,
                 protocol::{
                     wl_keyboard::WlKeyboard,
                     wl_output::WlOutput,
@@ -65,7 +65,6 @@ use cctk::{
             },
             protocols_wlr::layer_shell::v1::client::zwlr_layer_surface_v1::ZwlrLayerSurfaceV1,
         },
-        registry::RegistryState,
         seat::{
             SeatState,
             keyboard::{KeyEvent, Modifiers},
@@ -91,6 +90,7 @@ use cctk::{
     },
     toplevel_info::ToplevelInfoState,
     toplevel_management::ToplevelManagerState,
+    wayland_client::{globals::GlobalList, NoopIgnore},
 };
 use iced_runtime::{
     core::{self, Point, touch},
@@ -362,7 +362,7 @@ impl SctkWindow {
             h.surface
         };
         let id = unsafe {
-            ObjectId::from_ptr(WlSurface::interface(), ptr.as_ptr().cast())
+            ObjectId::from_ptr(WlSurface::interface(), ptr.cast())
         }
         .unwrap();
         WlSurface::from_id(conn, id).unwrap()
@@ -377,7 +377,7 @@ impl SctkWindow {
             h.as_raw()
         };
         let id = unsafe {
-            ObjectId::from_ptr(XdgSurface::interface(), ptr.as_ptr().cast())
+            ObjectId::from_ptr(XdgSurface::interface(), ptr.cast())
         }
         .unwrap();
         XdgSurface::from_id(conn, id).unwrap()
@@ -389,7 +389,7 @@ impl SctkWindow {
         let id = unsafe {
             ObjectId::from_ptr(
                 XdgToplevel::interface(),
-                window_handle.as_ptr().cast(),
+                window_handle.cast(),
             )
         }
         .unwrap();
@@ -460,7 +460,7 @@ pub struct SctkState {
     /// Viewporter state on the given window.
     pub viewporter_state: Option<ViewporterState>,
     pub(crate) fractional_scaling_manager: Option<FractionalScalingManager>,
-    pub(crate) registry_state: RegistryState,
+    pub(crate) globals: GlobalList,
     pub(crate) seat_state: SeatState,
     pub(crate) output_state: OutputState,
     pub(crate) compositor_state: CompositorState,
@@ -767,7 +767,7 @@ impl SctkState {
             let region = self
                 .compositor_state
                 .wl_compositor()
-                .create_region(&self.queue_handle, ());
+                .create_region(&self.queue_handle, NoopIgnore);
             for rect in zone {
                 region.add(
                     rect.x.round() as i32,
@@ -854,13 +854,13 @@ impl SctkState {
                 let ptr_data = s
                     .ptr
                     .as_ref()
-                    .and_then(|p| p.pointer().data::<PointerData>())
+                    .and_then(|p| p.pointer().data::<PointerData<()>>())
                     .and_then(|data| data.latest_button_serial());
                 if let Some(serial) = ptr_data
                     .or_else(|| {
                         s.touch
                             .as_ref()
-                            .and_then(|t| t.data::<TouchData>())
+                            .and_then(|t| t.data::<TouchData<()>>())
                             .and_then(|t| t.latest_down_serial())
                     })
                     .or_else(|| s.last_kbd_press.as_ref().map(|p| p.1))
@@ -872,7 +872,7 @@ impl SctkState {
             }
         }
 
-        _ = wl_surface.frame(&self.queue_handle, wl_surface.clone());
+        _ = wl_surface.frame(&self.queue_handle, FrameCallbackData(wl_surface.clone()));
 
         if let Some(blur) = self.pending_blur.remove(&settings.id) {
             self.apply_blur(settings.id, Some(blur), &wl_surface);
@@ -999,7 +999,7 @@ impl SctkState {
             let region = self
                 .compositor_state
                 .wl_compositor()
-                .create_region(&self.queue_handle, ());
+                .create_region(&self.queue_handle, NoopIgnore);
             for rect in zone {
                 region.add(
                     rect.x.round() as i32,
@@ -1224,7 +1224,7 @@ impl SctkState {
                                     let region = self
                                         .compositor_state
                                         .wl_compositor()
-                                        .create_region(&self.queue_handle, ());
+                                        .create_region(&self.queue_handle, NoopIgnore);
                                     for rect in zone {
                                         region.add(
                                             rect.x.round() as i32,
@@ -1523,14 +1523,13 @@ impl SctkState {
                         };
 
 
-                        activation_state.request_token_with_data(&self.queue_handle,
-                            IcedRequestData::new(RequestData {
-                                    app_id,
-                                    seat_and_serial,
-                                    surface,
-                                },
-                            self.activation_token_ctr
-                            )
+                        activation_state.request_token(&self.queue_handle,
+                            RequestData {
+                                app_id,
+                                seat_and_serial,
+                                surface,
+                                udata: IcedRequestData::new(self.activation_token_ctr)
+                            },
                         );
                         _ = self.token_senders.insert(self.activation_token_ctr, channel);
                         self.activation_token_ctr = self.activation_token_ctr.wrapping_add(1);
@@ -2001,15 +2000,15 @@ impl SctkState {
             &wl_surface,
             parent_wl_surface,
             &self.queue_handle,
-            (),
+            NoopIgnore,
         );
         wl_subsurface.set_position(bounds.x as i32, bounds.y as i32);
-        _ = wl_surface.frame(&self.queue_handle, wl_surface.clone());
+        _ = wl_surface.frame(&self.queue_handle, FrameCallbackData(wl_surface.clone()));
         if let Some(zone) = &settings.input_zone {
             let region = self
                 .compositor_state
                 .wl_compositor()
-                .create_region(&self.queue_handle, ());
+                .create_region(&self.queue_handle, NoopIgnore);
             for rect in zone {
                 region.add(
                     rect.x.round() as i32,
@@ -2043,7 +2042,7 @@ impl SctkState {
                 wp_alpha_modifier.get_surface(
                     &wl_surface,
                     &self.queue_handle,
-                    (),
+                    NoopIgnore,
                 )
             });
         wp_viewport.set_destination(size.width as i32, size.height as i32);
@@ -2074,7 +2073,7 @@ impl SctkState {
                 .is_some_and(|s| s == parent_wl_surface)
             {
                 let id = winit::window::WindowId::from_raw(
-                    wl_surface.id().as_ptr() as usize,
+                    wl_surface.id().as_ptr().unwrap().as_ptr() as usize,
                 );
                 self.sctk_events.push(SctkEvent::Winit(
                     id,
@@ -2128,6 +2127,3 @@ pub(crate) fn send_event(
         .unbounded_send(Control::PlatformSpecific(Event::Wayland(sctk_event)));
     proxy.wake_up();
 }
-
-delegate_noop!(SctkState: ignore WlSubsurface);
-delegate_noop!(SctkState: ignore WlRegion);

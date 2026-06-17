@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0-only
 use cctk::sctk::{
     compositor::CompositorHandler,
-    delegate_compositor,
     reexports::client::{
         Connection, QueueHandle,
         protocol::{wl_output, wl_surface},
@@ -63,5 +62,3 @@ impl CompositorHandler for SctkState {
     ) {
     }
 }
-
-delegate_compositor!(SctkState);

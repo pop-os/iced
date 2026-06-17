@@ -5,7 +5,6 @@ use crate::{
     },
 };
 use cctk::sctk::{
-    delegate_pointer,
     reexports::client::Proxy,
     seat::pointer::{
         CursorIcon, PointerEvent, PointerEventKind, PointerHandler,
@@ -44,7 +43,7 @@ impl PointerHandler for SctkState {
 
             if is_active {
                 let id = winit::window::WindowId::from_raw(
-                    e.surface.id().as_ptr() as usize,
+                    e.surface.id().as_ptr().unwrap().as_ptr() as usize,
                 );
                 if self.windows.iter().any(|w| w.window.id() == id) {
                     continue;
@@ -89,5 +88,3 @@ impl PointerHandler for SctkState {
         }
     }
 }
-
-delegate_pointer!(SctkState);

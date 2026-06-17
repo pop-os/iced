@@ -9,30 +9,30 @@ use sctk::reexports::{
 use crate::event_loop::state::SctkState;
 use crate::platform_specific::wayland::SctkEvent;
 
-impl Dispatch<keyboard_shortcuts_inhibit::zv1::client::zwp_keyboard_shortcuts_inhibit_manager_v1::ZwpKeyboardShortcutsInhibitManagerV1, ()> for SctkState {
+impl Dispatch<keyboard_shortcuts_inhibit::zv1::client::zwp_keyboard_shortcuts_inhibit_manager_v1::ZwpKeyboardShortcutsInhibitManagerV1, SctkState> for () {
     fn event(
-        _state: &mut Self,
+        &self,
+        _state: &mut SctkState,
         _proxy: &keyboard_shortcuts_inhibit::zv1::client::zwp_keyboard_shortcuts_inhibit_manager_v1::ZwpKeyboardShortcutsInhibitManagerV1,
         _event: <keyboard_shortcuts_inhibit::zv1::client::zwp_keyboard_shortcuts_inhibit_manager_v1::ZwpKeyboardShortcutsInhibitManagerV1 as Proxy>::Event,
-        _data: &(),
         _conn: &Connection,
-        _qhandle: &sctk::reexports::client::QueueHandle<Self>,
+        _qhandle: &sctk::reexports::client::QueueHandle<SctkState>,
     ) {}
 }
 
 impl
     Dispatch<
         zwp_keyboard_shortcuts_inhibitor_v1::ZwpKeyboardShortcutsInhibitorV1,
-        (),
-    > for SctkState
+        SctkState,
+    > for ()
 {
     fn event(
-        state: &mut Self,
+        &self,
+        state: &mut SctkState,
         _proxy: &zwp_keyboard_shortcuts_inhibitor_v1::ZwpKeyboardShortcutsInhibitorV1,
         event: <zwp_keyboard_shortcuts_inhibitor_v1::ZwpKeyboardShortcutsInhibitorV1 as Proxy>::Event,
-        _data: &(),
         _conn: &Connection,
-        _qhandle: &sctk::reexports::client::QueueHandle<Self>,
+        _qhandle: &sctk::reexports::client::QueueHandle<SctkState>,
     ) {
         match event {
             zwp_keyboard_shortcuts_inhibitor_v1::Event::Active => {

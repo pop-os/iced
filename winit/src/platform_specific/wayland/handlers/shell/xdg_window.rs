@@ -1,6 +1,6 @@
 use crate::platform_specific::wayland::event_loop::state::SctkState;
 use cctk::sctk::{
-    delegate_xdg_shell, delegate_xdg_window, shell::xdg::window::WindowHandler,
+    shell::xdg::window::WindowHandler,
 };
 
 impl WindowHandler for SctkState {
@@ -22,6 +22,3 @@ impl WindowHandler for SctkState {
     ) {
     }
 }
-
-delegate_xdg_window!(SctkState);
-delegate_xdg_shell!(SctkState);

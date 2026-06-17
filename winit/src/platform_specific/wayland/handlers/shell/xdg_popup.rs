@@ -4,7 +4,7 @@ use crate::platform_specific::wayland::{
     sctk_event::{PopupEventVariant, SctkEvent},
 };
 use cctk::sctk::{
-    delegate_xdg_popup, reexports::client::Proxy,
+    reexports::client::Proxy,
     shell::xdg::popup::PopupHandler,
 };
 use winit::dpi::LogicalSize;
@@ -101,4 +101,3 @@ impl PopupHandler for SctkState {
         }
     }
 }
-delegate_xdg_popup!(SctkState);

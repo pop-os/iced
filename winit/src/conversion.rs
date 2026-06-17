@@ -1552,6 +1552,7 @@ pub fn native_key_code(
             keyboard::key::NativeCode::Windows(code)
         }
         NativeKeyCode::Xkb(code) => keyboard::key::NativeCode::Xkb(code),
+        NativeKeyCode::Ohos(_code) => keyboard::key::NativeCode::Unidentified,
     }
 }
 
