@@ -1287,6 +1287,23 @@ impl<Message> Binding<Message> {
             return Some(binding);
         }
 
+        let alt_clipboard = match key.as_ref() {
+            keyboard::Key::Named(key::Named::Insert) if modifiers.shift() => {
+                Some(Self::Paste)
+            }
+            keyboard::Key::Named(key::Named::Insert) if modifiers.command() => {
+                Some(Self::Copy)
+            }
+            keyboard::Key::Named(key::Named::Delete) if modifiers.shift() => {
+                Some(Self::Cut)
+            }
+            _ => None,
+        };
+
+        if let Some(binding) = alt_clipboard {
+            return Some(binding);
+        }
+
         #[cfg(target_os = "macos")]
         let modified_key =
             convert_macos_shortcut(&key, modifiers).unwrap_or(modified_key);
