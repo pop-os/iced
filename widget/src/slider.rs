@@ -110,6 +110,8 @@ where
     height: f32,
     class: Theme::Class<'a>,
     status: Option<Status>,
+    handle_width: f32,
+    handle_height: f32,
 }
 
 impl<'a, T, Message, Theme> Slider<'a, T, Message, Theme>
@@ -119,7 +121,13 @@ where
     Theme: Catalog,
 {
     /// The default height of a [`Slider`].
-    pub const DEFAULT_HEIGHT: f32 = 16.0;
+    pub const DEFAULT_HEIGHT: f32 = 26.0;
+
+    /// The default max height of a [`Handle`].
+    pub const DEFAULT_MAX_HANDLE_HEIGHT: f32 = 26.0;
+
+    /// The default max width of a [`Handle`].
+    pub const DEFAULT_MAX_HANDLE_WIDTH: f32 = 26.0;
 
     /// Creates a new [`Slider`].
     ///
@@ -165,6 +173,8 @@ where
             height: Self::DEFAULT_HEIGHT,
             class: Theme::default(),
             status: None,
+            handle_width: Self::DEFAULT_MAX_HANDLE_WIDTH,
+            handle_height: Self::DEFAULT_MAX_HANDLE_HEIGHT,
         }
     }
 
@@ -204,6 +214,24 @@ where
     /// Sets the height of the [`Slider`].
     pub fn height(mut self, height: impl Into<Pixels>) -> Self {
         self.height = height.into().0;
+        self
+    }
+
+    /// Sets the max width of the [`Handle`].
+    ///
+    /// Theme can be used to change the size and shape of handle
+    /// but width of handle defined in theme will not exceed this width
+    pub fn handle_width(mut self, width: impl Into<Pixels>) -> Self {
+        self.handle_width = width.into().0;
+        self
+    }
+
+    /// Sets the max height of the [`Handle`].
+    ///
+    /// Theme can be used to change the size and shape of handle
+    /// but height of handle defined in theme will not exceed this height
+    pub fn handle_height(mut self, height: impl Into<Pixels>) -> Self {
+        self.handle_height = height.into().0;
         self
     }
 
@@ -323,8 +351,15 @@ where
         let mut update = || {
             let current_value = self.value;
 
+            self.handle_width = self.handle_width.min(layout.bounds().width);
+            self.handle_height = self.handle_height.min(layout.bounds().height);
+
             let locate = |cursor_position: Point| -> Option<T> {
-                let bounds = layout.bounds();
+                let bounds = Rectangle {
+                    x: layout.bounds().x + self.handle_width / 2.0,
+                    width: layout.bounds().width - self.handle_width,
+                    ..layout.bounds()
+                };
 
                 if cursor_position.x <= bounds.x {
                     Some(*self.range.start())
@@ -509,53 +544,29 @@ where
         _cursor: mouse::Cursor,
         _viewport: &Rectangle,
     ) {
-        let bounds = layout.bounds();
+        let bounds = Rectangle {
+            x: layout.bounds().x + self.handle_width / 2.0,
+            width: layout.bounds().width - self.handle_width,
+            ..layout.bounds()
+        };
 
         let style =
             theme.style(&self.class, self.status.unwrap_or(Status::Active));
 
-        let border_width = style
-            .handle
-            .border_width
-            .min(bounds.height / 2.0)
-            .min(bounds.width / 2.0);
-
-        let (handle_width, handle_height, handle_border_radius) =
+        let (mut handle_width, mut handle_height, handle_border_radius) =
             match style.handle.shape {
                 HandleShape::Circle { radius } => {
-                    let radius = (radius)
-                        .max(2.0 * border_width)
-                        .min(bounds.height / 2.0)
-                        .min(bounds.width / 2.0 + 2.0 * border_width);
                     (radius * 2.0, radius * 2.0, Radius::from(radius))
                 }
                 HandleShape::Rectangle {
                     height,
                     width,
                     border_radius,
-                } => {
-                    let width = (f32::from(width)).max(2.0 * border_width);
-                    let height = (f32::from(height)).max(2.0 * border_width);
-                    let mut border_radius: [f32; 4] = border_radius.into();
-                    for r in &mut border_radius {
-                        *r = (*r)
-                            .min(height / 2.0)
-                            .min(width / 2.0)
-                            .max(*r * (width + border_width * 2.0) / width);
-                    }
-
-                    (
-                        width,
-                        height,
-                        Radius {
-                            top_left: border_radius[0],
-                            top_right: border_radius[1],
-                            bottom_right: border_radius[2],
-                            bottom_left: border_radius[3],
-                        },
-                    )
-                }
+                } => (f32::from(width), f32::from(height), border_radius),
             };
+
+        handle_width = handle_width.min(self.handle_width);
+        handle_height = handle_height.min(self.handle_height);
 
         let value = self.value.into() as f32;
         let (range_start, range_end) = {
@@ -567,8 +578,7 @@ where
         let offset = if range_start >= range_end {
             0.0
         } else {
-            (bounds.width - handle_width) * (value - range_start)
-                / (range_end - range_start)
+            bounds.width * (value - range_start) / (range_end - range_start)
         };
 
         let rail_y = bounds.y + bounds.height / 2.0;
@@ -590,7 +600,8 @@ where
                         x: bounds.x + offset,
                         y: rail_y + 6.0,
                         width: BREAKPOINT_WIDTH,
-                        height: 8.0,
+                        height: 8.0_f32
+                            .min(bounds.y + bounds.height - (rail_y + 6.0)),
                     },
                     border: Border {
                         radius: 0.0.into(),
@@ -607,9 +618,9 @@ where
             renderer::Quad {
                 bounds: Rectangle {
                     x: bounds.x,
-                    y: rail_y - style.rail.width / 2.0,
-                    width: offset + handle_width / 2.0,
-                    height: style.rail.width,
+                    y: rail_y - (style.rail.width).min(bounds.height) / 2.0,
+                    width: offset,
+                    height: (style.rail.width).min(bounds.height),
                 },
                 border: style.rail.border,
                 ..renderer::Quad::default()
@@ -622,10 +633,10 @@ where
         renderer.fill_quad(
             renderer::Quad {
                 bounds: Rectangle {
-                    x: bounds.x + offset + handle_width / 2.0,
-                    y: rail_y - style.rail.width / 2.0,
-                    width: bounds.width - offset - handle_width / 2.0,
-                    height: style.rail.width,
+                    x: bounds.x + offset,
+                    y: rail_y - (style.rail.width).min(bounds.height) / 2.0,
+                    width: bounds.width - offset,
+                    height: (style.rail.width).min(bounds.height),
                 },
                 border: style.rail.border,
                 ..renderer::Quad::default()
@@ -637,7 +648,7 @@ where
         renderer.fill_quad(
             renderer::Quad {
                 bounds: Rectangle {
-                    x: bounds.x + offset,
+                    x: bounds.x + offset - handle_width / 2.0,
                     y: rail_y - (handle_height / 2.0),
                     width: handle_width,
                     height: handle_height,
