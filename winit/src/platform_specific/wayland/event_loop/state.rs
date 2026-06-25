@@ -1454,6 +1454,49 @@ impl SctkState {
                             SctkEvent::PopupEvent { variant: crate::sctk_event::PopupEventVariant::Size(width, height), toplevel_id: sctk_popup.data.parent.wl_surface().clone(), parent_id: sctk_popup.data.parent.wl_surface().clone(), id: surface });
                     }
                 },
+                platform_specific::wayland::popup::Action::Reposition { id, positioner } => {
+                    if let Some(sctk_popup) = self
+                        .popups
+                        .iter_mut()
+                        .find(|s| s.data.id == id)
+                    {
+                        sctk_popup.data.positioner.set_anchor(positioner.anchor);
+                        sctk_popup.data.positioner.set_anchor_rect(
+                            positioner.anchor_rect.x,
+                            positioner.anchor_rect.y,
+                            positioner.anchor_rect.width,
+                            positioner.anchor_rect.height,
+                        );
+                        if let Ok(constraint_adjustment) =
+                            positioner.constraint_adjustment.try_into()
+                        {
+                           sctk_popup.data.positioner.set_constraint_adjustment(constraint_adjustment);
+                        }
+                        sctk_popup.data.positioner.set_gravity(positioner.gravity);
+                        sctk_popup.data.positioner.set_offset(
+                            positioner.offset.0,
+                            positioner.offset.1,
+                        );
+                        if positioner.reactive {
+                           sctk_popup.data.positioner.set_reactive();
+                        }
+                        let guard =sctk_popup.common.lock().unwrap();
+                        let w = guard.size.width;
+                        let h = guard.size.height;
+                        drop(guard);
+                        let size = positioner.size.unwrap_or((w, h));
+                        sctk_popup.popup
+                                    .xdg_surface()
+                                    .set_window_geometry(0, 0, w as i32, h as i32);
+                        sctk_popup.update_viewport(w, h);
+                        // update positioner
+                        sctk_popup.data.positioner.set_size(w as i32, h as i32);
+                        sctk_popup.popup.reposition(&sctk_popup.data.positioner, TOKEN_CTR.fetch_add(1, std::sync::atomic::Ordering::Relaxed));                        let surface = sctk_popup.popup.wl_surface().clone();
+                        dbg!("repositioning...");
+                        _ = send_event(&self.events_sender, &self.proxy,
+                            SctkEvent::PopupEvent { variant: crate::sctk_event::PopupEventVariant::Size(size.0, size.1), toplevel_id: sctk_popup.data.parent.wl_surface().clone(), parent_id: sctk_popup.data.parent.wl_surface().clone(), id: surface });
+                    }
+                },
             },
             Action::Activation(activation_event) => match activation_event {
                 platform_specific::wayland::activation::Action::RequestToken { app_id, window, channel } => {

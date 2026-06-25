@@ -124,25 +124,33 @@ pub enum Action {
         /// height
         height: u32,
     },
+    /// set the size of the popup
+    Reposition {
+        /// id of the popup
+        id: Id,
+        /// positioner of the popup
+        positioner: SctkPositioner,
+    },
 }
 
 impl fmt::Debug for Action {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Action::Popup { popup, .. } => write!(
-                f,
-                "Action::PopupAction::Popup {{ popup: {:?} }}",
-                popup
-            ),
-            Action::Destroy { id } => write!(
-                f,
-                "Action::PopupAction::Destroy {{ id: {:?} }}",
-                id
-            ),
+            Action::Popup { popup, .. } => {
+                write!(f, "Action::PopupAction::Popup {{ popup: {:?} }}", popup)
+            }
+            Action::Destroy { id } => {
+                write!(f, "Action::PopupAction::Destroy {{ id: {:?} }}", id)
+            }
             Action::Size { id, width, height } => write!(
                 f,
                 "Action::PopupAction::Size {{ id: {:?}, width: {:?}, height: {:?} }}",
                 id, width, height
+            ),
+            Action::Reposition { id, positioner } => write!(
+                f,
+                "Action::Reposition {{ id: {:?}, positioner: {:?} }}",
+                id, positioner
             ),
         }
     }

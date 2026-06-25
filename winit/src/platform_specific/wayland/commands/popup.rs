@@ -1,12 +1,15 @@
 //! Interact with the popups of your application.
 use crate::core::window::Id as SurfaceId;
 use iced_runtime::{
-    self,
+    self, Action, Task,
     platform_specific::{
         self,
-        wayland::{self, popup::SctkPopupSettings},
+        wayland::{
+            self,
+            popup::{SctkPopupSettings, SctkPositioner},
+        },
     },
-    task, Action, Task,
+    task,
 };
 
 /// <https://wayland.app/protocols/wlr-layer-shell-unstable-v1#zwlr_layer_surface_v1:request:get_popup>
@@ -28,6 +31,18 @@ pub fn set_size<Message>(
     task::effect(Action::PlatformSpecific(
         platform_specific::Action::Wayland(wayland::Action::Popup(
             wayland::popup::Action::Size { id, width, height },
+        )),
+    ))
+}
+
+/// <https://wayland.app/protocols/xdg-shell#xdg_popup:request:reposition>
+pub fn reposition<Message>(
+    id: SurfaceId,
+    positioner: SctkPositioner,
+) -> Task<Message> {
+    task::effect(Action::PlatformSpecific(
+        platform_specific::Action::Wayland(wayland::Action::Popup(
+            wayland::popup::Action::Reposition { id, positioner },
         )),
     ))
 }
