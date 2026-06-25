@@ -1,9 +1,9 @@
 use crate::core::window::Id as SurfaceId;
 use cctk::sctk::reexports::client::protocol::wl_output::WlOutput;
 use iced_runtime::{
-    self,
+    self, Action, Task,
     platform_specific::{self, wayland},
-    task, Action, Task,
+    task,
 };
 
 pub fn lock<Message>() -> Task<Message> {

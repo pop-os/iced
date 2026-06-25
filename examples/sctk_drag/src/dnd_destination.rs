@@ -3,20 +3,20 @@ use std::{
     sync::atomic::{AtomicU64, Ordering},
 };
 
-use iced::{Element, id::Id};
 use iced::{
-    Event, Length, Rectangle,
     clipboard::{
         dnd::{self, DndAction, DndDestinationRectangle, DndEvent, OfferEvent},
         mime::AllowedMimeTypes,
     },
     event,
     id::Internal,
-    mouse, overlay,
+    mouse, overlay, Event, Length, Rectangle,
 };
+use iced::{id::Id, Element};
 use iced_core::{
-    self, Clipboard, Layout, Shell, Widget, layout,
-    widget::{Tree, tree},
+    self, layout,
+    widget::{tree, Tree},
+    Clipboard, Layout, Shell, Widget,
 };
 
 pub fn dnd_destination<'a, Message: 'static>(

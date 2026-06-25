@@ -1,16 +1,16 @@
 use std::any::Any;
 
-use iced::Element;
 use iced::id::Id;
 use iced::widget::container;
+use iced::Element;
 use iced::{
-    Event, Length, Point, Rectangle,
     clipboard::dnd::{DndAction, DndEvent, SourceEvent},
-    event, mouse, overlay,
+    event, mouse, overlay, Event, Length, Point, Rectangle,
 };
 use iced_core::{
-    Clipboard, Shell, layout, renderer,
-    widget::{Tree, tree},
+    layout, renderer,
+    widget::{tree, Tree},
+    Clipboard, Shell,
 };
 use iced_core::{Layout, Widget};
 
@@ -37,11 +37,11 @@ pub struct DndSource<'a, Message, AppMessage, D> {
 }
 
 impl<
-    'a,
-    Message: 'static,
-    AppMessage: 'static,
-    D: iced::clipboard::mime::AsMimeTypes + std::marker::Send + 'static,
-> DndSource<'a, Message, AppMessage, D>
+        'a,
+        Message: 'static,
+        AppMessage: 'static,
+        D: iced::clipboard::mime::AsMimeTypes + std::marker::Send + 'static,
+    > DndSource<'a, Message, AppMessage, D>
 {
     pub fn new(child: impl Into<Element<'a, Message>>) -> Self {
         Self {
@@ -119,11 +119,11 @@ impl<
 }
 
 impl<
-    'a,
-    Message: 'static,
-    AppMessage: 'static,
-    D: iced::clipboard::mime::AsMimeTypes + std::marker::Send + 'static,
-> Widget<Message, iced::Theme, iced::Renderer>
+        'a,
+        Message: 'static,
+        AppMessage: 'static,
+        D: iced::clipboard::mime::AsMimeTypes + std::marker::Send + 'static,
+    > Widget<Message, iced::Theme, iced::Renderer>
     for DndSource<'a, Message, AppMessage, D>
 {
     fn children(&self) -> Vec<Tree> {
@@ -357,11 +357,11 @@ impl<
 }
 
 impl<
-    'a,
-    Message: 'static,
-    AppMessage: 'static,
-    D: iced::clipboard::mime::AsMimeTypes + std::marker::Send + 'static,
-> From<DndSource<'a, Message, AppMessage, D>> for Element<'a, Message>
+        'a,
+        Message: 'static,
+        AppMessage: 'static,
+        D: iced::clipboard::mime::AsMimeTypes + std::marker::Send + 'static,
+    > From<DndSource<'a, Message, AppMessage, D>> for Element<'a, Message>
 {
     fn from(e: DndSource<'a, Message, AppMessage, D>) -> Element<'a, Message> {
         Element::new(e)

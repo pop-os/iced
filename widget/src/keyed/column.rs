@@ -293,9 +293,12 @@ where
                 .zip(&mut tree.children)
                 .zip(layout.children())
                 .for_each(|((child, state), c_layout)| {
-                    child
-                        .as_widget_mut()
-                        .operate(state, c_layout.with_virtual_offset(layout.virtual_offset()), renderer, operation);
+                    child.as_widget_mut().operate(
+                        state,
+                        c_layout.with_virtual_offset(layout.virtual_offset()),
+                        renderer,
+                        operation,
+                    );
                 });
         });
     }
@@ -318,7 +321,13 @@ where
             .zip(layout.children())
         {
             child.as_widget_mut().update(
-                tree, event, c_layout.with_virtual_offset(layout.virtual_offset()), cursor, renderer, clipboard, shell,
+                tree,
+                event,
+                c_layout.with_virtual_offset(layout.virtual_offset()),
+                cursor,
+                renderer,
+                clipboard,
+                shell,
                 viewport,
             );
         }
@@ -337,9 +346,13 @@ where
             .zip(&tree.children)
             .zip(layout.children())
             .map(|((child, tree), c_layout)| {
-                child
-                    .as_widget()
-                    .mouse_interaction(tree, c_layout.with_virtual_offset(layout.virtual_offset()), cursor, viewport, renderer)
+                child.as_widget().mouse_interaction(
+                    tree,
+                    c_layout.with_virtual_offset(layout.virtual_offset()),
+                    cursor,
+                    viewport,
+                    renderer,
+                )
             })
             .max()
             .unwrap_or_default()
