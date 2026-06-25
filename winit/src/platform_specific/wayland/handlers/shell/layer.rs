@@ -1,13 +1,13 @@
 use crate::platform_specific::wayland::{
-    event_loop::state::{receive_frame, SctkState},
+    event_loop::state::{SctkState, receive_frame},
     sctk_event::{LayerSurfaceEventVariant, SctkEvent},
 };
 use cctk::sctk::{
     delegate_layer,
     reexports::client::Proxy,
     shell::{
-        wlr_layer::{Anchor, KeyboardInteractivity, LayerShellHandler},
         WaylandSurface,
+        wlr_layer::{Anchor, KeyboardInteractivity, LayerShellHandler},
     },
 };
 use std::fmt::Debug;

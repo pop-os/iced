@@ -1,8 +1,8 @@
 use crate::core::window::Id as SurfaceId;
 use iced_runtime::{
-    self,
+    self, Action, Task,
     platform_specific::{self, wayland},
-    task, Action, Task,
+    task,
 };
 
 pub fn request_token(

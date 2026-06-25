@@ -1,8 +1,7 @@
 use crate::{
     event_loop::state::CommonSurface,
     platform_specific::wayland::{
-        event_loop::state::receive_frame,
-        handlers::SctkState,
+        event_loop::state::receive_frame, handlers::SctkState,
         sctk_event::SctkEvent,
     },
 };

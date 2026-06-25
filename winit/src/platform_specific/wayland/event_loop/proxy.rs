@@ -1,8 +1,8 @@
 use cctk::sctk::reexports::calloop;
 use iced_futures::futures::{
+    Sink,
     channel::mpsc,
     task::{Context, Poll},
-    Sink,
 };
 use std::pin::Pin;
 

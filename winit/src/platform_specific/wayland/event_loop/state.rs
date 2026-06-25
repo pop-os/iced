@@ -1,7 +1,11 @@
 use crate::{
     Control,
     handlers::{
-        activation::IcedRequestData, ext_background_effect, overlap::{OverlapNotificationV1, OverlapNotifyV1}, shell::corner_radius::CornerRadiusWrapper, text_input::{Preedit, TextInputManager}
+        activation::IcedRequestData,
+        ext_background_effect,
+        overlap::{OverlapNotificationV1, OverlapNotifyV1},
+        shell::corner_radius::CornerRadiusWrapper,
+        text_input::{Preedit, TextInputManager},
     },
     platform_specific::{
         Event,
@@ -37,11 +41,10 @@ use winit::{
 
 use cctk::{
     cosmic_protocols::{
-        corner_radius::v1::client::{
-            cosmic_corner_radius_manager_v1::CosmicCornerRadiusManagerV1,
-        },
+        corner_radius::v1::client::cosmic_corner_radius_manager_v1::CosmicCornerRadiusManagerV1,
         overlap_notify::v1::client::zcosmic_overlap_notification_v1::ZcosmicOverlapNotificationV1,
-    }, sctk::{
+    },
+    sctk::{
         activation::{ActivationState, RequestData},
         compositor::CompositorState,
         error::GlobalError,
@@ -59,7 +62,8 @@ use cctk::{
                     wl_surface::{self, WlSurface},
                     wl_touch::WlTouch,
                 },
-            }, protocols_wlr::layer_shell::v1::client::zwlr_layer_surface_v1::ZwlrLayerSurfaceV1,
+            },
+            protocols_wlr::layer_shell::v1::client::zwlr_layer_surface_v1::ZwlrLayerSurfaceV1,
         },
         registry::RegistryState,
         seat::{
@@ -84,7 +88,9 @@ use cctk::{
             },
         },
         shm::{Shm, multi::MultiPool},
-    }, toplevel_info::ToplevelInfoState, toplevel_management::ToplevelManagerState
+    },
+    toplevel_info::ToplevelInfoState,
+    toplevel_management::ToplevelManagerState,
 };
 use iced_runtime::{
     core::{self, Point, touch},
@@ -99,7 +105,10 @@ use iced_runtime::{
     },
 };
 use wayland_protocols::{
-    ext::background_effect::v1::client::{ext_background_effect_manager_v1, ext_background_effect_surface_v1::ExtBackgroundEffectSurfaceV1},
+    ext::background_effect::v1::client::{
+        ext_background_effect_manager_v1,
+        ext_background_effect_surface_v1::ExtBackgroundEffectSurfaceV1,
+    },
     wp::{
         fractional_scale::v1::client::wp_fractional_scale_v1::WpFractionalScaleV1,
         keyboard_shortcuts_inhibit::zv1::client::{
@@ -332,7 +341,6 @@ pub struct SctkPopupData {
     pub(crate) positioner: Arc<XdgPositioner>,
     pub(crate) grab: bool,
 }
-
 
 #[derive(Debug, Clone)]
 pub struct SctkCornerRadius(Arc<CornerRadiusWrapper>);
@@ -865,12 +873,10 @@ impl SctkState {
         }
 
         _ = wl_surface.frame(&self.queue_handle, wl_surface.clone());
-        
+
         if let Some(blur) = self.pending_blur.remove(&settings.id) {
             self.apply_blur(settings.id, Some(blur), &wl_surface);
         }
-
-
 
         let wp_viewport = self.viewporter_state.as_ref().map(|state| {
             let viewport =
@@ -902,9 +908,9 @@ impl SctkState {
             common: common.clone(),
             close_with_children: settings.close_with_children,
         });
-        
+
         if let Some(corners) = self.pending_corner_radius.remove(&settings.id) {
-            self.handle_action(Action::RoundedCorners (
+            self.handle_action(Action::RoundedCorners(
                 settings.id,
                 Some(corners),
             ));
@@ -1008,7 +1014,6 @@ impl SctkState {
         if let Some(blur) = self.pending_blur.remove(&id) {
             self.apply_blur(id, Some(blur), &wl_surface);
         }
-        
 
         let wp_viewport = self.viewporter_state.as_ref().map(|state| {
             state.get_viewport(layer_surface.wl_surface(), &self.queue_handle)
@@ -1043,10 +1048,7 @@ impl SctkState {
             common: common.clone(),
         });
         if let Some(corners) = self.pending_corner_radius.remove(&id) {
-            _  = self.handle_action(Action::RoundedCorners(
-                id,
-                Some(corners),
-            ));
+            _ = self.handle_action(Action::RoundedCorners(id, Some(corners)));
         }
         layer_surface.commit();
         Ok((id, CommonSurface::Layer(layer_surface), common))
@@ -1139,7 +1141,7 @@ impl SctkState {
                         platform_specific::wayland::layer_surface::Action::Destroy(id) => {
                             if let Some(p) =  self
                                     .popups
-                                    .iter().find_map(|p| 
+                                    .iter().find_map(|p|
                                          self.layer_surfaces.iter().find_map(|l| if l.id == id && l.surface.wl_surface() == p.data.parent.wl_surface() {Some(p.data.id)} else {None})) {
                                             _ = self.handle_action(Action::Popup(platform_specific::wayland::popup::Action::Destroy { id: p }));
                                          }
@@ -1173,7 +1175,6 @@ impl SctkState {
                                     _ = self.destroyed.insert(destroyed);
                                 }
 
-                                
                                 send_event(&self.events_sender, &self.proxy, SctkEvent::LayerSurfaceEvent {
                                             variant: LayerSurfaceEventVariant::Done,
                                             id: l.surface.wl_surface().clone(),
@@ -1492,7 +1493,6 @@ impl SctkState {
                         // update positioner
                         sctk_popup.data.positioner.set_size(w as i32, h as i32);
                         sctk_popup.popup.reposition(&sctk_popup.data.positioner, TOKEN_CTR.fetch_add(1, std::sync::atomic::Ordering::Relaxed));                        let surface = sctk_popup.popup.wl_surface().clone();
-                        dbg!("repositioning...");
                         _ = send_event(&self.events_sender, &self.proxy,
                             SctkEvent::PopupEvent { variant: crate::sctk_event::PopupEventVariant::Size(size.0, size.1), toplevel_id: sctk_popup.data.parent.wl_surface().clone(), parent_id: sctk_popup.data.parent.wl_surface().clone(), id: surface });
                     }
@@ -1832,19 +1832,24 @@ impl SctkState {
         Ok(())
     }
 
-    fn apply_blur(&mut self, id: core::window::Id, rectangles: Option<Vec<Rectangle>>, s: &WlSurface) {
+    fn apply_blur(
+        &mut self,
+        id: core::window::Id,
+        rectangles: Option<Vec<Rectangle>>,
+        s: &WlSurface,
+    ) {
         let existing_blur = self.blur_surfaces.entry(id);
         match (existing_blur, rectangles) {
             (Entry::Occupied(occupied_entry), None) => {
                 let blur_surface = occupied_entry.remove();
                 blur_surface.destroy();
-            },
+            }
             (Entry::Occupied(mut occupied_entry), Some(rectangles)) => {
                 let blur_surface = occupied_entry.get_mut();
                 let region = self
-                        .compositor_state
-                        .wl_compositor()
-                        .create_region(&self.queue_handle, ());
+                    .compositor_state
+                    .wl_compositor()
+                    .create_region(&self.queue_handle, ());
                 for rect in rectangles.into_iter() {
                     region.add(
                         rect.x.round() as i32,
@@ -1853,41 +1858,40 @@ impl SctkState {
                         rect.height.round() as i32,
                     );
                 }
-        
+
                 // update existing blur surfaces
                 blur_surface.set_blur_region(Some(&region));
-        
-            },
+            }
             (Entry::Vacant(..), None) => {
                 // nothing to remove
-            },
+            }
             (Entry::Vacant(vacant_entry), Some(rectangles)) => {
                 if self.ext_background_effect_manager.is_none() {
                     log::error!("Blur effect is not supported.");
                     return;
                 }
-                    let region = self
-                        .compositor_state
-                        .wl_compositor()
-                        .create_region(&self.queue_handle, ());
-                    for rect in rectangles {
-                        region.add(
-                            rect.x.round() as i32,
-                            rect.y.round() as i32,
-                            rect.width.round() as i32,
-                            rect.height.round() as i32,
-                        );
-                    }
-            
-                    let blur_manager = self.ext_background_effect_manager.as_mut().unwrap();
-                    let blur_surface = blur_manager.blur(s, &self.queue_handle);
-                    blur_surface.set_blur_region(Some(&region));
+                let region = self
+                    .compositor_state
+                    .wl_compositor()
+                    .create_region(&self.queue_handle, ());
+                for rect in rectangles {
+                    region.add(
+                        rect.x.round() as i32,
+                        rect.y.round() as i32,
+                        rect.width.round() as i32,
+                        rect.height.round() as i32,
+                    );
+                }
+
+                let blur_manager =
+                    self.ext_background_effect_manager.as_mut().unwrap();
+                let blur_surface = blur_manager.blur(s, &self.queue_handle);
+                blur_surface.set_blur_region(Some(&region));
                 _ = vacant_entry.insert(blur_surface);
-            },
+            }
         }
-        
     }
-    
+
     pub fn get_subsurface(
         &mut self,
         settings: SctkSubsurfaceSettings,
@@ -2020,7 +2024,6 @@ impl SctkState {
         if let Some(blur) = self.pending_blur.remove(&settings.id) {
             _ = self.apply_blur(settings.id, Some(blur), &wl_surface);
         }
-        
 
         let wp_viewport = subsurface_state.wp_viewporter.get_viewport(
             &wl_surface,
@@ -2097,10 +2100,7 @@ impl SctkState {
         self.subsurfaces
             .sort_by(|a, b| b.instance.z.cmp(&a.instance.z));
         if let Some(corners) = self.pending_corner_radius.remove(&id) {
-            self.handle_action(Action::RoundedCorners (
-                id,
-                Some(corners),
-            ));
+            self.handle_action(Action::RoundedCorners(id, Some(corners)));
         }
 
         wl_surface.commit();

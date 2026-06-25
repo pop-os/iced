@@ -7,7 +7,6 @@ use cctk::sctk::reexports::{
 
 use iced::platform_specific::shell::commands::subsurface::get_subsurface;
 use iced::{
-    Element, Length, Subscription, Task,
     event::wayland::Event as WaylandEvent,
     platform_specific::{
         runtime::wayland::subsurface::SctkSubsurfaceSettings,
@@ -15,6 +14,7 @@ use iced::{
     },
     widget::{button, column, text, text_input},
     window::{self, Id, Settings},
+    Element, Length, Subscription, Task,
 };
 use std::sync::{Arc, Mutex};
 

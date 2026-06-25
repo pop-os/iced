@@ -36,7 +36,7 @@ impl fmt::Debug for Action {
                 f,
                 "Action::ActivationAction::Activate {{ window: {:?}, token: {:?} }}",
                 window, token,
-            )
+            ),
         }
     }
 }

@@ -40,12 +40,6 @@ pub mod clipboard;
 pub mod conversion;
 pub mod platform_specific;
 
-#[cfg(feature = "program")]
-pub mod program;
-
-#[cfg(feature = "system")]
-pub mod system;
-
 mod error;
 mod proxy;
 mod window;
@@ -193,10 +187,13 @@ where
         error: Option<Error>,
         system_theme: Option<oneshot::Sender<theme::Mode>>,
         control_sender: mpsc::UnboundedSender<Control>,
-        
+
         #[cfg(feature = "a11y")]
-        adapters: std::collections::HashMap<window::Id, (u64, iced_accessibility::accesskit_winit::Adapter)>,
-    
+        adapters: std::collections::HashMap<
+            window::Id,
+            (u64, iced_accessibility::accesskit_winit::Adapter),
+        >,
+
         #[cfg(target_arch = "wasm32")]
         is_booted: std::rc::Rc<std::cell::RefCell<bool>>,
         #[cfg(target_arch = "wasm32")]
@@ -501,9 +498,15 @@ where
                                         }
                                     };
                                 }
-                                let window: Arc<dyn winit::window::Window + 'static> = Arc::from(window);
+                                let window: Arc<
+                                    dyn winit::window::Window + 'static,
+                                > = Arc::from(window);
                                 #[cfg(feature = "a11y")]
-                                self.init_adapter(event_loop, id, window.clone());
+                                self.init_adapter(
+                                    event_loop,
+                                    id,
+                                    window.clone(),
+                                );
 
                                 self.process_event(
                                     event_loop,
@@ -572,11 +575,13 @@ where
                                     .expect("Send event");
                             }
                             Control::Winit(id, e) => {
-                                #[cfg(all(feature = "cctk", target_os = "linux"))]
+                                #[cfg(all(
+                                    feature = "cctk",
+                                    target_os = "linux"
+                                ))]
                                 {
                                     if matches!(e, WindowEvent::RedrawRequested)
-                                    {                    
-                                        
+                                    {
                                         for id in crate::subsurface_widget::subsurface_ids(id) {
                                             _ = self.sender
                                                 .unbounded_send(Event::Winit(
@@ -597,7 +602,7 @@ where
                                         }
                                     }
                                 }
-                                
+
                                 self.sender
                                     .start_send(Event::Winit(id, e))
                                     .expect("Send event");
@@ -610,7 +615,7 @@ where
                             #[cfg(feature = "a11y")]
                             Control::InitAdapter(id, window) => {
                                 self.init_adapter(event_loop, id, window);
-                            
+
                                 self.process_event(
                                     event_loop,
                                     Some(Event::A11yAdapter(id)),
@@ -618,8 +623,8 @@ where
                             }
                             #[cfg(feature = "a11y")]
                             Control::Cleanup(id) => {
-                               _ = self.adapters.remove(&id);
-                            },
+                                _ = self.adapters.remove(&id);
+                            }
                         },
                         _ => {
                             break;
@@ -633,34 +638,35 @@ where
             }
         }
 
-    #[cfg(feature = "a11y")]
-    fn init_adapter(&mut self, event_loop: &(dyn winit::event_loop::ActiveEventLoop + 'static), id: core::window::Id, window: Arc<dyn winit::window::Window + 'static>) {
+        #[cfg(feature = "a11y")]
+        fn init_adapter(
+            &mut self,
+            event_loop: &(dyn winit::event_loop::ActiveEventLoop + 'static),
+            id: core::window::Id,
+            window: Arc<dyn winit::window::Window + 'static>,
+        ) {
             use crate::a11y::*;
             use iced_accessibility::accesskit::{
-                ActivationHandler, Node, NodeId, Role,
-                Tree, TreeUpdate,
+                ActivationHandler, Node, NodeId, Role, Tree, TreeUpdate,
             };
             use iced_accessibility::accesskit_winit::Adapter;
-        
-            let node_id =
-                iced_runtime::core::id::window_node_id();
-        
-            let activation_handler =
-                WinitActivationHandler {
-                    proxy: self.control_sender.clone(),
-                    title: String::new(),
-                };
-        
+
+            let node_id = iced_runtime::core::id::window_node_id();
+
+            let activation_handler = WinitActivationHandler {
+                proxy: self.control_sender.clone(),
+                title: String::new(),
+            };
+
             let action_handler = WinitActionHandler {
                 id,
                 proxy: self.control_sender.clone(),
             };
-        
-            let deactivation_handler =
-                WinitDeactivationHandler {
-                    proxy: self.control_sender.clone(),
-                };
-        
+
+            let deactivation_handler = WinitDeactivationHandler {
+                proxy: self.control_sender.clone(),
+            };
+
             _ = self.adapters.insert(
                 id,
                 (
@@ -674,8 +680,6 @@ where
                     ),
                 ),
             );
-        
-            
         }
     }
 
@@ -879,9 +883,8 @@ async fn run_instance<P>(
                 exit_on_close_request,
                 make_visible,
                 on_open,
-                resize_border
+                resize_border,
             } => {
-                
                 #[cfg(all(feature = "cctk", target_os = "linux"))]
                 platform_specific_handler.send_wayland(
                     platform_specific::Action::TrackWindow(window.clone(), id),
@@ -937,7 +940,7 @@ async fn run_instance<P>(
                     compositor,
                     exit_on_close_request,
                     system_theme,
-                    resize_border
+                    resize_border,
                 );
 
                 window.raw.set_theme(conversion::window_theme(
@@ -1034,7 +1037,7 @@ async fn run_instance<P>(
                     continue;
                 };
 
-                let Some((id, mut window))  =
+                let Some((id, mut window)) =
                     window_manager.get_mut_alias(window_id)
                 else {
                     continue;
@@ -1049,12 +1052,12 @@ async fn run_instance<P>(
                         ))
                         .expect("Send redraw event");
                     continue;
-                } 
+                }
                 // XX must force update to corner radius before the surface is committed.
                 #[cfg(all(feature = "cctk", target_os = "linux"))]
                 if (window.surface_version != window.state.surface_version()
-                    || window.logical_size() != window.state.logical_size()
-                    ) && !crate::subsurface_widget::is_subsurface(window_id)
+                    || window.logical_size() != window.state.logical_size())
+                    && !crate::subsurface_widget::is_subsurface(window_id)
                 {
                     platform_specific_handler.send_wayland(
                         platform_specific::Action::ResizeWindow(id),
@@ -1320,9 +1323,7 @@ async fn run_instance<P>(
                     continue;
                 };
                 // Initiates a drag resize window state when found.
-                if let Some(func) =
-                    window.drag_resize_window_func.as_mut()
-                {
+                if let Some(func) = window.drag_resize_window_func.as_mut() {
                     if func(window.raw.as_ref(), &event) {
                         continue;
                     }
@@ -1348,7 +1349,9 @@ async fn run_instance<P>(
                 if matches!(event, winit::event::WindowEvent::CloseRequested)
                     && window.exit_on_close_request
                 {
-                    _ = run_action!(Action::Window(runtime::window::Action::Close(id)));
+                    _ = run_action!(Action::Window(
+                        runtime::window::Action::Close(id)
+                    ));
                 } else {
                     window.state.update(&program, window.raw.as_ref(), &event);
 
@@ -1736,7 +1739,6 @@ async fn run_instance<P>(
                                 };
 
                                 // search windows for widget with operation
-                                 
                                 if result.is_none() {
                                     log::warn!(
                                         "start_dnd: widget {:?} not found; drag will fail",
@@ -2113,7 +2115,7 @@ where
                         on_open: channel,
                     })
                     .expect("Send control action");
-                
+
                 *is_window_opening = true;
             }
             window::Action::Close(id) => {

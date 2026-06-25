@@ -21,6 +21,7 @@ use iced_runtime::core::{Vector, window};
 use raw_window_handle::{DisplayHandle, HasDisplayHandle, HasWindowHandle};
 use raw_window_handle::{HasRawDisplayHandle, RawWindowHandle};
 use sctk_event::SctkEvent;
+use std::sync::OnceLock;
 use std::{collections::HashMap, sync::Arc};
 use subsurface_widget::{SubsurfaceInstance, SubsurfaceState};
 use wayland_backend::client::ObjectId;
