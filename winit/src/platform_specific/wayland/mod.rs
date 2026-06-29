@@ -25,22 +25,9 @@ use std::{collections::HashMap, sync::Arc};
 use subsurface_widget::{SubsurfaceInstance, SubsurfaceState};
 use wayland_backend::client::ObjectId;
 use wayland_client::{Connection, Proxy};
-use std::sync::OnceLock;
 use winit::dpi::Size;
 use winit::event_loop::OwnedDisplayHandle;
 use winit::window::ImePurpose;
-
-static SCTK_ACTION_SENDER: OnceLock<calloop::channel::Sender<Action>> = OnceLock::new();
-
-/// Sends a platform-specific wayland action directly to the SCTK event loop,
-/// bypassing the async Task system. This is needed when widgets queue popup
-/// actions outside of the normal message flow (e.g., text context menus that
-/// don't publish app messages).
-pub fn send_wayland_action_direct(action: iced_runtime::platform_specific::wayland::Action) {
-    if let Some(sender) = SCTK_ACTION_SENDER.get() {
-        _ = sender.send(Action::Action(action));
-    }
-}
 
 pub(crate) enum Action {
     Action(iced_runtime::platform_specific::wayland::Action),
@@ -149,9 +136,6 @@ impl PlatformSpecific {
                 self.wayland.display_handle.clone().unwrap(),
             )
             .ok();
-        if let Some(ref sender) = self.wayland.sender {
-            _ = SCTK_ACTION_SENDER.set(sender.clone());
-        }
         self
     }
 
