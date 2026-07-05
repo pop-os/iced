@@ -263,6 +263,10 @@ impl Engine {
             } else {
                 // Draw corners that have too small border radii as having no border radius,
                 // but mask them with the rounded rectangle with the correct border radius.
+                if path_bounds.width < 1.0 || path_bounds.height < 1.0 {
+                    return;
+                }
+
                 let mut temp_pixmap = tiny_skia::Pixmap::new(
                     path_bounds.width as u32,
                     path_bounds.height as u32,
