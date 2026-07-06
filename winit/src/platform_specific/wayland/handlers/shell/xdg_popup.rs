@@ -84,6 +84,11 @@ impl PopupHandler for SctkState {
         for popup in to_destroy.into_iter().rev() {
             if let Some(id) = self.id_map.remove(&popup.popup.wl_surface().id())
             {
+                if let Some(blurred) = self.blur_surfaces.remove(&id) {
+                    blurred.destroy();
+                }
+                _ = self.corner_radii.remove(&id);
+
                 _ = self.destroyed.insert(id);
             }
 

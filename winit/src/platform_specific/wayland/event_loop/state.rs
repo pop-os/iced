@@ -1392,7 +1392,7 @@ impl SctkState {
                         },
                     };
                     let mut to_destroy = vec![sctk_popup];
-                    // TODO optionally destroy parents if they request to be destroyed with children
+
                     while let Some(popup_to_destroy_last) = to_destroy.last().and_then(|popup| self
                         .popups
                         .iter()
@@ -1839,6 +1839,7 @@ impl SctkState {
         s: &WlSurface,
     ) {
         let existing_blur = self.blur_surfaces.entry(id);
+
         match (existing_blur, rectangles) {
             (Entry::Occupied(occupied_entry), None) => {
                 let blur_surface = occupied_entry.remove();
