@@ -308,6 +308,7 @@ winit = { git = "https://github.com/pop-os/winit.git", tag = "cosmic-0.14" }
 winit-core = { git = "https://github.com/pop-os/winit.git", tag = "cosmic-0.14" }
 cursor-icon = "1.1.0"
 
+sctk = { package = "smithay-client-toolkit", version = "0.20.0" }
 
 [workspace.lints.rust]
 rust_2018_idioms = { level = "deny", priority = -1 }

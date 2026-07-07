@@ -11,7 +11,6 @@ use crate::{Engine, Renderer};
 
 #[cfg(all(
     unix,
-    feature = "cctk",
     not(target_os = "macos"),
     not(target_os = "redox")
 ))]
@@ -67,7 +66,6 @@ impl Compositor {
     ) -> Result<Self, Error> {
         #[cfg(all(
             unix,
-            feature = "cctk",
             not(target_os = "macos"),
             not(target_os = "redox")
         ))]
@@ -75,16 +73,6 @@ impl Compositor {
             get_wayland_device_ids(window)
                 .or_else(|| get_x11_device_ids(window))
         });
-
-        #[cfg(all(
-            unix,
-            not(feature = "cctk"),
-            not(target_os = "macos"),
-            not(target_os = "redox")
-        ))]
-        let ids = compatible_window
-            .as_ref()
-            .and_then(|window| get_x11_device_ids(window));
 
         // HACK:
         //  1. If we specifically didn't select an nvidia gpu
