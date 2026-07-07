@@ -83,12 +83,19 @@ impl<T: Layer> Stack<T> {
     /// Pushes a new clipping region in the [`Stack`]; creating a new layer in the
     /// process.
     pub fn push_clip(&mut self, bounds: Rectangle) {
+        let bounds = bounds * self.transformation();
+        let bounds = bounds
+            .intersection(&self.layers[self.current].bounds())
+            .unwrap_or(Rectangle {
+                width: 0.0,
+                height: 0.0,
+                ..bounds
+            });
+
         self.previous.push(self.current);
 
         self.current = self.active_count;
         self.active_count += 1;
-
-        let bounds = bounds * self.transformation();
 
         if self.current == self.layers.len() {
             self.layers.push(T::with_bounds(bounds));
