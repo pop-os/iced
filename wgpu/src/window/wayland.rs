@@ -1,5 +1,5 @@
 use crate::graphics::compositor::Window;
-use cctk::sctk::{
+use sctk::{
     dmabuf::{DmabufFeedback, DmabufHandler, DmabufState},
     registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
@@ -111,5 +111,5 @@ pub fn get_wayland_device_ids<W: Window>(window: &W) -> Option<(u16, u16)> {
     }
 }
 
-cctk::sctk::delegate_dmabuf!(AppData);
-cctk::sctk::delegate_registry!(AppData);
+sctk::delegate_dmabuf!(AppData);
+sctk::delegate_registry!(AppData);

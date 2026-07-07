@@ -65,3 +65,4 @@ x11rb = { version = "0.13.1", features = [
     "dri3",
     "randr",
 ] }
+sctk.workspace = true

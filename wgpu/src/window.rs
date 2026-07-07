@@ -2,7 +2,6 @@
 pub mod compositor;
 #[cfg(all(
     unix,
-    feature = "cctk",
     not(target_os = "macos"),
     not(target_os = "redox")
 ))]
