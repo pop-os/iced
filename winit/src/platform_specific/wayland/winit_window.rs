@@ -145,6 +145,8 @@ impl winit::window::Window for SctkWinitWindow {
                         guard.size.height as i32,
                     );
                 }
+                let (width, height) = (guard.size.width, guard.size.height);
+                guard.set_corner_geometry(width, height);
             }
             CommonSurface::Layer(layer_surface) => {
                 guard.requested_size = (
@@ -171,6 +173,8 @@ impl winit::window::Window for SctkWinitWindow {
                         guard.size.height as i32,
                     );
                 }
+                let (width, height) = (guard.size.width, guard.size.height);
+                guard.set_corner_geometry(width, height);
             }
             CommonSurface::Lock(_) => {}
             CommonSurface::Subsurface { .. } => {
