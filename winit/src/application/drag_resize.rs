@@ -49,7 +49,10 @@ pub fn event_func(
                         position,
                         ..
                     } => {
-                        if !window.is_decorated() {
+                        let resizable = !window.is_decorated()
+                            && !window.is_maximized()
+                            && window.fullscreen().is_none();
+                        if resizable {
                             let location = cursor_resize_direction(
                                 window.surface_size(),
                                 *position,
