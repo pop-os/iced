@@ -60,6 +60,7 @@ where
     width: Length,
     height: Length,
     position: Point,
+    overflow: bool,
 }
 
 impl<'a, Message, Theme, Renderer> Pin<'a, Message, Theme, Renderer>
@@ -75,6 +76,7 @@ where
             width: Length::Fill,
             height: Length::Fill,
             position: Point::ORIGIN,
+            overflow: false,
         }
     }
 
@@ -105,6 +107,12 @@ where
     /// Sets the Y coordinate of the [`Pin`].
     pub fn y(mut self, y: impl Into<Pixels>) -> Self {
         self.position.y = y.into().0;
+        self
+    }
+
+    /// Sets whether the [`Pin`] can overflow its boundaries.
+    pub fn overflow(mut self, overflow: bool) -> Self {
+        self.overflow = overflow;
         self
     }
 }
@@ -145,8 +153,12 @@ where
     ) -> layout::Node {
         let limits = limits.width(self.width).height(self.height);
 
-        let available =
-            limits.max() - Size::new(self.position.x, self.position.y);
+        let available = 
+            if self.overflow {
+                limits.max()
+            } else {
+                limits.max() - Size::new(self.position.x, self.position.y)
+            };
 
         let node = self
             .content
