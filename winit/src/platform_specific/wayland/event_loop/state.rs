@@ -1268,11 +1268,11 @@ impl SctkState {
                         || self.layer_surfaces.iter().any(|l| l.id == settings.parent && p.data.parent.wl_surface() == l.surface.wl_surface()))
                     ) {
                         let existing = &mut self.popups[existing];
-                        let size = if settings.positioner.size.is_none() {
-                            log::info!("No configured popup size");
-                            (1, 1)
+                        let size = if let Some(size) = settings.positioner.size {
+                            size
                         } else {
-                            settings.positioner.size.unwrap()
+                            let guard = existing.common.lock().unwrap();
+                            (guard.size.width, guard.size.height)
                         };
                         let Ok(positioner) = XdgPositioner::new(&self.xdg_shell_state)
                             .map_err(PopupCreationError::PositionerCreationFailed) else {
