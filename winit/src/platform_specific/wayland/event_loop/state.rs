@@ -238,43 +238,6 @@ pub struct Common {
     pub(crate) size: LogicalSize<u32>,
     pub(crate) requested_size: (Option<u32>, Option<u32>),
     pub(crate) wp_viewport: Option<WpViewport>,
-    pub(crate) corner_radius: Option<SctkCornerRadius>,
-    pub(crate) requested_corner_radius: Option<CornerRadius>,
-    /// Geometry last committed via `set_window_geometry`/`set_size`
-    /// This is what compositor validates the corner radius against
-    pub(crate) corner_geometry: LogicalSize<u32>,
-}
-
-impl Common {
-    pub(crate) fn set_corner_geometry(&mut self, width: u32, height: u32) {
-        self.corner_geometry = LogicalSize::new(width, height);
-        self.apply_corner_radius();
-    }
-
-    pub(crate) fn apply_corner_radius(&self) {
-        let (Some(radius_object), Some(requested)) =
-            (self.corner_radius.as_ref(), self.requested_corner_radius)
-        else {
-            return;
-        };
-        let max_radius =
-            self.corner_geometry.width.min(self.corner_geometry.height) / 2;
-        let clamp = |radius: u32| radius.min(max_radius);
-        match radius_object.0.as_ref() {
-            CornerRadiusWrapper::Xdg(surface) => surface.set_radius(
-                clamp(requested.top_left),
-                clamp(requested.top_right),
-                clamp(requested.bottom_right),
-                clamp(requested.bottom_left),
-            ),
-            CornerRadiusWrapper::Wlr(surface) => surface.set_radius(
-                clamp(requested.top_left),
-                clamp(requested.top_right),
-                clamp(requested.bottom_right),
-                clamp(requested.bottom_left),
-            ),
-        };
-    }
 }
 
 impl Default for Common {
@@ -287,9 +250,6 @@ impl Default for Common {
             size: LogicalSize::new(1, 1),
             requested_size: (None, None),
             wp_viewport: None,
-            corner_radius: None,
-            requested_corner_radius: None,
-            corner_geometry: LogicalSize::new(1, 1),
         }
     }
 }
@@ -298,7 +258,6 @@ impl From<LogicalSize<u32>> for Common {
     fn from(value: LogicalSize<u32>) -> Self {
         Common {
             size: value,
-            corner_geometry: value,
             ..Default::default()
         }
     }
@@ -331,7 +290,6 @@ impl SctkPopup {
         // update positioner
         self.data.positioner.set_size(w as i32, h as i32);
         self.popup.reposition(&self.data.positioner, token);
-        self.common.lock().unwrap().set_corner_geometry(w, h);
     }
 
     pub(crate) fn update_viewport(&mut self, w: u32, h: u32) {
@@ -1531,7 +1489,6 @@ impl SctkState {
                         sctk_popup.popup
                                     .xdg_surface()
                                     .set_window_geometry(0, 0, w as i32, h as i32);
-                        sctk_popup.common.lock().unwrap().set_corner_geometry(w, h);
                         sctk_popup.update_viewport(w, h);
                         // update positioner
                         sctk_popup.data.positioner.set_size(w as i32, h as i32);
@@ -1749,22 +1706,20 @@ impl SctkState {
                         Wlr(ZwlrLayerSurfaceV1),
                     }
                     let s = if let Some(w) = self.windows.iter_mut().find(|w| w.id == id) {
-                        Some((Surface::Xdg(w.xdg_surface(&self.connection), Some(w.xdg_toplevel(&self.connection))), w.window.surface_size().cast::<f64>().to_logical(w.window.scale_factor()), None))
+                        Some((Surface::Xdg(w.xdg_surface(&self.connection), Some(w.xdg_toplevel(&self.connection))), w.window.surface_size().cast::<f64>().to_logical(w.window.scale_factor())))
                     } else if let Some(p) = self.popups.iter_mut().find(|w| w.data.id == id) {
-                        let common = p.common.clone();
-                        let geo_size = common.lock().unwrap().corner_geometry.cast::<f64>();
-                        Some((Surface::Xdg(p.popup.xdg_surface().clone(), None), geo_size, Some(common)))
+                        let guard = p.common.lock().unwrap();
+                        Some((Surface::Xdg(p.popup.xdg_surface().clone(), None), guard.size.cast::<f64>()))
                     } else if let Some(l) =  self.layer_surfaces.iter_mut().find(|l| l.id == id) {
-                        let common = l.common.clone();
-                        let geo_size = common.lock().unwrap().corner_geometry.cast::<f64>();
+                        let guard = l.common.lock().unwrap();
                         match l.surface.kind() {
-                            SurfaceKind::Wlr(l) => Some((Surface::Wlr(l.clone()), geo_size, Some(common))),
+                            SurfaceKind::Wlr(l) => Some((Surface::Wlr(l.clone()), guard.size.cast::<f64>())),
                             _ => None
                         }
                     } else {
                         None
                     };
-                    if let Some((s, geo_size, common)) = s {
+                    if let Some((s, geo_size)) = s {
                         let half_min_dim = (geo_size.width as u32).min(geo_size.height as u32) / 2;
 
                         if let Some(radii) = v {
@@ -1828,15 +1783,7 @@ impl SctkState {
                                 };
                                 _ = self.corner_radii.insert(id, (SctkCornerRadius(Arc::new(protocol_object)), Some(adjusted_radii.clone())));
                             }
-                            if let Some(common) = &common {
-                                let mut guard = common.lock().unwrap();
-                                guard.corner_radius = self.corner_radii.get(&id).map(|(object, _)| object.clone());
-                                guard.requested_corner_radius = Some(radii);
-                            }
                         } else {
-                            if let Some(common) = &common {
-                                common.lock().unwrap().requested_corner_radius = None;
-                            }
                             if let Some(old) = self.corner_radii.get_mut(&id) {
                                 match old.0.0.as_ref() {
                                     CornerRadiusWrapper::Xdg(protocol_object) => protocol_object.unset_radius(),
