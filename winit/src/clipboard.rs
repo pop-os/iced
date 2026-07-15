@@ -92,7 +92,7 @@ impl Clipboard {
                 })
                 .unwrap_or(State::Unavailable);
 
-        #[cfg(target_os = "linux")]
+        #[cfg(wayland_platform)]
         if let State::Connected { clipboard, .. } = &state {
             clipboard.init_dnd(Box::new(sender));
         }

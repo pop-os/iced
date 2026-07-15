@@ -1,10 +1,6 @@
 //! Display rendering results on windows.
 pub mod compositor;
-#[cfg(all(
-    unix,
-    not(target_os = "macos"),
-    not(target_os = "redox")
-))]
+#[cfg(wayland_platform)]
 mod wayland;
 #[cfg(all(unix, not(target_os = "macos"), not(target_os = "redox")))]
 mod x11;

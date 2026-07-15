@@ -19,6 +19,7 @@ crisp = []
 basic-shaping = []
 advanced-shaping = []
 a11y = ["iced_accessibility"]
+wayland = ["cctk"]
 
 [dependencies]
 palette = "0.7"
@@ -43,8 +44,6 @@ window_clipboard.workspace = true
 dnd.workspace = true
 mime.workspace = true
 
-cctk.workspace = true
-cctk.optional = true
 # /TODO(POP)
 [dependencies.iced_accessibility]
 version = "0.1.0"
@@ -56,3 +55,10 @@ raw-window-handle.workspace = true
 
 [dev-dependencies]
 approx = "0.5"
+
+[target.'cfg(all(unix, not(any(target_os = "redox", target_family = "wasm", target_os = "android", target_vendor = "apple"))))'.dependencies]
+cctk.workspace = true
+cctk.optional = true
+
+[build-dependencies]
+build_helpers = { path = "../build_helpers" }

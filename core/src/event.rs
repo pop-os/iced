@@ -7,7 +7,8 @@ use crate::keyboard;
 use crate::mouse;
 use crate::touch;
 use crate::window;
-#[cfg(all(feature = "cctk", target_os = "linux"))]
+
+#[cfg(wayland_platform)]
 /// A platform specific event for wayland
 pub mod wayland;
 /// A user interface event.
@@ -49,7 +50,7 @@ pub enum Event {
 /// A platform specific event
 #[derive(Debug, Clone, PartialEq)]
 pub enum PlatformSpecific {
-    #[cfg(all(feature = "cctk", target_os = "linux"))]
+    #[cfg(wayland_platform)]
     /// A Wayland specific event
     Wayland(wayland::Event),
 }

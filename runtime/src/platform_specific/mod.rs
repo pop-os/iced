@@ -2,23 +2,23 @@
 
 use std::fmt;
 
-#[cfg(all(feature = "cctk", target_os = "linux"))]
+#[cfg(wayland_platform)]
 /// Platform specific actions defined for wayland
 pub mod wayland;
 
 /// Platform specific actions defined for wayland
 pub enum Action {
     /// Wayland Specific Actions
-    #[cfg(all(feature = "cctk", target_os = "linux"))]
+    #[cfg(wayland_platform)]
     Wayland(wayland::Action),
 }
 
 impl fmt::Debug for Action {
     fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            #[cfg(all(feature = "cctk", target_os = "linux"))]
+            #[cfg(wayland_platform)]
             Action::Wayland(action) => action.fmt(_f),
-            #[cfg(not(all(feature = "cctk", target_os = "linux")))]
+            #[cfg(not(wayland_platform))]
             _ => Ok(()),
         }
     }

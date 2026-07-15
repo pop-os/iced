@@ -14,7 +14,18 @@ keywords.workspace = true
 workspace = true
 
 [features]
-wayland = ["winit/wayland", "wayland-csd-adwaita"]
+wayland = [
+    "winit/wayland",
+    "wayland-csd-adwaita",
+    "wayland-protocols",
+    "raw-window-handle",
+    "iced_runtime/wayland",
+    "wayland-backend",
+    "xkbcommon",
+    "xkbcommon-dl",
+    "xkeysym",
+    "dep:cctk",
+]
 default = ["x11", "wayland-dlopen"]
 debug = ["iced_debug/enable"]
 sysinfo = ["dep:sysinfo"]
@@ -26,17 +37,6 @@ program = []
 wayland-dlopen = ["winit/wayland-dlopen"]
 wayland-csd-adwaita = ["winit/wayland-csd-adwaita"]
 a11y = ["iced_accessibility", "iced_runtime/a11y"]
-cctk = [
-    "wayland",
-    "wayland-protocols",
-    "raw-window-handle",
-    "iced_runtime/cctk",
-    "wayland-backend",
-    "xkbcommon",
-    "xkbcommon-dl",
-    "xkeysym",
-    "dep:cctk",
-]
 # Prevents multiple separate process instances.
 single-instance = []
 
@@ -64,7 +64,8 @@ iced_debug.workspace = true
 iced_program.workspace = true
 
 
-[target.'cfg(target_os = "linux")'.dependencies]
+[target.'cfg(all(unix, not(any(target_os = "redox", target_family = "wasm", target_os = "android", target_vendor = "apple"))))'.dependencies]
+
 mundy.workspace = true
 mundy.optional = true
 
@@ -89,3 +90,6 @@ winapi.workspace = true
 web-sys.workspace = true
 web-sys.features = ["Document", "Window", "HtmlCanvasElement"]
 wasm-bindgen-futures.workspace = true
+
+[build-dependencies]
+build_helpers = { path = "../build_helpers" }

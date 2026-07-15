@@ -1,24 +1,20 @@
 //! Wayland specific shell
 //!
 
-use std::{borrow::Cow, collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
-#[cfg(all(feature = "cctk", target_os = "linux"))]
-use cctk::sctk::reexports::client::Connection;
-use iced_graphics::{Compositor, compositor};
+use iced_graphics::compositor;
 use iced_runtime::{
     core::{Vector, window},
-    platform_specific, user_interface,
+    user_interface,
 };
 use winit::raw_window_handle::HasWindowHandle;
 
-#[cfg(all(feature = "cctk", target_os = "linux"))]
+#[cfg(wayland_platform)]
 pub mod wayland;
 
-#[cfg(all(feature = "cctk", target_os = "linux"))]
+#[cfg(wayland_platform)]
 pub use wayland::*;
-#[cfg(all(feature = "cctk", target_os = "linux"))]
-use wayland_backend::client::Backend;
 
 use crate::{CreateCompositor, Program, WindowManager};
 
@@ -35,7 +31,7 @@ pub type UserInterfaces<'a, P> = HashMap<
 
 #[derive(Debug)]
 pub enum Event {
-    #[cfg(all(feature = "cctk", target_os = "linux"))]
+    #[cfg(wayland_platform)]
     Wayland(sctk_event::SctkEvent),
 }
 
@@ -61,7 +57,7 @@ impl SurfaceIdWrapper {
 
 #[derive(Debug, Default)]
 pub struct PlatformSpecific {
-    #[cfg(all(feature = "cctk", target_os = "linux"))]
+    #[cfg(wayland_platform)]
     wayland: WaylandSpecific,
 }
 
@@ -71,7 +67,7 @@ impl PlatformSpecific {
         action: iced_runtime::platform_specific::Action,
     ) {
         match action {
-            #[cfg(all(feature = "cctk", target_os = "linux"))]
+            #[cfg(wayland_platform)]
             iced_runtime::platform_specific::Action::Wayland(a) => {
                 self.send_wayland(wayland::Action::Action(a));
             }
@@ -82,14 +78,14 @@ impl PlatformSpecific {
         &mut self,
         keep: F,
     ) {
-        #[cfg(all(feature = "cctk", target_os = "linux"))]
+        #[cfg(wayland_platform)]
         {
             self.wayland.retain_subsurfaces(keep);
         }
     }
 
     pub(crate) fn clear_subsurface_list(&mut self) {
-        #[cfg(all(feature = "cctk", target_os = "linux"))]
+        #[cfg(wayland_platform)]
         {
             self.wayland.clear_subsurface_list();
         }
@@ -100,7 +96,7 @@ impl PlatformSpecific {
         id: window::Id,
         window: &dyn HasWindowHandle,
     ) {
-        #[cfg(all(feature = "cctk", target_os = "linux"))]
+        #[cfg(wayland_platform)]
         {
             use cctk::sctk::reexports::client::{
                 Proxy, protocol::wl_surface::WlSurface,
@@ -151,7 +147,7 @@ impl PlatformSpecific {
     pub(crate) fn create_surface(
         &mut self,
     ) -> Option<Box<dyn HasWindowHandle + Send + Sync + 'static>> {
-        #[cfg(all(feature = "cctk", target_os = "linux"))]
+        #[cfg(wayland_platform)]
         {
             return self.wayland.create_surface();
         }
@@ -167,7 +163,7 @@ impl PlatformSpecific {
         data: &[u8],
         offset: Vector,
     ) {
-        #[cfg(all(feature = "cctk", target_os = "linux"))]
+        #[cfg(wayland_platform)]
         {
             return self.wayland.update_surface_shm(
                 surface, width, height, scale, data, offset,
@@ -195,7 +191,7 @@ pub(crate) async fn handle_event<'a, 'b, P>(
     P: Program,
 {
     match e {
-        #[cfg(all(feature = "cctk", target_os = "linux"))]
+        #[cfg(wayland_platform)]
         Event::Wayland(e) => {
             platform_specific
                 .wayland
