@@ -18,6 +18,7 @@ pub fn cfg_aliases_setup() {
 
         // Native displays.
         wayland_platform: { all(feature = "wayland", free_unix, not(wasm), not(redox)) },
+        xdg_portal: { all(feature = "xdg-portal", free_unix, not(wasm), not(redox)) },
         orbital_platform: { redox },
     }
 }
