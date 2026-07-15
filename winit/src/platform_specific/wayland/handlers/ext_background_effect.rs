@@ -84,8 +84,8 @@ impl Dispatch<ExtBackgroundEffectManagerV1, SctkState>
                     _ = state.handle_action(Action::BlurSurface(id, rects));
                 }
             }
-            for (id, rects) in queued_actions {
-                _ = state.handle_action(Action::BlurSurface(id, rects));
+            e => {
+                log::warn!("Ignored event {e:?}");
             }
         }
     }

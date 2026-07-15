@@ -1758,13 +1758,13 @@ impl SctkState {
                                                 return Ok(());
                                             }
                                         } else {
-                                            CornerRadiusWrapper::Xdg(manager.get_corner_radius_surface(&s, &self.queue_handle, ()))}
+                                            CornerRadiusWrapper::Xdg(manager.get_corner_radius_surface(&s, &self.queue_handle, NoopIgnore))}
                                         }
                                     Surface::Wlr(l) => {
                                         if manager.version() == 1 {
                                             return Ok(());
                                         }
-                                        CornerRadiusWrapper::Wlr(manager.get_corner_radius_layer(&l, &self.queue_handle, ()))}
+                                        CornerRadiusWrapper::Wlr(manager.get_corner_radius_layer(&l, &self.queue_handle, NoopIgnore))}
                                 };
                                 match &protocol_object {
                                     CornerRadiusWrapper::Xdg(protocol_object) => protocol_object.set_radius(
@@ -1849,7 +1849,7 @@ impl SctkState {
                 let region = self
                     .compositor_state
                     .wl_compositor()
-                    .create_region(&self.queue_handle, ());
+                    .create_region(&self.queue_handle, NoopIgnore);
                 for rect in rectangles.into_iter() {
                     region.add(
                         rect.x.round() as i32,
@@ -1873,7 +1873,7 @@ impl SctkState {
                 let region = self
                     .compositor_state
                     .wl_compositor()
-                    .create_region(&self.queue_handle, ());
+                    .create_region(&self.queue_handle, NoopIgnore);
                 for rect in rectangles {
                     region.add(
                         rect.x.round() as i32,

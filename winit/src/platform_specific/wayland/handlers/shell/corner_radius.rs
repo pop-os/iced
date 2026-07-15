@@ -32,7 +32,6 @@ impl Dispatch<CosmicCornerRadiusManagerV1, SctkState> for () {
         _proxy: &CosmicCornerRadiusManagerV1,
         _event: <CosmicCornerRadiusManagerV1 as Proxy>::Event,
         _conn: &Connection,
-        _qhandle: &sctk::reexports::client::QueueHandle<Self>,
         _qhandle: &sctk::reexports::client::QueueHandle<SctkState>,
     ) {
     }
@@ -58,14 +57,14 @@ impl
     }
 }
 
-impl Dispatch<CosmicCornerRadiusLayerV1, ()> for SctkState {
+impl Dispatch<CosmicCornerRadiusLayerV1, SctkState> for () {
     fn event(
-        state: &mut Self,
+        &self,
+        state: &mut SctkState,
         _proxy: &CosmicCornerRadiusLayerV1,
         event: <CosmicCornerRadiusLayerV1 as Proxy>::Event,
-        _data: &(),
         _conn: &Connection,
-        _qhandle: &sctk::reexports::client::QueueHandle<Self>,
+        _qhandle: &sctk::reexports::client::QueueHandle<SctkState>,
     ) {
         match event {
             _ => unimplemented!(),
