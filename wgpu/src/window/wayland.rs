@@ -1,12 +1,11 @@
 use crate::graphics::compositor::Window;
 use sctk::{
     dmabuf::{DmabufFeedback, DmabufHandler, DmabufState},
-    registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
 };
 use raw_window_handle::{RawDisplayHandle, WaylandDisplayHandle};
 use wayland_client::{
-    Connection, QueueHandle, backend::Backend, globals::registry_queue_init,
+    Connection, QueueHandle, backend::Backend, globals::{GlobalListHandler, registry_queue_init},
     protocol::wl_buffer,
 };
 use wayland_protocols::wp::linux_dmabuf::zv1::client::{
@@ -14,9 +13,12 @@ use wayland_protocols::wp::linux_dmabuf::zv1::client::{
 };
 
 struct AppData {
-    registry_state: RegistryState,
     dmabuf_state: DmabufState,
     feedback: Option<DmabufFeedback>,
+}
+
+impl GlobalListHandler for AppData {
+    registry_handlers!();
 }
 
 impl DmabufHandler for AppData {
@@ -60,13 +62,6 @@ impl DmabufHandler for AppData {
     }
 }
 
-impl ProvidesRegistryState for AppData {
-    fn registry(&mut self) -> &mut RegistryState {
-        &mut self.registry_state
-    }
-    registry_handlers![,];
-}
-
 pub fn get_wayland_device_ids<W: Window>(window: &W) -> Option<(u16, u16)> {
     if !wayland_sys::client::is_lib_available() {
         return None;
@@ -77,7 +72,7 @@ pub fn get_wayland_device_ids<W: Window>(window: &W) -> Option<(u16, u16)> {
         Ok(RawDisplayHandle::Wayland(WaylandDisplayHandle {
             display, ..
         })) => Connection::from_backend(unsafe {
-            Backend::from_foreign_display(display.as_ptr() as *mut _)
+            Backend::from_foreign_display(display.cast())
         }),
         _ => {
             return None;
@@ -88,7 +83,6 @@ pub fn get_wayland_device_ids<W: Window>(window: &W) -> Option<(u16, u16)> {
     let qh = event_queue.handle();
 
     let mut app_data = AppData {
-        registry_state: RegistryState::new(&globals),
         dmabuf_state: DmabufState::new(&globals, &qh),
         feedback: None,
     };
@@ -110,6 +104,3 @@ pub fn get_wayland_device_ids<W: Window>(window: &W) -> Option<(u16, u16)> {
         _ => None,
     }
 }
-
-sctk::delegate_dmabuf!(AppData);
-sctk::delegate_registry!(AppData);

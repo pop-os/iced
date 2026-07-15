@@ -22,11 +22,11 @@ use std::{
 
 use crate::futures::futures::channel::oneshot;
 use cctk::sctk::{
-    compositor::SurfaceData,
+    compositor::{FrameCallbackData, SurfaceData},
     error::GlobalError,
     globals::{GlobalData, ProvidesBoundGlobal},
     reexports::client::{
-        Connection, Dispatch, Proxy, QueueHandle, delegate_noop,
+        Connection, Dispatch, Proxy, QueueHandle,
         protocol::{
             wl_buffer::{self, WlBuffer},
             wl_compositor::WlCompositor,
@@ -41,6 +41,7 @@ use cctk::sctk::{
     shm::slot::SlotPool,
 };
 use iced_futures::core::window;
+use wayland_client::NoopIgnore;
 use wayland_protocols::wp::{
     alpha_modifier::v1::client::{
         wp_alpha_modifier_surface_v1::WpAlphaModifierSurfaceV1,
@@ -253,12 +254,12 @@ impl PartialEq for SubsurfaceBuffer {
     }
 }
 
-impl Dispatch<WlShmPool, GlobalData> for SctkState {
+impl Dispatch<WlShmPool, SctkState> for GlobalData {
     fn event(
+        &self,
         _: &mut SctkState,
         _: &WlShmPool,
         _: wl_shm_pool::Event,
-        _: &GlobalData,
         _: &Connection,
         _: &QueueHandle<SctkState>,
     ) {
@@ -266,36 +267,36 @@ impl Dispatch<WlShmPool, GlobalData> for SctkState {
     }
 }
 
-impl Dispatch<ZwpLinuxDmabufV1, GlobalData> for SctkState {
+impl Dispatch<ZwpLinuxDmabufV1, SctkState> for GlobalData {
     fn event(
+        &self,
         _: &mut SctkState,
         _: &ZwpLinuxDmabufV1,
         _: zwp_linux_dmabuf_v1::Event,
-        _: &GlobalData,
         _: &Connection,
         _: &QueueHandle<SctkState>,
     ) {
     }
 }
 
-impl Dispatch<ZwpLinuxBufferParamsV1, GlobalData> for SctkState {
+impl Dispatch<ZwpLinuxBufferParamsV1, SctkState> for GlobalData {
     fn event(
+        &self,
         _: &mut SctkState,
         _: &ZwpLinuxBufferParamsV1,
         _: zwp_linux_buffer_params_v1::Event,
-        _: &GlobalData,
         _: &Connection,
         _: &QueueHandle<SctkState>,
     ) {
     }
 }
 
-impl Dispatch<WlBuffer, GlobalData> for SctkState {
+impl Dispatch<WlBuffer, SctkState> for GlobalData {
     fn event(
+        &self,
         _: &mut SctkState,
         _: &WlBuffer,
         event: wl_buffer::Event,
-        _: &GlobalData,
         _: &Connection,
         _: &QueueHandle<SctkState>,
     ) {
@@ -306,19 +307,19 @@ impl Dispatch<WlBuffer, GlobalData> for SctkState {
     }
 }
 
-impl Dispatch<WlBuffer, BufferData> for SctkState {
+impl Dispatch<WlBuffer, SctkState> for BufferData {
     fn event(
+        &self,
         _: &mut SctkState,
         _: &WlBuffer,
         event: wl_buffer::Event,
-        data: &BufferData,
         _: &Connection,
         _: &QueueHandle<SctkState>,
     ) {
         match event {
             wl_buffer::Event::Release => {
                 // Release reference to `SubsurfaceBuffer`
-                _ = data.subsurface_buffer.lock().unwrap().take();
+                _ = self.subsurface_buffer.lock().unwrap().take();
             }
             _ => unreachable!(),
         }
@@ -379,7 +380,7 @@ pub struct SubsurfaceState {
 impl SubsurfaceState {
     pub fn create_surface(&self) -> WlSurface {
         self.wl_compositor
-            .create_surface(&self.qh, SurfaceData::new(None, 1))
+            .create_surface(&self.qh, SurfaceData::new(None, 1, ()))
     }
 
     pub fn update_surface_shm(
@@ -422,10 +423,10 @@ impl SubsurfaceState {
     fn create_subsurface(&self, parent: &WlSurface) -> SubsurfaceInstance {
         let wl_surface = self
             .wl_compositor
-            .create_surface(&self.qh, SurfaceData::new(None, 1));
+            .create_surface(&self.qh, SurfaceData::new(None, 1, ()));
 
         // Use empty input region so parent surface gets pointer events
-        let region = self.wl_compositor.create_region(&self.qh, ());
+        let region = self.wl_compositor.create_region(&self.qh, NoopIgnore);
         wl_surface.set_input_region(Some(&region));
         region.destroy();
 
@@ -433,7 +434,7 @@ impl SubsurfaceState {
             &wl_surface,
             parent,
             &self.qh,
-            (),
+            NoopIgnore,
         );
 
         let wp_viewport = self.wp_viewporter.get_viewport(
@@ -444,7 +445,7 @@ impl SubsurfaceState {
 
         let wp_alpha_modifier_surface =
             self.wp_alpha_modifier.as_ref().map(|wp_alpha_modifier| {
-                wp_alpha_modifier.get_surface(&wl_surface, &self.qh, ())
+                wp_alpha_modifier.get_surface(&wl_surface, &self.qh, NoopIgnore)
             });
 
         SubsurfaceInstance {
@@ -695,7 +696,7 @@ impl SubsurfaceInstance {
             self.wl_surface.damage(0, 0, i32::MAX, i32::MAX);
         }
         if buffer_changed || bounds_changed || transform_changed {
-            _ = self.wl_surface.frame(&state.qh, self.wl_surface.clone());
+            _ = self.wl_surface.frame(&state.qh, FrameCallbackData(self.wl_surface.clone()));
             self.wl_surface.commit();
         }
 
@@ -749,7 +750,7 @@ pub(crate) fn take_subsurfaces() -> Vec<SubsurfaceInfo> {
 pub(crate) fn is_subsurface(id: WindowId) -> bool {
     ICED_SUBSURFACES.with(|subsurfaces| {
         subsurfaces.borrow_mut().iter().any(|s| {
-            winit::window::WindowId::from_raw(s.4.id().as_ptr() as usize) == id
+            winit::window::WindowId::from_raw(s.4.id().as_ptr().unwrap().as_ptr() as usize) == id
         })
     })
 }
@@ -760,11 +761,11 @@ pub(crate) fn subsurface_ids(parent: WindowId) -> Vec<WindowId> {
             .borrow_mut()
             .iter()
             .filter_map(|s| {
-                if winit::window::WindowId::from_raw(s.1.id().as_ptr() as usize)
+                if winit::window::WindowId::from_raw(s.1.id().as_ptr().unwrap().as_ptr() as usize)
                     == parent
                 {
                     Some(winit::window::WindowId::from_raw(
-                        s.4.id().as_ptr() as usize
+                        s.4.id().as_ptr().unwrap().as_ptr() as usize
                     ))
                 } else {
                     None
@@ -918,6 +919,3 @@ where
         Self::new(subsurface)
     }
 }
-
-delegate_noop!(SctkState: ignore WpAlphaModifierV1);
-delegate_noop!(SctkState: ignore WpAlphaModifierSurfaceV1);

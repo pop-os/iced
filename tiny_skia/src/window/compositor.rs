@@ -200,7 +200,7 @@ pub fn present(
         );
 
         let mut pixels = tiny_skia::PixmapMut::from_bytes(
-            bytemuck::cast_slice_mut(&mut buffer),
+            bytemuck::cast_slice_mut(buffer.data_u8()),
             physical_size.width,
             physical_size.height,
         )

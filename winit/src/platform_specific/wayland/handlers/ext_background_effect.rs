@@ -7,7 +7,7 @@ use iced_runtime::platform_specific::wayland::Action;
 use sctk::globals::GlobalData;
 use sctk::reexports::client::globals::{BindError, GlobalList};
 use sctk::reexports::client::protocol::wl_surface::WlSurface;
-use sctk::reexports::client::{Connection, Dispatch, Proxy, QueueHandle, delegate_dispatch};
+use sctk::reexports::client::{Connection, Dispatch, Proxy, QueueHandle};
 use wayland_protocols::ext::background_effect::v1::client::ext_background_effect_manager_v1::{Capability, Event, ExtBackgroundEffectManagerV1};
 use wayland_protocols::ext::background_effect::v1::client::ext_background_effect_surface_v1::ExtBackgroundEffectSurfaceV1;
 
@@ -26,7 +26,7 @@ impl ExtBackgroundEffectManager {
         globals: &GlobalList,
         queue_handle: &QueueHandle<SctkState>,
     ) -> Result<Self, BindError> {
-        let manager = globals.bind(queue_handle, 1..=1, GlobalData)?;
+        let manager = globals.bind_singleton(queue_handle, 1..=1, GlobalData)?;
         Ok(Self {
             manager,
             capabilities: Capability::empty(),
@@ -52,43 +52,38 @@ impl ExtBackgroundEffectManager {
     }
 }
 
-impl Dispatch<ExtBackgroundEffectManagerV1, GlobalData, SctkState>
-    for ExtBackgroundEffectManager
+impl Dispatch<ExtBackgroundEffectManagerV1, SctkState>
+    for GlobalData
 {
     fn event(
+        &self,
         state: &mut SctkState,
         _: &ExtBackgroundEffectManagerV1,
         event: <ExtBackgroundEffectManagerV1 as Proxy>::Event,
-        _: &GlobalData,
         _: &Connection,
         _: &QueueHandle<SctkState>,
     ) {
         match event {
-            Event::Capabilities { flags } => match flags {
-                wayland_client::WEnum::Value(capability) => {
-                    let mut queued_actions = Vec::new();
-                    if let Some(bg_effect_mgr) =
-                        state.ext_background_effect_manager.as_mut()
-                    {
-                        bg_effect_mgr.capabilities = capability;
-                        if capability.contains(Capability::Blur) {
-                            queued_actions = bg_effect_mgr
-                                .queued_blur_actions
-                                .drain()
-                                .collect();
-                            state
-                                .sctk_events
-                                .push(crate::sctk_event::SctkEvent::Blur);
-                        }
-                    }
-                    for (id, rects) in queued_actions {
-                        _ = state.handle_action(Action::BlurSurface(id, rects));
+            Event::Capabilities { flags } =>  {
+                let mut queued_actions = Vec::new();
+                if let Some(bg_effect_mgr) =
+                    state.ext_background_effect_manager.as_mut()
+                {
+                    bg_effect_mgr.capabilities = flags;
+                    if flags.contains(Capability::Blur) {
+                        queued_actions = bg_effect_mgr
+                            .queued_blur_actions
+                            .drain()
+                            .collect();
+                        state
+                            .sctk_events
+                            .push(crate::sctk_event::SctkEvent::Blur);
                     }
                 }
-                wayland_client::WEnum::Unknown(u) => {
-                    log::warn!("Unknown value: {u:?}");
+                for (id, rects) in queued_actions {
+                    _ = state.handle_action(Action::BlurSurface(id, rects));
                 }
-            },
+            }
             e => {
                 log::warn!("Ignored event {e:?}");
             }
@@ -96,20 +91,17 @@ impl Dispatch<ExtBackgroundEffectManagerV1, GlobalData, SctkState>
     }
 }
 
-impl Dispatch<ExtBackgroundEffectSurfaceV1, (), SctkState>
-    for ExtBackgroundEffectManager
+impl Dispatch<ExtBackgroundEffectSurfaceV1, SctkState>
+    for ()
 {
     fn event(
+        &self,
         _: &mut SctkState,
         _: &ExtBackgroundEffectSurfaceV1,
         _: <ExtBackgroundEffectSurfaceV1 as Proxy>::Event,
-        _: &(),
         _: &Connection,
         _: &QueueHandle<SctkState>,
     ) {
         // There is no event
     }
 }
-
-delegate_dispatch!(SctkState: [ExtBackgroundEffectManagerV1: GlobalData] => ExtBackgroundEffectManager);
-delegate_dispatch!(SctkState: [ExtBackgroundEffectSurfaceV1: ()] => ExtBackgroundEffectManager);

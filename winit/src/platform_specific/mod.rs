@@ -123,7 +123,7 @@ impl PlatformSpecific {
                     let res = unsafe {
                         ObjectId::from_ptr(
                             WlSurface::interface(),
-                            wayland_window_handle.surface.as_ptr().cast(),
+                            wayland_window_handle.surface.cast(),
                         )
                     };
                     let Ok(id) = res else {

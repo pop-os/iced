@@ -3,7 +3,6 @@ use crate::platform_specific::wayland::{
     sctk_event::{LayerSurfaceEventVariant, SctkEvent},
 };
 use cctk::sctk::{
-    delegate_layer,
     reexports::client::Proxy,
     shell::{
         WaylandSurface,
@@ -84,8 +83,6 @@ impl LayerShellHandler for SctkState {
         });
     }
 }
-
-delegate_layer!(SctkState);
 
 #[allow(dead_code)]
 /// A request to SCTK window from Winit window.

@@ -2,7 +2,7 @@ use cctk::{
     cosmic_protocols::toplevel_management::v1::client::zcosmic_toplevel_manager_v1,
     toplevel_info::{ToplevelInfoHandler, ToplevelInfoState},
     toplevel_management::ToplevelManagerHandler,
-    wayland_client::{self, WEnum},
+    wayland_client::self,
 };
 use wayland_client::{Connection, QueueHandle};
 use wayland_protocols::ext::foreign_toplevel_list::v1::client::ext_foreign_toplevel_handle_v1;
@@ -21,7 +21,7 @@ impl ToplevelManagerHandler for SctkState {
         _conn: &Connection,
         _: &QueueHandle<Self>,
         _capabilities: Vec<
-            WEnum<zcosmic_toplevel_manager_v1::ZcosmicToplelevelManagementCapabilitiesV1>,
+            zcosmic_toplevel_manager_v1::ZcosmicToplelevelManagementCapabilitiesV1,
         >,
     ) {
         // TODO
@@ -60,6 +60,3 @@ impl ToplevelInfoHandler for SctkState {
         // TODO
     }
 }
-
-cctk::delegate_toplevel_info!(SctkState);
-cctk::delegate_toplevel_manager!(SctkState);

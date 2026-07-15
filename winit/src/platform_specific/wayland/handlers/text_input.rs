@@ -1,12 +1,11 @@
 use cctk::sctk::globals::GlobalData;
 use cctk::sctk::reexports::client::{Connection, Proxy, QueueHandle};
 
-use cctk::sctk::reexports::client::delegate_dispatch;
 use cctk::sctk::reexports::client::Dispatch;
 use cctk::sctk::reexports::protocols::wp::text_input::zv3::client::zwp_text_input_manager_v3::ZwpTextInputManagerV3;
 use cctk::sctk::reexports::protocols::wp::text_input::zv3::client::zwp_text_input_v3::Event as TextInputEvent;
 use cctk::sctk::reexports::protocols::wp::text_input::zv3::client::zwp_text_input_v3::ZwpTextInputV3;
-use cctk::sctk::registry::RegistryState;
+use wayland_client::globals::GlobalList;
 use wayland_client::protocol::wl_seat::WlSeat;
 use winit::event::{Ime, WindowEvent};
 use winit::window::WindowId;
@@ -24,15 +23,13 @@ pub struct TextInputManager {
 }
 
 impl TextInputManager {
-    pub fn try_new<D>(
-        registry: &RegistryState,
-        qh: &QueueHandle<D>,
+    pub fn try_new(
+        globals: &GlobalList,
+        qh: &QueueHandle<SctkState>,
     ) -> Option<Self>
-    where
-        D: Dispatch<ZwpTextInputManagerV3, GlobalData> + 'static,
     {
-        let manager = registry
-            .bind_one::<ZwpTextInputManagerV3, _, _>(qh, 1..=1, GlobalData)
+        let manager = globals
+            .bind_singleton::<ZwpTextInputManagerV3, _, _>(qh, 1..=1, GlobalData)
             .ok()?;
         Some(Self { manager })
     }
@@ -46,26 +43,26 @@ impl TextInputManager {
     }
 }
 
-impl Dispatch<ZwpTextInputManagerV3, GlobalData, SctkState>
-    for TextInputManager
+impl Dispatch<ZwpTextInputManagerV3, SctkState>
+    for GlobalData
 {
     fn event(
+        &self,
         _state: &mut SctkState,
         _proxy: &ZwpTextInputManagerV3,
         _event: <ZwpTextInputManagerV3 as Proxy>::Event,
-        _data: &GlobalData,
         _conn: &Connection,
         _qhandle: &QueueHandle<SctkState>,
     ) {
     }
 }
 
-impl Dispatch<ZwpTextInputV3, (), SctkState> for TextInputManager {
+impl Dispatch<ZwpTextInputV3, SctkState> for () {
     fn event(
+        &self,
         state: &mut SctkState,
         _text_input: &ZwpTextInputV3,
         event: <ZwpTextInputV3 as Proxy>::Event,
-        _data: &(),
         _conn: &Connection,
         _qhandle: &QueueHandle<SctkState>,
     ) {
@@ -109,7 +106,7 @@ impl Dispatch<ZwpTextInputV3, (), SctkState> for TextInputManager {
                 state.pending_commit = text;
             }
             TextInputEvent::Done { .. } => {
-                let id = WindowId::from_raw(kbd_focus.id().as_ptr() as usize);
+                let id = WindowId::from_raw(kbd_focus.id().as_ptr().unwrap().as_ptr() as usize);
 
                 // Protocol says:
                 // https://wayland.app/protocols/text-input-unstable-v3#zwp_text_input_v3:event:done
@@ -160,6 +157,3 @@ impl Dispatch<ZwpTextInputV3, (), SctkState> for TextInputManager {
         }
     }
 }
-
-delegate_dispatch!(SctkState: [ZwpTextInputManagerV3: GlobalData] => TextInputManager);
-delegate_dispatch!(SctkState: [ZwpTextInputV3: ()] => TextInputManager);

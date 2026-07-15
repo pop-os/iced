@@ -113,7 +113,7 @@ impl PlatformSpecific {
             )) => {
                 let backend = unsafe {
                     wayland_backend::client::Backend::from_foreign_display(
-                        wayland_display_handle.display.as_ptr().cast(),
+                        wayland_display_handle.display.cast(),
                     )
                 };
                 Some(Connection::from_backend(backend))
@@ -290,7 +290,7 @@ impl WaylandSpecific {
                 let id = unsafe {
                     ObjectId::from_ptr(
                         WlSurface::interface(),
-                        window.surface.as_ptr().cast(),
+                        window.surface.cast(),
                     )
                     .unwrap()
                 };
@@ -318,7 +318,7 @@ impl HasWindowHandle for Window {
             raw_window_handle::WindowHandle::borrow_raw(
                 raw_window_handle::RawWindowHandle::Wayland(
                     raw_window_handle::WaylandWindowHandle::new(
-                        std::ptr::NonNull::new(self.0.id().as_ptr() as *mut _)
+                        std::ptr::NonNull::new(self.0.id().as_ptr().unwrap().as_ptr() as *mut _)
                             .unwrap(),
                     ),
                 ),

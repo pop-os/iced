@@ -1,7 +1,7 @@
 use crate::platform_specific::wayland::{
     event_loop::state::SctkState, sctk_event::SctkEvent,
 };
-use cctk::sctk::{delegate_output, output::OutputHandler};
+use cctk::sctk::{output::OutputHandler};
 
 impl OutputHandler for SctkState {
     fn output_state(&mut self) -> &mut cctk::sctk::output::OutputState {
@@ -45,5 +45,3 @@ impl OutputHandler for SctkState {
         // TODO clean up any layer surfaces on this output?
     }
 }
-
-delegate_output!(SctkState);

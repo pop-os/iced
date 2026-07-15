@@ -7,7 +7,6 @@ use crate::{
     },
 };
 use cctk::sctk::{
-    delegate_touch,
     reexports::client::{
         Connection, Proxy, QueueHandle,
         protocol::{wl_surface::WlSurface, wl_touch::WlTouch},
@@ -153,5 +152,3 @@ impl TouchHandler for SctkState {
         }
     }
 }
-
-delegate_touch!(SctkState);

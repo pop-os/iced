@@ -14,13 +14,13 @@ pub mod wp_fractional_scaling;
 pub mod wp_viewporter;
 
 use cctk::sctk::{
-    delegate_registry, delegate_shm,
     output::OutputState,
-    registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
     seat::SeatState,
     shm::{Shm, ShmHandler},
 };
+
+use wayland_client::globals::GlobalListHandler;
 
 use crate::platform_specific::wayland::event_loop::state::SctkState;
 
@@ -30,12 +30,6 @@ impl ShmHandler for SctkState {
     }
 }
 
-impl ProvidesRegistryState for SctkState {
-    fn registry(&mut self) -> &mut RegistryState {
-        &mut self.registry_state
-    }
+impl GlobalListHandler for SctkState {
     registry_handlers![OutputState, SeatState,];
 }
-
-delegate_shm!(SctkState);
-delegate_registry!(SctkState);

@@ -3,7 +3,6 @@ use crate::platform_specific::wayland::{
     sctk_event::{KeyboardEventVariant, SctkEvent},
 };
 use cctk::sctk::{
-    delegate_keyboard,
     seat::keyboard::{KeyboardHandler, Keysym, Modifiers},
 };
 use cctk::sctk::{reexports::client::Proxy, seat::keyboard::RawModifiers};
@@ -96,7 +95,7 @@ impl KeyboardHandler for SctkState {
         for surface in surfaces.chain(std::iter::once(surface)) {
             if is_active {
                 let id = winit::window::WindowId::from_raw(
-                    surface.id().as_ptr() as usize,
+                    surface.id().as_ptr().unwrap().as_ptr() as usize,
                 );
                 if self.windows.iter().any(|w| w.window.id() == id) {
                     continue;
@@ -165,7 +164,7 @@ impl KeyboardHandler for SctkState {
                     self.seats.swap(0, i);
                     let s = &self.seats[0];
                     let id = winit::window::WindowId::from_raw(
-                        surface.id().as_ptr() as usize,
+                        surface.id().as_ptr().unwrap().as_ptr() as usize,
                     );
                     if self.windows.iter().any(|w| w.window.id() == id) {
                         continue;
@@ -333,5 +332,3 @@ impl KeyboardHandler for SctkState {
         // TODO
     }
 }
-
-delegate_keyboard!(SctkState);

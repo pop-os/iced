@@ -4,7 +4,7 @@ use cctk::sctk::reexports::client::Dispatch;
 use cctk::sctk::reexports::client::globals::{BindError, GlobalList};
 use cctk::sctk::reexports::client::protocol::wl_surface::WlSurface;
 use cctk::sctk::reexports::client::{
-    Connection, Proxy, QueueHandle, delegate_dispatch,
+    Connection, Proxy, QueueHandle,
 };
 use cctk::sctk::reexports::protocols::wp::viewporter::client::wp_viewport::WpViewport;
 use cctk::sctk::reexports::protocols::wp::viewporter::client::wp_viewporter::WpViewporter;
@@ -25,7 +25,7 @@ impl ViewporterState {
         globals: &GlobalList,
         queue_handle: &QueueHandle<SctkState>,
     ) -> Result<Self, BindError> {
-        let viewporter = globals.bind(queue_handle, 1..=1, GlobalData)?;
+        let viewporter = globals.bind_singleton(queue_handle, 1..=1, GlobalData)?;
         Ok(Self { viewporter })
     }
 
@@ -40,12 +40,12 @@ impl ViewporterState {
     }
 }
 
-impl Dispatch<WpViewporter, GlobalData, SctkState> for ViewporterState {
+impl Dispatch<WpViewporter, SctkState> for GlobalData {
     fn event(
+        &self,
         _: &mut SctkState,
         _: &WpViewporter,
         _: <WpViewporter as Proxy>::Event,
-        _: &GlobalData,
         _: &Connection,
         _: &QueueHandle<SctkState>,
     ) {
@@ -53,18 +53,15 @@ impl Dispatch<WpViewporter, GlobalData, SctkState> for ViewporterState {
     }
 }
 
-impl Dispatch<WpViewport, GlobalData, SctkState> for ViewporterState {
+impl Dispatch<WpViewport, SctkState> for GlobalData {
     fn event(
+        &self,
         _: &mut SctkState,
         _: &WpViewport,
         _: <WpViewport as Proxy>::Event,
-        _: &GlobalData,
         _: &Connection,
         _: &QueueHandle<SctkState>,
     ) {
         // No events.
     }
 }
-
-delegate_dispatch!(SctkState: [WpViewporter: GlobalData] => ViewporterState);
-delegate_dispatch!(SctkState: [WpViewport: GlobalData] => ViewporterState);

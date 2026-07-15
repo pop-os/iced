@@ -6,6 +6,7 @@ use cctk::sctk::reexports::{
         protocol::{wl_display::WlDisplay, wl_surface::WlSurface},
     },
 };
+use cctk::sctk::compositor::FrameCallbackData;
 use raw_window_handle::HandleError;
 use std::sync::{Arc, Mutex};
 use winit::{
@@ -57,7 +58,7 @@ impl SctkWinitWindow {
 impl winit::window::Window for SctkWinitWindow {
     fn id(&self) -> winit::window::WindowId {
         winit::window::WindowId::from_raw(
-            self.surface.wl_surface().id().as_ptr() as usize,
+            self.surface.wl_surface().id().as_ptr().unwrap().as_ptr() as usize,
         )
     }
 
@@ -77,7 +78,7 @@ impl winit::window::Window for SctkWinitWindow {
 
     fn pre_present_notify(&self) {
         let surface = self.surface.wl_surface();
-        _ = surface.frame(&self.queue_handle, surface.clone());
+        _ = surface.frame(&self.queue_handle, FrameCallbackData(surface.clone()));
     }
 
     fn set_cursor(&self, cursor: winit_core::cursor::Cursor) {
@@ -471,7 +472,7 @@ impl raw_window_handle::HasWindowHandle for SctkWinitWindow {
     > {
         let raw = raw_window_handle::WaylandWindowHandle::new({
             let ptr = self.surface.wl_surface().id().as_ptr();
-            let Some(ptr) = std::ptr::NonNull::new(ptr as *mut _) else {
+            let Ok(ptr) = ptr else {
                 return Err(HandleError::Unavailable);
             };
             ptr
@@ -488,11 +489,9 @@ impl raw_window_handle::HasDisplayHandle for SctkWinitWindow {
         raw_window_handle::DisplayHandle<'_>,
         raw_window_handle::HandleError,
     > {
-        let raw = raw_window_handle::WaylandDisplayHandle::new({
-            let ptr = self.display.id().as_ptr();
-            std::ptr::NonNull::new(ptr as *mut _)
-                .expect("wl_proxy should never be null")
-        });
+        let raw = raw_window_handle::WaylandDisplayHandle::new(
+            self.display.id().as_ptr().expect("wl_proxy should never be null")
+        );
 
         unsafe { Ok(raw_window_handle::DisplayHandle::borrow_raw(raw.into())) }
     }
