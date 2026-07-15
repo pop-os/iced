@@ -25,6 +25,7 @@ svg = ["iced_graphics/svg", "resvg/text"]
 web-colors = ["iced_graphics/web-colors"]
 webgl = ["wgpu/webgl"]
 strict-assertions = []
+wayland = ["cctk"]
 
 [dependencies]
 iced_debug.workspace = true
@@ -65,4 +66,6 @@ x11rb = { version = "0.13.1", features = [
     "dri3",
     "randr",
 ] }
-sctk.workspace = true
+
+[build-dependencies]
+build_helpers = { path = "../build_helpers" }

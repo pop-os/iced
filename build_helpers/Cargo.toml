@@ -1,0 +1,17 @@
+[package]
+name = "build_helpers"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+categories.workspace = true
+keywords.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+cfg_aliases = { version = "0.2.1" }
+
+[lints]
+workspace = true

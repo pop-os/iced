@@ -29,15 +29,13 @@ highlighter = ["dep:iced_highlighter"]
 advanced = []
 crisp = []
 a11y = ["iced_accessibility"]
-cctk = ["iced_runtime/cctk", "dep:cctk"]
+wayland = ["iced_runtime/wayland", "dep:cctk"]
 
 [dependencies]
 iced_renderer.workspace = true
 iced_runtime.workspace = true
 iced_accessibility.workspace = true
 iced_accessibility.optional = true
-cctk.workspace = true
-cctk.optional = true
 num-traits.workspace = true
 log.workspace = true
 rustc-hash.workspace = true
@@ -57,3 +55,10 @@ pulldown-cmark.optional = true
 
 iced_highlighter.workspace = true
 iced_highlighter.optional = true
+
+[target.'cfg(all(unix, not(any(target_os = "redox", target_family = "wasm", target_os = "android", target_vendor = "apple"))))'.dependencies]
+cctk.workspace = true
+cctk.optional = true
+
+[build-dependencies]
+build_helpers = { path = "../build_helpers" }

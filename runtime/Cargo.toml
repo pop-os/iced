@@ -17,7 +17,7 @@ workspace = true
 debug = []
 selector = ["dep:iced_selector"]
 a11y = ["iced_accessibility", "iced_core/a11y"]
-cctk = ["iced_core/cctk", "dep:cctk"]
+wayland = ["iced_core/wayland", "dep:cctk"]
 
 [dependencies]
 bytes.workspace = true
@@ -33,9 +33,14 @@ sipper.optional = true
 iced_selector.workspace = true
 iced_selector.optional = true
 iced_futures.features = ["thread-pool"]
-cctk.workspace = true
-cctk.optional = true
 iced_accessibility.workspace = true
 iced_accessibility.optional = true
 window_clipboard.workspace = true
 dnd.workspace = true
+
+[target.'cfg(all(unix, not(any(target_os = "redox", target_family = "wasm", target_os = "android", target_vendor = "apple"))))'.dependencies]
+cctk.workspace = true
+cctk.optional = true
+
+[build-dependencies]
+build_helpers = { path = "../build_helpers" }

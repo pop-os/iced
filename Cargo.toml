@@ -118,13 +118,17 @@ winit = [
     "iced_accessibility?/accesskit_winit",
     "iced_program/winit",
 ]
-wayland = ["iced_renderer/wayland", "iced_winit/wayland"]
-cctk = ["iced_winit/cctk", "iced_widget/cctk", "iced_core/cctk", "wayland"]
-# Enables the sctk shell.
+wayland = [
+    "iced_renderer/wayland",
+    "iced_winit/wayland",
+    "iced_runtime/wayland",
+    "iced_widget/wayland",
+    "iced_core/wayland",
+]
+
 [dependencies]
-
-
 iced_devtools.workspace = true
+iced_devtools.optional = true
 iced_debug.workspace = true
 
 iced_program.workspace = true
@@ -134,10 +138,9 @@ iced_renderer.workspace = true
 iced_runtime.workspace = true
 iced_widget.workspace = true
 iced_winit.workspace = true
-iced_devtools.optional = true
+iced_winit.optional = true
 iced_tester.workspace = true
 iced_tester.optional = true
-iced_winit.optional = true
 iced_highlighter.workspace = true
 iced_highlighter.optional = true
 iced_accessibility.workspace = true
@@ -190,6 +193,7 @@ members = [
     "winit",
     "examples/*",
     "accessibility",
+    "build_helpers",
 ]
 exclude = ["examples/integration"]
 
@@ -308,8 +312,6 @@ winit = { git = "https://github.com/pop-os/winit.git", tag = "cosmic-0.14" }
 winit-core = { git = "https://github.com/pop-os/winit.git", tag = "cosmic-0.14" }
 cursor-icon = "1.1.0"
 
-sctk = { package = "smithay-client-toolkit", version = "0.20.0" }
-
 [workspace.lints.rust]
 rust_2018_idioms = { level = "deny", priority = -1 }
 unused_results = "deny"
@@ -334,3 +336,6 @@ useless_conversion = "deny"
 
 [workspace.lints.rustdoc]
 broken_intra_doc_links = "forbid"
+
+[build-dependencies]
+build_helpers = { path = "./build_helpers" }

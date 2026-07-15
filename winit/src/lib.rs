@@ -47,7 +47,6 @@ mod window;
 pub use clipboard::Clipboard;
 pub use error::Error;
 pub use proxy::Proxy;
-use winit::dpi::LogicalSize;
 use winit::dpi::PhysicalPosition;
 use winit::dpi::PhysicalSize;
 
@@ -92,10 +91,10 @@ where
 
     let event_loop = EventLoop::new().expect("Create event loop");
 
-    #[cfg(all(feature = "cctk", target_os = "linux"))]
+    #[cfg(wayland_platform)]
     let is_wayland =
         winit::platform::wayland::EventLoopExtWayland::is_wayland(&event_loop);
-    #[cfg(not(all(feature = "cctk", target_os = "linux")))]
+    #[cfg(not(wayland_platform))]
     let is_wayland = false;
 
     // TODO this is new..
@@ -260,7 +259,7 @@ where
                     | winit::event::WindowEvent::Moved(_)
             );
 
-            #[cfg(all(feature = "cctk", target_os = "linux"))]
+            #[cfg(wayland_platform)]
             {
                 if matches!(event, WindowEvent::RedrawRequested) {
                     for id in
@@ -575,10 +574,7 @@ where
                                     .expect("Send event");
                             }
                             Control::Winit(id, e) => {
-                                #[cfg(all(
-                                    feature = "cctk",
-                                    target_os = "linux"
-                                ))]
+                                #[cfg(wayland_platform)]
                                 {
                                     if matches!(e, WindowEvent::RedrawRequested)
                                     {
@@ -774,7 +770,7 @@ async fn run_instance<P>(
 
     let mut platform_specific_handler =
         crate::platform_specific::PlatformSpecific::default();
-    #[cfg(all(feature = "cctk", target_os = "linux"))]
+    #[cfg(wayland_platform)]
     if is_wayland {
         platform_specific_handler = platform_specific_handler.with_wayland(
             control_sender.clone(),
@@ -885,7 +881,7 @@ async fn run_instance<P>(
                 on_open,
                 resize_border,
             } => {
-                #[cfg(all(feature = "cctk", target_os = "linux"))]
+                #[cfg(wayland_platform)]
                 platform_specific_handler.send_wayland(
                     platform_specific::Action::TrackWindow(window.clone(), id),
                 );
@@ -1054,7 +1050,7 @@ async fn run_instance<P>(
                     continue;
                 }
                 // XX must force update to corner radius before the surface is committed.
-                #[cfg(all(feature = "cctk", target_os = "linux"))]
+                #[cfg(wayland_platform)]
                 if (window.surface_version != window.state.surface_version()
                     || window.logical_size() != window.state.logical_size())
                     && !crate::subsurface_widget::is_subsurface(window_id)
@@ -1394,7 +1390,7 @@ async fn run_instance<P>(
                         }
                     });
                     let no_window_events = window_events.is_empty();
-                    #[cfg(all(feature = "cctk", target_os = "linux"))]
+                    #[cfg(wayland_platform)]
                     window_events.push(core::Event::PlatformSpecific(
                         core::event::PlatformSpecific::Wayland(
                             core::event::wayland::Event::RequestResize,
@@ -2126,7 +2122,7 @@ where
                     _ = control_sender.start_send(Control::Cleanup(id)).ok();
                 }
                 let proxy = clipboard.proxy();
-                #[cfg(all(feature = "cctk", target_os = "linux"))]
+                #[cfg(wayland_platform)]
                 platform_specific
                     .send_wayland(platform_specific::Action::RemoveWindow(id));
                 if let Some(window) = window_manager.remove(id) {

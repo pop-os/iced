@@ -788,6 +788,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "build_helpers"
+version = "0.14.0"
+dependencies = [
+ "cfg_aliases",
+]
+
+[[package]]
 name = "built"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2957,6 +2964,7 @@ dependencies = [
 name = "iced"
 version = "0.14.0"
 dependencies = [
+ "build_helpers",
  "criterion",
  "dnd",
  "iced_accessibility",
@@ -3008,6 +3016,7 @@ version = "0.14.0"
 dependencies = [
  "approx",
  "bitflags 2.11.0",
+ "build_helpers",
  "bytes",
  "cosmic-client-toolkit",
  "dnd",
@@ -3114,6 +3123,7 @@ dependencies = [
 name = "iced_runtime"
 version = "0.14.0"
 dependencies = [
+ "build_helpers",
  "bytes",
  "cosmic-client-toolkit",
  "dnd",
@@ -3181,6 +3191,7 @@ version = "0.14.0"
 dependencies = [
  "as-raw-xcb-connection",
  "bitflags 2.11.0",
+ "build_helpers",
  "bytemuck",
  "cosmic-client-toolkit",
  "cryoglyph",
@@ -3210,6 +3221,7 @@ dependencies = [
 name = "iced_widget"
 version = "0.14.2"
 dependencies = [
+ "build_helpers",
  "cosmic-client-toolkit",
  "dnd",
  "iced_accessibility",
@@ -3231,6 +3243,7 @@ dependencies = [
 name = "iced_winit"
 version = "0.14.0"
 dependencies = [
+ "build_helpers",
  "cosmic-client-toolkit",
  "cursor-icon",
  "dnd",
