@@ -23,6 +23,33 @@ use winit::event::Force;
 use winit::icon::IconProvider;
 use winit::keyboard::SmolStr;
 
+/// Returns the activation token provided by the compositor, if any.
+///
+/// The token is single-use, so it is only ever handed out to the first window.
+#[cfg(target_os = "linux")]
+fn take_activation_token() -> Option<winit::window::ActivationToken> {
+    use std::sync::Mutex;
+    use std::sync::OnceLock;
+    use winit::platform::startup_notify::reset_activation_token_env;
+
+    static TOKEN: OnceLock<Mutex<Option<winit::window::ActivationToken>>> =
+        OnceLock::new();
+
+    TOKEN
+        .get_or_init(|| {
+            let token = std::env::var("XDG_ACTIVATION_TOKEN")
+                .ok()
+                .map(winit::window::ActivationToken::from_raw);
+
+            reset_activation_token_env();
+
+            Mutex::new(token)
+        })
+        .lock()
+        .ok()
+        .and_then(|mut token| token.take())
+}
+
 /// Converts some [`window::Settings`] into some `WindowAttributes` from `winit`.
 pub fn window_attributes(
     settings: window::Settings,
@@ -182,12 +209,19 @@ pub fn window_attributes(
         {
             use winit::platform::wayland::WindowAttributesWayland;
 
-            attributes = attributes.with_platform_attributes(Box::new(
-                WindowAttributesWayland::default().with_name(
+            let mut wayland_attributes = WindowAttributesWayland::default()
+                .with_name(
                     &settings.platform_specific.application_id,
                     &settings.platform_specific.application_id,
-                ),
-            ));
+                );
+
+            if let Some(token) = take_activation_token() {
+                wayland_attributes =
+                    wayland_attributes.with_activation_token(token);
+            }
+
+            attributes = attributes
+                .with_platform_attributes(Box::new(wayland_attributes));
         }
     }
 
