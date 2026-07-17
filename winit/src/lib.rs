@@ -855,6 +855,8 @@ async fn run_instance<P>(
                 &mut is_window_opening,
                 &mut system_theme,
                 &mut platform_specific_handler,
+                &mut dnd_surface,
+                &mut dnd_surface_id,
                 is_daemon,
             )
         };
@@ -2068,6 +2070,10 @@ fn run_action<'a, P, C>(
     is_window_opening: &mut bool,
     system_theme: &mut theme::Mode,
     platform_specific: &mut crate::platform_specific::PlatformSpecific,
+    dnd_surface: &mut Option<
+        Arc<Box<dyn HasWindowHandle + Send + Sync + 'static>>,
+    >,
+    dnd_surface_id: &mut Option<window::Id>,
     is_daemon: bool,
 ) -> bool
 where
@@ -2583,6 +2589,10 @@ where
             }
             iced_runtime::dnd::DndAction::EndDnd => {
                 clipboard.end_dnd();
+                *dnd_surface = None;
+                if let Some(id) = dnd_surface_id.take() {
+                    platform_specific.retain_subsurfaces(|other| other != id);
+                }
             }
             iced_runtime::dnd::DndAction::PeekDnd(m, channel) => {
                 let data = clipboard.peek_dnd(m);
