@@ -1,3 +1,5 @@
+#![allow(unexpected_cfgs)]
+
 use std::{
     fs,
     io::{BufRead, BufReader},
@@ -144,7 +146,9 @@ pub fn get_x11_device_ids<W: Window>(window: &W) -> Option<(u16, u16)> {
                                     {
                                         let stat =
                                             stat(Path::new("/dev/dri").join(device)).ok()?;
-                                        let dev = stat.st_rdev;
+                                        // Hack (u64 as u64) for E2K CPU architecture
+                                        #[allow(clippy::unnecessary_cast)]
+                                        let dev = stat.st_rdev as u64;
                                         return super::ids_from_dev(dev);
                                     }
                                 }
@@ -165,7 +169,9 @@ pub fn get_x11_device_ids<W: Window>(window: &W) -> Option<(u16, u16)> {
         let dri3 = conn.dri3_open(root, x11rb::NONE).ok()?.reply().ok()?;
         let device_fd = dri3.device_fd;
         let stat = fstat(device_fd).ok()?;
-        let dev = stat.st_rdev;
+        // Hack (u64 as u64) for E2K CPU architecture
+        #[allow(clippy::unnecessary_cast)]
+        let dev = stat.st_rdev as u64;
         super::ids_from_dev(dev)
     }
 }
