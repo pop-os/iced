@@ -27,6 +27,15 @@ impl LayerShellHandler for SctkState {
             None => return,
         };
 
+        if let Some(id) = self.id_map.remove(&layer.surface.wl_surface().id()) {
+            if let Some(blurred) = self.blur_surfaces.remove(&id) {
+                blurred.destroy();
+            }
+            _ = self.corner_radii.remove(&id);
+
+            _ = self.destroyed.insert(id);
+        }
+
         self.sctk_events.push(SctkEvent::LayerSurfaceEvent {
             variant: LayerSurfaceEventVariant::Done,
             id: layer.surface.wl_surface().clone(),
