@@ -874,6 +874,11 @@ impl SctkState {
 
         _ = wl_surface.frame(&self.queue_handle, wl_surface.clone());
 
+        if let Some(old) = self.blur_surfaces.remove(&settings.id) {
+            old.destroy();
+        }
+        _ = self.corner_radii.remove(&settings.id);
+
         if let Some(blur) = self.pending_blur.remove(&settings.id) {
             self.apply_blur(settings.id, Some(blur), &wl_surface);
         }
@@ -1011,6 +1016,12 @@ impl SctkState {
             layer_surface.set_input_region(Some(&region));
             region.destroy();
         }
+
+        if let Some(old) = self.blur_surfaces.remove(&id) {
+            old.destroy();
+        }
+        _ = self.corner_radii.remove(&id);
+
         if let Some(blur) = self.pending_blur.remove(&id) {
             self.apply_blur(id, Some(blur), &wl_surface);
         }
@@ -2021,6 +2032,11 @@ impl SctkState {
             wl_surface.set_input_region(Some(&region));
             region.destroy();
         }
+
+        if let Some(old) = self.blur_surfaces.remove(&settings.id) {
+            old.destroy();
+        }
+        _ = self.corner_radii.remove(&settings.id);
 
         if let Some(blur) = self.pending_blur.remove(&settings.id) {
             _ = self.apply_blur(settings.id, Some(blur), &wl_surface);
