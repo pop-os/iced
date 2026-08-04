@@ -1391,7 +1391,6 @@ async fn run_instance<P>(
                             true
                         }
                     });
-                    let no_window_events = window_events.is_empty();
                     #[cfg(wayland_platform)]
                     window_events.push(core::Event::PlatformSpecific(
                         core::event::PlatformSpecific::Wayland(
@@ -1409,8 +1408,7 @@ async fn run_instance<P>(
                             &mut clipboard,
                             &mut messages,
                         );
-                    let mut needs_redraw =
-                        !no_window_events || !messages.is_empty();
+                    let mut needs_redraw = !messages.is_empty();
                     if let Some(requested_size) =
                         clipboard.requested_logical_size.lock().unwrap().take()
                     {
@@ -1466,7 +1464,16 @@ async fn run_instance<P>(
                             mouse_interaction,
                             ..
                         } => {
+                            let mouse_changed =
+                                window.mouse_interaction != mouse_interaction;
+
                             window.update_mouse(mouse_interaction);
+
+                            if mouse_changed {
+                                window.request_redraw(
+                                    core::window::RedrawRequest::NextFrame,
+                                );
+                            }
 
                             #[cfg(not(feature = "unconditional-rendering"))]
                             window.request_redraw(_redraw_request);
