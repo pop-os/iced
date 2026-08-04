@@ -269,6 +269,13 @@ pub fn window_event(
                     scale_factor,
                 )))
             }
+            winit::event::PointerSource::TabletTool { .. } => {
+                let position = position.to_logical::<f64>(scale_factor);
+
+                Some(Event::Mouse(mouse::Event::CursorMoved {
+                    position: Point::new(position.x as f32, position.y as f32),
+                }))
+            }
             _ => None,
         },
         // TODO how to handle this for Touch? Is it different than a press? Need to double check winit impl
@@ -305,6 +312,24 @@ pub fn window_event(
                     mouse::Event::ButtonReleased(button)
                 }
             }))
+        }
+        WindowEvent::PointerButton {
+            button: ButtonSource::TabletTool { button, .. },
+            state,
+            ..
+        } => {
+            let button: Option<winit::event::MouseButton> = button.into();
+
+            button.map(mouse_button).map(|button| {
+                Event::Mouse(match state {
+                    winit::event::ElementState::Pressed => {
+                        mouse::Event::ButtonPressed(button)
+                    }
+                    winit::event::ElementState::Released => {
+                        mouse::Event::ButtonReleased(button)
+                    }
+                })
+            })
         }
         WindowEvent::PointerButton {
             button: ButtonSource::Touch { finger_id, force },
