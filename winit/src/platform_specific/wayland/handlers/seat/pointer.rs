@@ -1,8 +1,5 @@
-use crate::{
-    event_loop::state::FrameStatus,
-    platform_specific::wayland::{
-        event_loop::state::SctkState, sctk_event::SctkEvent,
-    },
+use crate::platform_specific::wayland::{
+    event_loop::state::SctkState, sctk_event::SctkEvent,
 };
 use cctk::sctk::{
     delegate_pointer,
@@ -48,14 +45,6 @@ impl PointerHandler for SctkState {
                 );
                 if self.windows.iter().any(|w| w.window.id() == id) {
                     continue;
-                }
-
-                let entry = self
-                    .frame_status
-                    .entry(e.surface.id())
-                    .or_insert(FrameStatus::RequestedRedraw);
-                if matches!(entry, FrameStatus::Received) {
-                    *entry = FrameStatus::Ready;
                 }
 
                 self.sctk_events.push(SctkEvent::PointerEvent {
