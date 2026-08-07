@@ -446,10 +446,21 @@ where
                 | Event::Touch(touch::Event::FingerPressed { .. })
         ) {
             if cursor.position_over(bounds).is_none() {
+                let was_visible = state.focused
+                    || state.keyboard_focused
+                    || state
+                        .selection
+                        .as_ref()
+                        .is_some_and(|sel| sel.anchor != sel.end);
+
                 state.focused = false;
                 state.keyboard_focused = false;
                 if let Some(sel) = &mut state.selection {
                     sel.clear();
+                }
+
+                if was_visible {
+                    shell.request_redraw();
                 }
             }
         }
@@ -511,6 +522,7 @@ where
                     state.focused = true;
                     state.keyboard_focused = false;
                     shell.capture_event();
+                    shell.request_redraw();
                 }
             }
 
@@ -520,6 +532,7 @@ where
                     state.focused = true;
                     state.keyboard_focused = false;
                     shell.capture_event();
+                    shell.request_redraw();
                 }
             }
 
@@ -544,7 +557,15 @@ where
                             position.y - anchor.y,
                         );
 
-                        sel.end = hit_to_grapheme(paragraph, relative, content);
+                        let end = hit_to_grapheme(paragraph, relative, content);
+
+                        // Only the drag reaching a new grapheme changes what
+                        // is drawn; plain motion inside one does not.
+                        if end != sel.end {
+                            sel.end = end;
+                            shell.request_redraw();
+                        }
+
                         shell.capture_event();
                     }
                 }
@@ -587,6 +608,7 @@ where
                             sel.anchor = 0;
                             sel.end = grapheme_count;
                             shell.capture_event();
+                            shell.request_redraw();
                             return;
                         }
                         _ => {}
@@ -613,6 +635,7 @@ where
                             sel.end = pos;
                         }
                         shell.capture_event();
+                        shell.request_redraw();
                     }
                     keyboard::Key::Named(keyboard::key::Named::ArrowRight) => {
                         let by_word = is_jump_modifier(*modifiers);
@@ -633,6 +656,7 @@ where
                             sel.end = pos;
                         }
                         shell.capture_event();
+                        shell.request_redraw();
                     }
                     keyboard::Key::Named(keyboard::key::Named::Home) => {
                         if modifiers.shift() {
@@ -642,6 +666,7 @@ where
                             sel.end = 0;
                         }
                         shell.capture_event();
+                        shell.request_redraw();
                     }
                     keyboard::Key::Named(keyboard::key::Named::End) => {
                         if modifiers.shift() {
@@ -651,6 +676,7 @@ where
                             sel.end = grapheme_count;
                         }
                         shell.capture_event();
+                        shell.request_redraw();
                     }
                     _ => {}
                 }
