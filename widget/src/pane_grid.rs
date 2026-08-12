@@ -92,7 +92,8 @@ use crate::core::{
 };
 use log::trace;
 
-const DRAG_DEADBAND_DISTANCE: f32 = 10.0;
+use crate::DRAG_DEADBAND_DISTANCE;
+
 const THICKNESS_RATIO: f32 = 25.0;
 
 /// A collection of panes distributed using either vertical or horizontal splits

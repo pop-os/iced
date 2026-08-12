@@ -9,6 +9,8 @@ pub use iced_renderer::graphics;
 
 pub use core::widget::Id;
 
+pub(crate) const DRAG_DEADBAND_DISTANCE: f32 = 10.0;
+
 mod action;
 mod mouse_area;
 mod pin;
