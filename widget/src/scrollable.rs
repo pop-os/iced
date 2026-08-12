@@ -961,6 +961,16 @@ where
                             y: y + translation.y as f64,
                         },
                     )),
+                    Event::Touch(touch::Event::FingerLifted {
+                        id,
+                        position,
+                    }) if matches!(
+                        state.interaction,
+                        Interaction::TouchScrolling(_)
+                    ) =>
+                    {
+                        Event::Touch(touch::Event::FingerLost { id, position })
+                    }
                     e => e,
                 };
                 self.content.as_widget_mut().update(
@@ -990,14 +1000,30 @@ where
 
             if matches!(
                 event,
+                Event::Mouse(mouse::Event::CursorMoved { .. })
+                    | Event::Touch(touch::Event::FingerPressed { .. })
+            ) {
+                state.suppress_touch_hover = false;
+            }
+
+            if matches!(
+                event,
                 Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left))
                     | Event::Touch(
                         touch::Event::FingerLifted { .. }
                             | touch::Event::FingerLost { .. }
                     )
             ) {
+                if matches!(state.interaction, Interaction::TouchScrolling(_)) {
+                    state.suppress_touch_hover = true;
+                }
                 state.interaction = Interaction::None;
+                state.touch_press_start = None;
                 return;
+            }
+
+            if let Event::Touch(touch::Event::FingerPressed { .. }) = event {
+                state.touch_press_start = cursor_over_scrollable;
             }
 
             if shell.is_event_captured() {
@@ -1093,14 +1119,31 @@ where
                                 Interaction::TouchScrolling(position);
                         }
                         touch::Event::FingerMoved { .. } => {
-                            let Interaction::TouchScrolling(
-                                scroll_box_touched_at,
-                            ) = state.interaction
+                            let Some(cursor_position) = cursor.position()
                             else {
                                 return;
                             };
 
-                            let Some(cursor_position) = cursor.position()
+                            if !matches!(
+                                state.interaction,
+                                Interaction::TouchScrolling(_)
+                            ) {
+                                let Some(start) = state.touch_press_start
+                                else {
+                                    return;
+                                };
+                                if start.distance(cursor_position)
+                                    < crate::DRAG_DEADBAND_DISTANCE
+                                {
+                                    return;
+                                }
+                                state.interaction =
+                                    Interaction::TouchScrolling(start);
+                            }
+
+                            let Interaction::TouchScrolling(
+                                scroll_box_touched_at,
+                            ) = state.interaction
                             else {
                                 return;
                             };
@@ -1322,6 +1365,14 @@ where
             state.translation(self.direction, bounds, content_bounds);
 
         let cursor = match cursor_over_scrollable {
+            _ if state.suppress_touch_hover
+                || matches!(
+                    state.interaction,
+                    Interaction::TouchScrolling(_)
+                ) =>
+            {
+                mouse::Cursor::Unavailable
+            }
             Some(cursor_position)
                 if !(mouse_over_x_scrollbar || mouse_over_y_scrollbar) =>
             {
@@ -1497,6 +1548,14 @@ where
             state.translation(self.direction, bounds, content_bounds);
 
         let cursor = match cursor_over_scrollable {
+            _ if state.suppress_touch_hover
+                || matches!(
+                    state.interaction,
+                    Interaction::TouchScrolling(_)
+                ) =>
+            {
+                cursor.levitate() + translation
+            }
             Some(cursor_position)
                 if !(mouse_over_x_scrollbar || mouse_over_y_scrollbar) =>
             {
@@ -2022,6 +2081,8 @@ struct State {
     last_notified: Option<Viewport>,
     last_scrolled: Option<Instant>,
     is_scrollbar_visible: bool,
+    touch_press_start: Option<Point>,
+    suppress_touch_hover: bool,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -2047,6 +2108,8 @@ impl Default for State {
             last_notified: None,
             last_scrolled: None,
             is_scrollbar_visible: true,
+            touch_press_start: None,
+            suppress_touch_hover: false,
         }
     }
 }
