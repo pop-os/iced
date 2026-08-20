@@ -3,7 +3,7 @@ use crate::Widget;
 use crate::id::{Id, Internal};
 use std::any::{self, Any};
 use std::borrow::{Borrow, BorrowMut, Cow};
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
 use std::hash::Hash;
 use std::{fmt, mem};
 
@@ -286,75 +286,38 @@ impl Tree {
         diff: impl Fn(&mut Tree, &mut T),
         new_state: impl Fn(&T) -> Self,
     ) {
-        if self.children.len() > new_children.len() {
-            self.children.truncate(new_children.len());
-        }
+        let old_children = mem::take(&mut self.children);
 
-        let children_len = self.children.len();
-        let (mut id_map, mut id_list): (
-            HashMap<String, &mut Tree>,
-            VecDeque<(usize, &mut Tree)>,
-        ) = self.children.iter_mut().enumerate().fold(
-            (HashMap::new(), VecDeque::with_capacity(children_len)),
-            |(mut id_map, mut id_list), (i, c)| {
-                if let Some(id) = c.id.as_ref() {
-                    if let Internal::Custom(_, ref name) = id.0 {
-                        let _ = id_map.insert(name.to_string(), c);
-                    } else {
-                        id_list.push_back((i, c));
-                    }
-                } else {
-                    id_list.push_back((i, c));
-                }
-                (id_map, id_list)
-            },
-        );
+        let mut named: HashMap<Cow<'static, str>, Tree> = HashMap::new();
+        let mut positional: Vec<Option<Tree>> =
+            Vec::with_capacity(old_children.len());
 
-        let mut new_trees: Vec<(Tree, usize)> =
-            Vec::with_capacity(new_children.len());
-        for (i, (new, new_id)) in
-            new_children.iter_mut().zip(new_ids.iter()).enumerate()
-        {
-            let child_state = if let Some(c) = new_id.as_ref().and_then(|id| {
-                if let Internal::Custom(_, ref name) = id.0 {
-                    id_map.remove(name.as_ref())
-                } else {
-                    None
-                }
-            }) {
-                c
-            } else if let Some(i) = {
-                let mut found = None;
-                for c_i in 0..id_list.len() {
-                    if id_list[c_i].0 == i {
-                        found = Some(c_i);
-                        break;
-                    }
-                    if i < c_i {
-                        break;
-                    }
-                }
-                found
-            } {
-                let c = id_list.remove(i).unwrap().1;
-                c
+        for old_child in old_children {
+            if let Some(Id(Internal::Custom(_, ref name))) = old_child.id {
+                let _ = named.insert(name.clone(), old_child);
+                positional.push(None);
             } else {
-                let mut my_new_state = new_state(new);
-                diff(&mut my_new_state, new);
-                new_trees.push((my_new_state, i));
-                continue;
-            };
-
-            diff(child_state, new);
-        }
-
-        for (new_tree, i) in new_trees {
-            if self.children.len() > i {
-                self.children[i] = new_tree;
-            } else {
-                self.children.push(new_tree);
+                positional.push(Some(old_child));
             }
         }
+
+        self.children = new_children
+            .iter_mut()
+            .zip(new_ids)
+            .enumerate()
+            .map(|(index, (new, new_id))| {
+                let matched =
+                    if let Some(Id(Internal::Custom(_, ref name))) = new_id {
+                        named.remove(name.as_ref())
+                    } else {
+                        positional.get_mut(index).and_then(Option::take)
+                    };
+
+                let mut tree = matched.unwrap_or_else(|| new_state(new));
+                diff(&mut tree, new);
+                tree
+            })
+            .collect();
     }
 }
 
@@ -516,5 +479,141 @@ impl fmt::Debug for State {
             Self::None => write!(f, "State::None"),
             Self::Some(_) => write!(f, "State::Some"),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const FRESH: u32 = 999;
+
+    fn named_tree(name: &'static str, value: u32) -> Tree {
+        Tree {
+            tag: Tag::of::<u32>(),
+            id: Some(Id::new(name)),
+            state: State::new(value),
+            children: Vec::new(),
+        }
+    }
+
+    fn unnamed_tree(value: u32) -> Tree {
+        Tree {
+            tag: Tag::of::<u32>(),
+            id: None,
+            state: State::new(value),
+            children: Vec::new(),
+        }
+    }
+
+    fn parent_of(children: Vec<Tree>) -> Tree {
+        Tree {
+            children,
+            ..Tree::empty()
+        }
+    }
+
+    fn state_of(tree: &Tree) -> u32 {
+        *tree.state.downcast_ref::<u32>()
+    }
+
+    /// Reconciles `parent` against children identified by `new_ids`,
+    /// giving any unmatched child a `FRESH` state.
+    fn reconcile(parent: &mut Tree, new_ids: Vec<Option<Id>>) {
+        let mut new_children = new_ids.clone();
+        parent.diff_children_custom(
+            &mut new_children,
+            new_ids,
+            |_tree, _new| {},
+            |new| Tree {
+                tag: Tag::of::<u32>(),
+                id: new.clone(),
+                state: State::new(FRESH),
+                children: Vec::new(),
+            },
+        );
+    }
+
+    #[test]
+    fn insertion_moves_named_state_to_its_new_index() {
+        let mut parent = parent_of(vec![unnamed_tree(10), named_tree("x", 20)]);
+
+        reconcile(&mut parent, vec![None, None, Some(Id::new("x"))]);
+
+        assert_eq!(parent.children.len(), 3);
+        assert_eq!(state_of(&parent.children[0]), 10);
+        assert_eq!(state_of(&parent.children[1]), FRESH);
+        assert_eq!(state_of(&parent.children[2]), 20);
+        assert_eq!(parent.children[2].id, Some(Id::new("x")));
+    }
+
+    #[test]
+    fn removal_keeps_named_state_when_it_shifts_left() {
+        let mut parent = parent_of(vec![
+            unnamed_tree(10),
+            unnamed_tree(11),
+            named_tree("x", 20),
+        ]);
+
+        reconcile(&mut parent, vec![None, Some(Id::new("x"))]);
+
+        assert_eq!(parent.children.len(), 2);
+        assert_eq!(state_of(&parent.children[0]), 10);
+        assert_eq!(state_of(&parent.children[1]), 20);
+    }
+
+    #[test]
+    fn reorder_swaps_named_states() {
+        let mut parent =
+            parent_of(vec![named_tree("a", 1), named_tree("b", 2)]);
+
+        reconcile(&mut parent, vec![Some(Id::new("b")), Some(Id::new("a"))]);
+
+        assert_eq!(state_of(&parent.children[0]), 2);
+        assert_eq!(state_of(&parent.children[1]), 1);
+    }
+
+    #[test]
+    fn positional_children_keep_their_state() {
+        let mut parent = parent_of(vec![unnamed_tree(10), unnamed_tree(11)]);
+
+        reconcile(&mut parent, vec![None, None]);
+
+        assert_eq!(state_of(&parent.children[0]), 10);
+        assert_eq!(state_of(&parent.children[1]), 11);
+    }
+
+    #[test]
+    fn positional_child_wont_inherit_state_of_named() {
+        let mut parent = parent_of(vec![named_tree("a", 1)]);
+
+        reconcile(&mut parent, vec![None]);
+
+        assert_eq!(parent.children.len(), 1);
+        assert_eq!(state_of(&parent.children[0]), FRESH);
+    }
+
+    #[test]
+    fn named_child_wont_inherit_state_of_positional() {
+        let mut parent = parent_of(vec![unnamed_tree(10)]);
+
+        reconcile(&mut parent, vec![Some(Id::new("x"))]);
+
+        assert_eq!(parent.children.len(), 1);
+        assert_eq!(state_of(&parent.children[0]), FRESH);
+    }
+
+    #[test]
+    fn excess_children_are_dropped() {
+        let mut parent = parent_of(vec![
+            unnamed_tree(10),
+            named_tree("a", 1),
+            unnamed_tree(11),
+        ]);
+
+        reconcile(&mut parent, vec![None]);
+
+        assert_eq!(parent.children.len(), 1);
+        assert_eq!(state_of(&parent.children[0]), 10);
     }
 }
