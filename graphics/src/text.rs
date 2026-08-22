@@ -133,7 +133,7 @@ pub fn font_system() -> &'static RwLock<FontSystem> {
 
     FONT_SYSTEM.get_or_init(|| {
         RwLock::new(FontSystem {
-            raw: cosmic_text::FontSystem::new_with_fonts([
+            raw: cosmic_text::FontSystem::new_with_fonts_and_cache([
                 cosmic_text::fontdb::Source::Binary(Arc::new(
                     include_bytes!("../fonts/Iced-Icons.ttf").as_slice(),
                 )),
