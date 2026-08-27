@@ -1,4 +1,5 @@
 pub mod control_flow;
+pub mod popup;
 pub mod proxy;
 pub mod state;
 
@@ -6,6 +7,7 @@ pub mod state;
 use crate::platform_specific::SurfaceIdWrapper;
 use crate::{
     Control,
+    event_loop::popup::PopupManager,
     futures::futures::channel::mpsc,
     handlers::{
         ext_background_effect, overlap::OverlapNotifyV1,
@@ -377,7 +379,7 @@ impl SctkEventLoop {
                         blur_surfaces: HashMap::new(),
                         corner_radii: HashMap::new(),
                         layer_surfaces: Vec::new(),
-                        popups: Vec::new(),
+                        popmgr: PopupManager::default(),
                         lock_surfaces: Vec::new(),
                         subsurfaces: Vec::new(),
                         touch_points: HashMap::new(),
@@ -514,8 +516,8 @@ impl SctkEventLoop {
                             .chain(
                                 state
                                     .state
-                                    .popups
-                                    .iter()
+                                    .popmgr
+                                    .popups()
                                     .map(|s| s.popup.wl_surface()),
                             )
                             .chain(
