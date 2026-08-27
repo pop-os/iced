@@ -3206,7 +3206,6 @@ dependencies = [
  "resvg",
  "rustc-hash 2.1.2",
  "rustix 0.38.44",
- "smithay-client-toolkit 0.20.0",
  "thiserror 2.0.18",
  "tiny-xlib",
  "wayland-backend",

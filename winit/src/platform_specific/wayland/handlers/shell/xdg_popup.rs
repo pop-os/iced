@@ -1,6 +1,6 @@
 use crate::event_loop::state::receive_frame;
 use crate::platform_specific::wayland::{
-    event_loop::state::{self, PopupParent, SctkState},
+    event_loop::state::{PopupParent, SctkState},
     sctk_event::{PopupEventVariant, SctkEvent},
 };
 use cctk::sctk::{
@@ -18,11 +18,11 @@ impl PopupHandler for SctkState {
         configure: cctk::sctk::shell::xdg::popup::PopupConfigure,
     ) {
         self.request_redraw(popup.wl_surface());
-        let sctk_popup = match self.popups.iter_mut().find(|s| {
-            s.popup.wl_surface().clone() == popup.wl_surface().clone()
-        }) {
+        let sctk_popup = match self.popmgr.popup_mut(popup.wl_surface()) {
             Some(p) => p,
-            None => return,
+            None => {
+                return;
+            }
         };
         let first = sctk_popup.last_configure.is_none();
         _ = sctk_popup.last_configure.replace(configure.clone());
@@ -53,35 +53,11 @@ impl PopupHandler for SctkState {
         _qh: &cctk::sctk::reexports::client::QueueHandle<Self>,
         popup: &cctk::sctk::shell::xdg::popup::Popup,
     ) {
-        let sctk_popup = match self.popups.iter().position(|s| {
-            s.popup.wl_surface().clone() == popup.wl_surface().clone()
-        }) {
-            Some(p) => self.popups.remove(p),
-            None => return,
+        let Some(to_destroy) = self.popmgr.remove(popup.wl_surface()) else {
+            return;
         };
-        let mut to_destroy = vec![sctk_popup];
-        while let Some(popup_to_destroy) = to_destroy.last() {
-            match popup_to_destroy.data.parent.clone() {
-                state::PopupParent::LayerSurface(_)
-                | state::PopupParent::Window(_) => {
-                    break;
-                }
-                state::PopupParent::Popup(popup_to_destroy_first) => {
-                    let Some(popup_to_destroy_first) =
-                        self.popups.iter().position(|p| {
-                            p.popup.wl_surface() == &popup_to_destroy_first
-                        })
-                    else {
-                        log::warn!("could not find popup to destroy first.");
-                        return;
-                    };
-                    let popup_to_destroy_first =
-                        self.popups.remove(popup_to_destroy_first);
-                    to_destroy.push(popup_to_destroy_first);
-                }
-            }
-        }
-        for popup in to_destroy.into_iter().rev() {
+
+        for popup in to_destroy {
             if let Some(id) = self.id_map.remove(&popup.popup.wl_surface().id())
             {
                 if let Some(blurred) = self.blur_surfaces.remove(&id) {
