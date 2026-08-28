@@ -123,6 +123,13 @@ use wayland_protocols::{
 
 pub static TOKEN_CTR: AtomicU32 = AtomicU32::new(0);
 
+/// The requested cursor for a surface
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(crate) struct CursorRequest {
+    pub(crate) icon: Option<CursorIcon>,
+    pub(crate) hidden: bool,
+}
+
 #[derive(Debug)]
 pub(crate) struct SctkSeat {
     pub(crate) seat: WlSeat,
@@ -139,6 +146,8 @@ pub(crate) struct SctkSeat {
     pub(crate) active_icon: Option<CursorIcon>,
     // Cursor icon set by application
     pub(crate) icon: Option<CursorIcon>,
+    // Application asked for cursor to hide
+    pub(crate) hidden: bool,
 }
 
 impl SctkSeat {
@@ -146,6 +155,35 @@ impl SctkSeat {
         if let Some(ptr) = self.ptr.as_ref() {
             _ = ptr.set_cursor(conn, icon);
             self.active_icon = Some(icon);
+        }
+    }
+
+    /// Is the pointer currently over `surface`.
+    pub(crate) fn is_over(&self, surface: &ObjectId) -> bool {
+        self.ptr_focus.as_ref().is_some_and(|s| &s.id() == surface)
+    }
+
+    /// Set cursor visibility over this surfaces.
+    pub(crate) fn set_cursor_visible(
+        &mut self,
+        conn: &Connection,
+        visible: bool,
+    ) {
+        let Some(ptr) = self.ptr.as_ref() else {
+            return;
+        };
+
+        self.hidden = !visible;
+
+        if visible {
+            let icon = self.icon.unwrap_or(CursorIcon::Default);
+            _ = ptr.set_cursor(conn, icon);
+            self.active_icon = Some(icon);
+        } else {
+            // Ignoring the error
+            // It only fails when the pointer is not on our surface (due to serial error)
+            _ = ptr.hide_cursor();
+            self.active_icon = None;
         }
     }
 }
@@ -471,6 +509,7 @@ pub struct SctkState {
     pub(crate) session_lock_state: SessionLockState,
     pub(crate) session_lock: Option<SessionLock>,
     pub(crate) id_map: HashMap<ObjectId, core::window::Id>,
+    pub(crate) cursor_requests: HashMap<ObjectId, CursorRequest>,
     pub(crate) to_commit: HashMap<core::window::Id, WlSurface>,
     pub(crate) destroyed: HashSet<core::window::Id>,
     pub(crate) pending_popup: Option<(SctkPopupSettings, usize)>,
@@ -573,6 +612,17 @@ pub(crate) fn receive_frame(
 }
 
 impl SctkState {
+    /// What a surface wants the pointer over it to be.
+    pub(crate) fn record_cursor(
+        &mut self,
+        surface: ObjectId,
+        amend: impl FnOnce(&mut CursorRequest),
+    ) {
+        self.cursor_requests
+            .retain(|id, _| id == &surface || self.id_map.contains_key(id));
+        amend(self.cursor_requests.entry(surface).or_default());
+    }
+
     pub fn request_redraw(&mut self, surface: &WlSurface) {
         let e = self
             .frame_status
