@@ -1,5 +1,6 @@
 //! Interact with the window of your application.
 
+use crate::core::Rectangle;
 use crate::core::window::Id as SurfaceId;
 use iced_runtime::{
     self, Action, Task,
@@ -122,6 +123,18 @@ pub fn set_padding<Message>(
     task::effect(Action::PlatformSpecific(
         platform_specific::Action::Wayland(wayland::Action::LayerSurface(
             wayland::layer_surface::Action::Padding { id, padding },
+        )),
+    ))
+}
+
+/// <https://wayland.app/protocols/wayland#wl_surface:request:set_input_region>
+pub fn set_input_zone<Message>(
+    id: SurfaceId,
+    zone: Option<Vec<Rectangle>>,
+) -> Task<Message> {
+    task::effect(Action::PlatformSpecific(
+        platform_specific::Action::Wayland(wayland::Action::LayerSurface(
+            wayland::layer_surface::Action::InputZone { id, zone },
         )),
     ))
 }
