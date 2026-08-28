@@ -31,7 +31,7 @@ impl PointerHandler for SctkState {
 
         // track events, but only forward for the active seat
         for e in events {
-            if my_seat.active_icon != my_seat.icon {
+            if !my_seat.hidden && my_seat.active_icon != my_seat.icon {
                 // Restore cursor that was set by appliction, or default
                 my_seat.set_cursor(
                     conn,
@@ -60,10 +60,19 @@ impl PointerHandler for SctkState {
             match e.kind {
                 PointerEventKind::Enter { .. } => {
                     _ = my_seat.ptr_focus.replace(e.surface.clone());
+                    if let Some(want) =
+                        self.cursor_requests.get(&e.surface.id())
+                    {
+                        my_seat.icon = want.icon;
+                        my_seat.set_cursor_visible(conn, !want.hidden);
+                    }
                 }
                 PointerEventKind::Leave { .. } => {
                     _ = my_seat.ptr_focus.take();
                     _ = my_seat.active_icon = None;
+                    // The next surface the pointer lands on decides what it
+                    // looks like there
+                    my_seat.hidden = false;
                 }
                 PointerEventKind::Press {
                     time,

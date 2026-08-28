@@ -177,11 +177,39 @@ impl SctkEventLoop {
                                 }
                             }
                             crate::platform_specific::Action::SetCursor(
+                                surface,
                                 icon,
                             ) => {
-                                if let Some(seat) = state.seats.get_mut(0) {
+                                state.record_cursor(surface.clone(), |r| {
+                                    r.icon = Some(icon);
+                                    r.hidden = false;
+                                });
+                                if let Some(seat) = state
+                                    .seats
+                                    .get_mut(0)
+                                    .filter(|s| s.is_over(&surface))
+                                {
                                     seat.icon = Some(icon);
+                                    seat.hidden = false;
                                     seat.set_cursor(&state.connection, icon);
+                                }
+                            }
+                            crate::platform_specific::Action::SetCursorVisible(
+                                surface,
+                                visible,
+                            ) => {
+                                state.record_cursor(surface.clone(), |r| {
+                                    r.hidden = !visible;
+                                });
+                                if let Some(seat) = state
+                                    .seats
+                                    .get_mut(0)
+                                    .filter(|s| s.is_over(&surface))
+                                {
+                                    seat.set_cursor_visible(
+                                        &state.connection,
+                                        visible,
+                                    );
                                 }
                             }
                             crate::platform_specific::Action::RequestRedraw(
@@ -383,6 +411,7 @@ impl SctkEventLoop {
                         touch_points: HashMap::new(),
                         sctk_events: Vec::new(),
                         frame_status: HashMap::new(),
+                        cursor_requests: HashMap::new(),
                         fractional_scaling_manager,
                         viewporter_state,
                         compositor_updates: Default::default(),

@@ -38,6 +38,7 @@ impl SeatHandler for SctkState {
             last_touch_down: None,
             icon: None,
             active_icon: None,
+            hidden: false,
         });
     }
 
@@ -65,6 +66,7 @@ impl SeatHandler for SctkState {
                     last_touch_down: None,
                     icon: None,
                     active_icon: None,
+                    hidden: false,
                 });
                 self.seats.last_mut().unwrap()
             }

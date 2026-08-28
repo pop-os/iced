@@ -83,7 +83,10 @@ impl winit::window::Window for SctkWinitWindow {
     fn set_cursor(&self, cursor: winit_core::cursor::Cursor) {
         match cursor {
             winit_core::cursor::Cursor::Icon(icon) => {
-                _ = self.tx.send(Action::SetCursor(icon));
+                _ = self.tx.send(Action::SetCursor(
+                    self.surface.wl_surface().id(),
+                    icon,
+                ));
             }
             winit_core::cursor::Cursor::Custom(_) => {
                 // TODO
@@ -92,7 +95,10 @@ impl winit::window::Window for SctkWinitWindow {
     }
 
     fn set_cursor_visible(&self, visible: bool) {
-        // TODO
+        _ = self.tx.send(Action::SetCursorVisible(
+            self.surface.wl_surface().id(),
+            visible,
+        ));
     }
 
     fn surface_size(&self) -> winit::dpi::PhysicalSize<u32> {
