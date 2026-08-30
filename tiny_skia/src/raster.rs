@@ -6,6 +6,8 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use std::cell::RefCell;
 use std::collections::hash_map;
 
+type SourceImage = graphics::image::Buffer;
+
 #[derive(Debug)]
 pub struct Pipeline {
     cache: RefCell<Cache>,
@@ -23,7 +25,7 @@ impl Pipeline {
         handle: &raster::Handle,
     ) -> Result<raster::Allocation, raster::Error> {
         let mut cache = self.cache.borrow_mut();
-        let image = cache.allocate(handle)?;
+        let image = cache.source(handle)?;
 
         #[allow(unsafe_code)]
         Ok(unsafe {
@@ -33,7 +35,7 @@ impl Pipeline {
 
     pub fn dimensions(&self, handle: &raster::Handle) -> Option<Size<u32>> {
         let mut cache = self.cache.borrow_mut();
-        let image = cache.allocate(handle).ok()?;
+        let image = cache.source(handle).ok()?;
 
         Some(Size::new(image.width(), image.height()))
     }
@@ -50,17 +52,24 @@ impl Pipeline {
         border_radius: [f32; 4],
     ) {
         let mut cache = self.cache.borrow_mut();
+        let target_size = match filter_method {
+            raster::FilterMethod::Linear => Size::new(
+                bounds.width.ceil().max(1.0) as u32,
+                bounds.height.ceil().max(1.0) as u32,
+            ),
+            raster::FilterMethod::Nearest => cache
+                .source(handle)
+                .ok()
+                .map(|image| Size::new(image.width(), image.height()))
+                .unwrap_or(Size::new(1, 1)),
+        };
 
-        let Ok(mut image) = cache.allocate(handle) else {
+        let Ok(mut image) = cache.allocate(handle, target_size) else {
             return;
         };
 
         let width_scale = bounds.width / image.width() as f32;
         let height_scale = bounds.height / image.height() as f32;
-        let quality = match filter_method {
-            raster::FilterMethod::Linear => tiny_skia::FilterQuality::Bilinear,
-            raster::FilterMethod::Nearest => tiny_skia::FilterQuality::Nearest,
-        };
         let mut scratch;
 
         // Round the borders if a border radius is defined
@@ -108,51 +117,55 @@ impl Pipeline {
 
 #[derive(Debug, Default)]
 struct Cache {
-    entries: FxHashMap<raster::Id, Option<Entry>>,
-    hits: FxHashSet<raster::Id>,
+    sources: FxHashMap<raster::Id, Result<SourceImage, raster::Error>>,
+    entries: FxHashMap<UploadKey, Option<Entry>>,
+    source_hits: FxHashSet<raster::Id>,
 }
 
 impl Cache {
+    pub fn source(
+        &mut self,
+        handle: &raster::Handle,
+    ) -> Result<&SourceImage, raster::Error> {
+        let id = handle.id();
+
+        if let hash_map::Entry::Vacant(entry) = self.sources.entry(id) {
+            let _ = entry.insert(graphics::image::load(handle));
+        }
+
+        let _ = self.source_hits.insert(id);
+        self.sources
+            .get(&id)
+            .expect("cached image source")
+            .as_ref()
+            .map_err(Clone::clone)
+    }
+
     pub fn allocate(
         &mut self,
         handle: &raster::Handle,
+        target_size: Size<u32>,
     ) -> Result<tiny_skia::PixmapRef<'_>, raster::Error> {
-        let id = handle.id();
+        let upload_size = {
+            let image = self.source(handle)?;
+            graphics::image::downsample_size(image, target_size)
+        };
+        let key = UploadKey::new(handle.id(), upload_size);
 
-        if let hash_map::Entry::Vacant(entry) = self.entries.entry(id) {
-            let image = match graphics::image::load(handle) {
-                Ok(image) => image,
-                Err(error) => {
-                    let _ = entry.insert(None);
+        if !self.entries.contains_key(&key) {
+            let image = self.source(handle)?;
+            let resized = graphics::image::downsample(image, upload_size);
 
-                    return Err(error);
-                }
+            let uploaded = if let Some(resized) = resized.as_ref() {
+                entry_from_image(resized)
+            } else {
+                entry_from_image(image)
             };
 
-            if image.width() == 0 || image.height() == 0 {
-                return Err(raster::Error::Empty);
-            }
-
-            let mut buffer =
-                vec![0u32; image.width() as usize * image.height() as usize];
-
-            for (i, pixel) in image.pixels().enumerate() {
-                let [r, g, b, a] = pixel.0;
-
-                buffer[i] = bytemuck::cast(
-                    tiny_skia::ColorU8::from_rgba(b, g, r, a).premultiply(),
-                );
-            }
-
-            let _ = entry.insert(Some(Entry {
-                width: image.width(),
-                height: image.height(),
-                pixels: buffer,
-            }));
+            let _ = self.entries.insert(key, uploaded);
         }
 
-        let _ = self.hits.insert(id);
-        let Some(ret) = self.entries.get(&id).unwrap().as_ref().map(|entry| {
+        let Some(ret) = self.entries.get(&key).unwrap().as_ref().map(|entry| {
             tiny_skia::PixmapRef::from_bytes(
                 bytemuck::cast_slice(&entry.pixels),
                 entry.width,
@@ -167,8 +180,10 @@ impl Cache {
     }
 
     fn trim(&mut self) {
-        self.entries.retain(|key, _| self.hits.contains(key));
-        self.hits.clear();
+        self.sources.retain(|key, _| self.source_hits.contains(key));
+        self.entries
+            .retain(|key, _| self.source_hits.contains(&key.image_id));
+        self.source_hits.clear();
     }
 }
 
@@ -177,6 +192,46 @@ struct Entry {
     width: u32,
     height: u32,
     pixels: Vec<u32>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+struct UploadKey {
+    image_id: raster::Id,
+    width: u32,
+    height: u32,
+}
+
+impl UploadKey {
+    fn new(image_id: raster::Id, target_size: Size<u32>) -> Self {
+        Self {
+            image_id,
+            width: target_size.width.max(1),
+            height: target_size.height.max(1),
+        }
+    }
+}
+
+fn entry_from_image(image: &SourceImage) -> Option<Entry> {
+    if image.width() == 0 || image.height() == 0 {
+        return None;
+    }
+
+    let mut pixels =
+        vec![0u32; image.width() as usize * image.height() as usize];
+
+    for (i, pixel) in image.pixels().enumerate() {
+        let [r, g, b, a] = pixel.0;
+
+        pixels[i] = bytemuck::cast(
+            tiny_skia::ColorU8::from_rgba(b, g, r, a).premultiply(),
+        );
+    }
+
+    Some(Entry {
+        width: image.width(),
+        height: image.height(),
+        pixels,
+    })
 }
 
 // https://users.rust-lang.org/t/how-to-trim-image-to-circle-image-without-jaggy/70374/2
