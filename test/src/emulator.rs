@@ -1,4 +1,6 @@
 //! Run your application in a headless runtime.
+use iced_futures::core::Color;
+
 use crate::core;
 use crate::core::mouse;
 use crate::core::renderer;
@@ -267,6 +269,12 @@ impl<P: Program + 'static> Emulator<P> {
                     // TODO
                     dbg!(action);
                 }
+                iced_runtime::Action::Dnd(action) => {
+                    dbg!(action);
+                }
+                iced_runtime::Action::PlatformSpecific(action) => {
+                    dbg!(action);
+                }
                 runtime::Action::Exit => {
                     // TODO
                 }
@@ -475,6 +483,8 @@ impl<P: Program + 'static> Emulator<P> {
             theme,
             &renderer::Style {
                 text_color: style.text_color,
+                icon_color: style.icon_color,
+                scale_factor: 0.0,
             },
             mouse::Cursor::Unavailable,
         );

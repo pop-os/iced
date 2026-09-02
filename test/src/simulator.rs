@@ -1,4 +1,6 @@
 //! Run a simulation of your application without side effects.
+use iced_renderer::geometry::path::lyon_path::math::Scale;
+
 use crate::core;
 use crate::core::clipboard;
 use crate::core::event;
@@ -214,6 +216,8 @@ where
             theme,
             &core::renderer::Style {
                 text_color: base.text_color,
+                icon_color: base.icon_color,
+                scale_factor: 0.0,
             },
             self.cursor,
         );

@@ -1,6 +1,7 @@
 //! Record, edit, and run end-to-end tests for your iced applications.
 pub use iced_test as test;
 pub use iced_test::core;
+use iced_test::core::color;
 pub use iced_test::program;
 pub use iced_test::runtime;
 pub use iced_test::runtime::futures;
@@ -935,6 +936,9 @@ where
                             background: Color::TRANSPARENT.into(),
                             border_width: 0.0,
                             border_color: Color::TRANSPARENT,
+                        },
+                        breakpoint: slider::Breakpoint {
+                            color: color!(0, 0, 0),
                         },
                     }
                 })
