@@ -6,6 +6,8 @@ use crate::image::atlas::{self, Atlas};
 use worker::Worker;
 
 #[cfg(feature = "image")]
+use rustc_hash::{FxHashMap, FxHashSet};
+#[cfg(feature = "image")]
 use std::collections::HashMap;
 
 use std::sync::Arc;
@@ -38,6 +40,9 @@ impl Cache {
             raster: Raster {
                 cache: crate::image::raster::Cache::default(),
                 pending: HashMap::new(),
+                resampled: FxHashMap::default(),
+                resampled_hits: FxHashSet::default(),
+                should_trim: false,
                 belt: wgpu::util::StagingBelt::new(
                     device.clone(),
                     2 * 1024 * 1024,
@@ -209,7 +214,9 @@ impl Cache {
         encoder: &mut wgpu::CommandEncoder,
         belt: &mut wgpu::util::StagingBelt,
         handle: &core::image::Handle,
+        bounds: Size<f32>,
     ) -> Option<(&atlas::Entry, &Arc<wgpu::BindGroup>)> {
+        use crate::graphics::image::{downsample, downsample_target, load};
         use crate::image::raster::Memory;
 
         self.receive();
@@ -222,6 +229,34 @@ impl Cache {
             handle,
             None,
         )?;
+
+        if let Some(target) = downsample_target(memory.dimensions(), bounds) {
+            let key = (handle.id(), target.width, target.height);
+
+            if !self.raster.resampled.contains_key(&key) {
+                let image = memory.host().or_else(|| load(handle).ok())?;
+                let image = downsample(&image, target);
+
+                let entry = self.atlas.upload(
+                    device,
+                    encoder,
+                    belt,
+                    target.width,
+                    target.height,
+                    &image,
+                )?;
+
+                let _ = self.raster.resampled.insert(key, entry);
+                self.raster.should_trim = true;
+            }
+
+            let _ = self.raster.resampled_hits.insert(key);
+
+            return Some((
+                self.raster.resampled.get(&key)?,
+                self.atlas.bind_group(),
+            ));
+        }
 
         if let Memory::Device {
             entry, bind_group, ..
@@ -303,6 +338,23 @@ impl Cache {
                 #[cfg(not(target_arch = "wasm32"))]
                 self.worker.drop(_bind_group);
             });
+
+            if self.raster.should_trim {
+                let hits = &self.raster.resampled_hits;
+                let atlas = &mut self.atlas;
+
+                self.raster.resampled.retain(|key, entry| {
+                    let retain = hits.contains(key);
+
+                    if !retain {
+                        atlas.remove(entry);
+                    }
+
+                    retain
+                });
+                self.raster.resampled_hits.clear();
+                self.raster.should_trim = false;
+            }
         }
 
         #[cfg(feature = "svg")]
@@ -376,6 +428,9 @@ impl Drop for Cache {
 struct Raster {
     cache: crate::image::raster::Cache,
     pending: HashMap<core::image::Id, Vec<Callback>>,
+    resampled: FxHashMap<(core::image::Id, u32, u32), atlas::Entry>,
+    resampled_hits: FxHashSet<(core::image::Id, u32, u32)>,
+    should_trim: bool,
     belt: wgpu::util::StagingBelt,
 }
 

@@ -1,6 +1,8 @@
 //! Load and operate on images.
 #[cfg(feature = "image")]
 use crate::core::Bytes;
+#[cfg(feature = "image")]
+use crate::core::Size;
 
 use crate::core::Color;
 use crate::core::Radians;
@@ -179,4 +181,106 @@ fn to_error(error: ::image::ImageError) -> image::Error {
         }
         error => image::Error::Invalid(Arc::new(error)),
     }
+}
+
+/// resample a raster image to this target
+#[cfg(feature = "image")]
+pub fn downsample_target(
+    native: Size<u32>,
+    bounds: Size<f32>,
+) -> Option<Size<u32>> {
+    if !(bounds.width >= 1.0 && bounds.height >= 1.0) {
+        return None;
+    }
+
+    // Round up to 4px so an animated resize does not make a copy per pixel
+    // TODO: maybe find a better approach
+    let quantize = |length: f32| (length.ceil() as u32).div_ceil(4) * 4;
+
+    let target = Size::new(
+        quantize(bounds.width).min(native.width),
+        quantize(bounds.height).min(native.height),
+    );
+
+    let minified = native.width as f32 >= target.width as f32 * 1.25
+        || native.height as f32 >= target.height as f32 * 1.25;
+
+    // If the target is big then Lanczos will be too expensive, and sampler is good enough
+    let small = u64::from(target.width) * u64::from(target.height) <= 1 << 18;
+
+    (minified && small).then_some(target)
+}
+
+/// Resamples premultiplied pixels down to `target`.
+#[cfg(feature = "image")]
+pub fn downsample_premultiplied(
+    pixels: &[u8],
+    size: Size<u32>,
+    target: Size<u32>,
+) -> Vec<u8> {
+    let image =
+        ::image::RgbaImage::from_raw(size.width, size.height, pixels.to_vec())
+            .expect("pixels hold width * height RGBA pixels");
+
+    resize(&image, target).into_raw()
+}
+
+#[cfg(feature = "image")]
+fn resize(image: &::image::RgbaImage, target: Size<u32>) -> ::image::RgbaImage {
+    use ::image::imageops::{self, FilterType};
+    use std::borrow::Cow;
+
+    // if image is too big compared to target, box average it to double the target
+    // and then do Lanczos. The final result is almost the same, but lanczos is too
+    // expensive on large images.
+    let image = if image.width() >= target.width * 4
+        && image.height() >= target.height * 4
+    {
+        Cow::Owned(imageops::thumbnail(
+            image,
+            target.width * 2,
+            target.height * 2,
+        ))
+    } else {
+        Cow::Borrowed(image)
+    };
+
+    imageops::resize(&*image, target.width, target.height, FilterType::Lanczos3)
+}
+
+/// Resamples RGBA pixels down to `target`.
+///
+/// Premultiplies the image, to avoid fringing the edges of an icon when interpolating
+/// transparent pixels.
+#[cfg(feature = "image")]
+pub fn downsample(image: &Buffer, target: Size<u32>) -> ::image::RgbaImage {
+    let mut image = ::image::RgbaImage::from_raw(
+        image.width(),
+        image.height(),
+        image.as_raw().to_vec(),
+    )
+    .expect("buffer holds width * height RGBA pixels");
+
+    for pixel in image.pixels_mut() {
+        let alpha = u32::from(pixel[3]);
+
+        for channel in &mut pixel.0[..3] {
+            *channel = ((u32::from(*channel) * alpha + 127) / 255) as u8;
+        }
+    }
+
+    let mut image = resize(&image, target);
+
+    for pixel in image.pixels_mut() {
+        let alpha = u32::from(pixel[3]);
+
+        if alpha > 0 {
+            for channel in &mut pixel.0[..3] {
+                *channel = ((u32::from(*channel) * 255 + alpha / 2) / alpha)
+                    .min(255) as u8;
+            }
+        }
+    }
+
+    image
 }
