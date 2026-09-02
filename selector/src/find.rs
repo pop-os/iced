@@ -1,3 +1,5 @@
+use iced_core::window;
+
 use crate::Selector;
 use crate::core::widget::operation::{
     Focusable, Outcome, Scrollable, TextInput,
@@ -100,6 +102,10 @@ where
     fn finish(&self) -> Self::Output {
         self.outputs.clone()
     }
+
+    fn set_window_id(&mut self, id: window::Id) {
+        self.selector.set_window_id(id);
+    }
 }
 
 pub trait Strategy {
@@ -110,6 +116,8 @@ pub trait Strategy {
     fn is_done(&self) -> bool;
 
     fn finish(&self) -> Self::Output;
+
+    fn set_window_id(&mut self, _id: window::Id) {}
 }
 
 #[derive(Debug)]
@@ -272,5 +280,9 @@ where
 
     fn finish(&self) -> Outcome<S::Output> {
         Outcome::Some(self.strategy.finish())
+    }
+
+    fn set_window_id(&mut self, id: window::Id) {
+        self.strategy.set_window_id(id);
     }
 }
