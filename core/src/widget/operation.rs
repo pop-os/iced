@@ -9,7 +9,7 @@ pub use scrollable::Scrollable;
 pub use text_input::TextInput;
 
 use crate::widget::Id;
-use crate::{Rectangle, Vector};
+use crate::{Rectangle, Vector, window};
 
 use std::any::Any;
 use std::fmt;
@@ -75,6 +75,9 @@ pub trait Operation<T = ()>: Send {
     fn finish(&self) -> Outcome<T> {
         Outcome::None
     }
+
+    /// Track the active window id being processed if relevant to the operation
+    fn set_window_id(&mut self, _id: window::Id) {}
 }
 
 impl<T, O> Operation<O> for Box<T>
@@ -139,6 +142,10 @@ where
 
     fn finish(&self) -> Outcome<O> {
         self.as_ref().finish()
+    }
+
+    fn set_window_id(&mut self, id: window::Id) {
+        self.as_mut().set_window_id(id);
     }
 }
 
@@ -242,6 +249,10 @@ where
 
         fn finish(&self) -> Outcome<O> {
             Outcome::None
+        }
+
+        fn set_window_id(&mut self, id: window::Id) {
+            self.operation.set_window_id(id);
         }
     }
 
@@ -410,6 +421,10 @@ where
                 })),
             }
         }
+
+        fn set_window_id(&mut self, id: window::Id) {
+            self.operation.set_window_id(id);
+        }
     }
 
     Map {
@@ -515,6 +530,10 @@ where
                 }
             }
         }
+
+        fn set_window_id(&mut self, id: window::Id) {
+            self.operation.set_window_id(id);
+        }
     }
 
     Chain {
@@ -565,6 +584,10 @@ pub fn scoped<T: 'static>(
                 }
                 outcome => outcome,
             }
+        }
+
+        fn set_window_id(&mut self, id: window::Id) {
+            self.operation.set_window_id(id);
         }
     }
 

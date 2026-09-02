@@ -267,6 +267,7 @@ struct State {
     is_hovered: bool,
     is_pressed: bool,
     is_focused: bool,
+    needs_redraw: bool,
 }
 
 impl<'a, Message, Theme, Renderer> Widget<Message, Theme, Renderer>
@@ -367,6 +368,12 @@ where
             shell,
             viewport,
         );
+
+        let state = tree.state.downcast_mut::<State>();
+        if state.needs_redraw {
+            state.needs_redraw = false;
+            shell.request_redraw();
+        }
 
         if shell.is_event_captured() {
             return;
@@ -777,11 +784,11 @@ impl Default for Style {
 ///
 /// impl Catalog for MyTheme {
 ///     type Class<'a> = ButtonClass;
-///     
+///
 ///     fn default<'a>() -> Self::Class<'a> {
 ///         ButtonClass::default()
 ///     }
-///     
+///
 ///
 ///     fn style(&self, class: &Self::Class<'_>, status: Status) -> Style {
 ///         let mut style = Style::default();
@@ -1000,10 +1007,12 @@ impl operation::Focusable for State {
     }
 
     fn focus(&mut self) {
+        self.needs_redraw |= !self.is_focused;
         self.is_focused = true;
     }
 
     fn unfocus(&mut self) {
+        self.needs_redraw |= self.is_focused;
         self.is_focused = false;
     }
 }
