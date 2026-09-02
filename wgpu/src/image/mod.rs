@@ -267,7 +267,13 @@ impl State {
                     clip_bounds,
                 } => {
                     if let Some((atlas_entry, bind_group)) = cache
-                        .upload_raster(device, encoder, belt, &image.handle)
+                        .upload_raster(
+                            device,
+                            encoder,
+                            belt,
+                            &image.handle,
+                            bounds.size() * scale,
+                        )
                     {
                         match atlas.as_mut() {
                             None => {

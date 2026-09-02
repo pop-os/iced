@@ -51,7 +51,21 @@ impl Pipeline {
     ) {
         let mut cache = self.cache.borrow_mut();
 
-        let Ok(mut image) = cache.allocate(handle) else {
+        let target = {
+            let Ok(image) = cache.allocate(handle) else {
+                return;
+            };
+
+            graphics::image::downsample_target(
+                Size::new(image.width(), image.height()),
+                bounds.size(),
+            )
+        };
+
+        let Ok(mut image) = (match target {
+            Some(target) => cache.allocate_resampled(handle, target),
+            None => cache.allocate(handle),
+        }) else {
             return;
         };
 
@@ -110,6 +124,8 @@ impl Pipeline {
 struct Cache {
     entries: FxHashMap<raster::Id, Option<Entry>>,
     hits: FxHashSet<raster::Id>,
+    resampled: FxHashMap<(raster::Id, u32, u32), Entry>,
+    resampled_hits: FxHashSet<(raster::Id, u32, u32)>,
 }
 
 impl Cache {
@@ -166,9 +182,59 @@ impl Cache {
         Ok(ret)
     }
 
+    /// Like [`Self::allocate`], resampled to `target`. Call after
+    /// [`Self::allocate`] has decoded the image.
+    pub fn allocate_resampled(
+        &mut self,
+        handle: &raster::Handle,
+        target: Size<u32>,
+    ) -> Result<tiny_skia::PixmapRef<'_>, raster::Error> {
+        let key = (handle.id(), target.width, target.height);
+
+        if !self.resampled.contains_key(&key) {
+            let native = self
+                .entries
+                .get(&handle.id())
+                .and_then(Option::as_ref)
+                .ok_or(raster::Error::Empty)?;
+
+            // Stored pixels are already premultiplied, so resample them as is.
+            let pixels = graphics::image::downsample_premultiplied(
+                bytemuck::cast_slice(&native.pixels),
+                Size::new(native.width, native.height),
+                target,
+            );
+
+            let _ = self.resampled.insert(
+                key,
+                Entry {
+                    width: target.width,
+                    height: target.height,
+                    pixels: pixels
+                        .chunks_exact(4)
+                        .map(|p| u32::from_ne_bytes([p[0], p[1], p[2], p[3]]))
+                        .collect(),
+                },
+            );
+        }
+
+        let _ = self.resampled_hits.insert(key);
+        let entry = &self.resampled[&key];
+
+        Ok(tiny_skia::PixmapRef::from_bytes(
+            bytemuck::cast_slice(&entry.pixels),
+            entry.width,
+            entry.height,
+        )
+        .expect("Build pixmap from image bytes"))
+    }
+
     fn trim(&mut self) {
         self.entries.retain(|key, _| self.hits.contains(key));
+        self.resampled
+            .retain(|key, _| self.resampled_hits.contains(key));
         self.hits.clear();
+        self.resampled_hits.clear();
     }
 }
 
