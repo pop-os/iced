@@ -242,8 +242,8 @@ async-std = "1.0"
 bitflags = "2.5"
 bytemuck = { version = "1.0", features = ["derive"] }
 bytes = "1.6"
-cosmic-text = "0.19"
-cryoglyph = { git = "https://github.com/iced-rs/cryoglyph.git", rev = "e429a025df36ab8145708acb309080ae3deec17a" }
+cosmic-text = { git = "https://github.com/pop-os/cosmic-text.git", rev = "4fe1195e6451d6aaa3dc383895d6fd366ea9fc7b" }
+cryoglyph = { git = "https://github.com/pop-os/glyphon.git", rev = "273130949ef4ffc652e3d5e5255219f1f079868e" }
 dark-light = "1.0"
 resvg = "0.45"
 web-sys = "0.3.69"
