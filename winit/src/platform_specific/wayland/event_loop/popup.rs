@@ -36,6 +36,23 @@ impl PopupManager {
         pos.map(|pos| (&mut self.chains[pos.0], pos.1))
     }
 
+    pub(crate) fn chain_for_popup(
+        &self,
+        id: &WlSurface,
+    ) -> Option<(&Vec<SctkPopup>, usize)> {
+        let pos = self.chains.iter().enumerate().find_map(move |(pos, c)| {
+            if let Some(pop_pos) =
+                c.into_iter().position(|p| p.popup.wl_surface() == id)
+            {
+                Some((pos, pop_pos))
+            } else {
+                None
+            }
+        });
+
+        pos.map(|pos| (&self.chains[pos.0], pos.1))
+    }
+
     pub(crate) fn popup(&self, id: &WlSurface) -> Option<&SctkPopup> {
         self.chains.iter().find_map(move |c| {
             c.into_iter().find(|p| p.popup.wl_surface() == id)
@@ -107,6 +124,20 @@ impl PopupManager {
                 }
             }
 
+            Some(chain.drain(pos..).rev())
+        } else {
+            None
+        };
+
+        return ret;
+    }
+
+    pub(crate) fn remove_ignore_children(
+        &mut self,
+        popup: &WlSurface,
+    ) -> Option<impl Iterator<Item = SctkPopup>> {
+        // must perform cleanup so that the popups are dropped in the correct order
+        let ret = if let Some((chain, pos)) = self.chain_for_popup_mut(popup) {
             Some(chain.drain(pos..).rev())
         } else {
             None
