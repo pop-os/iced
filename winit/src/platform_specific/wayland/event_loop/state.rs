@@ -1318,10 +1318,28 @@ impl SctkState {
                             return Ok(());
                         } else if !self.destroyed.is_empty() || self.popmgr.popup_id(settings.id).is_some() || self.popmgr.active_grab().is_some()
                         {
-                            let active_grab = self.popmgr.active_grab();
-                            if let Some(grab) = self.popmgr.root_grab().zip(active_grab).and_then(|(root, active)| (active.data.id != settings.parent).then_some(root.data.id)) {
-                                let _  = self.handle_action(Action::Popup(platform_specific::wayland::popup::Action::Destroy { id: grab }));
+                            // must clean up popup chains so that there is just one grab chain...
+                            let to_destroy = if settings.grab {
+                                if let Some((grab_chain, p_i)) = self.popmgr.active_grab().and_then(|g| self.popmgr.chain_for_popup(g.popup.wl_surface())) {
+
+                                    if let Some(pos) = grab_chain.iter().position(|p| p.data.id  == settings.parent) {
+                                        // destroy children of parent
+                                        grab_chain.get(pos + 1).map(|g| g.data.id)
+                                    }
+                                    else {
+                                        // destroy whole chain...
+                                        grab_chain.get(0).map(|g| g.data.id)
+                                    }
+                                } else {
+                                    None
+                                }
+                            } else {
+                                None
+                            };
+                            if let Some(to_destroy) = to_destroy {
+                                _ = self.destroy_popup(to_destroy, true);
                             }
+
                             if self.popmgr.popup_id(settings.id).is_some() {
                                 let _  = self.handle_action(Action::Popup(platform_specific::wayland::popup::Action::Destroy { id: settings.id }));
                             }
@@ -1367,8 +1385,11 @@ impl SctkState {
                                     let wl_surface = surface.wl_surface().clone();
                                     send_event(&self.events_sender, &self.proxy,
                                         SctkEvent::PopupEvent {
-                                            variant: crate::platform_specific::wayland::sctk_event::PopupEventVariant::Created(self.queue_handle.clone(), surface, id, common, self.connection.display()),
-                                            toplevel_id, parent_id, id: wl_surface });
+                                            variant: crate::platform_specific::wayland::sctk_event::PopupEventVariant::Created(
+                                                self.queue_handle.clone(), surface, id, common, self.connection.display()
+                                            ),
+                                            toplevel_id, parent_id, id: wl_surface }
+                                    );
                                 }
                                 Err(err) => {
                                     log::error!("Failed to create popup. {err:?}");
@@ -1379,46 +1400,8 @@ impl SctkState {
                     // XXX popup destruction must be done carefully
                     // first destroy the uppermost popup, then work down to the requested popup
                     platform_specific::wayland::popup::Action::Destroy { id } => {
-                        let Some(to_destroy) = self.popmgr.popup_id(id) else {
-                            log::warn!("Destroyed popup does not exist.");
-                            return Ok(());
-                        };
-                        let s = to_destroy.popup.wl_surface().clone();
-
-                        let Some(to_destroy) = self.popmgr.remove(&s) else {
-                            return Ok(());
-                        };
-
-                        for popup in to_destroy {
-                            if let Some(id) = self.id_map.remove(&popup.popup.wl_surface().id()) {
-                                _ = self.destroyed.insert(id);
-                            }
-
-                            if let Some(blurred) = self.blur_surfaces.remove(&id) {
-                                blurred.destroy();
-                            }
-                            _ = self.corner_radii.remove(&id);
-
-
-                            let (removed, remaining): (Vec<_>, Vec<_>) =  self
-                                .subsurfaces
-                                .drain(..)
-                                .partition(|s| {
-                                    s.instance.parent == *popup.popup.wl_surface()
-                                });
-
-                            self.subsurfaces = remaining;
-                            for s in removed
-                            {
-                                crate::subsurface_widget::remove_iced_subsurface(
-                                    &s.instance.wl_surface,
-                                );
-                                send_event(&self.events_sender, &self.proxy,
-                                    SctkEvent::SubsurfaceEvent( crate::sctk_event::SubsurfaceEventVariant::Destroyed(s.instance) )
-                                );
-                            }
-                            _ = send_event(&self.events_sender, &self.proxy,
-                                SctkEvent::PopupEvent { variant: crate::sctk_event::PopupEventVariant::Done, toplevel_id: popup.data.toplevel.clone(), parent_id: popup.data.parent.wl_surface().clone(), id: popup.popup.wl_surface().clone() });
+                        if let Some(value) = self.destroy_popup(id, false) {
+                            return value;
                         }
                     },
                     platform_specific::wayland::popup::Action::Size { id, width, height } => {
@@ -1807,6 +1790,75 @@ impl SctkState {
             },
         };
         Ok(())
+    }
+
+    fn destroy_popup(
+        &mut self,
+        id: core::window::Id,
+        ignore_children: bool,
+    ) -> Option<Result<(), Infallible>> {
+        let Some(to_destroy) = self.popmgr.popup_id(id) else {
+            if self.pending_popup.take().is_none_or(|p_id| p_id.0.id != id) {
+                log::warn!(
+                    "Destroyed popup does not exist. {id:?}, existing: {:?}",
+                    self.popmgr.popups().map(|p| p.data.id).collect::<Vec<_>>()
+                );
+            }
+            return Some(Ok(()));
+        };
+        let s = to_destroy.popup.wl_surface().clone();
+        let d: Option<Vec<_>> = if ignore_children {
+            self.popmgr.remove(&s).map(|v| v.collect())
+        } else {
+            self.popmgr.remove_ignore_children(&s).map(|v| v.collect())
+        };
+        let Some(to_destroy) = d else {
+            return Some(Ok(()));
+        };
+
+        for popup in to_destroy {
+            if let Some(id) = self.id_map.remove(&popup.popup.wl_surface().id())
+            {
+                _ = self.destroyed.insert(id);
+            }
+
+            if let Some(blurred) = self.blur_surfaces.remove(&id) {
+                blurred.destroy();
+            }
+            _ = self.corner_radii.remove(&id);
+
+            let (removed, remaining): (Vec<_>, Vec<_>) = self
+                .subsurfaces
+                .drain(..)
+                .partition(|s| s.instance.parent == *popup.popup.wl_surface());
+
+            self.subsurfaces = remaining;
+            for s in removed {
+                crate::subsurface_widget::remove_iced_subsurface(
+                    &s.instance.wl_surface,
+                );
+                send_event(
+                    &self.events_sender,
+                    &self.proxy,
+                    SctkEvent::SubsurfaceEvent(
+                        crate::sctk_event::SubsurfaceEventVariant::Destroyed(
+                            s.instance,
+                        ),
+                    ),
+                );
+            }
+            _ = send_event(
+                &self.events_sender,
+                &self.proxy,
+                SctkEvent::PopupEvent {
+                    variant: crate::sctk_event::PopupEventVariant::Done,
+                    toplevel_id: popup.data.toplevel.clone(),
+                    parent_id: popup.data.parent.wl_surface().clone(),
+                    id: popup.popup.wl_surface().clone(),
+                },
+            );
+        }
+        None
     }
 
     fn apply_blur(
