@@ -9,7 +9,7 @@ pub use scrollable::Scrollable;
 pub use text_input::TextInput;
 
 use crate::widget::Id;
-use crate::{Rectangle, Vector};
+use crate::{Rectangle, Vector, window};
 
 use std::any::Any;
 use std::fmt;
@@ -75,6 +75,12 @@ pub trait Operation<T = ()>: Send {
     fn finish(&self) -> Outcome<T> {
         Outcome::None
     }
+
+    /// Track the active window id being processed if relevant to the operation
+    fn set_window_id(&mut self, _id: window::Id) {}
+
+    /// Used to mark the beginning of operations for a widget and its children
+    fn pre_operation(&mut self, _id: Option<&Id>) {}
 }
 
 impl<T, O> Operation<O> for Box<T>
@@ -139,6 +145,14 @@ where
 
     fn finish(&self) -> Outcome<O> {
         self.as_ref().finish()
+    }
+
+    fn set_window_id(&mut self, id: window::Id) {
+        self.as_mut().set_window_id(id);
+    }
+
+    fn pre_operation(&mut self, id: Option<&Id>) {
+        self.as_mut().pre_operation(id);
     }
 }
 
@@ -243,6 +257,14 @@ where
         fn finish(&self) -> Outcome<O> {
             Outcome::None
         }
+
+        fn pre_operation(&mut self, id: Option<&Id>) {
+            self.operation.pre_operation(id);
+        }
+
+        fn set_window_id(&mut self, id: window::Id) {
+            self.operation.set_window_id(id);
+        }
     }
 
     BlackBox { operation }
@@ -341,6 +363,10 @@ where
                 ) {
                     self.operation.custom(id, bounds, state);
                 }
+
+                fn pre_operation(&mut self, id: Option<&Id>) {
+                    self.operation.pre_operation(id);
+                }
             }
 
             self.operation.traverse(&mut |operation| {
@@ -409,6 +435,14 @@ where
                     f: self.f.clone(),
                 })),
             }
+        }
+
+        fn set_window_id(&mut self, id: window::Id) {
+            self.operation.set_window_id(id);
+        }
+
+        fn pre_operation(&mut self, id: Option<&Id>) {
+            self.operation.pre_operation(id);
         }
     }
 
@@ -515,6 +549,14 @@ where
                 }
             }
         }
+
+        fn set_window_id(&mut self, id: window::Id) {
+            self.operation.set_window_id(id);
+        }
+
+        fn pre_operation(&mut self, id: Option<&Id>) {
+            self.operation.pre_operation(id);
+        }
     }
 
     Chain {
@@ -565,6 +607,14 @@ pub fn scoped<T: 'static>(
                 }
                 outcome => outcome,
             }
+        }
+
+        fn pre_operation(&mut self, id: Option<&Id>) {
+            self.operation.pre_operation(id);
+        }
+
+        fn set_window_id(&mut self, id: window::Id) {
+            self.operation.set_window_id(id);
         }
     }
 

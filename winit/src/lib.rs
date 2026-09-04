@@ -2519,6 +2519,8 @@ where
             while let Some(mut operation) = current_operation.take() {
                 for (id, ui) in interfaces.iter_mut() {
                     if let Some(window) = window_manager.get_mut(*id) {
+                        operation.as_mut().set_window_id(*id);
+
                         ui.operate(&window.renderer, operation.as_mut());
                     }
                 }

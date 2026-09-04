@@ -676,13 +676,7 @@ where
         let translation =
             state.translation(self.direction, bounds, content_bounds);
 
-        operation.scrollable(
-            Some(&self.id),
-            bounds,
-            content_bounds,
-            translation,
-            state,
-        );
+        operation.pre_operation(Some(&self.id));
 
         operation.traverse(&mut |operation| {
             self.content.as_widget_mut().operate(
@@ -696,6 +690,14 @@ where
                 operation,
             );
         });
+        // XXX must be done after traversing to perform DFS
+        operation.scrollable(
+            Some(&self.id),
+            bounds,
+            content_bounds,
+            translation,
+            state,
+        );
     }
 
     fn update(

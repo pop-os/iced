@@ -1,5 +1,6 @@
 //! Select data from the widget tree.
 use iced_core as core;
+use iced_core::window;
 
 mod find;
 mod target;
@@ -48,6 +49,8 @@ pub trait Selector {
     {
         FindAll::new(find::All::new(self))
     }
+
+    fn set_window_id(&mut self, _id: window::Id) {}
 }
 
 impl Selector for &str {
@@ -170,4 +173,43 @@ pub fn is_focused() -> impl Selector<Output = Target> {
     }
 
     IsFocused
+}
+
+/// Returns a [`Selector`] that matches widgets that are focusable.
+pub fn focus() -> impl Selector<Output = (bool, Target, window::Id)> {
+    struct Focus {
+        cur_window_id: window::Id,
+    }
+
+    impl Selector for Focus {
+        type Output = (bool, Target, window::Id);
+
+        fn select(&mut self, candidate: Candidate<'_>) -> Option<Self::Output> {
+            if let Candidate::Focusable { state, .. } = candidate {
+                Some((
+                    state.is_focused(),
+                    Target::from(candidate),
+                    self.cur_window_id,
+                ))
+            } else if matches!(candidate, Candidate::Scrollable { .. }) {
+                Some((false, Target::from(candidate), self.cur_window_id))
+            } else if matches!(candidate, Candidate::PreOperation { .. }) {
+                Some((false, Target::from(candidate), self.cur_window_id))
+            } else {
+                None
+            }
+        }
+
+        fn description(&self) -> String {
+            "is focusable and focused".to_owned()
+        }
+
+        fn set_window_id(&mut self, id: iced_core::window::Id) {
+            self.cur_window_id = id;
+        }
+    }
+
+    Focus {
+        cur_window_id: window::Id::NONE,
+    }
 }
