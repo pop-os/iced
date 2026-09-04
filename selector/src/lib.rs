@@ -193,6 +193,8 @@ pub fn focus() -> impl Selector<Output = (bool, Target, window::Id)> {
                 ))
             } else if matches!(candidate, Candidate::Scrollable { .. }) {
                 Some((false, Target::from(candidate), self.cur_window_id))
+            } else if matches!(candidate, Candidate::PreOperation { .. }) {
+                Some((false, Target::from(candidate), self.cur_window_id))
             } else {
                 None
             }

@@ -676,6 +676,8 @@ where
         let translation =
             state.translation(self.direction, bounds, content_bounds);
 
+        operation.pre_operation(Some(&self.id));
+
         operation.traverse(&mut |operation| {
             self.content.as_widget_mut().operate(
                 &mut tree.children[0],

@@ -42,6 +42,9 @@ pub enum Target {
         bounds: Rectangle,
         visible_bounds: Option<Rectangle>,
     },
+    PreOperation {
+        id: Option<Id>,
+    },
 }
 
 impl Target {
@@ -54,6 +57,7 @@ impl Target {
             | Target::TextInput { bounds, .. }
             | Target::Text { bounds, .. }
             | Target::Custom { bounds, .. } => *bounds,
+            Target::PreOperation { .. } => Rectangle::default(),
         }
     }
 
@@ -66,6 +70,7 @@ impl Target {
             | Target::TextInput { visible_bounds, .. }
             | Target::Text { visible_bounds, .. }
             | Target::Custom { visible_bounds, .. } => *visible_bounds,
+            Target::PreOperation { .. } => None,
         }
     }
 }
@@ -138,6 +143,9 @@ impl From<Candidate<'_>> for Target {
                 bounds,
                 visible_bounds,
             },
+            Candidate::PreOperation { id } => {
+                Self::PreOperation { id: id.cloned() }
+            }
         }
     }
 }
@@ -195,6 +203,8 @@ pub enum Candidate<'a> {
         visible_bounds: Option<Rectangle>,
         state: &'a dyn Any,
     },
+    /// Used to mark the beginning of operations for a widget and its children
+    PreOperation { id: Option<&'a Id> },
 }
 
 impl<'a> Candidate<'a> {
@@ -206,7 +216,8 @@ impl<'a> Candidate<'a> {
             | Candidate::Scrollable { id, .. }
             | Candidate::TextInput { id, .. }
             | Candidate::Text { id, .. }
-            | Candidate::Custom { id, .. } => *id,
+            | Candidate::Custom { id, .. }
+            | Candidate::PreOperation { id } => *id,
         }
     }
 
@@ -219,6 +230,7 @@ impl<'a> Candidate<'a> {
             | Candidate::TextInput { bounds, .. }
             | Candidate::Text { bounds, .. }
             | Candidate::Custom { bounds, .. } => *bounds,
+            Candidate::PreOperation { .. } => Rectangle::default(),
         }
     }
 
@@ -231,6 +243,7 @@ impl<'a> Candidate<'a> {
             | Candidate::TextInput { visible_bounds, .. }
             | Candidate::Text { visible_bounds, .. }
             | Candidate::Custom { visible_bounds, .. } => *visible_bounds,
+            Candidate::PreOperation { .. } => None,
         }
     }
 }
