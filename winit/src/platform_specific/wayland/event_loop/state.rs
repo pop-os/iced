@@ -431,7 +431,7 @@ pub struct SctkState {
     pub(crate) subsurfaces: Vec<SctkSubsurface>,
     pub(crate) lock_surfaces: Vec<SctkLockSurface>,
     pub(crate) blur_surfaces: HashMap<core::window::Id, ExtBackgroundEffectSurfaceV1>,
-    pub(crate) corner_radii: HashMap<core::window::Id, (SctkCornerRadius, Option<CornerRadius>)>,
+    pub(crate) corner_radii: HashMap<core::window::Id, (SctkCornerRadius, Option<CornerRadius>, CornerRadius)>,
     pub(crate) touch_points: HashMap<touch::Finger, (WlSurface, Point)>,
 
     /// Window updates, which are coming from SCTK or the compositor, which require
@@ -1258,7 +1258,7 @@ impl SctkState {
                         },
                         platform_specific::wayland::layer_surface::Action::Padding { id, padding } => {
                             // corner radius padding
-                            if let Some((protocol_object, _)) = self.corner_radii.get_mut(&id) {
+                            if let Some((protocol_object, ..)) = self.corner_radii.get_mut(&id) {
                                 if let CornerRadiusWrapper::Wlr(protocol_object) = protocol_object.0.as_ref() {
                                     protocol_object.set_padding(padding.top, padding.right, padding.bottom, padding.left);
                                 }
@@ -1689,7 +1689,8 @@ impl SctkState {
                                 bottom_right: radii.bottom_right.min(half_min_dim),
                                 bottom_left: radii.bottom_left.min(half_min_dim),
                             };
-                            if let Some((protocol_object, corner_radii)) = self.corner_radii.get_mut(&id) {
+                            if let Some((protocol_object, corner_radii, requested)) = self.corner_radii.get_mut(&id) {
+                                *requested = radii;
                                 if *corner_radii != Some(adjusted_radii) {
                                     match protocol_object.0.as_ref() {
                                         CornerRadiusWrapper::Xdg(protocol_object) => protocol_object.set_radius(
@@ -1741,7 +1742,7 @@ impl SctkState {
                                         adjusted_radii.bottom_left,
                                     )
                                 };
-                                _ = self.corner_radii.insert(id, (SctkCornerRadius(Arc::new(protocol_object)), Some(adjusted_radii.clone())));
+                                _ = self.corner_radii.insert(id, (SctkCornerRadius(Arc::new(protocol_object)), Some(adjusted_radii.clone()), radii));
                             }
                         } else {
                             if let Some(old) = self.corner_radii.get_mut(&id) {
