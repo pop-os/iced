@@ -285,4 +285,8 @@ where
     fn set_window_id(&mut self, id: window::Id) {
         self.strategy.set_window_id(id);
     }
+
+    fn pre_operation(&mut self, id: Option<&Id>) {
+        self.strategy.feed(Candidate::PreOperation { id });
+    }
 }
