@@ -44,6 +44,7 @@ use cctk::{
     cosmic_protocols::{
         corner_radius::v1::client::cosmic_corner_radius_manager_v1::CosmicCornerRadiusManagerV1,
         overlap_notify::v1::client::zcosmic_overlap_notification_v1::ZcosmicOverlapNotificationV1,
+        session_lock_layer::v1::client::cosmic_session_lock_layer_manager_v1::CosmicSessionLockLayerManagerV1,
     },
     sctk::{
         activation::{ActivationState, RequestData},
@@ -477,6 +478,7 @@ pub struct SctkState {
     pub(crate) toplevel_manager: Option<ToplevelManagerState>,
     pub(crate) subsurface_state: Option<SubsurfaceState>,
     pub(crate) ext_background_effect_manager: Option<ext_background_effect::ExtBackgroundEffectManager>,
+    pub(crate) cosmic_session_lock_layer_manager: Option<CosmicSessionLockLayerManagerV1>,
 
     pub(crate) activation_token_ctr: u32,
     pub(crate) token_senders: HashMap<u32, oneshot::Sender<Option<String>>>,
@@ -1266,6 +1268,20 @@ impl SctkState {
                                 }
                             }
                         },
+                        platform_specific::wayland::layer_surface::Action::ShowOnLock { id, value } => {
+                            if let Some(layer_surface) = self.layer_surfaces.iter_mut().find(|l| l.id == id) {
+                                if let SurfaceKind::Wlr(wlr) = layer_surface.surface.kind() {
+                                    if let Some(manager) = &self.cosmic_session_lock_layer_manager {
+                                        if value {
+                                            manager.set_show_on_lock(wlr);
+                                        } else {
+                                            manager.unset_show_on_lock(wlr);
+                                        }
+                                        _ = self.to_commit.insert(id, layer_surface.surface.wl_surface().clone());
+                                    }
+                                }
+                            }
+                        }
                 },
             Action::Popup(action) => {
                 match action {
@@ -2165,3 +2181,4 @@ pub(crate) fn send_event(
 
 delegate_noop!(SctkState: ignore WlSubsurface);
 delegate_noop!(SctkState: ignore WlRegion);
+delegate_noop!(SctkState: CosmicSessionLockLayerManagerV1);
