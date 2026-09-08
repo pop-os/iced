@@ -392,6 +392,7 @@ impl SctkEventLoop {
                         ).ok(),
                         text_input_manager: TextInputManager::try_new(&registry_state, &qh),
                         ext_background_effect_manager: ext_background_effect::ExtBackgroundEffectManager::new(&globals, &qh).ok(),
+                        cosmic_session_lock_layer_manager: registry_state.bind_one(&qh, 1..=1, ()).ok(),
                         registry_state,
 
                         queue_handle: qh,

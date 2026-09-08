@@ -138,3 +138,14 @@ pub fn set_input_zone<Message>(
         )),
     ))
 }
+
+pub fn set_show_on_lock<Message>(
+    id: SurfaceId,
+    value: bool,
+) -> Task<Message> {
+    task::effect(Action::PlatformSpecific(
+        platform_specific::Action::Wayland(wayland::Action::LayerSurface(
+            wayland::layer_surface::Action::ShowOnLock { id, value },
+        )),
+    ))
+}

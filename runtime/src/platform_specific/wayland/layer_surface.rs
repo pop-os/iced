@@ -157,6 +157,11 @@ pub enum Action {
         /// padding of the surface geometry
         padding: IcedMargin,
     },
+    ShowOnLock {
+        /// id of the layer surface
+        id: Id,
+        value: bool,
+    }
 }
 
 impl fmt::Debug for Action {
@@ -214,6 +219,11 @@ impl fmt::Debug for Action {
                 f,
                 "Action::LayerSurfaceAction::Padding {{ id: {:#?}, padding: {:?} }}",
                 id, padding
+            ),
+            Action::ShowOnLock { id, value } => write!(
+                f,
+                "Action::LayerSurfaceAction::ShowOnLock {{ id: {:#?}, value: {:?} }}",
+                id, value
             ),
         }
     }
