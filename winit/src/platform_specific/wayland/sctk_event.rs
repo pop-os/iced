@@ -155,6 +155,9 @@ pub enum SctkEvent {
         parent_id: WlSurface,
         /// the id of this popup
         id: WlSurface,
+        /// Window id of the parent surface, as passed in the popup settings. Needed to route
+        /// `Done` to the parent's widgets.
+        parent_window: SurfaceId,
     },
 
     SubsurfaceEvent(SubsurfaceEventVariant),
@@ -920,6 +923,7 @@ impl SctkEvent {
             SctkEvent::PopupEvent {
                 variant,
                 id: surface,
+                parent_window,
                 ..
             } => {
                 match variant {
@@ -958,6 +962,8 @@ impl SctkEvent {
                                 )
                             })
                         {
+                            // tell the parent's widgets so menus can reset when the compositor dismisses them.
+                            events.push((Some(parent_window), e.1.clone()));
                             events.push(e)
                         }
                     }
