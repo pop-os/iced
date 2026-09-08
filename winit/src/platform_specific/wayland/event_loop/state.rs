@@ -333,6 +333,7 @@ pub struct SctkSubsurface {
 pub struct SctkPopupData {
     pub(crate) id: core::window::Id,
     pub(crate) parent: PopupParent,
+    pub(crate) parent_window: core::window::Id,
     pub(crate) toplevel: WlSurface,
     pub(crate) positioner: Arc<XdgPositioner>,
     pub(crate) grab: bool,
@@ -902,6 +903,7 @@ impl SctkState {
             data: SctkPopupData {
                 id: settings.id,
                 parent: parent.clone(),
+                parent_window: settings.parent,
                 toplevel: toplevel.clone(),
                 positioner: positioner.clone(),
                 grab: settings.grab,
@@ -1314,7 +1316,7 @@ impl SctkState {
                             existing.data.positioner = Arc::new(positioner);
                             existing.set_size(size.0, size.1, TOKEN_CTR.fetch_add(1, std::sync::atomic::Ordering::Relaxed));
                             _ = send_event(&self.events_sender, &self.proxy,
-                                SctkEvent::PopupEvent { variant: crate::sctk_event::PopupEventVariant::Size(size.0, size.1), toplevel_id: existing.data.parent.wl_surface().clone(), parent_id: existing.data.parent.wl_surface().clone(), id: existing.popup.wl_surface().clone() });
+                                SctkEvent::PopupEvent { variant: crate::sctk_event::PopupEventVariant::Size(size.0, size.1), toplevel_id: existing.data.parent.wl_surface().clone(), parent_id: existing.data.parent.wl_surface().clone(), id: existing.popup.wl_surface().clone(), parent_window: existing.data.parent_window });
                             return Ok(());
                         } else if !self.destroyed.is_empty() || self.popmgr.popup_id(settings.id).is_some() || self.popmgr.active_grab().is_some()
                         {
@@ -1362,6 +1364,7 @@ impl SctkState {
                                             TimeoutAction::Drop
                                         }
                                     } else {
+                                        let parent_window = settings.parent;
                                         match state.get_popup(settings) {
                                             Ok((id, parent_id, toplevel_id, surface, common)) => {
                                                 let wl_surface = surface.wl_surface().clone();
@@ -1369,7 +1372,7 @@ impl SctkState {
                                                 send_event(&state.events_sender, &state.proxy,
                                                     SctkEvent::PopupEvent {
                                                         variant: crate::platform_specific::wayland::sctk_event::PopupEventVariant::Created(queue_handle.clone(), surface, id, common, state.connection.display()),
-                                                        toplevel_id, parent_id, id: wl_surface });
+                                                        toplevel_id, parent_id, id: wl_surface, parent_window });
                                             }
                                             Err(err) => {
                                                 log::error!("Failed to create popup. {err:?}");
@@ -1380,6 +1383,7 @@ impl SctkState {
                                 });
                             }
                         } else {
+                            let parent_window = settings.parent;
                             match self.get_popup(settings) {
                                 Ok((id, parent_id, toplevel_id, surface, common)) => {
                                     let wl_surface = surface.wl_surface().clone();
@@ -1388,7 +1392,7 @@ impl SctkState {
                                             variant: crate::platform_specific::wayland::sctk_event::PopupEventVariant::Created(
                                                 self.queue_handle.clone(), surface, id, common, self.connection.display()
                                             ),
-                                            toplevel_id, parent_id, id: wl_surface }
+                                            toplevel_id, parent_id, id: wl_surface, parent_window }
                                     );
                                 }
                                 Err(err) => {
@@ -1413,7 +1417,7 @@ impl SctkState {
                             sctk_popup.set_size(width, height, TOKEN_CTR.fetch_add(1, std::sync::atomic::Ordering::Relaxed));
                             let surface = sctk_popup.popup.wl_surface().clone();
                             _ = send_event(&self.events_sender, &self.proxy,
-                                SctkEvent::PopupEvent { variant: crate::sctk_event::PopupEventVariant::Size(width, height), toplevel_id: sctk_popup.data.parent.wl_surface().clone(), parent_id: sctk_popup.data.parent.wl_surface().clone(), id: surface });
+                                SctkEvent::PopupEvent { variant: crate::sctk_event::PopupEventVariant::Size(width, height), toplevel_id: sctk_popup.data.parent.wl_surface().clone(), parent_id: sctk_popup.data.parent.wl_surface().clone(), id: surface, parent_window: sctk_popup.data.parent_window });
                         }
                     },
                     platform_specific::wayland::popup::Action::Reposition { id, positioner } => {
@@ -1453,7 +1457,7 @@ impl SctkState {
                             sctk_popup.data.positioner.set_size(w as i32, h as i32);
                             sctk_popup.popup.reposition(&sctk_popup.data.positioner, TOKEN_CTR.fetch_add(1, std::sync::atomic::Ordering::Relaxed));                        let surface = sctk_popup.popup.wl_surface().clone();
                             _ = send_event(&self.events_sender, &self.proxy,
-                                SctkEvent::PopupEvent { variant: crate::sctk_event::PopupEventVariant::Size(size.0, size.1), toplevel_id: sctk_popup.data.parent.wl_surface().clone(), parent_id: sctk_popup.data.parent.wl_surface().clone(), id: surface });
+                                SctkEvent::PopupEvent { variant: crate::sctk_event::PopupEventVariant::Size(size.0, size.1), toplevel_id: sctk_popup.data.parent.wl_surface().clone(), parent_id: sctk_popup.data.parent.wl_surface().clone(), id: surface, parent_window: sctk_popup.data.parent_window });
                         }
                     },
                 }
@@ -1852,6 +1856,7 @@ impl SctkState {
                 &self.proxy,
                 SctkEvent::PopupEvent {
                     variant: crate::sctk_event::PopupEventVariant::Done,
+                    parent_window: popup.data.parent_window,
                     toplevel_id: popup.data.toplevel.clone(),
                     parent_id: popup.data.parent.wl_surface().clone(),
                     id: popup.popup.wl_surface().clone(),

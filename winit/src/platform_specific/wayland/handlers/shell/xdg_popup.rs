@@ -38,6 +38,7 @@ impl PopupHandler for SctkState {
                 first,
             ),
             id: popup.wl_surface().clone(),
+            parent_window: sctk_popup.data.parent_window,
             toplevel_id: sctk_popup.data.toplevel.clone(),
             parent_id: match &sctk_popup.data.parent {
                 PopupParent::LayerSurface(s) => s.clone(),
@@ -70,6 +71,7 @@ impl PopupHandler for SctkState {
 
             self.sctk_events.push(SctkEvent::PopupEvent {
                 variant: PopupEventVariant::Done,
+                parent_window: popup.data.parent_window,
                 toplevel_id: popup.data.toplevel.clone(),
                 parent_id: popup.data.parent.wl_surface().clone(),
                 id: popup.popup.wl_surface().clone(),
