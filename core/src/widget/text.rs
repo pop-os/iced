@@ -224,6 +224,7 @@ pub struct State<P: Paragraph> {
     focused: bool,
     keyboard_focused: bool,
     context_menu_position: Option<Point>,
+    clipboard_has_text: bool,
 }
 
 impl<P: Paragraph> Default for State<P> {
@@ -234,6 +235,7 @@ impl<P: Paragraph> Default for State<P> {
             focused: false,
             keyboard_focused: false,
             context_menu_position: None,
+            clipboard_has_text: false,
         }
     }
 }
@@ -529,6 +531,7 @@ where
             Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Right)) => {
                 if let Some(pos) = cursor.position_over(bounds) {
                     state.context_menu_position = Some(pos);
+                    state.clipboard_has_text = clipboard_has_text(clipboard);
                     state.focused = true;
                     state.keyboard_focused = false;
                     shell.capture_event();
@@ -1023,6 +1026,13 @@ pub fn danger(theme: &Theme) -> Style {
 
 use crate::widget::tree::Tree as WidgetTree;
 
+/// Returns `true` if the clipboard currently holds non-empty text.
+pub fn clipboard_has_text(clipboard: &dyn Clipboard) -> bool {
+    clipboard
+        .read(crate::clipboard::Kind::Standard)
+        .is_some_and(|s| !s.is_empty())
+}
+
 /// Implement this on a **widget** to enable context menu support for
 /// text selection (Copy, Select All, and optionally Cut / Paste) in libcosmic
 pub trait HasSelectableText {
@@ -1032,9 +1042,21 @@ pub trait HasSelectableText {
     /// Selects all text.
     fn select_all(&self, tree: &mut WidgetTree);
 
-    /// Returns `true` if the widget is editable (enables Cut / Paste).
+    /// Returns `true` if the widget is editable (shows Cut / Paste).
     fn is_editable(&self) -> bool {
         false
+    }
+
+    /// Returns `true` if the widget has any text (enables Select All).
+    fn has_text(&self, _tree: &WidgetTree) -> bool {
+        true
+    }
+
+    /// Returns whether the clipboard held text when the context menu was
+    /// requested (enables Paste). Widgets cache this on right-click because
+    /// overlays have no clipboard access.
+    fn clipboard_has_text(&self, _tree: &WidgetTree) -> bool {
+        true
     }
 
     /// Returns `true` if the widget is currently focused.
@@ -1104,6 +1126,16 @@ impl<Theme: Catalog, Renderer: text::Renderer> HasSelectableText
             .get_or_insert_with(|| Box::new(SelectionState::default()));
         sel.anchor = 0;
         sel.end = count;
+    }
+
+    fn has_text(&self, tree: &WidgetTree) -> bool {
+        let state = tree.state.downcast_ref::<State<Renderer::Paragraph>>();
+        !state.paragraph.content().is_empty()
+    }
+
+    fn clipboard_has_text(&self, tree: &WidgetTree) -> bool {
+        let state = tree.state.downcast_ref::<State<Renderer::Paragraph>>();
+        state.clipboard_has_text
     }
 
     fn is_focused(&self, tree: &WidgetTree) -> bool {
