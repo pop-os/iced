@@ -545,6 +545,7 @@ pub struct State<Highlighter: text::Highlighter> {
     highlighter_settings: Highlighter::Settings,
     highlighter_format_address: usize,
     context_menu_position: Option<Point>,
+    clipboard_has_text: bool,
     pending_edit: Option<Action>,
 }
 
@@ -632,6 +633,7 @@ where
             highlighter_settings: self.highlighter_settings.clone(),
             highlighter_format_address: self.highlighter_format as usize,
             context_menu_position: None,
+            clipboard_has_text: false,
             pending_edit: None,
         })
     }
@@ -736,6 +738,8 @@ where
                             state.focus = Some(Focus::now());
                         }
                         state.context_menu_position = Some(pos);
+                        state.clipboard_has_text =
+                            widget::text::clipboard_has_text(clipboard);
                         shell.capture_event();
                         return;
                     }
@@ -1647,6 +1651,16 @@ where
 
     fn is_editable(&self) -> bool {
         self.on_edit.is_some()
+    }
+
+    fn has_text(&self, _tree: &widget::Tree) -> bool {
+        !self.content.is_empty()
+    }
+
+    fn clipboard_has_text(&self, tree: &widget::Tree) -> bool {
+        tree.state
+            .downcast_ref::<State<Highlighter>>()
+            .clipboard_has_text
     }
 
     fn is_focused(&self, tree: &widget::Tree) -> bool {
