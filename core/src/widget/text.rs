@@ -379,45 +379,65 @@ where
         let style = theme.style(&self.class);
         let bounds = layout.bounds();
         let paragraph = state.paragraph.raw();
-        if let Some(sel) = &state.selection {
-            let left = sel.anchor.min(sel.end);
-            let right = sel.anchor.max(sel.end);
-            let content: &str = self.fragment.as_ref();
+        let anchor = bounds.anchor(
+            paragraph.min_bounds(),
+            paragraph.align_x(),
+            paragraph.align_y(),
+        );
 
-            if left != right {
-                let lo_byte = grapheme_to_byte(content, left);
-                let hi_byte = grapheme_to_byte(content, right);
+        let rects: Vec<Rectangle> = state
+            .selection
+            .as_ref()
+            .filter(|sel| sel.anchor != sel.end)
+            .map(|sel| {
+                let content: &str = self.fragment.as_ref();
+                let lo_byte =
+                    grapheme_to_byte(content, sel.anchor.min(sel.end));
+                let hi_byte =
+                    grapheme_to_byte(content, sel.anchor.max(sel.end));
 
-                let anchor = bounds.anchor(
-                    paragraph.min_bounds(),
-                    paragraph.align_x(),
-                    paragraph.align_y(),
+                paragraph
+                    .highlight(
+                        0,
+                        (lo_byte, text::Affinity::After),
+                        (hi_byte, text::Affinity::Before),
+                    )
+                    .into_iter()
+                    .map(|r| Rectangle {
+                        x: anchor.x + r.x,
+                        y: anchor.y + r.y,
+                        width: r.width,
+                        height: r.height,
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        let fill_selection = |renderer: &mut Renderer| {
+            for r in &rects {
+                renderer.fill_quad(
+                    renderer::Quad {
+                        bounds: *r,
+                        ..renderer::Quad::default()
+                    },
+                    style.selected_fill,
                 );
+            }
+        };
 
-                let rects = paragraph.highlight(
-                    0,
-                    (lo_byte, text::Affinity::After),
-                    (hi_byte, text::Affinity::Before),
-                );
-
-                for r in rects {
-                    renderer.fill_quad(
-                        renderer::Quad {
-                            bounds: Rectangle {
-                                x: anchor.x + r.x,
-                                y: anchor.y + r.y,
-                                width: r.width,
-                                height: r.height,
-                            },
-                            ..renderer::Quad::default()
-                        },
-                        style.selected_fill,
-                    );
-                }
+        if style.selected_text_color.is_none() {
+            fill_selection(renderer);
+        }
+        draw(renderer, defaults, bounds, paragraph, style, viewport);
+        if let Some(color) = style.selected_text_color {
+            fill_selection(renderer);
+            for r in &rects {
+                renderer.with_layer(*r, |renderer| {
+                    renderer
+                        .fill_paragraph(paragraph, anchor, color, *viewport);
+                });
             }
         }
-
-        draw(renderer, defaults, bounds, paragraph, style, viewport);
     }
 
     fn update(
@@ -931,6 +951,10 @@ pub struct Style {
     pub color: Option<Color>,
     /// The fill [`Color`] of the selection highlight.
     pub selected_fill: Color,
+    /// The [`Color`] of selected text.
+    ///
+    /// The default, `None`, keeps the regular text color.
+    pub selected_text_color: Option<Color>,
 }
 
 impl Default for Style {
@@ -938,6 +962,7 @@ impl Default for Style {
         Self {
             color: None,
             selected_fill: DEFAULT_SELECTION_COLOR,
+            selected_text_color: None,
         }
     }
 }
