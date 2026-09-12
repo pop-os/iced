@@ -435,6 +435,9 @@ pub struct SctkState {
     pub(crate) blur_surfaces: HashMap<core::window::Id, ExtBackgroundEffectSurfaceV1>,
     pub(crate) corner_radii: HashMap<core::window::Id, (SctkCornerRadius, Option<CornerRadius>)>,
     pub(crate) touch_points: HashMap<touch::Finger, (WlSurface, Point)>,
+    /// List of layer surfaces whose keyboard leave was ignored because focus moved
+    /// to one of their own grabbing popups. Their next enter is swallowed too.
+    pub(crate) kbd_leave_to_own_popup: HashSet<ObjectId>,
 
     /// Window updates, which are coming from SCTK or the compositor, which require
     /// calling back to the sctk's downstream. They are handled right in the event loop,
@@ -681,6 +684,33 @@ impl SctkState {
         // TODO winit sets cursor size after handling the change for the window, so maybe that should be done as well.
     }
 
+    /// Popups can only be attached to xdg or layer surfaces. So for subsurfaces, we return the
+    /// parent, and adjust the offset.
+    pub(crate) fn subsurface_popup_parent(
+        &self,
+        id: core::window::Id,
+    ) -> Option<(WlSurface, (i32, i32))> {
+        let mut sub = self.subsurfaces.iter().find(|s| s.id == id)?;
+        let mut offset = (0, 0);
+        // bounded by the number of subsurfaces so a corrupt chain cannot spin forever
+        for _ in 0..=self.subsurfaces.len() {
+            if let Some(b) = sub.instance.bounds {
+                offset.0 += b.x as i32;
+                offset.1 += b.y as i32;
+            }
+            let parent = &sub.instance.parent;
+            match self
+                .subsurfaces
+                .iter()
+                .find(|s| s.instance.wl_surface == *parent)
+            {
+                Some(s) => sub = s,
+                None => return Some((parent.clone(), offset)),
+            }
+        }
+        None
+    }
+
     pub fn get_popup(
         &mut self,
         settings: SctkPopupSettings,
@@ -725,6 +755,27 @@ impl SctkState {
                 PopupParent::Popup(parent.popup.wl_surface().clone()),
                 parent.data.toplevel.clone(),
             )
+        } else if let Some((surface, _)) =
+            self.subsurface_popup_parent(settings.parent)
+        {
+            if self
+                .layer_surfaces
+                .iter()
+                .any(|l| *l.surface.wl_surface() == surface)
+            {
+                (PopupParent::LayerSurface(surface.clone()), surface)
+            } else if self
+                .windows
+                .iter()
+                .any(|w| w.wl_surface(&self.connection) == surface)
+            {
+                (PopupParent::Window(surface.clone()), surface)
+            } else if let Some(p) = self.popmgr.popup(&surface) {
+                (PopupParent::Popup(surface), p.data.toplevel.clone())
+            } else {
+                // e.g. a session lock surface, which cannot parent xdg popups
+                return Err(PopupCreationError::ParentMissing);
+            }
         } else {
             return Err(PopupCreationError::ParentMissing);
         };
@@ -1158,6 +1209,7 @@ impl SctkState {
                             }
                             if let Some(i) = self.layer_surfaces.iter().position(|l| l.id == id) {
                                 let l = self.layer_surfaces.remove(i);
+                                _ = self.kbd_leave_to_own_popup.remove(&l.surface.wl_surface().id());
 
                                 if let Some(blurred) = self.blur_surfaces.remove(&l.id) {
                                     blurred.destroy();
@@ -1285,13 +1337,19 @@ impl SctkState {
                 },
             Action::Popup(action) => {
                 match action {
-                    platform_specific::wayland::popup::Action::Popup { popup: settings } => {
+                    platform_specific::wayland::popup::Action::Popup { popup: mut settings } => {
+                        // anchor rects from widgets inside a subsurface are in that subsurface's coordinates
+                        if let Some((_, (dx, dy))) = self.subsurface_popup_parent(settings.parent) {
+                            settings.positioner.anchor_rect.x += dx;
+                            settings.positioner.anchor_rect.y += dy;
+                        }
                         // first check existing popup
                         // if an existing popup with the same id exists, we just update the positioner.
                         if let Some((chain, existing)) = self.popmgr.popup_id(settings.id).and_then(|p|
                                 (p.data.grab == settings.grab && self.popmgr.popups().any(|parent| parent.popup.wl_surface() == p.data.parent.wl_surface() && parent.data.id == settings.parent)
                                 || self.windows.iter().any(|w| w.id == settings.parent && *p.data.parent.wl_surface() == w.wl_surface(&self.connection))
-                                || self.layer_surfaces.iter().any(|l| l.id == settings.parent && p.data.parent.wl_surface() == l.surface.wl_surface())).then(||
+                                || self.layer_surfaces.iter().any(|l| l.id == settings.parent && p.data.parent.wl_surface() == l.surface.wl_surface())
+                                || (p.data.parent_window == settings.parent && self.subsurfaces.iter().any(|s| s.id == settings.parent))).then(||
                             {
                                 p.popup.wl_surface().clone()
                             })).and_then(|s| self.popmgr.chain_for_popup_mut(&s))
@@ -1662,9 +1720,13 @@ impl SctkState {
                     }
                 },
                 subsurface::Action::Reposition { id, x, y } => {
-                    if let Some(subsurface) = self.subsurfaces.iter().find(|s| s.id == id) {
+                    if let Some(subsurface) = self.subsurfaces.iter_mut().find(|s| s.id == id) {
                         subsurface.instance.wl_subsurface.set_position(x, y);
                         subsurface.instance.wl_surface.commit();
+                        if let Some(b) = subsurface.instance.bounds.as_mut() {
+                            b.x = x as f32;
+                            b.y = y as f32;
+                        }
                     }
                 },
             },

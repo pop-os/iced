@@ -412,6 +412,7 @@ impl SctkEventLoop {
                         lock_surfaces: Vec::new(),
                         subsurfaces: Vec::new(),
                         touch_points: HashMap::new(),
+                        kbd_leave_to_own_popup: HashSet::new(),
                         sctk_events: Vec::new(),
                         frame_status: HashMap::new(),
                         cursor_requests: HashMap::new(),
