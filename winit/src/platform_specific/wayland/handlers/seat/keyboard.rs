@@ -1,12 +1,16 @@
 use crate::platform_specific::wayland::{
-    event_loop::state::SctkState,
+    event_loop::state::{PopupParent, SctkState},
     sctk_event::{KeyboardEventVariant, SctkEvent},
 };
 use cctk::sctk::{
     delegate_keyboard,
     seat::keyboard::{KeyboardHandler, Keysym, Modifiers},
 };
-use cctk::sctk::{reexports::client::Proxy, seat::keyboard::RawModifiers};
+use cctk::sctk::{
+    reexports::client::Proxy,
+    seat::keyboard::RawModifiers,
+    shell::{WaylandSurface, wlr_layer::KeyboardInteractivity},
+};
 
 fn modifiers_from_keysyms(
     keysyms: &[Keysym],
@@ -90,6 +94,11 @@ impl KeyboardHandler for SctkState {
         }
         self.request_redraw(&surface);
 
+        // Focus is coming back from our own grabbing popup
+        if self.kbd_leave_to_own_popup.remove(&surface.id()) {
+            return;
+        }
+
         let surfaces = self.subsurfaces.iter().filter_map(|s| {
             (s.instance.parent == *surface).then(|| &s.instance.wl_surface)
         });
@@ -147,6 +156,32 @@ impl KeyboardHandler for SctkState {
             _ = my_seat.kbd_focus.take();
             (is_active, seat, kbd)
         };
+
+        // A grabbing popup parented to this layer surface, or opened from one of
+        // its subsurfaces that holds focus, takes keyboard focus.
+        // Only swallow the leave when the layer surface has exclusive keyboard interactivity.
+        let focus_moved_to_own_popup = self.popmgr.popups().any(|p| {
+            p.data.grab
+                && match &p.data.parent {
+                    PopupParent::LayerSurface(s) => {
+                        (s == surface
+                            || self.subsurfaces.iter().any(|sub| {
+                                sub.id == p.data.parent_window
+                                    && sub.instance.wl_surface == *surface
+                            }))
+                            && self.layer_surfaces.iter().any(|l| {
+                                l.surface.wl_surface() == s
+                                    && l.keyboard_interactivity
+                                        == KeyboardInteractivity::Exclusive
+                            })
+                    }
+                    _ => false,
+                }
+        });
+        if focus_moved_to_own_popup {
+            _ = self.kbd_leave_to_own_popup.insert(surface.id());
+            return;
+        }
         let surfaces = self.subsurfaces.iter().filter_map(|s| {
             (s.instance.parent == *surface).then(|| &s.instance.wl_surface)
         });
