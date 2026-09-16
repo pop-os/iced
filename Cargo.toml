@@ -308,8 +308,8 @@ winapi = "0.3"
 window_clipboard = { git = "https://github.com/pop-os/window_clipboard.git", tag = "sctk-0.20" }
 dnd = { git = "https://github.com/pop-os/window_clipboard.git", tag = "sctk-0.20" }
 mime = { git = "https://github.com/pop-os/window_clipboard.git", tag = "sctk-0.20" }
-winit = { git = "https://github.com/pop-os/winit.git", tag = "cosmic-0.14" }
-winit-core = { git = "https://github.com/pop-os/winit.git", tag = "cosmic-0.14" }
+winit = { git = "https://github.com/pop-os/winit.git", rev = "9567503" }
+winit-core = { git = "https://github.com/pop-os/winit.git", rev = "9567503" }
 cursor-icon = "1.1.0"
 
 [workspace.lints.rust]
