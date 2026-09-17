@@ -54,6 +54,7 @@ use crate::core::mouse;
 use crate::core::renderer;
 use crate::core::theme;
 use crate::core::time::Instant;
+use crate::core::touch;
 use crate::core::widget::operation;
 use crate::core::{Point, Size};
 use crate::futures::futures::channel::mpsc;
@@ -1408,7 +1409,26 @@ async fn run_instance<P>(
                             &mut clipboard,
                             &mut messages,
                         );
-                    let mut needs_redraw = !messages.is_empty();
+
+                    // Nothing else clears the cursor on this path. A pointer
+                    // at least moves away before it leaves, but a lifted finger
+                    // stays exactly where it was. Cleared after `update` so the
+                    // release still hits the widget under it.
+                    let cursor_left = window_events.iter().any(|event| {
+                        matches!(
+                            event,
+                            core::Event::Mouse(mouse::Event::CursorLeft)
+                                | core::Event::Touch(
+                                    touch::Event::FingerLifted { .. }
+                                        | touch::Event::FingerLost { .. }
+                                )
+                        )
+                    });
+                    if cursor_left {
+                        window.state.clear_cursor_pos();
+                    }
+
+                    let mut needs_redraw = !messages.is_empty() || cursor_left;
                     if let Some(requested_size) =
                         clipboard.requested_logical_size.lock().unwrap().take()
                     {
