@@ -209,16 +209,18 @@ where
             &mut self.messages,
         );
 
+        let scale_factor = 2.0_f32;
+
         self.raw.draw(
             &mut self.renderer,
             theme,
             &core::renderer::Style {
+                icon_color: base.text_color,
                 text_color: base.text_color,
+                scale_factor: f64::from(scale_factor),
             },
             self.cursor,
         );
-
-        let scale_factor = 2.0;
 
         let physical_size = Size::new(
             (self.size.width * scale_factor).round() as u32,

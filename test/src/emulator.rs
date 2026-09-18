@@ -273,6 +273,11 @@ impl<P: Program + 'static> Emulator<P> {
                 runtime::Action::Reload => {
                     // TODO
                 }
+                runtime::Action::Dnd(_)
+                | runtime::Action::PlatformSpecific(_) => {
+                    // Drag and drop and platform surfaces need a
+                    // windowing system, which an emulator has none of.
+                }
             },
         }
     }
@@ -474,7 +479,9 @@ impl<P: Program + 'static> Emulator<P> {
             &mut self.renderer,
             theme,
             &renderer::Style {
+                icon_color: style.text_color,
                 text_color: style.text_color,
+                scale_factor: f64::from(scale_factor),
             },
             mouse::Cursor::Unavailable,
         );
