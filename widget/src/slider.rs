@@ -664,35 +664,6 @@ where
         );
     }
 
-    fn mouse_interaction(
-        &self,
-        tree: &Tree,
-        layout: Layout<'_>,
-        cursor: mouse::Cursor,
-        _viewport: &Rectangle,
-        _renderer: &Renderer,
-    ) -> mouse::Interaction {
-        let state = tree.state.downcast_ref::<State>();
-
-        if state.is_dragging {
-            // FIXME: Fall back to `Pointer` on Windows
-            // See https://github.com/rust-windowing/winit/issues/1043
-            if cfg!(target_os = "windows") {
-                mouse::Interaction::Pointer
-            } else {
-                mouse::Interaction::Grabbing
-            }
-        } else if cursor.is_over(layout.bounds()) {
-            if cfg!(target_os = "windows") {
-                mouse::Interaction::Pointer
-            } else {
-                mouse::Interaction::Grab
-            }
-        } else {
-            mouse::Interaction::default()
-        }
-    }
-
     #[cfg(feature = "a11y")]
     fn a11y_nodes(
         &self,
