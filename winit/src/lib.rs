@@ -219,6 +219,8 @@ where
         adapters: Default::default(),
 
         #[cfg(target_arch = "wasm32")]
+        is_booted: std::rc::Rc::new(std::cell::RefCell::new(false)),
+        #[cfg(target_arch = "wasm32")]
         canvas: None,
     };
 
@@ -424,9 +426,15 @@ where
 
                                 #[cfg(target_arch = "wasm32")]
                                 let window_attributes = {
-                                    use winit::platform::web::WindowAttributesExtWebSys;
-                                    window_attributes
-                                        .with_canvas(self.canvas.take())
+                                    use winit::platform::web::WindowAttributesWeb;
+                                    window_attributes.with_platform_attributes(
+                                        Box::new(
+                                            WindowAttributesWeb::default()
+                                                .with_canvas(
+                                                    self.canvas.take(),
+                                                ),
+                                        ),
+                                    )
                                 };
 
                                 log::info!(
@@ -454,11 +462,12 @@ where
 
                                 #[cfg(target_arch = "wasm32")]
                                 {
-                                    use winit::platform::web::WindowExtWebSys;
+                                    use winit::platform::web::WindowExtWeb;
 
                                     let canvas = window
                                         .canvas()
-                                        .expect("Get window canvas");
+                                        .expect("Get window canvas")
+                                        .clone();
 
                                     let _ = canvas.set_attribute(
                                         "style",
@@ -686,8 +695,9 @@ where
 
     #[cfg(target_arch = "wasm32")]
     {
-        use winit::platform::web::EventLoopExtWebSys;
-        let _ = event_loop.spawn_app(runner);
+        // `spawn_app` is gone; on the web `run_app` hands control to the
+        // browser event loop and does not return.
+        let _ = event_loop.run_app(runner);
 
         Ok(())
     }
@@ -1908,6 +1918,28 @@ struct CreateCompositor<'a, P: Program> {
     >,
 }
 
+/// Whatever `spawn_local` demands of the compositor on this target.
+///
+/// On the web `create_compositor` hands its work to
+/// `wasm_bindgen_futures::spawn_local`, which takes a `Future + 'static`;
+/// the compositor is part of what that future produces, so it has to be
+/// `'static` too. Everywhere else the future is driven by `block_on` and
+/// there is no such requirement -- and it must not be imposed, because the
+/// Wayland backend calls `create_compositor` from `SctkEvent::process`,
+/// which is generic over `P` with no `'static` bound of its own.
+///
+/// A `#[cfg]` cannot be attached to a `where` predicate, so the condition
+/// lives in the trait instead and the signature stays single.
+#[cfg(target_arch = "wasm32")]
+pub trait SpawnableCompositor: 'static {}
+#[cfg(target_arch = "wasm32")]
+impl<T: 'static> SpawnableCompositor for T {}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub trait SpawnableCompositor {}
+#[cfg(not(target_arch = "wasm32"))]
+impl<T> SpawnableCompositor for T {}
+
 async fn create_compositor<'a, P>(
     window: Arc<dyn winit::window::Window + 'static>,
     CreateCompositor {
@@ -1923,6 +1955,8 @@ async fn create_compositor<'a, P>(
 >
 where
     P: Program,
+    <<P as Program>::Renderer as compositor::Default>::Compositor:
+        SpawnableCompositor,
 {
     let (compositor_sender, compositor_receiver) = oneshot::channel();
 
