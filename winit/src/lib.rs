@@ -1328,6 +1328,17 @@ async fn run_instance<P>(
                         continue;
                     }
                 }
+                // to avoid race with the reported modifier state from the popup of
+                // this window, don't empty the modifiers, on focus loss
+                #[cfg(wayland_platform)]
+                if let winit::event::WindowEvent::ModifiersChanged(modifiers) =
+                    &event
+                    && modifiers.state().is_empty()
+                    && platform_specific_handler.has_popup(id)
+                {
+                    continue;
+                }
+
                 match event {
                     winit::event::WindowEvent::SurfaceResized(_) => {
                         window.raw.request_redraw();

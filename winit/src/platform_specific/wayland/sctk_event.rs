@@ -198,6 +198,10 @@ pub enum SctkEvent {
     SessionUnlocked,
     SurfaceScaleFactorChanged(f64, WlSurface, window::Id),
     Winit(WindowId, WindowEvent),
+    PopupModifiers {
+        toplevel: window::Id,
+        modifiers: cctk::sctk::seat::keyboard::Modifiers,
+    },
     Subcompositor(SubsurfaceState),
     ShortcutsInhibited(bool),
 }
@@ -1400,6 +1404,19 @@ impl SctkEvent {
                 ),
             )),
             SctkEvent::Winit(_, _) => {}
+            SctkEvent::PopupModifiers {
+                toplevel,
+                modifiers,
+            } => {
+                events.push((
+                    Some(toplevel),
+                    iced_runtime::core::Event::Keyboard(
+                        keyboard::Event::ModifiersChanged(modifiers_to_native(
+                            modifiers,
+                        )),
+                    ),
+                ));
+            }
             SctkEvent::SurfaceScaleFactorChanged(scale, _, id) => {
                 if let Some(w) = window_manager.get_mut(id) {
                     w.state.update_scale_factor(scale);
