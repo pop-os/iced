@@ -353,6 +353,31 @@ impl KeyboardHandler for SctkState {
                         surface: surface.clone(),
                     });
                 }
+                // A popup holds the seat's keyboard on behalf of its toplevel. Report
+                // the modifiers to the toplevel as well.
+                let toplevel = self.popmgr.popups().find_map(|p| {
+                    (p.popup.wl_surface() == &surface)
+                        .then(|| p.data.toplevel.clone())
+                });
+                if let Some(toplevel) = toplevel {
+                    let id = self
+                        .windows
+                        .iter()
+                        .find(|w| w.wl_surface(&self.connection) == toplevel)
+                        .map(|w| w.id)
+                        .or_else(|| {
+                            self.layer_surfaces
+                                .iter()
+                                .find(|l| *l.surface.wl_surface() == toplevel)
+                                .map(|l| l.id)
+                        });
+                    if let Some(toplevel) = id {
+                        self.sctk_events.push(SctkEvent::PopupModifiers {
+                            toplevel,
+                            modifiers,
+                        });
+                    }
+                }
             }
         }
     }

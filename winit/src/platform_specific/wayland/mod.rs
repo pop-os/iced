@@ -20,7 +20,7 @@ use iced_graphics::{Compositor, compositor};
 use iced_runtime::core::{Vector, window};
 use raw_window_handle::{DisplayHandle, HasDisplayHandle, HasWindowHandle};
 use raw_window_handle::{HasRawDisplayHandle, RawWindowHandle};
-use sctk_event::SctkEvent;
+use sctk_event::{PopupEventVariant, SctkEvent};
 use std::sync::OnceLock;
 use std::{collections::HashMap, sync::Arc};
 use subsurface_widget::{SubsurfaceInstance, SubsurfaceState};
@@ -103,6 +103,7 @@ pub(crate) struct WaylandSpecific {
     surface_ids: HashMap<ObjectId, SurfaceIdWrapper>,
     subsurface_state: Option<SubsurfaceState>,
     surface_subsurfaces: HashMap<window::Id, Vec<SubsurfaceInstance>>,
+    popup_toplevels: HashMap<ObjectId, window::Id>,
 }
 
 impl PlatformSpecific {
@@ -173,6 +174,11 @@ impl WaylandSpecific {
         self.conn.as_ref()
     }
 
+    /// Whether a popup opened from `toplevel` is alive.
+    pub(crate) fn has_popup(&self, toplevel: window::Id) -> bool {
+        self.popup_toplevels.values().any(|id| *id == toplevel)
+    }
+
     pub(crate) async fn handle_event<'a, 'b, P>(
         &mut self,
         e: SctkEvent,
@@ -201,7 +207,32 @@ impl WaylandSpecific {
             modifiers,
             subsurface_state,
             surface_subsurfaces,
+            popup_toplevels,
         } = self;
+
+        if let SctkEvent::PopupEvent {
+            variant,
+            parent_id,
+            parent_window,
+            id,
+            ..
+        } = &e
+        {
+            match variant {
+                PopupEventVariant::Created(..) => {
+                    // A nested popup's parent is itself a popup so inhreit its toplevel
+                    let toplevel = popup_toplevels
+                        .get(&parent_id.id())
+                        .copied()
+                        .unwrap_or(*parent_window);
+                    _ = popup_toplevels.insert(id.id(), toplevel);
+                }
+                PopupEventVariant::Done => {
+                    _ = popup_toplevels.remove(&id.id());
+                }
+                _ => {}
+            }
+        }
 
         match e {
             sctk_event => {
