@@ -69,6 +69,8 @@ use crate::runtime::user_interface::{self, UserInterface};
 use crate::runtime::{Action, Task};
 
 use program::Program;
+#[cfg(feature = "program")]
+pub use program::Program;
 use window::WindowManager;
 
 use rustc_hash::FxHashMap;
@@ -2639,10 +2641,10 @@ where
             .and_then(|window| theme::Base::palette(window.state.theme()))
     });
 
-    cached_user_interfaces
-        .drain()
-        .filter_map(|(id, cache)| {
-            let window = window_manager.get_mut(id)?;
+    window_manager
+        .iter_mut()
+        .filter_map(|(id, window)| {
+            let cache = cached_user_interfaces.remove(&id)?;
 
             Some((
                 id,
@@ -2715,7 +2717,5 @@ fn system_information(
         graphics_backend: graphics.backend,
     }
 }
-#[cfg(feature = "program")]
-pub use program::Program;
 
 pub use platform_specific::*;
