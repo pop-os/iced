@@ -1,3 +1,5 @@
+use crate::conversion;
+use crate::core::mouse;
 use cursor_icon::CursorIcon;
 use winit::window::ResizeDirection;
 
@@ -24,6 +26,9 @@ const DRAG_RESIZE_SUPPORTED: bool = true;
 const DRAG_RESIZE_SUPPORTED: bool = false;
 
 /// If supported by winit, returns a closure that implements cursor resize support.
+///
+/// The closure takes the cursor last set by the UI, which it restores when
+/// the pointer leaves the resize border.
 pub fn event_func(
     window: &dyn winit::window::Window,
     border_size: f64,
@@ -32,6 +37,7 @@ pub fn event_func(
         dyn FnMut(
             &dyn winit::window::Window,
             &winit::event::WindowEvent,
+            mouse::Interaction,
         ) -> bool,
     >,
 > {
@@ -41,7 +47,8 @@ pub fn event_func(
 
         Some(Box::new(
             move |window: &dyn winit::window::Window,
-                  window_event: &winit::event::WindowEvent|
+                  window_event: &winit::event::WindowEvent,
+                  ui_interaction: mouse::Interaction|
                   -> bool {
                 // Keep track of border resize state and set cursor icon when in range
                 match window_event {
@@ -59,15 +66,21 @@ pub fn event_func(
                             None
                         };
                         if location != cursor_prev_resize_direction {
-                            window.set_cursor(
-                                resize_direction_cursor_icon(location).into(),
-                            );
+                            match location {
+                                Some(direction) => window.set_cursor(
+                                    resize_direction_cursor_icon(direction)
+                                        .into(),
+                                ),
+                                None => restore_cursor(window, ui_interaction),
+                            }
                             cursor_prev_resize_direction = location;
                             return true;
                         }
                     }
                     winit::event::WindowEvent::PointerLeft { .. } => {
-                        cursor_prev_resize_direction = None;
+                        if cursor_prev_resize_direction.take().is_some() {
+                            restore_cursor(window, ui_interaction);
+                        }
                     }
                     winit::event::WindowEvent::PointerButton {
                         state: winit::event::ElementState::Pressed,
@@ -106,22 +119,30 @@ fn is_resizable(window: &dyn winit::window::Window) -> bool {
         && window.fullscreen().is_none()
 }
 
+/// Set the cursor back to the one the UI last set.
+fn restore_cursor(
+    window: &dyn winit::window::Window,
+    ui_interaction: mouse::Interaction,
+) {
+    // `None` means the UI hid the cursor, which a cursor icon doesn't undo.
+    if let Some(icon) = conversion::mouse_interaction(ui_interaction) {
+        window.set_cursor(icon.into());
+    }
+}
+
 /// Get the cursor icon that corresponds to the resize direction.
 fn resize_direction_cursor_icon(
-    resize_direction: Option<ResizeDirection>,
+    resize_direction: ResizeDirection,
 ) -> CursorIcon {
     match resize_direction {
-        Some(resize_direction) => match resize_direction {
-            ResizeDirection::East => CursorIcon::EResize,
-            ResizeDirection::North => CursorIcon::NResize,
-            ResizeDirection::NorthEast => CursorIcon::NeResize,
-            ResizeDirection::NorthWest => CursorIcon::NwResize,
-            ResizeDirection::South => CursorIcon::SResize,
-            ResizeDirection::SouthEast => CursorIcon::SeResize,
-            ResizeDirection::SouthWest => CursorIcon::SwResize,
-            ResizeDirection::West => CursorIcon::WResize,
-        },
-        None => CursorIcon::Default,
+        ResizeDirection::East => CursorIcon::EResize,
+        ResizeDirection::North => CursorIcon::NResize,
+        ResizeDirection::NorthEast => CursorIcon::NeResize,
+        ResizeDirection::NorthWest => CursorIcon::NwResize,
+        ResizeDirection::South => CursorIcon::SResize,
+        ResizeDirection::SouthEast => CursorIcon::SeResize,
+        ResizeDirection::SouthWest => CursorIcon::SwResize,
+        ResizeDirection::West => CursorIcon::WResize,
     }
 }
 
