@@ -49,24 +49,25 @@ pub fn event_func(
                         position,
                         ..
                     } => {
-                        let resizable = !window.is_decorated()
-                            && !window.is_maximized()
-                            && window.fullscreen().is_none();
-                        if resizable {
-                            let location = cursor_resize_direction(
+                        let location = if is_resizable(window) {
+                            cursor_resize_direction(
                                 window.surface_size(),
                                 *position,
                                 border_size,
+                            )
+                        } else {
+                            None
+                        };
+                        if location != cursor_prev_resize_direction {
+                            window.set_cursor(
+                                resize_direction_cursor_icon(location).into(),
                             );
-                            if location != cursor_prev_resize_direction {
-                                window.set_cursor(
-                                    resize_direction_cursor_icon(location)
-                                        .into(),
-                                );
-                                cursor_prev_resize_direction = location;
-                                return true;
-                            }
+                            cursor_prev_resize_direction = location;
+                            return true;
                         }
+                    }
+                    winit::event::WindowEvent::PointerLeft { .. } => {
+                        cursor_prev_resize_direction = None;
                     }
                     winit::event::WindowEvent::PointerButton {
                         state: winit::event::ElementState::Pressed,
@@ -80,7 +81,9 @@ pub fn event_func(
                         primary: true,
                         ..
                     } => {
-                        if let Some(direction) = cursor_prev_resize_direction {
+                        if let Some(direction) = cursor_prev_resize_direction
+                            && is_resizable(window)
+                        {
                             let _res = window.drag_resize_window(direction);
                             return true;
                         }
@@ -94,6 +97,13 @@ pub fn event_func(
     } else {
         None
     }
+}
+
+/// Whether the window can currently be resized from its border.
+fn is_resizable(window: &dyn winit::window::Window) -> bool {
+    !window.is_decorated()
+        && !window.is_maximized()
+        && window.fullscreen().is_none()
 }
 
 /// Get the cursor icon that corresponds to the resize direction.
