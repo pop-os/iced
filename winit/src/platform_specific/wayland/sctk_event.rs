@@ -627,7 +627,12 @@ impl SctkEvent {
                             keyboard::Event::KeyPressed {
                                 key: key.clone(),
                                 location: location,
-                                text: ke.utf8.map(|s| s.into()),
+                                // sctk reports keys without a text representation (e.g. arrows, Home) as
+                                // Some("") but winit reports None. Widgets are written against winit's contract.
+                                text: ke
+                                    .utf8
+                                    .filter(|s| !s.is_empty())
+                                    .map(|s| s.into()),
                                 modifiers: modifiers_to_native(*modifiers),
                                 physical_key,
                                 repeat: false,
@@ -653,7 +658,9 @@ impl SctkEvent {
                             keyboard::Event::KeyPressed {
                                 key: key.clone(),
                                 location: location,
-                                text: utf8.map(|s| s.into()),
+                                text: utf8
+                                    .filter(|s| !s.is_empty())
+                                    .map(|s| s.into()),
                                 modifiers: modifiers_to_native(*modifiers),
                                 physical_key,
                                 repeat: true,
