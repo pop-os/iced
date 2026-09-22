@@ -1324,7 +1324,11 @@ async fn run_instance<P>(
                 };
                 // Initiates a drag resize window state when found.
                 if let Some(func) = window.drag_resize_window_func.as_mut() {
-                    if func(window.raw.as_ref(), &event) {
+                    if func(
+                        window.raw.as_ref(),
+                        &event,
+                        window.mouse_interaction,
+                    ) {
                         continue;
                     }
                 }

@@ -191,6 +191,7 @@ where
             dyn FnMut(
                 &dyn winit::window::Window,
                 &winit::event::WindowEvent,
+                mouse::Interaction,
             ) -> bool,
         >,
     >,
