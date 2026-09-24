@@ -255,7 +255,7 @@ where
         _renderer: &Renderer,
         _clipboard: &mut dyn Clipboard,
         shell: &mut Shell<'_, Message>,
-        _viewport: &Rectangle,
+        viewport: &Rectangle,
     ) {
         let state = tree.state.downcast_mut::<State>();
         let is_dragging = state.is_dragging;
@@ -354,6 +354,8 @@ where
                 }
             }
             Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left))
+            | Event::Mouse(mouse::Event::CursorLeft)
+            | Event::Mouse(mouse::Event::CursorEntered)
             | Event::Touch(touch::Event::FingerLifted { .. })
             | Event::Touch(touch::Event::FingerLost { .. }) => {
                 if is_dragging {
@@ -366,10 +368,20 @@ where
             Event::Mouse(mouse::Event::CursorMoved { .. })
             | Event::Touch(touch::Event::FingerMoved { .. }) => {
                 if is_dragging {
-                    let _ =
-                        cursor.land().position().and_then(locate).map(change);
+                    let position = cursor.land().position();
+                    let outside = position.is_none_or(|position| {
+                        !viewport.contains(position)
+                    });
 
-                    shell.capture_event();
+                    if outside {
+                        if let Some(on_release) = self.on_release.clone() {
+                            shell.publish(on_release);
+                        }
+                        state.is_dragging = false;
+                    } else {
+                        let _ = position.and_then(locate).map(change);
+                        shell.capture_event();
+                    }
                 }
             }
             Event::Mouse(mouse::Event::WheelScrolled { delta })
