@@ -26,7 +26,7 @@ use winit::keyboard::SmolStr;
 /// Returns the activation token provided by the compositor, if any.
 ///
 /// The token is single-use, so it is only ever handed out to the first window.
-#[cfg(target_os = "linux")]
+#[cfg(wayland_platform)]
 fn take_activation_token() -> Option<winit::window::ActivationToken> {
     use std::sync::Mutex;
     use std::sync::OnceLock;
@@ -117,25 +117,6 @@ pub fn window_attributes(
             });
     }
 
-    #[cfg(any(
-        target_os = "dragonfly",
-        target_os = "freebsd",
-        target_os = "netbsd",
-        target_os = "openbsd"
-    ))]
-    {
-        use ::winit::platform::wayland::WindowAttributesExtWayland;
-
-        if let Some(id) = _id {
-            attributes = attributes.with_platform_attributes(Box::new(
-                WindowAttributesWayland::default().with_name(
-                    &settings.platform_specific.application_id,
-                    &settings.platform_specific.application_id,
-                ),
-            ));
-        }
-    }
-
     #[cfg(target_os = "windows")]
     {
         use window::settings::platform;
@@ -188,41 +169,38 @@ pub fn window_attributes(
         ));
     }
 
-    #[cfg(target_os = "linux")]
+    #[cfg(x11_platform)]
     {
-        #[cfg(feature = "x11")]
-        {
-            use winit::platform::x11::WindowAttributesX11;
+        use winit::platform::x11::WindowAttributesX11;
 
-            attributes = attributes.with_platform_attributes(Box::new(
-                WindowAttributesX11::default()
-                    .with_override_redirect(
-                        settings.platform_specific.override_redirect,
-                    )
-                    .with_name(
-                        &settings.platform_specific.application_id,
-                        &settings.platform_specific.application_id,
-                    ),
-            ));
-        }
-        #[cfg(target_os = "linux")]
-        {
-            use winit::platform::wayland::WindowAttributesWayland;
-
-            let mut wayland_attributes = WindowAttributesWayland::default()
+        attributes = attributes.with_platform_attributes(Box::new(
+            WindowAttributesX11::default()
+                .with_override_redirect(
+                    settings.platform_specific.override_redirect,
+                )
                 .with_name(
                     &settings.platform_specific.application_id,
                     &settings.platform_specific.application_id,
-                );
+                ),
+        ));
+    }
+    #[cfg(wayland_platform)]
+    {
+        use winit::platform::wayland::WindowAttributesWayland;
 
-            if let Some(token) = take_activation_token() {
-                wayland_attributes =
-                    wayland_attributes.with_activation_token(token);
-            }
+        let mut wayland_attributes = WindowAttributesWayland::default()
+            .with_name(
+                &settings.platform_specific.application_id,
+                &settings.platform_specific.application_id,
+            );
 
-            attributes = attributes
-                .with_platform_attributes(Box::new(wayland_attributes));
+        if let Some(token) = take_activation_token() {
+            wayland_attributes =
+                wayland_attributes.with_activation_token(token);
         }
+
+        attributes =
+            attributes.with_platform_attributes(Box::new(wayland_attributes));
     }
 
     attributes

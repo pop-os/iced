@@ -7,20 +7,23 @@ pub mod platform;
 #[path = "settings/macos.rs"]
 mod platform;
 
-#[cfg(target_os = "linux")]
-#[path = "settings/linux.rs"]
+#[cfg(all(free_unix, not(target_os = "redox")))]
+#[path = "settings/unix.rs"]
 mod platform;
 
 #[cfg(target_arch = "wasm32")]
 #[path = "settings/wasm.rs"]
 mod platform;
 
-#[cfg(not(any(
-    target_os = "windows",
-    target_os = "macos",
-    target_os = "linux",
-    target_arch = "wasm32"
-)))]
+#[cfg(any(
+    target_os = "redox",
+    not(any(
+        free_unix,
+        target_os = "windows",
+        target_os = "macos",
+        target_arch = "wasm32"
+    ))
+))]
 #[path = "settings/other.rs"]
 mod platform;
 
