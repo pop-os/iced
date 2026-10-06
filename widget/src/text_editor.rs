@@ -583,6 +583,12 @@ impl<Highlighter: text::Highlighter> State<Highlighter> {
         self.focus.is_some()
     }
 
+    /// Drops focus, as pressing the unfocus binding does.
+    pub fn unfocus(&mut self) {
+        self.focus = None;
+        self.drag_click = None;
+    }
+
     /// Clears focus, selection, and all interaction state.
     pub fn clear_focus(&mut self) {
         self.focus = None;
