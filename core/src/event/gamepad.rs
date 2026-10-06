@@ -9,6 +9,7 @@ pub enum Event {
     ButtonPressed {
         gamepad: Gamepad,
         button: Button,
+        repeated: bool,
     },
 
     ButtonReleased {
