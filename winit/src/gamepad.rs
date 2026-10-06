@@ -16,7 +16,14 @@ pub fn listen(
 
     #[cfg(not(target_arch = "wasm32"))]
     {
+        use gilrs::ev::filter::{Filter, Repeat};
         use std::time::Duration;
+
+        const REPEAT_AFTER: Duration = Duration::from_millis(500);
+
+        const REPEAT_EVERY: Duration = Duration::from_millis(30);
+
+        const POLL_INTERVAL: Duration = Duration::from_millis(8);
 
         let (sender, receiver) = mpsc::channel();
 
@@ -27,11 +34,33 @@ pub fn listen(
                     return;
                 };
 
+                let repeat = Repeat {
+                    after: REPEAT_AFTER,
+                    every: REPEAT_EVERY,
+                };
+
                 loop {
-                    let Some(event) = gilrs.next_event_blocking(None) else {
-                        std::thread::sleep(Duration::from_millis(1));
+                    let any_held = gilrs.gamepads().any(|(_, gamepad)| {
+                        gamepad
+                            .state()
+                            .buttons()
+                            .any(|(_, button)| button.is_pressed())
+                    });
+
+                    let event = gilrs
+                        .next_event_blocking(any_held.then_some(POLL_INTERVAL))
+                        .filter_ev(&repeat, &mut gilrs);
+
+                    let Some(event) = event else {
                         continue;
                     };
+
+                    if matches!(
+                        event.event,
+                        gilrs::EventType::ButtonRepeated(..)
+                    ) {
+                        gilrs.update(&event);
+                    }
 
                     let send = |event| {
                         if let Some(event) = convert(event) {
@@ -77,6 +106,14 @@ fn convert(event: gilrs::Event) -> Option<core::event::gamepad::Event> {
             core::event::gamepad::Event::ButtonPressed {
                 gamepad,
                 button: convert_button(button)?,
+                repeated: false,
+            }
+        }
+        gilrs::EventType::ButtonRepeated(button, _) => {
+            core::event::gamepad::Event::ButtonPressed {
+                gamepad,
+                button: convert_button(button)?,
+                repeated: true,
             }
         }
         gilrs::EventType::ButtonReleased(button, _) => {
