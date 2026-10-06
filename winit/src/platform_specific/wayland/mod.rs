@@ -13,7 +13,7 @@ use crate::{Control, CreateCompositor, Program, WindowManager};
 use crate::platform_specific::UserInterfaces;
 use cctk::sctk::reexports::calloop;
 use cctk::sctk::reexports::client::protocol::wl_surface::WlSurface;
-use cctk::sctk::seat::keyboard::Modifiers;
+use cctk::sctk::seat::keyboard::{Modifiers, RepeatInfo};
 use cursor_icon::CursorIcon;
 use iced_futures::futures::channel::mpsc;
 use iced_graphics::{Compositor, compositor};
@@ -22,6 +22,8 @@ use raw_window_handle::{DisplayHandle, HasDisplayHandle, HasWindowHandle};
 use raw_window_handle::{HasRawDisplayHandle, RawWindowHandle};
 use sctk_event::{PopupEventVariant, SctkEvent};
 use std::sync::OnceLock;
+use std::sync::atomic::{AtomicU32, Ordering};
+use std::time::Duration;
 use std::{collections::HashMap, sync::Arc};
 use subsurface_widget::{SubsurfaceInstance, SubsurfaceState};
 use wayland_backend::client::ObjectId;
@@ -29,6 +31,33 @@ use wayland_client::{Connection, Proxy};
 use winit::dpi::Size;
 use winit::event_loop::OwnedDisplayHandle;
 use winit::window::ImePurpose;
+
+static REPEAT_DELAY: AtomicU32 = AtomicU32::new(u32::MAX);
+
+static REPEAT_INTERVAL: AtomicU32 = AtomicU32::new(u32::MAX);
+
+pub(crate) fn keyboard_repeat() -> Option<(Duration, Duration)> {
+    let delay = REPEAT_DELAY.load(Ordering::Relaxed);
+    let interval = REPEAT_INTERVAL.load(Ordering::Relaxed);
+
+    if delay == u32::MAX || interval == u32::MAX {
+        return None;
+    }
+
+    Some((
+        Duration::from_millis(u64::from(delay)),
+        Duration::from_micros(u64::from(interval)),
+    ))
+}
+
+pub(crate) fn set_keyboard_repeat(info: RepeatInfo) {
+    if let RepeatInfo::Repeat { rate, delay } = info {
+        let interval = (1_000_000 / rate.get()).max(1);
+
+        REPEAT_DELAY.store(delay, Ordering::Relaxed);
+        REPEAT_INTERVAL.store(interval, Ordering::Relaxed);
+    }
+}
 
 pub(crate) enum Action {
     Action(iced_runtime::platform_specific::wayland::Action),

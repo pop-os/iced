@@ -3,6 +3,20 @@ use crate::core;
 
 use std::sync::mpsc;
 
+/// The repeat the platform reported for its keyboard, when it reports one.
+#[cfg(not(target_arch = "wasm32"))]
+fn keyboard_repeat() -> Option<(std::time::Duration, std::time::Duration)> {
+    #[cfg(wayland_platform)]
+    {
+        crate::platform_specific::wayland::keyboard_repeat()
+    }
+
+    #[cfg(not(wayland_platform))]
+    {
+        None
+    }
+}
+
 /// Gamepads are not listened for on the web, where gilrs cannot block.
 pub fn listen(
     on_event: impl Fn() + Send + Sync + 'static,
@@ -34,12 +48,11 @@ pub fn listen(
                     return;
                 };
 
-                let repeat = Repeat {
-                    after: REPEAT_AFTER,
-                    every: REPEAT_EVERY,
-                };
-
                 loop {
+                    let (after, every) = keyboard_repeat()
+                        .unwrap_or((REPEAT_AFTER, REPEAT_EVERY));
+                    let repeat = Repeat { after, every };
+
                     let any_held = gilrs.gamepads().any(|(_, gamepad)| {
                         gamepad
                             .state()
