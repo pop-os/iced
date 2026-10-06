@@ -233,6 +233,7 @@ futures = { version = "0.3", default-features = false, features = [
     "std",
     "async-await",
 ] }
+gilrs = "0.11"
 glam = "0.25"
 iced_accessibility = { version = "0.1", path = "accessibility" }
 
