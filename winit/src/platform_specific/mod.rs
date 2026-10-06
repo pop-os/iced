@@ -79,6 +79,18 @@ impl PlatformSpecific {
         self.wayland.has_popup(toplevel)
     }
 
+    pub(crate) fn popup_window(&self) -> Option<window::Id> {
+        #[cfg(wayland_platform)]
+        {
+            self.wayland.popup_window()
+        }
+
+        #[cfg(not(wayland_platform))]
+        {
+            None
+        }
+    }
+
     pub(crate) fn retain_subsurfaces<F: Fn(window::Id) -> bool>(
         &mut self,
         keep: F,

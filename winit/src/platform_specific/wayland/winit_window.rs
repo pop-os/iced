@@ -263,7 +263,6 @@ impl winit::window::Window for SctkWinitWindow {
     }
 
     fn has_focus(&self) -> bool {
-        log::warn!("has_focus is not implemented for wayland windows.");
         false
     }
 
