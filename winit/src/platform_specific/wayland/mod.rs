@@ -104,6 +104,8 @@ pub(crate) struct WaylandSpecific {
     subsurface_state: Option<SubsurfaceState>,
     surface_subsurfaces: HashMap<window::Id, Vec<SubsurfaceInstance>>,
     popup_toplevels: HashMap<ObjectId, window::Id>,
+    /// Popups that own input, in the order they were opened.
+    popups: Vec<window::Id>,
 }
 
 impl PlatformSpecific {
@@ -147,6 +149,8 @@ impl PlatformSpecific {
     }
 
     pub(crate) fn send_wayland(&mut self, action: Action) {
+        self.wayland.track_popup(&action);
+
         if self.wayland.sender.is_none()
             && self.wayland.winit_event_sender.is_some()
             && self.wayland.display_handle.is_some()
@@ -179,6 +183,35 @@ impl WaylandSpecific {
         self.popup_toplevels.values().any(|id| *id == toplevel)
     }
 
+    /// The popup that owns input while it is open, if any.
+    pub(crate) fn popup_window(&self) -> Option<window::Id> {
+        self.popups.last().copied()
+    }
+
+    /// Notes which popups want to own input, so that they can be routed to
+    /// whether or not the compositor moves focus onto them.
+    fn track_popup(&mut self, action: &Action) {
+        use iced_runtime::platform_specific::wayland::popup::Action as PopupAction;
+
+        let Action::Action(
+            iced_runtime::platform_specific::wayland::Action::Popup(action),
+        ) = action
+        else {
+            return;
+        };
+
+        match action {
+            PopupAction::Popup { popup } if popup.grab => {
+                self.popups.retain(|id| *id != popup.id);
+                self.popups.push(popup.id);
+            }
+            PopupAction::Destroy { id } => {
+                self.popups.retain(|popup| popup != id)
+            }
+            _ => (),
+        }
+    }
+
     pub(crate) async fn handle_event<'a, 'b, P>(
         &mut self,
         e: SctkEvent,
@@ -208,6 +241,7 @@ impl WaylandSpecific {
             subsurface_state,
             surface_subsurfaces,
             popup_toplevels,
+            popups: _,
         } = self;
 
         if let SctkEvent::PopupEvent {
