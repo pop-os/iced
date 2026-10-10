@@ -238,7 +238,7 @@ impl Layer {
             },
         );
 
-        let text = damage::diff(
+        let text = damage::list(
             &previous.text,
             &current.text,
             |item| {
@@ -249,17 +249,8 @@ impl Layer {
                     .collect()
             },
             |text_a, text_b| {
-                damage::list(
-                    text_a.as_slice(),
-                    text_b.as_slice(),
-                    |text| {
-                        text.visible_bounds()
-                            .into_iter()
-                            .map(|bounds| bounds * text_a.transformation())
-                            .collect()
-                    },
-                    |text_a, text_b| text_a == text_b,
-                )
+                text_a.transformation() == text_b.transformation()
+                    && text_a.as_slice() == text_b.as_slice()
             },
         );
 
