@@ -102,6 +102,13 @@ impl Compositor {
 
         log::info!("{settings:#?}");
 
+        // Only the `wayland_platform` branch above ever sets this, so the
+        // removal has to carry the same cfg. Without it, this runs on targets
+        // that never set the variable -- harmless on a desktop, fatal on wasm,
+        // where `std::env::remove_var` panics ("cannot unset env vars on this
+        // platform") rather than failing softly. The compositor then never
+        // finishes starting, so no wasm build gets a first frame.
+        #[cfg(wayland_platform)]
         unsafe {
             std::env::remove_var("VK_LOADER_DRIVERS_DISABLE");
         }
