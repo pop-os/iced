@@ -71,7 +71,7 @@ use cctk::{
         seat::{
             SeatState,
             keyboard::{KeyEvent, Modifiers},
-            pointer::{CursorIcon, PointerData, ThemedPointer},
+            pointer::{CursorIcon, ThemedPointer},
             touch::TouchData,
         },
         session_lock::{
@@ -904,11 +904,7 @@ impl SctkState {
 
         if grab {
             if let Some(s) = self.seats.first() {
-                let ptr_data = s
-                    .ptr
-                    .as_ref()
-                    .and_then(|p| p.pointer().data::<PointerData>())
-                    .and_then(|data| data.latest_button_serial());
+                let ptr_data = s.last_ptr_press.map(|(_, _, serial)| serial);
                 if let Some(serial) = ptr_data
                     .or_else(|| {
                         s.touch
