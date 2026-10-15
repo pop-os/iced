@@ -14,7 +14,7 @@ The __[`main`](tour/src/main.rs)__ file contains all the code of the example! Al
 </div>
 
 [`iced_winit`]: ../winit
-[`iced_native`]: ../native
+[`iced_runtime`]: ../runtime
 [`iced_wgpu`]: ../wgpu
 [`iced_web`]: https://github.com/iced-rs/iced_web
 [`winit`]: https://github.com/rust-windowing/winit

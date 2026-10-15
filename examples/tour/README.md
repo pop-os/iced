@@ -12,7 +12,7 @@ The __[`main`]__ file contains all the code of the example! All the cross-platfo
 
 [`main`]: src/main.rs
 [`iced_winit`]: ../../winit
-[`iced_native`]: ../../native
+[`iced_runtime`]: ../../runtime
 [`iced_wgpu`]: ../../wgpu
 [`iced_web`]: https://github.com/iced-rs/iced_web
 [`winit`]: https://github.com/rust-windowing/winit
