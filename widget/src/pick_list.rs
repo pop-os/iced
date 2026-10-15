@@ -560,24 +560,6 @@ where
         }
     }
 
-    fn mouse_interaction(
-        &self,
-        _tree: &Tree,
-        layout: Layout<'_>,
-        cursor: mouse::Cursor,
-        _viewport: &Rectangle,
-        _renderer: &Renderer,
-    ) -> mouse::Interaction {
-        let bounds = layout.bounds();
-        let is_mouse_over = cursor.is_over(bounds);
-
-        if is_mouse_over {
-            mouse::Interaction::Pointer
-        } else {
-            mouse::Interaction::default()
-        }
-    }
-
     fn draw(
         &self,
         tree: &Tree,
