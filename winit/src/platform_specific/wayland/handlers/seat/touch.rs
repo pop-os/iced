@@ -66,7 +66,7 @@ impl TouchHandler for SctkState {
         };
 
         let id = touch::Finger(id as u64);
-        if let Some((surface, position)) = self.touch_points.get(&id).cloned() {
+        if let Some((surface, position)) = self.touch_points.remove(&id) {
             self.sctk_events.push(SctkEvent::TouchEvent {
                 variant: touch::Event::FingerLifted { id, position },
                 touch_id: touch.clone(),
