@@ -1,6 +1,7 @@
 mod layer;
 mod output;
 mod overlap_notify;
+mod panel_applet;
 mod popup;
 mod seat;
 mod session_lock;
@@ -15,6 +16,7 @@ use cctk::sctk::reexports::client::protocol::{
 pub use layer::*;
 pub use output::*;
 pub use overlap_notify::*;
+pub use panel_applet::*;
 pub use popup::*;
 pub use seat::*;
 pub use session_lock::*;
@@ -48,4 +50,6 @@ pub enum Event {
     ShortcutsInhibited(bool),
     /// Blur Support Enabled
     BlurEnabled,
+    /// Settings of the panel an applet is embedded in
+    PanelApplet(PanelAppletSettings),
 }

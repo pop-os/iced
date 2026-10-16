@@ -21,7 +21,8 @@ use iced_futures::{
         event::{
             PlatformSpecific,
             wayland::{
-                LayerEvent, OverlapNotifyEvent, PopupEvent, SessionLockEvent,
+                LayerEvent, OverlapNotifyEvent, PanelAppletSettings,
+                PopupEvent, SessionLockEvent,
             },
         },
     },
@@ -161,6 +162,7 @@ pub enum SctkEvent {
     },
 
     SubsurfaceEvent(SubsurfaceEventVariant),
+    PanelApplet(PanelAppletSettings),
     NewOutput {
         id: WlOutput,
         info: Option<OutputInfo>,
@@ -1757,6 +1759,14 @@ impl SctkEvent {
                 None,
                 iced_runtime::core::Event::PlatformSpecific(
                     PlatformSpecific::Wayland(wayland::Event::BlurEnabled),
+                ),
+            )),
+            SctkEvent::PanelApplet(event) => events.push((
+                None,
+                iced_runtime::core::Event::PlatformSpecific(
+                    PlatformSpecific::Wayland(wayland::Event::PanelApplet(
+                        event,
+                    )),
                 ),
             )),
         }

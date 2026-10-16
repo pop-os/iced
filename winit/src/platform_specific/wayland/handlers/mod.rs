@@ -4,6 +4,7 @@ pub mod compositor;
 pub mod ext_background_effect;
 pub mod output;
 pub mod overlap;
+pub mod panel_applet;
 pub mod seat;
 pub mod session_lock;
 pub mod shell;

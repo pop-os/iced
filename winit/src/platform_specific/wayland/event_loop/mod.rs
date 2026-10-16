@@ -11,7 +11,7 @@ use crate::{
     futures::futures::channel::mpsc,
     handlers::{
         ext_background_effect, overlap::OverlapNotifyV1,
-        text_input::TextInputManager,
+        panel_applet::PanelAppletV1, text_input::TextInputManager,
     },
     platform_specific::wayland::{
         handlers::{
@@ -372,6 +372,7 @@ impl SctkEventLoop {
                         session_lock: None,
                         overlap_notify: OverlapNotifyV1::bind(&globals, &qh)
                             .ok(),
+                        panel_applet: PanelAppletV1::bind(&globals, &qh).ok(),
                         toplevel_info: ToplevelInfoState::try_new(
                             &registry_state,
                             &qh,
