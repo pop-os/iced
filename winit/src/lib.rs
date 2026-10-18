@@ -537,6 +537,7 @@ where
                             Control::Crash(error) => {
                                 self.error = Some(error);
                                 event_loop.exit();
+                                break;
                             }
                             Control::SetAutomaticWindowTabbing(_enabled) => {
                                 #[cfg(target_os = "macos")]
