@@ -2,11 +2,12 @@ use cctk::{
     cosmic_protocols::corner_radius::v1::client::{
         cosmic_corner_radius_layer_v1::CosmicCornerRadiusLayerV1,
         cosmic_corner_radius_manager_v1::CosmicCornerRadiusManagerV1,
+        cosmic_corner_radius_subsurface_v1::CosmicCornerRadiusSubsurfaceV1,
         cosmic_corner_radius_toplevel_v1::CosmicCornerRadiusToplevelV1,
     },
     sctk,
 };
-use sctk::reexports::client::{Connection, Dispatch, Proxy};
+use sctk::reexports::client::{Connection, Dispatch, Proxy, delegate_noop};
 
 use crate::event_loop::state::SctkState;
 
@@ -66,3 +67,5 @@ impl Dispatch<CosmicCornerRadiusLayerV1, ()> for SctkState {
         }
     }
 }
+
+delegate_noop!(SctkState: ignore CosmicCornerRadiusSubsurfaceV1);

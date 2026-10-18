@@ -1,7 +1,7 @@
 // TODO z-order option?
 
 use crate::core::{
-    ContentFit, Element, Length, Rectangle, Size, Vector,
+    ContentFit, Element, Length, Rectangle, Size, Vector, border,
     layout::{self, Layout},
     mouse, renderer,
     widget::{self, Widget},
@@ -21,6 +21,10 @@ use std::{
 };
 
 use crate::futures::futures::channel::oneshot;
+use cctk::cosmic_protocols::corner_radius::v1::client::{
+    cosmic_corner_radius_manager_v1::CosmicCornerRadiusManagerV1,
+    cosmic_corner_radius_subsurface_v1::CosmicCornerRadiusSubsurfaceV1,
+};
 use cctk::sctk::{
     compositor::SurfaceData,
     error::GlobalError,
@@ -363,6 +367,8 @@ pub struct SubsurfaceState {
     pub wl_shm: WlShm,
     pub wp_dmabuf: Option<ZwpLinuxDmabufV1>,
     pub wp_alpha_modifier: Option<WpAlphaModifierV1>,
+    /// Only set if the compositor supports corner radius for subsurfaces (version 3)
+    pub corner_radius_manager: Option<CosmicCornerRadiusManagerV1>,
     pub qh: QueueHandle<SctkState>,
     pub(crate) buffers: HashMap<WeakBufferSource, Vec<WlBuffer>>,
     pub(crate) unmapped_subsurfaces: Vec<SubsurfaceInstance>,
@@ -452,6 +458,8 @@ impl SubsurfaceState {
             wl_subsurface,
             wp_viewport,
             wp_alpha_modifier_surface,
+            wp_corner_radius: None,
+            corner_radius: None,
             wl_buffer: None,
             bounds: None,
             wp_fractional_scale: None,
@@ -628,6 +636,8 @@ pub(crate) struct SubsurfaceInstance {
     pub(crate) wp_viewport: WpViewport,
     pub(crate) wp_fractional_scale: Option<WpFractionalScaleV1>,
     pub(crate) wp_alpha_modifier_surface: Option<WpAlphaModifierSurfaceV1>,
+    pub(crate) wp_corner_radius: Option<CosmicCornerRadiusSubsurfaceV1>,
+    pub(crate) corner_radius: Option<[u32; 4]>,
     pub(crate) wl_buffer: Option<WlBuffer>,
     pub(crate) bounds: Option<Rectangle<f32>>,
     pub(crate) transform: wl_output::Transform,
@@ -690,11 +700,42 @@ impl SubsurfaceInstance {
         if transform_changed {
             self.wl_surface.set_buffer_transform(info.transform);
         }
+        let corner_radius_changed = self.corner_radius != info.corner_radius;
+        if corner_radius_changed {
+            if let Some(corner_radius) = info.corner_radius {
+                if self.wp_corner_radius.is_none() {
+                    self.wp_corner_radius =
+                        state.corner_radius_manager.as_ref().map(|manager| {
+                            manager.get_corner_radius_subsurface(
+                                &self.wl_surface,
+                                &state.qh,
+                                (),
+                            )
+                        });
+                }
+                if let Some(wp_corner_radius) = &self.wp_corner_radius {
+                    let [top_left, top_right, bottom_right, bottom_left] =
+                        corner_radius;
+                    wp_corner_radius.set_radius(
+                        top_left,
+                        top_right,
+                        bottom_right,
+                        bottom_left,
+                    );
+                }
+            } else if let Some(wp_corner_radius) = &self.wp_corner_radius {
+                wp_corner_radius.unset_radius();
+            }
+        }
         if buffer_changed {
             self.wl_surface.attach(Some(&buffer), 0, 0);
             self.wl_surface.damage(0, 0, i32::MAX, i32::MAX);
         }
-        if buffer_changed || bounds_changed || transform_changed {
+        if buffer_changed
+            || bounds_changed
+            || transform_changed
+            || corner_radius_changed
+        {
             _ = self.wl_surface.frame(&state.qh, self.wl_surface.clone());
             self.wl_surface.commit();
         }
@@ -708,6 +749,7 @@ impl SubsurfaceInstance {
         self.wl_buffer = Some(buffer);
         self.bounds = Some(info.bounds);
         self.transform = info.transform;
+        self.corner_radius = info.corner_radius;
         self.z = info.z;
     }
 
@@ -719,6 +761,9 @@ impl SubsurfaceInstance {
 
 impl Drop for SubsurfaceInstance {
     fn drop(&mut self) {
+        if let Some(wp_corner_radius) = self.wp_corner_radius.as_ref() {
+            wp_corner_radius.destroy();
+        }
         self.wp_viewport.destroy();
         self.wl_subsurface.destroy();
         self.wl_surface.destroy();
@@ -734,6 +779,7 @@ pub(crate) struct SubsurfaceInfo {
     pub bounds: Rectangle<f32>,
     pub alpha: f32,
     pub transform: wl_output::Transform,
+    pub corner_radius: Option<[u32; 4]>,
     pub z: i32,
 }
 
@@ -790,6 +836,7 @@ pub struct Subsurface {
     content_fit: ContentFit,
     alpha: f32,
     transform: wl_output::Transform,
+    corner_radius: Option<[u32; 4]>,
     pub z: i32,
 }
 
@@ -856,6 +903,7 @@ where
                 bounds: layout.bounds(),
                 alpha: self.alpha,
                 transform: self.transform,
+                corner_radius: self.corner_radius,
                 z: self.z,
             })
         });
@@ -872,6 +920,7 @@ impl Subsurface {
             content_fit: ContentFit::Contain,
             alpha: 1.,
             transform: wl_output::Transform::Normal,
+            corner_radius: None,
             z: 0,
         }
     }
@@ -904,6 +953,19 @@ impl Subsurface {
 
     pub fn transform(mut self, transform: wl_output::Transform) -> Self {
         self.transform = transform;
+        self
+    }
+
+    /// Clips the subsurface to a rounded rectangle.
+    ///
+    /// Requires compositor support (`cosmic_corner_radius_manager_v1` version 3),
+    /// otherwise the corners stay square.
+    pub fn corner_radius(mut self, radius: impl Into<border::Radius>) -> Self {
+        let radius: [f32; 4] = radius.into().into();
+        self.corner_radius = radius
+            .iter()
+            .any(|r| *r > 0.)
+            .then(|| radius.map(|r| r.max(0.).round() as u32));
         self
     }
 }
