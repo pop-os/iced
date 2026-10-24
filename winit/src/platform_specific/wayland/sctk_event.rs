@@ -311,6 +311,9 @@ pub enum LayerSurfaceEventVariant {
     Configure(LayerSurfaceConfigure, WlSurface, bool),
     /// Scale Factor
     ScaleFactorChanged(f64, Option<WpViewport>),
+    /// <https://wayland.app/protocols/wayland#wl_surface:event:enter>,
+    /// with the output's name
+    OutputEnter(WlOutput, Option<String>),
 }
 
 /// Pending update to a window requested by the user.
@@ -884,6 +887,25 @@ impl SctkEvent {
                     let _ = user_interfaces.insert(surface_id, ui);
                 }
                 LayerSurfaceEventVariant::ScaleFactorChanged(..) => {}
+                LayerSurfaceEventVariant::OutputEnter(output, name) => {
+                    if let Some(id) = surface_ids.get(&surface.id()) {
+                        events.push((
+                            Some(id.inner()),
+                            iced_runtime::core::Event::PlatformSpecific(
+                                PlatformSpecific::Wayland(
+                                    wayland::Event::Layer(
+                                        LayerEvent::OutputEnter {
+                                            output,
+                                            name,
+                                        },
+                                        surface,
+                                        id.inner(),
+                                    ),
+                                ),
+                            ),
+                        ));
+                    }
+                }
                 LayerSurfaceEventVariant::Configure(
                     configure,
                     surface,
