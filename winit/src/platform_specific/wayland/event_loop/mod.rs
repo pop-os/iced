@@ -119,6 +119,7 @@ impl SctkEventLoop {
 
                 _ = loop_handle
                 .insert_source(action_rx, |event, _, state| {
+                    state.about_to_wait_needed = true;
                     match event {
                         calloop::channel::Event::Msg(e) => match e {
                             crate::platform_specific::Action::Action(a) => {
@@ -318,7 +319,11 @@ impl SctkEventLoop {
 
                 let wayland_dispatcher = calloop::Dispatcher::new(
                     wayland_source,
-                    |_, queue, winit_state| queue.dispatch_pending(winit_state),
+                    |_, queue, winit_state: &mut SctkState| {
+                        let n = queue.dispatch_pending(winit_state)?;
+                        winit_state.about_to_wait_needed |= n > 0;
+                        Ok(n)
+                    },
                 );
 
                 let _wayland_source_dispatcher = event_loop
@@ -414,6 +419,7 @@ impl SctkEventLoop {
                         touch_points: HashMap::new(),
                         kbd_leave_to_own_popup: HashSet::new(),
                         sctk_events: Vec::new(),
+                        about_to_wait_needed: true,
                         frame_status: HashMap::new(),
                         cursor_requests: HashMap::new(),
                         fractional_scaling_manager,
@@ -497,18 +503,24 @@ impl SctkEventLoop {
 
                 log::info!("SCTK setup complete.");
                 loop {
-                    match state
-                        .state
-                        .events_sender
-                        .unbounded_send(Control::AboutToWait)
-                    {
-                        Ok(_) => {}
-                        Err(err) => {
-                            log::error!(
-                                "SCTK failed to send Control::AboutToWait. {err:?}"
-                            );
-                            if state.state.events_sender.is_closed() {
-                                return Ok(());
+                    if state.state.events_sender.is_closed() {
+                        return Ok(());
+                    }
+                    // Idle wakeups skip AboutToWait so it can't pile up.
+                    if std::mem::take(&mut state.state.about_to_wait_needed) {
+                        match state
+                            .state
+                            .events_sender
+                            .unbounded_send(Control::AboutToWait)
+                        {
+                            Ok(_) => {}
+                            Err(err) => {
+                                log::error!(
+                                    "SCTK failed to send Control::AboutToWait. {err:?}"
+                                );
+                                if state.state.events_sender.is_closed() {
+                                    return Ok(());
+                                }
                             }
                         }
                     }

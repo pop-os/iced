@@ -447,6 +447,9 @@ pub struct SctkState {
     /// A sink for window and device events that is being filled during dispatching
     /// event loop and forwarded downstream afterwards.
     pub(crate) sctk_events: Vec<SctkEvent>,
+    /// Set when an event loop pass did work (Wayland events or actions); gates
+    /// `Control::AboutToWait` so idle wakeups don't grow the unbounded channel.
+    pub(crate) about_to_wait_needed: bool,
     pub(crate) frame_status: HashMap<ObjectId, FrameStatus>,
 
     /// Send events to winit
