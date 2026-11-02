@@ -236,8 +236,6 @@ futures = { version = "0.3", default-features = false, features = [
 glam = "0.25"
 iced_accessibility = { version = "0.1", path = "accessibility" }
 
-async-std = "1.0"
-
 
 bitflags = "2.5"
 bytemuck = { version = "1.0", features = ["derive"] }
@@ -264,7 +262,7 @@ png = "0.18"
 pulldown-cmark = "0.12"
 qrcode = { version = "0.13", default-features = false }
 raw-window-handle = "0.6"
-rfd = "0.16"
+rfd = "0.17"
 rustc-hash = "2.0"
 semver = "1.0"
 serde = "1.0"
