@@ -160,6 +160,19 @@ pub fn present(
         .buffer_mut()
         .map_err(|_| compositor::SurfaceError::Lost)?;
 
+    let expected_len =
+        physical_size.width as usize * physical_size.height as usize;
+
+    if buffer.len() != expected_len {
+        log::warn!(
+            "tiny_skia: surface buffer has {} pixels, viewport is {}x{}",
+            buffer.len(),
+            physical_size.width,
+            physical_size.height
+        );
+        return Err(compositor::SurfaceError::Outdated);
+    }
+
     let last_layers = {
         let age = buffer.age();
 
