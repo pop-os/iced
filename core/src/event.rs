@@ -8,6 +8,9 @@ use crate::mouse;
 use crate::touch;
 use crate::window;
 
+/// A gamepad event
+pub mod gamepad;
+
 #[cfg(wayland_platform)]
 /// A platform specific event for wayland
 pub mod wayland;
@@ -30,6 +33,9 @@ pub enum Event {
 
     /// A touch event
     Touch(touch::Event),
+
+    /// A gamepad event
+    Gamepad(gamepad::Event),
 
     /// An input method event
     InputMethod(input_method::Event),

@@ -41,6 +41,7 @@ pub mod conversion;
 pub mod platform_specific;
 
 mod error;
+mod gamepad;
 mod proxy;
 mod window;
 
@@ -106,6 +107,12 @@ where
     let (event_sender, event_receiver) = mpsc::unbounded();
     let (proxy, worker): (Proxy<<P as Program>::Message>, _) =
         Proxy::new(event_loop.create_proxy(), event_sender.clone());
+
+    let gamepads = {
+        let waker = event_loop.create_proxy();
+
+        gamepad::listen(move || waker.wake_up())
+    };
 
     #[cfg(feature = "debug")]
     {
@@ -184,6 +191,8 @@ where
         id: Option<String>,
         boot: Option<BootConfig>,
         sender: mpsc::UnboundedSender<Event<Message>>,
+        gamepads:
+            Option<std::sync::mpsc::Receiver<core::event::gamepad::Event>>,
         receiver: mpsc::UnboundedReceiver<Control>,
         error: Option<Error>,
         system_theme: Option<oneshot::Sender<theme::Mode>>,
@@ -212,6 +221,7 @@ where
         }),
         id: settings.id,
         sender: event_sender,
+        gamepads,
         receiver: control_receiver,
         control_sender: control_sender.clone(),
         error: None,
@@ -368,6 +378,12 @@ where
         ) {
             if event_loop.exiting() {
                 return;
+            }
+
+            if let Some(gamepads) = &self.gamepads {
+                while let Ok(event) = gamepads.try_recv() {
+                    let _ = self.sender.unbounded_send(Event::Gamepad(event));
+                }
             }
 
             if let Some(event) = event {
@@ -713,6 +729,7 @@ enum Event<Message: 'static> {
     #[cfg(feature = "a11y")]
     A11yAdapter(window::Id),
     Winit(winit::window::WindowId, winit::event::WindowEvent),
+    Gamepad(core::event::gamepad::Event),
     AboutToWait,
     UserEvent(Action<Message>),
     NewEvents(winit::event::StartCause),
@@ -789,6 +806,7 @@ async fn run_instance<P>(
 
     let mut compositor = None;
     let mut events = Vec::new();
+    let mut focused_window: Option<core::window::Id> = None;
     let mut messages = Vec::new();
     let mut actions = 0;
 
@@ -1304,6 +1322,19 @@ async fn run_instance<P>(
                 }
             }
             Event::Winit(window_id, event) => {
+                if matches!(event, event::WindowEvent::Focused(true))
+                    && let Some((id, _)) =
+                        window_manager.get_mut_alias(window_id)
+                {
+                    focused_window = Some(id);
+                } else if matches!(event, event::WindowEvent::Focused(false))
+                    && let Some((id, _)) =
+                        window_manager.get_mut_alias(window_id)
+                {
+                    focused_window =
+                        focused_window.filter(|old_id| *old_id != id);
+                }
+
                 if !is_daemon
                     && matches!(event, winit::event::WindowEvent::Destroyed)
                     && !is_window_opening
@@ -1380,11 +1411,63 @@ async fn run_instance<P>(
                     }
                 }
             }
+            Event::Gamepad(event) => {
+                if let Some(id) = platform_specific_handler
+                    .popup_window()
+                    .into_iter()
+                    .chain(focused_window)
+                    .find(|id| window_manager.get(*id).is_some())
+                {
+                    events.push((Some(id), core::Event::Gamepad(event)));
+                }
+            }
             Event::AboutToWait => {
                 if actions > 0 {
                     proxy.free_slots(actions);
                     actions = 0;
                 }
+                for (id, event) in &events {
+                    let Some(id) = id else { continue };
+                    match event {
+                        #[cfg(wayland_platform)]
+                        core::Event::PlatformSpecific(
+                            core::event::PlatformSpecific::Wayland(
+                                core::event::wayland::Event::Popup(
+                                    core::event::wayland::PopupEvent::Focused,
+                                    ..,
+                                )
+                                | core::event::wayland::Event::Layer(
+                                    core::event::wayland::LayerEvent::Focused,
+                                    ..,
+                                )
+                                | core::event::wayland::Event::Seat(
+                                    core::event::wayland::SeatEvent::Enter,
+                                    _,
+                                ),
+                            ),
+                        ) => {
+                            focused_window = Some(*id);
+                        }
+                        #[cfg(wayland_platform)]
+                        core::Event::PlatformSpecific(
+                            core::event::PlatformSpecific::Wayland(
+                                core::event::wayland::Event::Popup(
+                                    core::event::wayland::PopupEvent::Unfocused,
+                                    ..,
+                                )
+                                | core::event::wayland::Event::Layer(
+                                    core::event::wayland::LayerEvent::Unfocused,
+                                    ..,
+                                ),
+                            ),
+                        ) => {
+                            focused_window =
+                                focused_window.filter(|old_id| *old_id != *id);
+                        }
+                        _ => {}
+                    }
+                }
+
                 let skip = events.is_empty() && messages.is_empty();
 
                 if skip && window_manager.is_idle() {

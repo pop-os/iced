@@ -55,6 +55,7 @@ window_clipboard.workspace = true
 dnd.workspace = true
 winit.workspace = true
 winit-core.workspace = true
+gilrs.workspace = true
 cursor-icon.workspace = true
 
 sysinfo.workspace = true

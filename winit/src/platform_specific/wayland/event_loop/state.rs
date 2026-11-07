@@ -903,25 +903,28 @@ impl SctkState {
         );
 
         if grab {
-            if let Some(s) = self.seats.first() {
-                let ptr_data = s
-                    .ptr
+            let serial = self.seats.first().and_then(|seat| {
+                seat.ptr
                     .as_ref()
                     .and_then(|p| p.pointer().data::<PointerData>())
-                    .and_then(|data| data.latest_button_serial());
-                if let Some(serial) = ptr_data
+                    .and_then(|data| data.latest_button_serial())
                     .or_else(|| {
-                        s.touch
+                        seat.touch
                             .as_ref()
                             .and_then(|t| t.data::<TouchData>())
                             .and_then(|t| t.latest_down_serial())
                     })
-                    .or_else(|| s.last_kbd_press.as_ref().map(|p| p.1))
-                {
-                    popup.xdg_popup().grab(&s.seat, serial);
+                    .or_else(|| seat.last_kbd_press.as_ref().map(|p| p.1))
+            });
+
+            match (self.seats.first(), serial) {
+                (Some(seat), Some(serial)) => {
+                    popup.xdg_popup().grab(&seat.seat, serial);
                 }
-            } else {
-                log::error!("Can't take grab on popup. Missing serial.");
+                (Some(_), None) => log::warn!(
+                    "Popup grab skipped: no pointer, touch, or key serial to grab with"
+                ),
+                (None, _) => log::warn!("Popup grab skipped: no seat"),
             }
         }
 

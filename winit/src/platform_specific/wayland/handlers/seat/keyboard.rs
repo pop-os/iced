@@ -4,7 +4,7 @@ use crate::platform_specific::wayland::{
 };
 use cctk::sctk::{
     delegate_keyboard,
-    seat::keyboard::{KeyboardHandler, Keysym, Modifiers},
+    seat::keyboard::{KeyboardHandler, Keysym, Modifiers, RepeatInfo},
 };
 use cctk::sctk::{
     reexports::client::Proxy,
@@ -391,6 +391,16 @@ impl KeyboardHandler for SctkState {
         _event: cctk::sctk::seat::keyboard::KeyEvent,
     ) {
         // TODO
+    }
+
+    fn update_repeat_info(
+        &mut self,
+        _conn: &wayland_client::Connection,
+        _qh: &wayland_client::QueueHandle<Self>,
+        _keyboard: &wayland_client::protocol::wl_keyboard::WlKeyboard,
+        info: RepeatInfo,
+    ) {
+        crate::platform_specific::wayland::set_keyboard_repeat(info);
     }
 }
 
