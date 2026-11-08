@@ -27,6 +27,10 @@ pub struct Atlas {
     texture_bind_group: Arc<wgpu::BindGroup>,
     texture_layout: wgpu::BindGroupLayout,
     layers: Vec<Layer>,
+    /// Whether `texture` has its full `size`. A new atlas holds a 1x1
+    /// placeholder until its first upload, so a window that never draws an
+    /// image does not reserve `size * size * 4` bytes of video memory.
+    allocated: bool,
 }
 
 impl Atlas {
@@ -54,28 +58,7 @@ impl Atlas {
             _ => vec![Layer::Empty],
         };
 
-        let extent = wgpu::Extent3d {
-            width: size,
-            height: size,
-            depth_or_array_layers: layers.len() as u32,
-        };
-
-        let texture = device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("iced_wgpu::image texture atlas"),
-            size: extent,
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: if color::GAMMA_CORRECTION {
-                wgpu::TextureFormat::Rgba8UnormSrgb
-            } else {
-                wgpu::TextureFormat::Rgba8Unorm
-            },
-            usage: wgpu::TextureUsages::COPY_DST
-                | wgpu::TextureUsages::COPY_SRC
-                | wgpu::TextureUsages::TEXTURE_BINDING,
-            view_formats: &[],
-        });
+        let texture = create_texture(device, 1, layers.len() as u32);
 
         let texture_view = texture.create_view(&wgpu::TextureViewDescriptor {
             dimension: Some(wgpu::TextureViewDimension::D2Array),
@@ -100,6 +83,7 @@ impl Atlas {
             texture_bind_group: Arc::new(texture_bind_group),
             texture_layout,
             layers,
+            allocated: false,
         }
     }
 
@@ -468,7 +452,9 @@ impl Atlas {
         encoder: &mut wgpu::CommandEncoder,
         backend: wgpu::Backend,
     ) {
-        if amount == 0 {
+        // The first upload replaces the placeholder even when it fits in
+        // the layers the atlas started with.
+        if amount == 0 && self.allocated {
             return;
         }
 
@@ -484,28 +470,15 @@ impl Atlas {
             _ => self.layers.len() as u32,
         };
 
-        let new_texture = device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("iced_wgpu::image texture atlas"),
-            size: wgpu::Extent3d {
-                width: self.size,
-                height: self.size,
-                depth_or_array_layers,
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: if color::GAMMA_CORRECTION {
-                wgpu::TextureFormat::Rgba8UnormSrgb
-            } else {
-                wgpu::TextureFormat::Rgba8Unorm
-            },
-            usage: wgpu::TextureUsages::COPY_DST
-                | wgpu::TextureUsages::COPY_SRC
-                | wgpu::TextureUsages::TEXTURE_BINDING,
-            view_formats: &[],
-        });
+        let new_texture =
+            create_texture(device, self.size, depth_or_array_layers);
 
-        let amount_to_copy = self.layers.len() - amount;
+        // The placeholder holds nothing to copy.
+        let amount_to_copy = if self.allocated {
+            self.layers.len() - amount
+        } else {
+            0
+        };
 
         for (i, layer) in
             self.layers.iter_mut().take(amount_to_copy).enumerate()
@@ -544,6 +517,7 @@ impl Atlas {
         }
 
         self.texture = new_texture;
+        self.allocated = true;
         self.texture_view =
             self.texture.create_view(&wgpu::TextureViewDescriptor {
                 dimension: Some(wgpu::TextureViewDimension::D2Array),
@@ -562,4 +536,31 @@ impl Atlas {
                 }],
             }));
     }
+}
+
+fn create_texture(
+    device: &wgpu::Device,
+    size: u32,
+    depth_or_array_layers: u32,
+) -> wgpu::Texture {
+    device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("iced_wgpu::image texture atlas"),
+        size: wgpu::Extent3d {
+            width: size,
+            height: size,
+            depth_or_array_layers,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: if color::GAMMA_CORRECTION {
+            wgpu::TextureFormat::Rgba8UnormSrgb
+        } else {
+            wgpu::TextureFormat::Rgba8Unorm
+        },
+        usage: wgpu::TextureUsages::COPY_DST
+            | wgpu::TextureUsages::COPY_SRC
+            | wgpu::TextureUsages::TEXTURE_BINDING,
+        view_formats: &[],
+    })
 }
