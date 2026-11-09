@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-# sctk = { package = "smithay-client-toolkit", git = "https://github.com/smithay/client-toolkit", rev = "828b1eb" }
+# sctk = { package = "smithay-client-toolkit", git = "https://github.com/smithay/client-toolkit" }
 iced = { path = "../..", default-features = false, features = [
     "tokio",
     "wayland",
