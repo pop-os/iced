@@ -408,6 +408,7 @@ where
                                     settings.exit_on_close_request;
 
                                 let visible = settings.visible;
+                                let max_size = settings.max_size;
 
                                 #[cfg(target_arch = "wasm32")]
                                 let target =
@@ -518,6 +519,7 @@ where
                                         make_visible: visible,
                                         on_open,
                                         resize_border,
+                                        max_size,
                                     }),
                                 );
                                 #[cfg(feature = "a11y")]
@@ -703,6 +705,7 @@ enum Event<Message: 'static> {
         make_visible: bool,
         on_open: oneshot::Sender<window::Id>,
         resize_border: u32,
+        max_size: Option<Size>,
     },
     Exit,
     Dnd(dnd::DndEvent<dnd::DndSurface>),
@@ -884,6 +887,7 @@ async fn run_instance<P>(
                 make_visible,
                 on_open,
                 resize_border,
+                max_size,
             } => {
                 #[cfg(wayland_platform)]
                 platform_specific_handler.send_wayland(
@@ -941,7 +945,9 @@ async fn run_instance<P>(
                     exit_on_close_request,
                     system_theme,
                     resize_border,
+                    max_size,
                 );
+                window.apply_max_size(compositor.max_surface_dimension());
 
                 window.raw.set_theme(conversion::window_theme(
                     window.state.theme_mode(),
@@ -1369,6 +1375,15 @@ async fn run_instance<P>(
                     ));
                 } else {
                     window.state.update(&program, window.raw.as_ref(), &event);
+
+                    if let winit::event::WindowEvent::ScaleFactorChanged {
+                        ..
+                    } = event
+                        && let Some(compositor) = &compositor
+                    {
+                        window
+                            .apply_max_size(compositor.max_surface_dimension());
+                    }
 
                     if let Some(event) = conversion::window_event(
                         event,
@@ -2235,13 +2250,12 @@ where
             }
             window::Action::SetMaxSize(id, size) => {
                 if let Some(window) = window_manager.get_mut(id) {
-                    window.raw.set_max_surface_size(size.map(|size| {
-                        winit::dpi::LogicalSize {
-                            width: size.width,
-                            height: size.height,
-                        }
-                        .into()
-                    }));
+                    window.max_size = size;
+                    window.apply_max_size(
+                        compositor
+                            .as_ref()
+                            .and_then(Compositor::max_surface_dimension),
+                    );
                 }
             }
             window::Action::SetResizeIncrements(id, increments) => {

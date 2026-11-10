@@ -387,6 +387,10 @@ where
         delegate!(self, compositor, compositor.information())
     }
 
+    fn max_surface_dimension(&self) -> Option<u32> {
+        delegate!(self, compositor, compositor.max_surface_dimension())
+    }
+
     fn present(
         &mut self,
         renderer: &mut Self::Renderer,
