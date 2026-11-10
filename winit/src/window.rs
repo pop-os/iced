@@ -62,6 +62,7 @@ where
         exit_on_close_request: bool,
         system_theme: theme::Mode,
         resize_border: u32,
+        max_size: Option<Size>,
     ) -> &mut Window<P, C> {
         let state = State::new(program, id, system_theme, window.as_ref());
         let surface_size = state.physical_size();
@@ -98,6 +99,7 @@ where
                 viewport_version: 0,
                 redraw_requested: false,
                 resize_enabled: false,
+                max_size,
             },
         );
 
@@ -206,6 +208,8 @@ where
     ime_state: Option<(Rectangle, input_method::Purpose)>,
     pub(crate) redraw_requested: bool,
     pub resize_enabled: bool,
+    /// Max size requested by the application, in logical pixels.
+    pub max_size: Option<Size>,
 }
 
 impl<P, C> Window<P, C>
@@ -214,6 +218,29 @@ where
     C: Compositor<Renderer = P::Renderer>,
     P::Theme: theme::Base,
 {
+    /// Applies the application's max size, capped so the surface stays
+    /// within `max_dimension` physical pixels at the current scale factor.
+    pub fn apply_max_size(&self, max_dimension: Option<u32>) {
+        let cap = max_dimension
+            .map(|max| (max as f64 / self.raw.scale_factor()).floor() as f32);
+
+        let max_size = match (self.max_size, cap) {
+            (Some(size), Some(cap)) => {
+                Some(Size::new(size.width.min(cap), size.height.min(cap)))
+            }
+            (None, Some(cap)) => Some(Size::new(cap, cap)),
+            (size, None) => size,
+        };
+
+        self.raw.set_max_surface_size(max_size.map(|size| {
+            LogicalSize {
+                width: size.width,
+                height: size.height,
+            }
+            .into()
+        }));
+    }
+
     pub fn position(&self) -> Option<Point> {
         self.raw
             .outer_position()

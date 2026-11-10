@@ -65,6 +65,12 @@ pub trait Compositor: Sized {
     /// Returns [`Information`] used by this [`Compositor`].
     fn information(&self) -> Information;
 
+    /// Returns the largest surface width or height, in physical pixels, this
+    /// [`Compositor`] can render, if it has a limit.
+    fn max_surface_dimension(&self) -> Option<u32> {
+        None
+    }
+
     /// Loads a font from its bytes.
     fn load_font(&mut self, font: Cow<'static, [u8]>) {
         crate::text::font_system()

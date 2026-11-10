@@ -809,6 +809,7 @@ impl SctkEvent {
                         false, // TODO do we want to get this value here?
                         theme::Mode::None, // TODO do we really need to track the system theme here?
                         0,
+                        None,
                     );
                     _ = surface_ids.insert(object_id, wrapper.clone());
                     let logical_size = window.logical_size();
@@ -1027,6 +1028,7 @@ impl SctkEvent {
                             false, // TODO do we want to get this value here?
                             theme::Mode::None, // TODO do we really need to track the system theme here?
                             0,
+                            None,
                         );
                         window.state.set_ready(false);
                         let logical_size = window.logical_size();
@@ -1281,6 +1283,7 @@ impl SctkEvent {
                     false, // TODO do we want to get this value here?
                     theme::Mode::None, // TODO do we really need to track the system theme here?
                     0,
+                    None,
                 );
                 _ = surface_ids.insert(object_id, wrapper.clone());
                 let logical_size = window.logical_size();
@@ -1609,6 +1612,7 @@ impl SctkEvent {
                         false, // TODO do we want to get this value here?
                         theme::Mode::None,
                         0,
+                        None,
                     );
                     let logical_size = window.logical_size();
 

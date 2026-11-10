@@ -486,6 +486,10 @@ impl graphics::Compositor for Compositor {
         );
     }
 
+    fn max_surface_dimension(&self) -> Option<u32> {
+        Some(self.engine.device.limits().max_texture_dimension_2d)
+    }
+
     fn information(&self) -> compositor::Information {
         let information = self.adapter.get_info();
 
