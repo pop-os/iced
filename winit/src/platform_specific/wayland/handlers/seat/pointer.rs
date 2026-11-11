@@ -31,6 +31,16 @@ impl PointerHandler for SctkState {
 
         // track events, but only forward for the active seat
         for e in events {
+            // Store the press serial before potentially skipping winit windows.
+            if let PointerEventKind::Press {
+                time,
+                button,
+                serial,
+            } = e.kind
+            {
+                my_seat.last_ptr_press = Some((time, button, serial));
+            }
+
             if !my_seat.hidden && my_seat.active_icon != my_seat.icon {
                 // Restore cursor that was set by appliction, or default
                 my_seat.set_cursor(
@@ -43,6 +53,7 @@ impl PointerHandler for SctkState {
                 let id = winit::window::WindowId::from_raw(
                     e.surface.id().as_ptr() as usize,
                 );
+
                 if self.windows.iter().any(|w| w.window.id() == id) {
                     continue;
                 }
@@ -57,6 +68,7 @@ impl PointerHandler for SctkState {
                     seat_id: my_seat.seat.clone(),
                 });
             }
+
             match e.kind {
                 PointerEventKind::Enter { .. } => {
                     _ = my_seat.ptr_focus.replace(e.surface.clone());
@@ -73,13 +85,6 @@ impl PointerHandler for SctkState {
                     // The next surface the pointer lands on decides what it
                     // looks like there
                     my_seat.hidden = false;
-                }
-                PointerEventKind::Press {
-                    time,
-                    button,
-                    serial,
-                } => {
-                    _ = my_seat.last_ptr_press.replace((time, button, serial));
                 }
                 // TODO revisit events that ought to be handled and change internal state
                 _ => {}
