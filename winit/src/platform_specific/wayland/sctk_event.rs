@@ -733,12 +733,6 @@ impl SctkEvent {
                                 DndSurface(Arc::new(Box::new(w.raw.clone()))),
                                 Vec::new(),
                             );
-                            if clipboard
-                                .window_id()
-                                .is_some_and(|id| w.raw.id() == id)
-                            {
-                                *clipboard = Clipboard::unconnected();
-                            }
                         }
                         events.push((
                             Some(id.inner()),
@@ -951,12 +945,6 @@ impl SctkEvent {
                                         ))),
                                         Vec::new(),
                                     );
-                                    if clipboard
-                                        .window_id()
-                                        .is_some_and(|id| w.raw.id() == id)
-                                    {
-                                        *clipboard = Clipboard::unconnected();
-                                    }
                                 }
                                 _ = user_interfaces.remove(&id.inner());
 
@@ -1700,12 +1688,6 @@ impl SctkEvent {
                                 DndSurface(Arc::new(Box::new(w.raw.clone()))),
                                 Vec::new(),
                             );
-                            if clipboard
-                                .window_id()
-                                .is_some_and(|id| w.raw.id() == id)
-                            {
-                                *clipboard = Clipboard::unconnected();
-                            }
                         }
                         events.push((
                             Some(id_wrapper.inner()),
