@@ -2168,6 +2168,8 @@ impl SctkState {
             wp_viewport: wp_viewport.clone(),
             wp_alpha_modifier_surface: wp_alpha_modifier_surface,
             wp_fractional_scale,
+            wp_corner_radius: None,
+            corner_radius: None,
 
             wl_buffer: None,
             bounds: Some(bounds),

@@ -378,7 +378,7 @@ impl SctkEventLoop {
                         ),
                         corner_radius_manager: registry_state.bind_one::<CosmicCornerRadiusManagerV1, _, _>(
                             &qh,
-                            1..=2,
+                            1..=3,
                             (),
                         ).ok(),
                         toplevel_manager: ToplevelManagerState::try_new(
@@ -479,6 +479,11 @@ impl SctkEventLoop {
                         wl_shm,
                         wp_dmabuf,
                         wp_alpha_modifier,
+                        corner_radius_manager: state
+                            .state
+                            .corner_radius_manager
+                            .clone()
+                            .filter(|manager| manager.version() >= 3),
                         qh: state.state.queue_handle.clone(),
                         buffers: HashMap::new(),
                         unmapped_subsurfaces: Vec::new(),
