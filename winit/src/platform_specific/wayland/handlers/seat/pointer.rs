@@ -31,6 +31,15 @@ impl PointerHandler for SctkState {
 
         // track events, but only forward for the active seat
         for e in events {
+            if let PointerEventKind::Press {
+                time,
+                button,
+                serial,
+            } = e.kind
+            {
+                _ = my_seat.last_ptr_press.replace((time, button, serial));
+            }
+
             if !my_seat.hidden && my_seat.active_icon != my_seat.icon {
                 // Restore cursor that was set by appliction, or default
                 my_seat.set_cursor(
@@ -74,13 +83,7 @@ impl PointerHandler for SctkState {
                     // looks like there
                     my_seat.hidden = false;
                 }
-                PointerEventKind::Press {
-                    time,
-                    button,
-                    serial,
-                } => {
-                    _ = my_seat.last_ptr_press.replace((time, button, serial));
-                }
+                PointerEventKind::Press { .. } => {}
                 // TODO revisit events that ought to be handled and change internal state
                 _ => {}
             }

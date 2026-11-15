@@ -904,12 +904,9 @@ impl SctkState {
 
         if grab {
             if let Some(s) = self.seats.first() {
-                let ptr_data = s
-                    .ptr
-                    .as_ref()
-                    .and_then(|p| p.pointer().data::<PointerData>())
-                    .and_then(|data| data.latest_button_serial());
-                if let Some(serial) = ptr_data
+                let ptr_serial =
+                    s.last_ptr_press.as_ref().map(|(_, _, serial)| *serial);
+                if let Some(serial) = ptr_serial
                     .or_else(|| {
                         s.touch
                             .as_ref()
