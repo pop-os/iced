@@ -606,6 +606,7 @@ pub mod font {
 pub mod event {
     //! Handle events of a user interface.
     pub use crate::core::event::PlatformSpecific;
+    pub use crate::core::event::gamepad;
     #[cfg(wayland_platform)]
     pub use crate::core::event::wayland;
     pub use crate::core::event::{Event, Status};
