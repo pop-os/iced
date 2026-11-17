@@ -1427,13 +1427,25 @@ async fn run_instance<P>(
                 }
             }
             Event::Gamepad(event) => {
-                if let Some(id) = platform_specific_handler
+                let target = platform_specific_handler
                     .popup_window()
                     .into_iter()
                     .chain(focused_window)
-                    .find(|id| window_manager.get(*id).is_some())
-                {
-                    events.push((Some(id), core::Event::Gamepad(event)));
+                    .find(|id| window_manager.get(*id).is_some());
+
+                match target {
+                    Some(id) => {
+                        events.push((Some(id), core::Event::Gamepad(event)));
+                    }
+                    None if matches!(
+                        event,
+                        core::event::gamepad::Event::Connected(_)
+                            | core::event::gamepad::Event::Disconnected(_)
+                    ) =>
+                    {
+                        events.push((None, core::Event::Gamepad(event)));
+                    }
+                    None => (),
                 }
             }
             Event::AboutToWait => {

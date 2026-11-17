@@ -48,6 +48,18 @@ pub fn listen(
                     return;
                 };
 
+                for (id, _) in gilrs.gamepads() {
+                    let connected = core::event::gamepad::Event::Connected(
+                        core::event::gamepad::Gamepad(id.into()),
+                    );
+
+                    if sender.send(connected).is_err() {
+                        return;
+                    }
+
+                    on_event();
+                }
+
                 loop {
                     let (after, every) = keyboard_repeat()
                         .unwrap_or((REPEAT_AFTER, REPEAT_EVERY));
