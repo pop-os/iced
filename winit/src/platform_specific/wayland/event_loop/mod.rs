@@ -79,6 +79,22 @@ pub enum Error {
     NoWaylandDisplay,
 }
 
+struct ExitNotifier {
+    sender: mpsc::UnboundedSender<Control>,
+    proxy: winit::event_loop::EventLoopProxy,
+}
+
+impl Drop for ExitNotifier {
+    fn drop(&mut self) {
+        _ = self.sender.unbounded_send(Control::Crash(
+            crate::Error::EventLoop(winit::error::EventLoopError::ExitFailure(
+                1,
+            )),
+        ));
+        self.proxy.wake_up();
+    }
+}
+
 impl SctkEventLoop {
     pub(crate) fn new(
         winit_event_sender: mpsc::UnboundedSender<Control>,
@@ -107,6 +123,7 @@ impl SctkEventLoop {
         let (action_tx, action_rx) = calloop::channel::channel();
         let res: std::thread::JoinHandle<Result<(), Error>> =
             std::thread::spawn(move || {
+                let mut _exit_notifier = None;
                 let _display = connection.display();
                 let (globals, event_queue) =
                     registry_queue_init(&connection).map_err(Error::Global)?;
@@ -517,6 +534,11 @@ impl SctkEventLoop {
                         state.event_loop.dispatch(None, &mut state.state)
                     {
                         log::error!("SCTK dispatch error: {err}");
+                        _exit_notifier = Some(ExitNotifier {
+                            sender: state.state.events_sender.clone(),
+                            proxy: state.state.proxy.clone(),
+                        });
+                        return Err(Error::Calloop(err));
                     }
                     let had_events = !state.state.sctk_events.is_empty();
                     let mut wake_up = had_events;
