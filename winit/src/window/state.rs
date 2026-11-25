@@ -126,6 +126,10 @@ where
         self.cursor_position = Some(physical);
     }
 
+    pub fn clear_cursor_pos(&mut self) {
+        self.cursor_position = None;
+    }
+
     /// Returns the current cursor position of the [`State`].
     pub fn cursor(&self) -> mouse::Cursor {
         self.cursor_position
