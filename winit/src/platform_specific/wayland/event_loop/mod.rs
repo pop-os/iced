@@ -127,11 +127,9 @@ impl SctkEventLoop {
                                 }
                             }
                             crate::platform_specific::Action::ResizeWindow(id) => {
-                                if let Some((_, v)) = state.windows.iter()
-                                    .find(|w| w.id == id)
-                                    .map(|w| state.corner_radii.get(&id))
-                                    .unwrap_or_default() {
-                                    _ = state.handle_action(iced_runtime::platform_specific::wayland::Action::RoundedCorners(id, *v));
+                                // re-clamp the requested radii to the new size
+                                if let Some(requested) = state.corner_radii.get(&id).map(|(_, _, r)| *r) {
+                                    _ = state.handle_action(iced_runtime::platform_specific::wayland::Action::RoundedCorners(id, Some(requested)));
                                 }
                             }
                             crate::platform_specific::Action::TrackWindow(
