@@ -440,12 +440,8 @@ where
         _viewport: &Rectangle,
         _renderer: &Renderer,
     ) -> mouse::Interaction {
-        if cursor.is_over(layout.bounds()) {
-            if self.on_toggle.is_some() {
-                mouse::Interaction::Pointer
-            } else {
-                mouse::Interaction::NotAllowed
-            }
+        if cursor.is_over(layout.bounds()) && self.on_toggle.is_none() {
+            mouse::Interaction::NotAllowed
         } else {
             mouse::Interaction::default()
         }
