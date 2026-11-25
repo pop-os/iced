@@ -340,7 +340,11 @@ where
                     handle: self.handle.clone(),
                     color: style.color,
                     rotation: self.rotation.radians(),
-                    opacity: self.opacity,
+                    opacity: if let Some(color) = style.color {
+                        color.a * self.opacity
+                    } else {
+                        self.opacity
+                    },
                     border_radius: [0., 0., 0., 0.],
                 },
                 drawing_bounds,
