@@ -797,7 +797,13 @@ async fn run_instance<P>(
 
     let mut ui_caches = FxHashMap::default();
     let mut user_interfaces = ManuallyDrop::new(FxHashMap::default());
-    let mut clipboard = Clipboard::unconnected();
+    let mut clipboard = Clipboard::connect(
+        display_handle.clone(),
+        crate::clipboard::ControlSender {
+            sender: control_sender.clone(),
+            proxy: proxy.raw.clone(),
+        },
+    );
     let mut cur_dnd_surface: Option<window::Id> = None;
 
     let mut dnd_surface: Option<
@@ -989,16 +995,6 @@ async fn run_instance<P>(
                         size: window.logical_size(),
                     }),
                 ));
-
-                if clipboard.window_id().is_none() {
-                    clipboard = Clipboard::connect(
-                        window.raw.clone(),
-                        crate::clipboard::ControlSender {
-                            sender: control_sender.clone(),
-                            proxy: proxy.raw.clone(),
-                        },
-                    );
-                }
 
                 let _ = on_open.send(id);
                 is_window_opening = false;
@@ -2166,7 +2162,6 @@ where
                 {
                     _ = control_sender.start_send(Control::Cleanup(id)).ok();
                 }
-                let proxy = clipboard.proxy();
                 #[cfg(wayland_platform)]
                 platform_specific
                     .send_wayland(platform_specific::Action::RemoveWindow(id));
@@ -2175,22 +2170,6 @@ where
                         DndSurface(Arc::new(Box::new(window.raw.clone()))),
                         Vec::new(),
                     );
-                    if clipboard.window_id() == Some(window.raw.id()) {
-                        *clipboard = window_manager
-                            .first()
-                            .map(|window| window.raw.clone())
-                            .zip(proxy.clone())
-                            .map(|(w, proxy)| {
-                                Clipboard::connect(
-                                    w,
-                                    crate::clipboard::ControlSender {
-                                        sender: control_sender.clone(),
-                                        proxy,
-                                    },
-                                )
-                            })
-                            .unwrap_or_else(Clipboard::unconnected);
-                    }
 
                     events.push((
                         Some(id),
