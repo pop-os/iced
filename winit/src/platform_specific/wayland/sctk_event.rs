@@ -733,12 +733,6 @@ impl SctkEvent {
                                 DndSurface(Arc::new(Box::new(w.raw.clone()))),
                                 Vec::new(),
                             );
-                            if clipboard
-                                .window_id()
-                                .is_some_and(|id| w.raw.id() == id)
-                            {
-                                *clipboard = Clipboard::unconnected();
-                            }
                         }
                         events.push((
                             Some(id.inner()),
@@ -813,16 +807,6 @@ impl SctkEvent {
                     );
                     _ = surface_ids.insert(object_id, wrapper.clone());
                     let logical_size = window.logical_size();
-
-                    if clipboard.window_id().is_none() {
-                        *clipboard = Clipboard::connect(
-                            window.raw.clone(),
-                            crate::clipboard::ControlSender {
-                                sender: control_sender.clone(),
-                                proxy: proxy.clone(),
-                            },
-                        );
-                    }
 
                     let mut ui = crate::build_user_interface(
                         program,
@@ -951,12 +935,6 @@ impl SctkEvent {
                                         ))),
                                         Vec::new(),
                                     );
-                                    if clipboard
-                                        .window_id()
-                                        .is_some_and(|id| w.raw.id() == id)
-                                    {
-                                        *clipboard = Clipboard::unconnected();
-                                    }
                                 }
                                 _ = user_interfaces.remove(&id.inner());
 
@@ -1006,15 +984,6 @@ impl SctkEvent {
                             ))
                             .expect("Send control message");
 
-                        if clipboard.window_id().is_none() {
-                            *clipboard = Clipboard::connect(
-                                sctk_winit.clone(),
-                                crate::clipboard::ControlSender {
-                                    sender: control_sender.clone(),
-                                    proxy: proxy.clone(),
-                                },
-                            );
-                        }
                         let Some(compositor) = compositor.as_mut() else {
                             log::error!("compositor missing");
                             return;
@@ -1246,15 +1215,6 @@ impl SctkEvent {
                     proxy.wake_up();
                 }
 
-                if clipboard.window_id().is_none() {
-                    *clipboard = Clipboard::connect(
-                        sctk_winit.clone(),
-                        crate::clipboard::ControlSender {
-                            sender: control_sender.clone(),
-                            proxy: proxy.clone(),
-                        },
-                    );
-                }
                 if compositor.is_none() {
                     match create_compositor(
                         sctk_winit.clone(),
@@ -1575,15 +1535,6 @@ impl SctkEvent {
                         ))
                         .expect("Send control message");
 
-                    if clipboard.window_id().is_none() {
-                        *clipboard = Clipboard::connect(
-                            sctk_winit.clone(),
-                            crate::clipboard::ControlSender {
-                                sender: control_sender.clone(),
-                                proxy: proxy.clone(),
-                            },
-                        );
-                    }
                     if compositor.is_none() {
                         match create_compositor(
                             sctk_winit.clone(),
@@ -1700,12 +1651,6 @@ impl SctkEvent {
                                 DndSurface(Arc::new(Box::new(w.raw.clone()))),
                                 Vec::new(),
                             );
-                            if clipboard
-                                .window_id()
-                                .is_some_and(|id| w.raw.id() == id)
-                            {
-                                *clipboard = Clipboard::unconnected();
-                            }
                         }
                         events.push((
                             Some(id_wrapper.inner()),

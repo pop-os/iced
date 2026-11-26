@@ -10,7 +10,7 @@ use crate::core::clipboard::{DndSource, DynIconSurface};
 use log::trace;
 use std::sync::Arc;
 use winit::dpi::LogicalSize;
-use winit::window::{Window, WindowId};
+use winit::event_loop::OwnedDisplayHandle;
 
 use dnd::{DndAction, DndDestinationRectangle, DndSurface, Icon};
 use window_clipboard::{
@@ -42,7 +42,7 @@ enum State {
         //
         // Note that the field ordering is load-bearing.
         #[allow(dead_code)]
-        window: Arc<dyn Window>,
+        display: OwnedDisplayHandle,
         queued_events: Vec<StartDnd>,
     },
     Unavailable,
@@ -75,22 +75,21 @@ impl dnd::Sender<DndSurface> for ControlSender {
 }
 
 impl Clipboard {
-    /// Creates a new [`Clipboard`] for the given window.
+    /// Creates a new [`Clipboard`] for the given display.
     pub(crate) fn connect(
-        window: Arc<dyn Window>,
+        display: OwnedDisplayHandle,
         sender: ControlSender,
     ) -> Clipboard {
         #[allow(unsafe_code)]
-        let state =
-            unsafe { window_clipboard::Clipboard::connect(window.as_ref()) }
-                .ok()
-                .map(|c| State::Connected {
-                    clipboard: c,
-                    sender: sender.clone(),
-                    window,
-                    queued_events: Vec::new(),
-                })
-                .unwrap_or(State::Unavailable);
+        let state = unsafe { window_clipboard::Clipboard::connect(&display) }
+            .ok()
+            .map(|c| State::Connected {
+                clipboard: c,
+                sender: sender.clone(),
+                display,
+                queued_events: Vec::new(),
+            })
+            .unwrap_or(State::Unavailable);
 
         #[cfg(wayland_platform)]
         if let State::Connected { clipboard, .. } = &state {
@@ -100,18 +99,6 @@ impl Clipboard {
         Clipboard {
             state,
             requested_logical_size: Arc::new(Mutex::new(None)),
-        }
-    }
-
-    pub(crate) fn proxy(&self) -> Option<winit::event_loop::EventLoopProxy> {
-        if let State::Connected {
-            sender: ControlSender { proxy, .. },
-            ..
-        } = &self.state
-        {
-            Some(proxy.clone())
-        } else {
-            None
         }
     }
 
@@ -166,14 +153,6 @@ impl Clipboard {
                 }
             }
             State::Unavailable => {}
-        }
-    }
-
-    /// Returns the identifier of the window used to create the [`Clipboard`], if any.
-    pub fn window_id(&self) -> Option<WindowId> {
-        match &self.state {
-            State::Connected { window, .. } => Some(window.id()),
-            State::Unavailable => None,
         }
     }
 
